@@ -9,6 +9,7 @@ import { judgeStaff } from "./keyword_judge.ts";
 import { llmEnabled, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
+import { type Lang, toLang, LANGS } from "./lang.ts";
 import type { Lobby } from "./lobby.ts";
 import { log } from "./log.ts";
 
@@ -27,6 +28,7 @@ class HttpError extends Error {
 
 interface SoloSession {
   id: string;
+  lang: Lang;
   playerId: string;
   stage: StageId;
   customer: Customer;
@@ -81,6 +83,7 @@ export function info(lobby: Lobby) {
     version: VERSION,
     ai: llmEnabled(),
     voice: sttEnabled(),
+    langs: LANGS,
     rules: { rounds: config.versus.rounds, opening_seconds: config.versus.openingSec, customer_seconds: config.versus.customerSec },
     online: lobby.stats(),
   };
@@ -122,6 +125,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
   if (method === "POST" && p === "/api/v1/solo/start") {
     const body = await readJson(req);
     if (!isStage(body.stage)) throw new HttpError(400, "bad_stage", "ステージの指定が正しくありません");
+    const lang = toLang(body.lang);
     const avoid = Array.isArray(body.avoid) ? body.avoid.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
     let customer: Customer | null = null;
     let source: "ai" | "script" = "script";
@@ -129,7 +133,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     if (llmEnabled()) {
       if (allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
         try {
-          customer = await generateCustomer(body.stage, avoid);
+          customer = await generateCustomer(body.stage, avoid, lang);
           source = "ai";
         } catch (e) {
           notice = e instanceof LlmError ? `${e.message}。台本のお客さんで続けます` : "AIでお客さんを作れなかったので、台本のお客さんで続けます";
@@ -139,12 +143,13 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
         notice = "AIの利用回数の上限に達したので、しばらく台本のお客さんになります";
       }
     }
-    if (customer === null) customer = randomCustomer(body.stage, avoid);
+    if (customer === null) customer = randomCustomer(body.stage, avoid, lang);
     // 1人のプレイヤーが同時に持てるセッションは3つまで
     const mine = [...soloSessions.values()].filter((s) => s.playerId === player.id).sort((a, b) => a.updated - b.updated);
     while (mine.length >= 3) soloSessions.delete(mine.shift()!.id);
     const session: SoloSession = {
       id: crypto.randomUUID(),
+      lang,
       playerId: player.id,
       stage: body.stage,
       customer,
@@ -172,7 +177,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     if (s.source === "ai") {
       if (allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
         try {
-          result = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false);
+          result = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false, s.lang);
           judgedBy = "ai";
         } catch (e) {
           notice = e instanceof LlmError ? `${e.message}（簡易判定）` : "AIの判定に失敗したので簡易判定にしました";
@@ -181,7 +186,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
         notice = "AIの利用回数の上限に達したので簡易判定にしました";
       }
     }
-    if (result === null) result = judgeStaff(s.customer, reply, s.used, anger, resolve);
+    if (result === null) result = judgeStaff(s.customer, reply, s.used, anger, resolve, s.lang);
     s.used.push(reply);
     s.history.push({ role: "customer", text: result.customer_reply });
     s.updated = Date.now();

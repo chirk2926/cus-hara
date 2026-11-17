@@ -2,6 +2,7 @@
 // 一覧と説明は docs/SERVER.md の「WebSocket のメッセージ」。
 import type { Player } from "./db.ts";
 import { rankName } from "./rating.ts";
+import type { Lang } from "./lang.ts";
 
 export type Format = "text" | "voice";
 export type Kind = "ranked" | "friend";
@@ -9,6 +10,7 @@ export type Role = "staff" | "customer";
 
 export interface Conn {
   player: Player;
+  lang: Lang;
   send(msg: Record<string, unknown>): void;
   close(code?: number, reason?: string): void;
 }

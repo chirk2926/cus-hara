@@ -1,0 +1,346 @@
+{
+	"ja": {
+		"apology": [
+			"申し訳",
+			"すみません",
+			"すいません",
+			"失礼いたしました",
+			"失礼しました",
+			"お詫び",
+			"ごめんなさい"
+		],
+		"empathy": [
+			"お気持ち",
+			"ご不便",
+			"ご迷惑",
+			"ご不快",
+			"お察し",
+			"おっしゃる通り",
+			"おっしゃるとおり",
+			"ごもっとも",
+			"お怒り",
+			"ご心配"
+		],
+		"listen": [
+			"お聞かせ",
+			"詳しく",
+			"確認いたし",
+			"確認させ",
+			"お伺い",
+			"状況を",
+			"教えていただ"
+		],
+		"firm": [
+			"いたしかねます",
+			"できかねます",
+			"お受けできません",
+			"応じかねます",
+			"お断り",
+			"致しかねます",
+			"出来かねます",
+			"お応えできません"
+		],
+		"polite": [
+			"ございます",
+			"いたします",
+			"でしょうか",
+			"くださいませ",
+			"恐れ入ります",
+			"おります",
+			"いただけます"
+		],
+		"rude": [
+			"うるさい",
+			"うるせ",
+			"黙れ",
+			"だまれ",
+			"帰れ",
+			"バカ",
+			"ばか",
+			"馬鹿",
+			"アホ",
+			"あほ",
+			"知らん",
+			"知らねえ",
+			"うざ",
+			"クレーマー",
+			"ふざけ",
+			"めんどくさ",
+			"はぁ？",
+			"は？"
+		],
+		"excuse": [
+			"でも",
+			"だって",
+			"仕方ない",
+			"しょうがない",
+			"ルールなので",
+			"決まりなので",
+			"私のせいじゃ",
+			"私は悪く"
+		],
+		"negation": [
+			"かねます",
+			"できません",
+			"出来ません",
+			"お断り",
+			"いたしません",
+			"しません",
+			"ません",
+			"無理",
+			"できない",
+			"出来ない",
+			"応じられ"
+		],
+		"apology_forms": [
+			"申し訳ございません",
+			"申し訳ありません",
+			"すみません",
+			"すいません"
+		],
+		"abuse": [
+			"死ね",
+			"しね",
+			"殺す",
+			"殺し",
+			"ころす",
+			"クズ",
+			"ゴミ",
+			"消えろ",
+			"ぶっ殺"
+		],
+		"pressure": [
+			"責任者",
+			"店長",
+			"誠意",
+			"客だ",
+			"どうしてくれ",
+			"納得",
+			"おかしい",
+			"ありえない",
+			"本部",
+			"二度と",
+			"時間を返",
+			"常連"
+		],
+		"generic_lines": {
+			"calm": [
+				"……まあ、話は聞いてやる。",
+				"ふん。少しは分かってるじゃないか。",
+				"それで？どうしてくれるんだ？"
+			],
+			"angry": [
+				"なんだその態度は！",
+				"こっちは客だぞ！！",
+				"話にならん！責任者を出せ！"
+			],
+			"neutral": [
+				"で？それがどうした。",
+				"だから何なんだって聞いてるんだ。"
+			],
+			"demand": [
+				"いいから誠意を見せろ、誠意を！",
+				"タダにすれば済む話だろうが！"
+			],
+			"resolved": "……分かった。今回はそれでいい。次は気をつけろよ。",
+			"explode": "もういい！！話にならん！店長を呼べ！！！",
+			"yielded": "最初からそうすればいいんだよ。また来るからな。"
+		},
+		"polite_pattern": "です|ます|ません|ございま"
+	},
+	"en": {
+		"apology": [
+			"sorry",
+			"apologize",
+			"apologise",
+			"apologies",
+			"my apologies",
+			"excuse us",
+			"forgive us",
+			"pardon",
+			"my mistake",
+			"our mistake",
+			"our fault"
+		],
+		"empathy": [
+			"understand",
+			"frustrat",
+			"inconvenience",
+			"i see why",
+			"that must",
+			"i can see",
+			"i hear you",
+			"upsetting",
+			"you're right",
+			"you are right",
+			"fair point",
+			"i get it",
+			"concern"
+		],
+		"listen": [
+			"could you tell me",
+			"can you tell me",
+			"let me check",
+			"let me look",
+			"may i ask",
+			"more details",
+			"what happened",
+			"let me confirm",
+			"i'll check",
+			"i will check",
+			"look into",
+			"explain the situation"
+		],
+		"firm": [
+			"unable to",
+			"i'm afraid we can't",
+			"i'm afraid we cannot",
+			"cannot offer",
+			"not able to",
+			"we can't do that",
+			"we cannot do that",
+			"not something we can",
+			"have to decline",
+			"must decline",
+			"not permitted",
+			"against our policy",
+			"can't make an exception",
+			"cannot make an exception"
+		],
+		"polite": [
+			"please",
+			"certainly",
+			"thank you",
+			"thanks",
+			"of course",
+			"sir",
+			"ma'am",
+			"would you",
+			"could you",
+			"may i",
+			"kindly",
+			"appreciate",
+			"absolutely",
+			"right away",
+			"happy to"
+		],
+		"rude": [
+			"shut up",
+			"go away",
+			"idiot",
+			"stupid",
+			"whatever",
+			"get out",
+			"not my problem",
+			"deal with it",
+			"dumb",
+			"moron",
+			"loser",
+			"get lost",
+			"who cares",
+			"i don't care",
+			"so what",
+			"annoying",
+			"karen",
+			"ugh",
+			"pathetic"
+		],
+		"excuse": [
+			"but ",
+			"not my fault",
+			"it's the rules",
+			"those are the rules",
+			"nothing i can do",
+			"that's just how",
+			"it's not me",
+			"i just work here",
+			"blame",
+			"the system",
+			"company policy"
+		],
+		"negation": [
+			"can't",
+			"cannot",
+			"unable",
+			"not able",
+			"won't",
+			"will not",
+			"don't",
+			"do not",
+			"not possible",
+			"no ",
+			"isn't",
+			"aren't",
+			"not allowed",
+			"decline"
+		],
+		"apology_forms": [
+			"no problem",
+			"no worries",
+			"don't worry",
+			"not at all",
+			"sorry for not",
+			"sorry we didn't",
+			"sorry it didn't",
+			"sorry it wasn't",
+			"sorry that wasn't"
+		],
+		"abuse": [
+			"kill",
+			"die",
+			"trash",
+			"scum",
+			"i'll hurt",
+			"hurt you",
+			"garbage human",
+			"worthless",
+			"burn this",
+			"beat you up",
+			"punch",
+			"drop dead",
+			"i'll find you"
+		],
+		"pressure": [
+			"manager",
+			"supervisor",
+			"unacceptable",
+			"ridiculous",
+			"i'm a regular",
+			"never coming back",
+			"compensation",
+			"my time",
+			"head office",
+			"headquarters",
+			"review",
+			"customer is always",
+			"sincerity",
+			"make this right",
+			"how dare",
+			"what are you going to do"
+		],
+		"generic_lines": {
+			"calm": [
+				"...Fine. I'm listening.",
+				"Hmph. So you're not totally clueless.",
+				"And? What are you going to do about it?"
+			],
+			"angry": [
+				"What kind of attitude is that?!",
+				"I'm the CUSTOMER here!!",
+				"This is pointless! Get me your manager!"
+			],
+			"neutral": [
+				"And? So what?",
+				"I'm asking what that has to do with anything!"
+			],
+			"demand": [
+				"Just show some sincerity already!",
+				"Make it free and we're done here!"
+			],
+			"resolved": "...Alright. That'll do this time. Be more careful.",
+			"explode": "That's IT! This is hopeless! MANAGER!!!",
+			"yielded": "Should've done that from the start. I'll be back, you know."
+		},
+		"polite_pattern": "please|sorry|thank|certainly|would|could|may i|apolog|sir|ma'am|of course|appreciate|kindly"
+	}
+}

@@ -135,6 +135,28 @@ test("切断しても猶予時間内につなぎ直せば試合に戻れる", as
   a.c.close(); c2.close();
 });
 
+test("ランクマッチは同じ言語どうしで組む", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "日本語の人");
+  const b = await guest(srv.base, srv.wsUrl, "English player");
+  b.c.send({ t: "lang", lang: "en" });
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  const qb = await b.c.wait((m) => m.t === "queued");
+  assert.equal(qb.lang, "en");
+  await new Promise((r) => setTimeout(r, 300));
+  assert.ok(!a.c.inbox.some((m) => m.t === "match_found"), "言語が違うと組まれない");
+  const c = await guest(srv.base, srv.wsUrl, "Another");
+  c.c.send({ t: "lang", lang: "en" });
+  c.c.send({ t: "queue", format: "text" });
+  const f = await b.c.wait((m) => m.t === "match_found");
+  assert.equal(f.lang, "en");
+  assert.equal(f.opponent.name, "Another");
+  b.c.send({ t: "leave" });
+  await c.c.wait((m) => m.t === "match_end");
+  a.c.send({ t: "cancel" });
+  a.c.close(); b.c.close(); c.c.close();
+});
+
 test("同じ人は二重に並べない／音声の形式チェック", async () => {
   const a = await guest(srv.base, srv.wsUrl, "二重");
   a.c.send({ t: "queue", format: "text" });

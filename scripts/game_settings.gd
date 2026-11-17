@@ -1,56 +1,80 @@
 extends Node
-## 設定とハイスコアの保存（オートロード: GameSettings）
+## 設定・ログイン情報・ハイスコアの保存（オートロード: GameSettings）
+##
+## AIの使い方（solo_source）:
+##   "server"  … ゲームサーバーに問い合わせる（既定。APIキーはサーバーにある）
+##   "own_key" … プレイヤー自身の Claude APIキーで直接呼ぶ（サーバーが無いとき用）
+##   "offline" … AIを使わず台本とキーワード判定だけ
+## 対戦は常にサーバー経由。
 
 const PATH: String = "user://settings.cfg"
+## 配布版が最初に使うサーバー。運営するサーバーのURLが決まったらここを書き換える（docs/SERVER.md）。
+const DEFAULT_SERVER_URL: String = "http://127.0.0.1:8787"
 const MODELS: Array = [
 	["claude-opus-5-5", "Claude Opus 5.5（高品質）"],
 	["claude-sonnet-5-5", "Claude Sonnet 5.5（バランス）"],
 	["claude-haiku-5-5", "Claude Haiku 5.5（高速・低コスト）"],
 ]
+const SOURCES: Array = [
+	["server", "ゲームサーバー（おすすめ）"],
+	["own_key", "自分のAPIキー"],
+	["offline", "AIを使わない（台本）"],
+]
 
+var server_url: String = DEFAULT_SERVER_URL
+var token: String = ""
+var player_name: String = ""
+var solo_source: String = "server"
 var api_key: String = ""
 var model: String = "claude-opus-5-5"
-var use_llm: bool = true
 var volume: float = 0.8
 var fullscreen: bool = false
+var push_to_talk_key: int = KEY_SPACE
 var high_scores: Dictionary = {}
-
-# 対戦モードのレーティング（このPCに保存）
-const RATING_START: int = 1000
-const RATING_K: float = 32.0
-const VERSUS_RANKS: Array = [
-	[1700, "伝説のクレーム処理班"],
-	[1500, "エリアマネージャー"],
-	[1350, "店長"],
-	[1200, "副店長"],
-	[1050, "バイトリーダー"],
-	[900, "アルバイト"],
-	[-999999, "研修生"],
-]
-var rating: int = RATING_START
-var versus_wins: int = 0
-var versus_losses: int = 0
-var versus_draws: int = 0
+## サーバーから最後に受け取った自分の情報（表示用。正しい値は常にサーバーにある）
+var last_profile: Dictionary = {}
 
 
 func _ready() -> void:
 	load_settings()
+	# 起動引数 `-- --server=http://...` で接続先を一時的に変えられる（テスト用。保存はしない）
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--server="):
+			server_url = a.substr(9)
+		elif a.begins_with("--profile="):
+			# 同じPCで2つ起動して対戦を試すとき、ログイン情報を分ける
+			_profile = a.substr(10)
+			load_settings()
 	apply_window()
+
+
+var _profile: String = ""
+
+
+func _path() -> String:
+	if _profile == "":
+		return PATH
+	return "user://settings_%s.cfg" % _profile.validate_filename()
 
 
 func load_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
-	if cfg.load(PATH) != OK:
+	if cfg.load(_path()) != OK:
 		return
-	api_key = str(cfg.get_value("llm", "api_key", ""))
-	model = str(cfg.get_value("llm", "model", model))
-	use_llm = bool(cfg.get_value("llm", "enabled", true))
+	server_url = str(cfg.get_value("server", "url", server_url))
+	token = str(cfg.get_value("server", "token", ""))
+	player_name = str(cfg.get_value("server", "name", ""))
+	var lp: Variant = cfg.get_value("server", "profile", {})
+	if typeof(lp) == TYPE_DICTIONARY:
+		last_profile = lp
+	solo_source = str(cfg.get_value("ai", "source", solo_source))
+	if not ["server", "own_key", "offline"].has(solo_source):
+		solo_source = "server"
+	api_key = str(cfg.get_value("ai", "api_key", ""))
+	model = str(cfg.get_value("ai", "model", model))
 	volume = float(cfg.get_value("audio", "volume", 0.8))
+	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
 	fullscreen = bool(cfg.get_value("video", "fullscreen", false))
-	rating = int(cfg.get_value("versus", "rating", RATING_START))
-	versus_wins = int(cfg.get_value("versus", "wins", 0))
-	versus_losses = int(cfg.get_value("versus", "losses", 0))
-	versus_draws = int(cfg.get_value("versus", "draws", 0))
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
 	if typeof(hs) == TYPE_DICTIONARY:
 		high_scores = hs
@@ -58,17 +82,18 @@ func load_settings() -> void:
 
 func save_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
-	cfg.set_value("llm", "api_key", api_key)
-	cfg.set_value("llm", "model", model)
-	cfg.set_value("llm", "enabled", use_llm)
+	cfg.set_value("server", "url", server_url)
+	cfg.set_value("server", "token", token)
+	cfg.set_value("server", "name", player_name)
+	cfg.set_value("server", "profile", last_profile)
+	cfg.set_value("ai", "source", solo_source)
+	cfg.set_value("ai", "api_key", api_key)
+	cfg.set_value("ai", "model", model)
 	cfg.set_value("audio", "volume", volume)
+	cfg.set_value("audio", "push_to_talk_key", push_to_talk_key)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("score", "high_scores", high_scores)
-	cfg.set_value("versus", "rating", rating)
-	cfg.set_value("versus", "wins", versus_wins)
-	cfg.set_value("versus", "losses", versus_losses)
-	cfg.set_value("versus", "draws", versus_draws)
-	cfg.save(PATH)
+	cfg.save(_path())
 
 
 func apply_window() -> void:
@@ -88,8 +113,8 @@ func get_api_key() -> String:
 	return k
 
 
-func llm_ready() -> bool:
-	return use_llm and get_api_key() != ""
+func own_key_ready() -> bool:
+	return get_api_key() != ""
 
 
 func get_high_score(stage_id: String) -> int:
@@ -102,32 +127,3 @@ func submit_score(stage_id: String, value: int) -> bool:
 		save_settings()
 		return true
 	return false
-
-
-# ---------------------------------------------------------------- 対戦レーティング
-
-static func rank_name(value: int) -> String:
-	for r in VERSUS_RANKS:
-		if value >= int(r[0]):
-			return str(r[1])
-	return "研修生"
-
-
-## Elo方式の増減。score: 勝ち=1.0 / 引き分け=0.5 / 負け=0.0
-static func elo_delta(mine: int, theirs: int, score: float) -> int:
-	var expected: float = 1.0 / (1.0 + pow(10.0, float(theirs - mine) / 400.0))
-	return int(round(RATING_K * (score - expected)))
-
-
-## 対戦結果を記録して、レーティングの増減を返す
-func record_versus(opponent_rating: int, score: float) -> int:
-	var d: int = elo_delta(rating, opponent_rating, score)
-	rating = maxi(0, rating + d)
-	if score > 0.75:
-		versus_wins += 1
-	elif score < 0.25:
-		versus_losses += 1
-	else:
-		versus_draws += 1
-	save_settings()
-	return d

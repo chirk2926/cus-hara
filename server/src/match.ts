@@ -12,6 +12,7 @@ import { type Player, playerById, recordMatch } from "./db.ts";
 import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
+import type { Lang } from "./lang.ts";
 
 interface Seat {
   player: Player;
@@ -62,10 +63,12 @@ export class Match {
 
   readonly kind: Kind;
   readonly format: Format;
+  readonly lang: Lang;
 
-  constructor(kind: Kind, format: Format, a: Conn, b: Conn) {
+  constructor(kind: Kind, format: Format, lang: Lang, a: Conn, b: Conn) {
     this.kind = kind;
     this.format = format;
+    this.lang = lang;
     this.seats = [
       { player: a.player, conn: a, ratingBefore: a.player.rating, graceTimer: null },
       { player: b.player, conn: b, ratingBefore: b.player.rating, graceTimer: null },
@@ -121,6 +124,7 @@ export class Match {
       match_id: this.id,
       kind: this.kind,
       format: this.format,
+      lang: this.lang,
       stage: this.stage,
       rounds: config.versus.rounds,
       you: publicPlayer(me.player, me.ratingBefore),
@@ -163,13 +167,13 @@ export class Match {
     if (llmEnabled()) {
       try {
         const timeout = new Promise<null>((r) => setTimeout(() => r(null), 12000));
-        const c = await Promise.race([generateCustomer(this.stage, this.usedTitles), timeout]);
+        const c = await Promise.race([generateCustomer(this.stage, this.usedTitles, this.lang), timeout]);
         if (c) return c;
       } catch (e) {
         log("card generation failed, using scenario", String(e));
       }
     }
-    return randomCustomer(this.stage, this.usedTitles);
+    return randomCustomer(this.stage, this.usedTitles, this.lang);
   }
 
   private async playRound(r: number, staff: number): Promise<{ winner: number; points: number } | null> {
@@ -220,7 +224,7 @@ export class Match {
       if (input.via === "timeout" || this.anger >= 100) {
         this.anger = 100;
         outcome = "explode";
-        this.broadcastJudged(0, 0, "時間切れ！お客さんがキレた。", "staff");
+        this.broadcastJudged(0, 0, this.lang === "ja" ? "時間切れ！お客さんがキレた。" : "Time's up! The customer snapped.", "staff");
         break;
       }
       this.setPhase("judging", -1, 0);
@@ -229,7 +233,7 @@ export class Match {
       if (reply === "") {
         // 声が聞き取れなかった: 少し怒りが上がり、もう一度店員の番
         this.anger = clamp(this.anger + 5, 0, 100);
-        this.broadcastJudged(5, 0, "よく聞き取れなかった…もう一度！", "staff");
+        this.broadcastJudged(5, 0, this.lang === "ja" ? "よく聞き取れなかった…もう一度！" : "Didn't catch that... try again!", "staff");
         if (this.anger >= 100) { outcome = "explode"; break; }
         continue;
       }
@@ -259,7 +263,7 @@ export class Match {
       this.setPhase("judging", -1, 0);
       const line = await this.inputToText(customer, cin, "customer");
       if (this.finished) return null;
-      const shown = line !== "" ? line : "……（言葉に詰まっている）";
+      const shown = line !== "" ? line : this.lang === "ja" ? "……（言葉に詰まっている）" : "... (lost for words)";
       history.push({ role: "customer", text: shown });
       this.broadcastLine("customer", customer, shown, cin.via);
       const cj = await this.judgeCustomer(card, line, usedCustomer, history, cin.via === "voice", customer);
@@ -337,10 +341,10 @@ export class Match {
     if (input.via !== "voice" || !input.pcm) return input.text;
     if (isNearlySilent(input.pcm) && input.debugText === undefined) return "";
     try {
-      return (await transcribe(input.pcm, input.debugText)).trim();
+      return (await transcribe(input.pcm, input.debugText, this.lang)).trim();
     } catch (e) {
       log("stt failed", String(e));
-      this.send(seat, { t: "notice", text: "声を文字にできませんでした。もう一度話すか、文字で入力してください。" });
+      this.send(seat, { t: "notice", text: this.lang === "ja" ? "声を文字にできませんでした。もう一度話すか、文字で入力してください。" : "Couldn't make out your voice. Speak again or type your line." });
       void role;
       return "";
     }
@@ -349,23 +353,23 @@ export class Match {
   private async judgeStaff(card: Customer, reply: string, used: string[], history: HistoryEntry[], voice: boolean, seat: number) {
     if (llmEnabled() && allow(`llm:${this.seats[seat].player.id}`, config.llmPerMinute * 2, 60_000)) {
       try {
-        return await judgeStaffTurn(this.stage, card, history, this.anger, this.resolveVal, voice);
+        return await judgeStaffTurn(this.stage, card, history, this.anger, this.resolveVal, voice, this.lang);
       } catch (e) {
         log("llm judge failed", String(e));
       }
     }
-    return judgeStaff(card, reply, used, this.anger, this.resolveVal);
+    return judgeStaff(card, reply, used, this.anger, this.resolveVal, this.lang);
   }
 
   private async judgeCustomer(card: Customer, line: string, used: string[], history: HistoryEntry[], voice: boolean, seat: number) {
     if (line !== "" && llmEnabled() && allow(`llm:${this.seats[seat].player.id}`, config.llmPerMinute * 2, 60_000)) {
       try {
-        return await judgeCustomerTurn(this.stage, card, history, voice);
+        return await judgeCustomerTurn(this.stage, card, history, voice, this.lang);
       } catch (e) {
         log("llm customer judge failed", String(e));
       }
     }
-    return judgeCustomerLine(card, line, used);
+    return judgeCustomerLine(card, line, used, this.lang);
   }
 
   private broadcastLine(role: Role, seat: number, text: string, via: string): void {
@@ -397,7 +401,7 @@ export class Match {
       return;
     }
     if (bytes.length < 1600 || bytes.length > MAX_BYTES) {
-      this.send(seat, { t: "notice", text: "声が短すぎるか長すぎます（0.1〜20秒）。" });
+      this.send(seat, { t: "notice", text: this.lang === "ja" ? "声が短すぎるか長すぎます（0.1〜20秒）。" : "Voice clip is too short or too long (0.1–20 s)." });
       return;
     }
     // 相手にはすぐ声を届ける（ボイスチャットとして聞こえる）

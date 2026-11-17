@@ -6,6 +6,7 @@
 //   mock              : テスト用。クライアントが付けた debug_text をそのまま返す
 import { config } from "./config.ts";
 import { wavFromPcm16 } from "./audio.ts";
+import type { Lang } from "./lang.ts";
 
 export class SttError extends Error {}
 
@@ -13,7 +14,7 @@ export function sttEnabled(): boolean {
   return config.sttProvider !== "none";
 }
 
-export async function transcribe(pcm: Int16Array, debugText?: string): Promise<string> {
+export async function transcribe(pcm: Int16Array, debugText?: string, lang: Lang = "ja"): Promise<string> {
   const provider = config.sttProvider;
   if (provider === "none") throw new SttError("このサーバーでは音声の文字起こしが使えません");
   if (provider === "mock") return (debugText ?? "").slice(0, 200);
@@ -25,11 +26,11 @@ export async function transcribe(pcm: Int16Array, debugText?: string): Promise<s
   if (provider === "openai_compatible") {
     url = config.sttUrl.replace(/\/$/, "") + "/v1/audio/transcriptions";
     form.append("model", config.sttModel);
-    form.append("language", "ja");
+    form.append("language", lang);
     form.append("response_format", "json");
   } else {
     url = config.sttUrl.replace(/\/$/, "") + "/inference";
-    form.append("language", "ja");
+    form.append("language", lang);
     form.append("response_format", "json");
     form.append("temperature", "0.0");
   }

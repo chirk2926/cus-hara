@@ -1,119 +1,262 @@
 extends RefCounted
-## UI部品の共通ヘルパー（色・角丸パネル・ボタン・ゲージ）。
-## 使い方: const UI = preload("res://scripts/ui_kit.gd") → UI.label(...)
+## 画面部品の共通関数。色・書体・形の決まりは docs/UI_GUIDE.md。
+## 画面のスクリプトでは色の数値を直接書かず、ここの定数と関数を使う。
+## 使い方: const UI = preload("res://scripts/ui_kit.gd") → UI.text("…", UI.S_BODY)
 
-const C_PANEL: Color = Color(0.07, 0.08, 0.13, 0.9)
-const C_PANEL_LIGHT: Color = Color(0.98, 0.97, 0.94, 0.97)
-const C_TEXT: Color = Color(0.96, 0.96, 0.98)
-const C_TEXT_DARK: Color = Color(0.12, 0.12, 0.16)
-const C_MUTED: Color = Color(0.68, 0.7, 0.78)
-const C_ACCENT: Color = Color(1.0, 0.78, 0.2)
-const C_RED: Color = Color(0.93, 0.26, 0.26)
-const C_GREEN: Color = Color(0.2, 0.78, 0.47)
-const C_BLUE: Color = Color(0.25, 0.52, 0.96)
-const C_PURPLE: Color = Color(0.58, 0.36, 0.9)
-const C_GRAY: Color = Color(0.3, 0.32, 0.4)
+# ---------------------------------------------------------------- 色（UI_GUIDE 3節）
+const PAPER: Color = Color("#f3eee3")
+const PAPER_DIM: Color = Color("#d9d1c0")
+const PAPER_LINE: Color = Color("#c9d6e3")      # 罫線（薄い青）
+const INK: Color = Color("#24212b")
+const INK_SOFT: Color = Color("#6b6574")
+const SHU: Color = Color("#d23f2f")
+const POP: Color = Color("#ffd23f")
+const LCD_BG: Color = Color("#1f2b22")
+const LCD_OFF: Color = Color("#2c3d30")
+const LCD_ON: Color = Color("#b8f28a")
+const OK: Color = Color("#2f8f5b")
+const SHADE: Color = Color(0.141, 0.129, 0.169, 0.6)   # 画面を暗くする幕（INK の60%）
+const SHADOW: Color = Color(0.141, 0.129, 0.169, 0.25) # 紙の影（INK の25%）
 
-const BOLD_FONT_PATH: String = "res://assets/fonts/NotoSansJP_800ExtraBold.ttf"
+# ---------------------------------------------------------------- 文字の大きさ（5段階）
+const S_SMALL: int = 14
+const S_BODY: int = 18
+const S_LEAD: int = 22
+const S_HEAD: int = 30
+const S_HUGE: int = 48
+const S_DIGIT: int = 56
 
-static var _bold: Font = null
+# ---------------------------------------------------------------- 書体（役割ごと）
+const F_BODY: String = "res://assets/fonts/NotoSansJP_500Medium.ttf"
+const F_BOLD: String = "res://assets/fonts/NotoSansJP_800ExtraBold.ttf"
+const F_HAND: String = "res://assets/fonts/YuseiMagic.ttf"        # 手書きの物（メモ・付箋・POP）
+const F_DOT: String = "res://assets/fonts/DotGothic16.ttf"         # 機械の表示（レジ・レシート）
+const F_SIGN: String = "res://assets/fonts/DelaGothicOne.ttf"      # 看板・ポスター・大きな判定
+
+static var _fonts: Dictionary = {}
+
+
+static func font(path: String) -> Font:
+	if not _fonts.has(path):
+		_fonts[path] = load(path) as Font
+	return _fonts[path]
 
 
 static func bold_font() -> Font:
-	if _bold == null and ResourceLoader.exists(BOLD_FONT_PATH):
-		_bold = load(BOLD_FONT_PATH) as Font
-	return _bold
+	return font(F_BOLD)
 
 
-static func style(bg: Color, radius: int = 14, pad: int = 12, border: Color = Color(0, 0, 0, 0), border_w: int = 0) -> StyleBoxFlat:
-	var s: StyleBoxFlat = StyleBoxFlat.new()
-	s.bg_color = bg
-	s.set_corner_radius_all(radius)
-	s.set_content_margin_all(pad)
-	if border_w > 0:
-		s.set_border_width_all(border_w)
-		s.border_color = border
-	return s
-
-
-static func label(text: String, size: int, color: Color = C_TEXT, bold: bool = false) -> Label:
+## 文字。face は F_BODY / F_BOLD / F_HAND / F_DOT / F_SIGN
+static func text(t: String, size: int, color: Color = INK, face: String = F_BODY) -> Label:
 	var l: Label = Label.new()
-	l.text = text
+	l.text = t
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
-	if bold and bold_font() != null:
-		l.add_theme_font_override("font", bold_font())
+	if face != F_BODY:
+		l.add_theme_font_override("font", font(face))
 	return l
 
 
-## 折り返すラベル（日本語は単語区切りがないので任意位置で折り返す）
-static func wrap_label(text: String, size: int, color: Color = C_TEXT, bold: bool = false) -> Label:
-	var l: Label = label(text, size, color, bold)
+## 折り返す文字（日本語は単語の区切りが無いので任意の位置で折り返す）
+static func para(t: String, size: int, color: Color = INK, face: String = F_BODY) -> Label:
+	var l: Label = text(t, size, color, face)
 	l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
 
 
-static func panel(bg: Color = C_PANEL, radius: int = 14, pad: int = 14, border: Color = Color(0, 0, 0, 0), border_w: int = 0) -> PanelContainer:
+# ---------------------------------------------------------------- 面
+
+## 紙。右下にずらしただけの影（ぼかさない）。radius は 0〜2
+static func paper_style(bg: Color = PAPER, pad: int = 16, radius: int = 1, shadow: int = 4) -> StyleBoxFlat:
+	var s: StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = bg
+	s.set_corner_radius_all(radius)
+	s.content_margin_left = pad
+	s.content_margin_right = pad + shadow
+	s.content_margin_top = pad
+	s.content_margin_bottom = pad + shadow
+	if shadow > 0:
+		s.border_width_right = shadow
+		s.border_width_bottom = shadow
+		s.border_color = SHADOW
+	return s
+
+
+static func paper(bg: Color = PAPER, pad: int = 16, shadow: int = 4) -> PanelContainer:
 	var p: PanelContainer = PanelContainer.new()
-	p.add_theme_stylebox_override("panel", style(bg, radius, pad, border, border_w))
+	p.add_theme_stylebox_override("panel", paper_style(bg, pad, 1, shadow))
 	return p
 
 
-static func button(text: String, size: int, bg: Color, fg: Color = Color.WHITE) -> Button:
+static func flat_style(bg: Color, pad: int = 8, radius: int = 0) -> StyleBoxFlat:
+	var s: StyleBoxFlat = StyleBoxFlat.new()
+	s.bg_color = bg
+	s.set_corner_radius_all(radius)
+	s.set_content_margin_all(pad)
+	return s
+
+
+static func empty_style(pad_h: int = 0, pad_v: int = 0) -> StyleBoxEmpty:
+	var s: StyleBoxEmpty = StyleBoxEmpty.new()
+	s.content_margin_left = pad_h
+	s.content_margin_right = pad_h
+	s.content_margin_top = pad_v
+	s.content_margin_bottom = pad_v
+	return s
+
+
+# ---------------------------------------------------------------- ボタン（主役は1画面に1つ）
+
+static func _button_base(label: String, size: int, face: String) -> Button:
 	var b: Button = Button.new()
-	b.text = text
+	b.text = label
 	b.add_theme_font_size_override("font_size", size)
-	if bold_font() != null:
-		b.add_theme_font_override("font", bold_font())
-	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		b.add_theme_color_override(state, fg)
-	b.add_theme_color_override("font_disabled_color", Color(fg.r, fg.g, fg.b, 0.45))
-	b.add_theme_stylebox_override("normal", style(bg, 12, 10))
-	b.add_theme_stylebox_override("hover", style(bg.lightened(0.18), 12, 10))
-	b.add_theme_stylebox_override("pressed", style(bg.darkened(0.2), 12, 10))
-	b.add_theme_stylebox_override("disabled", style(Color(bg.r, bg.g, bg.b, 0.35), 12, 10))
-	b.add_theme_stylebox_override("focus", style(Color(0, 0, 0, 0), 12, 10, Color(1, 1, 1, 0.7), 2))
+	b.add_theme_font_override("font", font(face))
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.focus_mode = Control.FOCUS_ALL
 	return b
 
 
-static func gauge(fill: Color, height: int = 26) -> ProgressBar:
-	var g: ProgressBar = ProgressBar.new()
-	g.min_value = 0.0
-	g.max_value = 100.0
-	g.show_percentage = false
-	g.custom_minimum_size = Vector2(0, height)
-	g.add_theme_stylebox_override("background", style(Color(0, 0, 0, 0.55), 8, 0))
-	g.add_theme_stylebox_override("fill", style(fill, 8, 0))
-	return g
+static func _colors(b: Button, normal: Color, hover: Color, disabled: Color) -> void:
+	b.add_theme_color_override("font_color", normal)
+	b.add_theme_color_override("font_focus_color", normal)
+	b.add_theme_color_override("font_hover_color", hover)
+	b.add_theme_color_override("font_pressed_color", hover)
+	b.add_theme_color_override("font_hover_pressed_color", hover)
+	b.add_theme_color_override("font_disabled_color", disabled)
 
 
-static func set_gauge_color(g: ProgressBar, fill: Color) -> void:
-	var s: StyleBox = g.get_theme_stylebox("fill")
-	if s is StyleBoxFlat:
-		(s as StyleBoxFlat).bg_color = fill
+## 主役のボタン: 朱赤のべた塗り。紙の影つき
+static func primary(label: String, size: int = S_LEAD) -> Button:
+	var b: Button = _button_base(label, size, F_BOLD)
+	_colors(b, PAPER, PAPER, Color(PAPER.r, PAPER.g, PAPER.b, 0.6))
+	b.add_theme_stylebox_override("normal", paper_style(SHU, 12, 0, 4))
+	b.add_theme_stylebox_override("hover", paper_style(SHU.lightened(0.08), 12, 0, 4))
+	b.add_theme_stylebox_override("pressed", paper_style(SHU.darkened(0.12), 12, 0, 1))
+	b.add_theme_stylebox_override("disabled", paper_style(INK_SOFT, 12, 0, 0))
+	b.add_theme_stylebox_override("focus", _focus_style())
+	return b
 
 
-static func line_edit(placeholder: String, size: int = 20) -> LineEdit:
+## 紙のタグ: 薄い紙に細い線。定型文や二番手の操作
+static func tag(label: String, size: int = S_BODY) -> Button:
+	var b: Button = _button_base(label, size, F_BODY)
+	_colors(b, INK, INK, INK_SOFT.lerp(PAPER, 0.4))
+	var n: StyleBoxFlat = flat_style(PAPER, 0, 4)
+	n.content_margin_left = 12
+	n.content_margin_right = 12
+	n.content_margin_top = 6
+	n.content_margin_bottom = 6
+	n.set_border_width_all(1)
+	n.border_color = PAPER_DIM.darkened(0.15)
+	var h: StyleBoxFlat = n.duplicate()
+	h.bg_color = POP.lerp(PAPER, 0.55)
+	h.border_color = INK
+	var d: StyleBoxFlat = n.duplicate()
+	d.bg_color = PAPER_DIM
+	b.add_theme_stylebox_override("normal", n)
+	b.add_theme_stylebox_override("hover", h)
+	b.add_theme_stylebox_override("pressed", h)
+	b.add_theme_stylebox_override("disabled", d)
+	b.add_theme_stylebox_override("focus", _focus_style())
+	return b
+
+
+## 文字だけのボタン（下線の代わりに、マウスを乗せると朱色になる）
+static func link(label: String, size: int = S_BODY, color: Color = INK) -> Button:
+	var b: Button = _button_base(label, size, F_BOLD)
+	_colors(b, color, SHU, INK_SOFT)
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, empty_style(4, 4))
+	b.add_theme_stylebox_override("focus", _focus_style())
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	return b
+
+
+static func _focus_style() -> StyleBoxFlat:
+	var f: StyleBoxFlat = StyleBoxFlat.new()
+	f.draw_center = false
+	f.set_border_width_all(2)
+	f.border_color = SHU
+	f.set_expand_margin_all(3)
+	return f
+
+
+# ---------------------------------------------------------------- 入力欄（枠で囲まず、下線だけ）
+
+static func field(placeholder: String, size: int = S_LEAD) -> LineEdit:
 	var e: LineEdit = LineEdit.new()
 	e.placeholder_text = placeholder
 	e.add_theme_font_size_override("font_size", size)
-	e.add_theme_color_override("font_color", C_TEXT_DARK)
-	e.add_theme_color_override("font_placeholder_color", Color(0.45, 0.45, 0.5))
-	e.add_theme_color_override("caret_color", C_TEXT_DARK)
-	e.add_theme_stylebox_override("normal", style(Color(1, 1, 1), 10, 10, Color(0.6, 0.62, 0.7), 2))
-	e.add_theme_stylebox_override("focus", style(Color(1, 1, 1), 10, 10, C_ACCENT, 3))
-	e.add_theme_stylebox_override("read_only", style(Color(0.8, 0.8, 0.84), 10, 10, Color(0.6, 0.62, 0.7), 2))
+	e.add_theme_color_override("font_color", INK)
+	e.add_theme_color_override("font_placeholder_color", INK_SOFT.lerp(PAPER, 0.25))
+	e.add_theme_color_override("caret_color", SHU)
+	e.add_theme_color_override("selection_color", POP.lerp(PAPER, 0.3))
+	var n: StyleBoxFlat = StyleBoxFlat.new()
+	n.bg_color = Color(PAPER.r, PAPER.g, PAPER.b, 0.0)
+	n.draw_center = false
+	n.border_width_bottom = 2
+	n.border_color = INK_SOFT
+	n.content_margin_left = 4
+	n.content_margin_right = 4
+	n.content_margin_top = 6
+	n.content_margin_bottom = 6
+	var f: StyleBoxFlat = n.duplicate()
+	f.border_width_bottom = 3
+	f.border_color = SHU
+	var ro: StyleBoxFlat = n.duplicate()
+	ro.border_color = PAPER_DIM
+	e.add_theme_stylebox_override("normal", n)
+	e.add_theme_stylebox_override("focus", f)
+	e.add_theme_stylebox_override("read_only", ro)
 	e.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return e
 
 
-static func spacer(expand: bool = true, min_size: Vector2 = Vector2.ZERO) -> Control:
-	var c: Control = Control.new()
-	c.custom_minimum_size = min_size
-	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if expand:
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		c.size_flags_vertical = Control.SIZE_EXPAND_FILL
+static func check(label: String, on: bool) -> CheckBox:
+	var c: CheckBox = CheckBox.new()
+	c.text = label
+	c.button_pressed = on
+	c.add_theme_font_size_override("font_size", S_BODY)
+	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		c.add_theme_color_override(k, INK)
 	return c
+
+
+# ---------------------------------------------------------------- 余白
+
+static func gap(h: int) -> Control:
+	var c: Control = Control.new()
+	c.custom_minimum_size = Vector2(0, h)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+
+static func spacer() -> Control:
+	var c: Control = Control.new()
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	c.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	return c
+
+
+static func hbox(sep: int = 8) -> HBoxContainer:
+	var b: HBoxContainer = HBoxContainer.new()
+	b.add_theme_constant_override("separation", sep)
+	return b
+
+
+static func vbox(sep: int = 8) -> VBoxContainer:
+	var b: VBoxContainer = VBoxContainer.new()
+	b.add_theme_constant_override("separation", sep)
+	return b
+
+
+## 罫線（区切り）
+static func rule(color: Color = PAPER_DIM, thickness: int = 2) -> ColorRect:
+	var r: ColorRect = ColorRect.new()
+	r.color = color
+	r.custom_minimum_size = Vector2(0, thickness)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r

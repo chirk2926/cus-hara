@@ -6,6 +6,7 @@ import { playerByToken } from "./db.ts";
 import { type Conn, publicPlayer } from "./protocol.ts";
 import type { Lobby } from "./lobby.ts";
 import { allow } from "./ratelimit.ts";
+import { toLang } from "./lang.ts";
 import { log } from "./log.ts";
 
 const MAX_MESSAGE = 512 * 1024; // 音声20秒（μ-law 16kHz = 320KB）を base64 にしても収まる大きさ
@@ -57,7 +58,7 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           return;
         }
         clearTimeout(authTimer);
-        conn = { player, send: sendRaw, close: (c, r) => ws.close(c, r) };
+        conn = { player, lang: toLang(msg.lang), send: sendRaw, close: (c, r) => ws.close(c, r) };
         const resumed = lobby.resume(conn);
         sendRaw({ t: "hello", player: publicPlayer(player), resumed });
         log("ws auth", player.name, resumed ? "(resumed)" : "");
@@ -66,6 +67,9 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
       if (!allow(`ws:${conn.player.id}`, 40, 10_000)) return; // 送りすぎは捨てる
       const c = conn;
       switch (t) {
+        case "lang":
+          c.lang = toLang(msg.lang);
+          break;
         case "queue":
           lobby.enqueue(c, msg.format);
           break;

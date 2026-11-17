@@ -1,6 +1,8 @@
 // 台本のお客さんデータ（data/scenarios.json。Godot 側と同じファイル）
 import fs from "node:fs";
+import path from "node:path";
 import { config } from "./config.ts";
+import type { Lang } from "./lang.ts";
 
 export interface Look {
   body_color?: string;
@@ -33,18 +35,29 @@ export function isStage(v: unknown): v is StageId {
   return typeof v === "string" && (STAGES as readonly string[]).includes(v);
 }
 
-let cache: Record<string, Customer[]> | null = null;
+const cache = new Map<Lang, Record<string, Customer[]>>();
 
-export function allCustomers(stage: StageId): Customer[] {
-  if (cache === null) {
-    const raw = JSON.parse(fs.readFileSync(config.scenariosPath, "utf-8")) as { stages: Record<string, Customer[]> };
-    cache = raw.stages;
+/** 言語ごとの台本ファイル: 日本語は scenarios.json、それ以外は scenarios.<lang>.json（無ければ日本語） */
+function load(lang: Lang): Record<string, Customer[]> {
+  const hit = cache.get(lang);
+  if (hit) return hit;
+  let file = config.scenariosPath;
+  if (lang !== "ja") {
+    const alt = path.join(path.dirname(file), `scenarios.${lang}.json`);
+    if (fs.existsSync(alt)) file = alt;
   }
-  return cache[stage] ?? cache["konbini"] ?? [];
+  const raw = JSON.parse(fs.readFileSync(file, "utf-8")) as { stages: Record<string, Customer[]> };
+  cache.set(lang, raw.stages);
+  return raw.stages;
 }
 
-export function randomCustomer(stage: StageId, avoidTitles: string[] = []): Customer {
-  const list = allCustomers(stage);
+export function allCustomers(stage: StageId, lang: Lang = "ja"): Customer[] {
+  const stages = load(lang);
+  return stages[stage] ?? stages["konbini"] ?? [];
+}
+
+export function randomCustomer(stage: StageId, avoidTitles: string[] = [], lang: Lang = "ja"): Customer {
+  const list = allCustomers(stage, lang);
   const fresh = list.filter((c) => !avoidTitles.includes(c.title));
   const pool = fresh.length > 0 ? fresh : list;
   return structuredClone(pool[Math.floor(Math.random() * pool.length)]);

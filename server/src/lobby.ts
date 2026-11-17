@@ -3,12 +3,14 @@ import crypto from "node:crypto";
 import { config } from "./config.ts";
 import { Match } from "./match.ts";
 import type { Conn, Format } from "./protocol.ts";
+import type { Lang } from "./lang.ts";
 import { sttEnabled } from "./stt.ts";
 import { log } from "./log.ts";
 
 interface QueueEntry {
   conn: Conn;
   format: Format;
+  lang: Lang;
   since: number;
   lastStatus: number;
 }
@@ -17,6 +19,7 @@ interface Room {
   code: string;
   host: Conn;
   format: Format;
+  lang: Lang;
   created: number;
 }
 
@@ -64,8 +67,8 @@ export class Lobby {
     if (!f) return;
     const b = this.busy(conn.player.id);
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
-    this.queue.push({ conn, format: f, since: Date.now(), lastStatus: 0 });
-    conn.send({ t: "queued", format: f });
+    this.queue.push({ conn, format: f, lang: conn.lang, since: Date.now(), lastStatus: 0 });
+    conn.send({ t: "queued", format: f, lang: conn.lang });
     this.tick();
   }
 
@@ -100,7 +103,8 @@ export class Lobby {
       let best: QueueEntry | null = null;
       let bestDiff = Infinity;
       for (const b of sorted) {
-        if (b === a || paired.has(b) || b.format !== a.format || b.conn.player.id === a.conn.player.id) continue;
+        // 同じ形式・同じ言語どうしだけを組む
+        if (b === a || paired.has(b) || b.format !== a.format || b.lang !== a.lang || b.conn.player.id === a.conn.player.id) continue;
         const diff = Math.abs(a.conn.player.rating - b.conn.player.rating);
         if (diff <= this.window(a, now) && diff <= this.window(b, now) && diff < bestDiff) {
           best = b;
@@ -110,7 +114,7 @@ export class Lobby {
       if (best) {
         paired.add(a);
         paired.add(best);
-        this.startMatch("ranked", a.format, a.conn, best.conn);
+        this.startMatch("ranked", a.format, a.lang, a.conn, best.conn);
       }
     }
     this.queue = this.queue.filter((q) => !paired.has(q));
@@ -122,7 +126,7 @@ export class Lobby {
           t: "queue_status",
           seconds: Math.floor(((now - q.since) / 1000) * config.timeScale),
           range: Number.isFinite(w) ? Math.round(w) : null,
-          waiting_players: this.queue.filter((x) => x.format === q.format).length,
+          waiting_players: this.queue.filter((x) => x.format === q.format && x.lang === q.lang).length,
         });
       }
     }
@@ -139,8 +143,8 @@ export class Lobby {
     do {
       code = Array.from(crypto.randomBytes(6), (x) => ROOM_ALPHABET[x % ROOM_ALPHABET.length]).join("");
     } while (this.rooms.has(code));
-    this.rooms.set(code, { code, host: conn, format: f, created: Date.now() });
-    conn.send({ t: "room_created", code, format: f });
+    this.rooms.set(code, { code, host: conn, format: f, lang: conn.lang, created: Date.now() });
+    conn.send({ t: "room_created", code, format: f, lang: conn.lang });
   }
 
   joinRoom(conn: Conn, rawCode: unknown): void {
@@ -151,13 +155,14 @@ export class Lobby {
     const b = this.busy(conn.player.id);
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
     this.rooms.delete(code);
-    this.startMatch("friend", room.format, room.host, conn);
+    // フレンド対戦は部屋を作った人の言語で進める
+    this.startMatch("friend", room.format, room.lang, room.host, conn);
   }
 
   // ---------------------------------------------------------------- 試合
 
-  private startMatch(kind: "ranked" | "friend", format: Format, a: Conn, b: Conn): void {
-    const m = new Match(kind, format, a, b);
+  private startMatch(kind: "ranked" | "friend", format: Format, lang: Lang, a: Conn, b: Conn): void {
+    const m = new Match(kind, format, lang, a, b);
     this.matches.set(a.player.id, m);
     this.matches.set(b.player.id, m);
     m.onEnd = (ended) => {
