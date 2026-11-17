@@ -369,7 +369,7 @@ func set_memo(title: String, body: String, demand: String) -> void:
 	_memo_title.text = title
 	_memo_body.text = body
 	# 長いメモは文字を小さくして収める
-	var long_memo: bool = body.length() + demand.length() > (110 if GameSettings.language == "ja" else 230)
+	var long_memo: bool = body.length() + demand.length() > (80 if GameSettings.language == "ja" else 200)
 	_memo_body.add_theme_font_size_override("font_size", UI.S_SMALL if long_memo else UI.S_BODY)
 	_memo_demand.text = (tr("※ 要求: ") + demand) if demand != "" else ""
 
