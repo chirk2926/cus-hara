@@ -70,7 +70,7 @@ func run() -> Dictionary:
 
 	# 1. 台の前へ
 	var front: Vector3 = _root.to_global(Vector3(0.0, 0.0, 0.0))
-	main.camera_to(front + Vector3(0.0, 1.62, 1.28), front + Vector3(0.0, 1.0, -0.05), 0.9)
+	main.camera_to(front + Vector3(0.12, 1.78, 1.55), front + Vector3(-0.05, 0.95, -0.05), 0.9)
 	main.sfx.play("door", 1.3)
 	await get_tree().create_timer(0.9).timeout
 
