@@ -1,3 +1,6 @@
 .godot/
 build/
 *.tmp
+packaging/steam/content/
+packaging/steam/output/
+shots.log

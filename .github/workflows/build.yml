@@ -88,7 +88,44 @@ jobs:
           grep -E "SCRIPT ERROR|ERROR|SHOT" shots.log | head -60 || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f docs/screenshots shots.log
+          cp shots.log docs/screenshots/render.log
+          git add -f docs/screenshots
           git commit -m "スクリーンショットを更新 [skip ci]" || exit 0
           git pull --rebase -q origin "${GITHUB_REF_NAME}"
           git push -q origin "HEAD:${GITHUB_REF_NAME}"
+
+  msix:
+    name: Build Microsoft Store package (MSIX)
+    needs: windows
+    runs-on: windows-latest
+    env:
+      # 本番の値は、リポジトリの Settings → Variables に登録する（パートナーセンターの「製品 ID」に表示される値）
+      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME || 'CusHara.Dev' }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER || 'CN=CusHaraDev' }}
+      MSIX_PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY || 'CusHara Dev' }}
+      MSIX_VERSION: ${{ vars.MSIX_VERSION || '0.1.0.0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: CusHara-windows
+          path: msix_root
+      - name: Pack MSIX
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse packaging/msix/Assets msix_root/Assets
+          $m = Get-Content packaging/msix/AppxManifest.xml -Raw -Encoding UTF8
+          $m = $m.Replace('__IDENTITY_NAME__', $env:MSIX_IDENTITY_NAME).Replace('__PUBLISHER__', $env:MSIX_PUBLISHER)
+          $m = $m.Replace('__PUBLISHER_DISPLAY__', $env:MSIX_PUBLISHER_DISPLAY).Replace('__VERSION__', $env:MSIX_VERSION)
+          [System.IO.File]::WriteAllText("$PWD/msix_root/AppxManifest.xml", $m, (New-Object System.Text.UTF8Encoding($false)))
+          $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter makeappx.exe |
+            Where-Object { $_.FullName -match 'x64' } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $makeappx) { throw "makeappx.exe not found" }
+          New-Item -ItemType Directory -Force out | Out-Null
+          & $makeappx.FullName pack /d msix_root /p out/CusHara.msix /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx failed" }
+          Get-Item out/CusHara.msix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CusHara-msix
+          path: out/CusHara.msix

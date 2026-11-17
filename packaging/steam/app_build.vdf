@@ -1,0 +1,23 @@
+// Steam へアップロードするビルド定義（ひな形）。
+// 1000000 を自分のアプリID、1000001 をデポIDに置き換えること（Steamworks の管理画面に表示される）。
+// 使い方: steamcmd +login <アカウント名> +run_app_build <このファイルの絶対パス> +quit
+"AppBuild"
+{
+	"AppID" "1000000"
+	"Desc" "CusHara build"
+	"ContentRoot" "content"
+	"BuildOutput" "output"
+	"Depots"
+	{
+		"1000001"
+		{
+			"FileMapping"
+			{
+				"LocalPath" "*"
+				"DepotPath" "."
+				"recursive" "1"
+			}
+			"FileExclusion" "*.pdb"
+		}
+	}
+}
