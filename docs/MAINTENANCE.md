@@ -6,32 +6,44 @@
 2. Godot を起動し「インポート」でこのフォルダの `project.godot` を選ぶ。
 3. F5 で実行。
 
-コマンドラインでの確認:
+サーバーも手元で動かす（AIキーなしでもキーワード判定で遊べる）:
+
+```bash
+cd server && npm ci && npm start
+```
+
+ゲームの設定画面「サーバーのURL」は既定で `http://127.0.0.1:8787`。
+
+コマンドラインでの確認（1人用を全ステージ自動プレイ。`SMOKE OK` が出れば成功）:
 
 ```bash
 godot --headless --import
 ```
 
 ```bash
-godot --headless -- --smoke
-```
-
-`SMOKE OK` が出れば、台本モードで全ステージを最後まで通せている。
-
-対戦の自動テスト（2つの端末で同時に実行する）:
-
-```bash
-godot --headless -- --smoke-host
+godot --headless -- --smoke --source=offline
 ```
 
 ```bash
-godot --headless -- --smoke-join
+godot --headless -- --smoke --source=server --server=http://127.0.0.1:8787
 ```
 
-画面の確認用スクリーンショット（`docs/screenshots/` に保存される）:
+対戦の自動テスト（2つの端末で同時に実行する。ランクマッチで組まれて最後まで戦う）:
 
 ```bash
-godot -- --shots
+godot --headless -- --vs-smoke=text --profile=A --server=http://127.0.0.1:8787
+```
+
+```bash
+godot --headless -- --vs-smoke=text --profile=B --server=http://127.0.0.1:8787
+```
+
+音声の対戦の自動テストは、サーバーを `STT_PROVIDER=mock` で起動し、`--vs-smoke=voice` にする。
+
+画面の確認用スクリーンショット（`docs/screenshots/` に保存される。`--lang=en` で英語）:
+
+```bash
+godot -- --shots --lang=ja
 ```
 
 CIに撮らせたいときは、コミットメッセージに `[shots]` を入れてプッシュする。
@@ -51,39 +63,46 @@ exe にデータ（pck）を埋め込む設定なので、配るのは exe 1つ�
 
 | やりたいこと | 触る場所 |
 |---|---|
-| 台本のお客さんを増やす・直す | `scripts/scenarios.gd`（形は SPEC 4節。キーを1つでも欠くと既定のセリフになる） |
-| 難易度（怒りの上がる速さ） | `solo_game.gd` の `BASE_ANGER_RATE` / `RATE_STEP`、各お客さんの `patience` |
-| 得点・ランクの境目 | `solo_game.gd` の `SCORE_*`、`main.gd` の `RANKS` |
-| キーワード採点の語や点 | `offline_judge.gd` の先頭の配列と `judge()` |
-| 定型文ボタン | `hud.gd` の `DEFAULT_PHRASES` |
-| AIの人格・採点基準 | `llm_client.gd` の `GM_SYSTEM` / `GEN_SYSTEM` / `PERSONALITIES` |
-| 使えるAIモデルの一覧・既定 | `game_settings.gd` の `MODELS` と `model` の初期値 |
+| 台本のお客さんを増やす・直す | `data/scenarios.json` と `data/scenarios.en.json`（同じ順番で両方。形は SPEC 4節） |
+| 1人用の難易度（怒りの上がる速さ） | `solo_game.gd` の `BASE_ANGER_RATE` / `RATE_STEP`、各お客さんの `patience` |
+| 1人用の得点・ランクの境目 | `solo_game.gd` の `SCORE_*`、`main.gd` の `RANKS` |
+| キーワード判定の語 | `data/judge_words.json`（サーバーとクライアント共通） |
+| キーワード判定の点数 | `server/src/keyword_judge.ts` と `scripts/offline_judge.gd`（両方を同じに） |
+| 接客用語のタグ | `hud.gd` の `DEFAULT_PHRASES`（英訳を `en.json` に） |
+| AIの人格・採点基準 | サーバー: `server/src/llm.ts` の `GEN_SYSTEM` / `GM_SYSTEM` / `VS_CUSTOMER_SYSTEM` / `PERSONALITIES`。自分のキー用: `llm_client.gd` |
+| サーバーのAIモデル | 環境変数 `CLAUDE_MODEL` |
+| 対戦の秒数・往復数・怒りの速さ | `server/src/config.ts` の `versus` |
+| マッチングの範囲の広がり方 | `server/src/config.ts` の `match` |
+| レーティングのK値・ランク名 | `server/src/rating.ts`（ランク名の英訳を `en.json` に） |
+| 客役の接客用語（言い返し） | `versus_game.gd` の `CUSTOMER_PHRASES` |
 | ゲームセンターの台の配置・色・景品 | `arcade_stage.gd` の `_build_cranes()` / `PALETTE` / `_fill_prizes()` |
-| 対戦の制限時間・往復数・怒りの速さ | `versus_game.gd` の先頭の定数 |
-| レーティングのK値・ランク名 | `game_settings.gd` の `RATING_K` / `VERSUS_RANKS` |
-| 客役の定型文・客役セリフの評価 | `versus_game.gd` の `CUSTOMER_PHRASES`、`offline_judge.gd` の `judge_customer_line` |
-| ステージを増やす | `main.gd` の `STAGES` と `STAGE_ORDER`、`scenarios.gd`、`llm_client.gd` の `STAGE_TEXT`、`stage_world.gd` の `build()` |
+| 画面の色・書体・形 | `ui_kit.gd`（決まりは UI_GUIDE.md） |
+| ステージを増やす | `main.gd` の `STAGES` と `STAGE_ORDER`、台本、`server/src/scenarios.ts` の `STAGES`、`llm.ts` の `STAGE_TEXT`、`stage_world.gd` の `build()` |
 
 GDScript を書くときの決まり（このプロジェクトで事故を避けるため）:
 - 辞書から取り出した値は `:=` で受けない。`var x: float = float(d.get("k", 1.0))` のように型を書く。
 - Node3D のスクリプトで `name` `position` `scale` `rotation` を変数名・引数名に使わない。
 - `await` を足したら中断チェックを入れる（DESIGN 5節）。
+- 画面に出す文は `tr("日本語")` で書き、英訳を足す（9節）。
 
 ## 4. Claude API が変わったとき
 
-- モデルIDの廃止・追加 → `game_settings.gd` の `MODELS`。
-- APIバージョン → `llm_client.gd` の `API_VERSION`。
-- フォールバックのベータ名 → `FALLBACK_BETA`。不要になれば `_supports_fallback()` が常に false を返すようにすれば送らなくなる。
-- 設定画面の「接続テスト」で疎通を確認できる。
+- サーバー: `server/package.json` の `@anthropic-ai/sdk` を上げ、`npm test` と `npm run typecheck`。モデルは `CLAUDE_MODEL`。
+- 自分のキー用（クライアント）: モデル一覧は `game_settings.gd` の `MODELS`、APIバージョンは `llm_client.gd` の `API_VERSION`、フォールバックのベータ名は `FALLBACK_BETA`。
+- 設定画面の「接続を確かめる」で疎通を確認できる。
 
 ## 5. 困ったとき
 
 | 症状 | 見るところ |
 |---|---|
 | 文字が□になる | `assets/fonts/` の ttf があるか、`project.godot` の `gui/theme/custom_font` |
-| 起動直後にエラー | `stage_world.gd` / `customer_character.gd` があるか（HANDOVER参照）。`godot --headless --import` のログ |
-| AIモードにならない | 設定でキーが入っているか、「AIお客さんを使う」がONか、接続テストの表示 |
-| お客さんが来ないまま止まる | `customer_character.gd` が `arrived` を必ず発行しているか |
+| 起動直後にエラー | `godot --headless --import` のログ |
+| タイトルに「サーバーにつながりません」 | 設定の「サーバーのURL」、サーバーが動いているか（`curl <URL>/healthz`） |
+| 1人用でAIのお客さんにならない | サーバーの起動ログの「AI判定: ON/OFF」、`ANTHROPIC_API_KEY`、`LLM_PER_MINUTE` の上限 |
+| 対戦で相手が見つからない | 相手と言語・形式（文字/音声）がそろっているか。ロビーの「待っている人」の数 |
+| 音声対戦が選べない | サーバーの `STT_PROVIDER`（`none` だと選べない） |
+| 声が届かない／文字にならない | Windows のマイクの許可、`project.godot` の `audio/driver/enable_input`、文字起こしサーバーのログ |
+| 英語に訳されていない文がある | `python3 tools/i18n.py check` |
 | CIの出力ステップで失敗 | テンプレートのバージョン（`GODOT_RELEASE`）と `export_presets.cfg` の preset 名 |
 
 ## 6. Steam で配布する
@@ -100,15 +119,9 @@ GDScript を書くときの決まり（このプロジェクトで事故を避�
 steamcmd +login <アカウント名> +run_app_build <app_build.vdf の絶対パス> +quit
 ```
 
-### 対戦のSteam招待・マッチングを有効にする（未実施）
-ゲーム側のコード（`net_session.gd`）は書いてあるが、GodotSteam 本体は入れていない。入れないと、ロビー画面のSteamボタンは押せないままになる。
-
-1. GodotSteam の GDExtension 版（Godot 4.5 用）を公式サイトから入手し、`addons/godotsteam/` に置く。
-2. 開発中は、プロジェクトのフォルダに `steam_appid.txt`（アプリIDだけを書いたファイル）を置く。配布物には入れない。
-3. Steam を起動した状態でゲームを起動し、ロビー画面でSteamボタンが押せることを確認する。
-4. フレンド招待とランダムマッチを2台で試す。うまくいかないときは `net_session.gd` の `_on_lobby_created` / `_on_lobby_joined` を、入れた GodotSteam のドキュメントと見比べる（関数名がバージョンで違う可能性がある）。
-
-作業環境からは GodotSteam の公式サイトに接続できず、関数名を確認できなかった。ここは必ず実機で確かめること。
+### 対戦とSteamの関係
+対戦（ランクマッチ・フレンド対戦）は自前のゲームサーバー経由なので、Steam の機能は使わない（Microsoft Store 版とも対戦できる）。
+フレンド対戦は部屋コードを伝えて遊ぶ。Steam のフレンド招待から部屋コードを渡す機能は、GodotSteam を入れれば足せる（未実施。要件#15 は #19 で置き換え）。
 
 ## 7. Microsoft Store で配布する
 
@@ -124,11 +137,43 @@ steamcmd +login <アカウント名> +run_app_build <app_build.vdf の絶対パ�
 4. パートナーセンターに MSIX をアップロードして審査に出す。ストア提出用は署名不要（ストアが署名する）。手元で試すときだけ、自己署名証明書で `signtool` 署名し、証明書を信頼済みに入れる必要がある。
 
 注意:
-- マニフェストは `runFullTrust`（通常のデスクトップアプリ）と `internetClient` / `internetClientServer`（AI通信と対戦）を宣言している。`runFullTrust` はストア提出時に利用理由の入力を求められる。
-- ストアの説明とプライバシーポリシーに、APIキーをユーザーが入力すること、外部サービス（Anthropic）と通信することを書く必要がある。
+- マニフェストは `runFullTrust`（通常のデスクトップアプリ）、`internetClient` / `internetClientServer`（サーバーとの通信）、`microphone`（音声対戦）を宣言している。`runFullTrust` はストア提出時に利用理由の入力を求められる。
+- ストアの説明とプライバシーポリシーに、ゲームサーバーと通信すること（名前・対戦の記録・入力した文章・音声が送られ、AIの判定に使われること）、自分のAPIキーを入れた場合は Anthropic と直接通信することを書く必要がある。
 - MSIX を実際にインストールして起動する確認は、まだ誰も行っていない。
 
-## 8. ライセンス
+## 8. ゲームサーバーの運用
 
-- Noto Sans JP: SIL Open Font License 1.1（`assets/fonts/OFL.txt`。配布物に同梱すること）。
+詳細は [SERVER.md](SERVER.md)。要点:
+1. Linux のサーバーに Docker で `server/compose.yaml` を動かす（または Node.js 22.18 以上で `npm start`）。`ANTHROPIC_API_KEY` を環境変数で渡す。
+2. 前に HTTPS 終端（Caddy / nginx）を置き、`https://` と `wss://` で公開する。
+3. `scripts/game_settings.gd` の `DEFAULT_SERVER_URL` を本番のURLに書き換えてから、配布用の exe / MSIX を作る。
+4. 音声対戦を使うなら、文字起こしサーバー（whisper.cpp の `whisper-server` など）を用意して `STT_PROVIDER` と `STT_URL` を設定する。
+5. AIの料金は運営（キーの持ち主）にかかる。`LLM_PER_MINUTE` で1人あたりの回数を制限できる。Anthropic のコンソールで利用上限も設定しておく。
+6. バックアップは `DB_PATH` のファイル（`-wal` も）。
+
+## 9. 翻訳（多言語）
+
+- 画面の文言を足したり変えたりしたら、次を実行して訳漏れを確認し、`data/i18n/en.json` に英訳を足す（CIでも検査される）。
+
+```bash
+python3 tools/i18n.py check
+```
+
+```bash
+python3 tools/i18n.py missing en
+```
+
+- 台本は `data/scenarios.json`（日本語）と `data/scenarios.en.json`（英語）。**お客さんの順番と見た目の値をそろえる**こと（サーバーのテストが項目の有無を検査する）。
+- 判定の語は `data/judge_words.json` の `ja` / `en`。店長の一言の文言は `server/src/keyword_judge.ts` と `scripts/offline_judge.gd` の `COMMENTS`。
+
+### 言語を増やす
+1. `data/i18n/<言語>.json` を作る（`python3 tools/i18n.py missing <言語>` で空の一覧が作れる）。`tools/i18n.py` の `LANGS` に足す。
+2. `data/scenarios.<言語>.json` と `data/judge_words.json` の `<言語>` を作る。
+3. サーバー: `server/src/lang.ts` の `LANGS`、`keyword_judge.ts` の `COMMENTS` と `OFFTOPIC`、`llm.ts` の `LANG_LINE` に足す。
+4. クライアント: `game_settings.gd` の `LANGS`、`offline_judge.gd` の `COMMENTS`、`llm_client.gd` の言語指定に足す。
+
+## 10. ライセンス
+
+- フォント（Noto Sans JP、Yusei Magic、DotGothic16、Dela Gothic One）: すべて SIL Open Font License 1.1（`assets/fonts/licenses/`。配布物に同梱すること）。
 - Godot Engine: MIT。配布物にライセンス表記が必要（Godotの公式ドキュメント「Complying with licenses」参照）。**まだゲーム内に表記していない。**
+- サーバーの依存（@anthropic-ai/sdk、ws、zod）: MIT。
