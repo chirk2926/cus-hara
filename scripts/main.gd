@@ -72,6 +72,8 @@ var _cam_override_target: Vector3 = Vector3.ZERO
 var _server_info: Dictionary = {}
 var _vs_format: String = "text"
 var _crane_mg = null
+var _sheet_is_receipt: bool = false
+var _sheet_is_lobby: bool = false
 
 
 func _ready() -> void:
@@ -170,7 +172,14 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		# 台の調整中は止めない（お客さんを待たせている設定）。結果のレシートは Esc で閉じない（閉じると空の画面が残る）
+		if _crane_mg != null and is_instance_valid(_crane_mg) and _crane_mg.is_running():
+			return
 		if _sheet != null:
+			if _sheet_is_receipt:
+				return
+			if _sheet_is_lobby:
+				_versus.cancel()
 			_close_sheet()
 		elif _in_game:
 			_show_pause()
@@ -181,6 +190,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func set_stage(stage_id: String) -> void:
 	if stage_id == _current_stage:
 		return
+	_abort_crane()
 	_current_stage = stage_id
 	_world.call("build", stage_id)
 
@@ -230,7 +240,10 @@ func shake(strength: float) -> void:
 
 ## 対戦が始まったとき（versus_game.gd から）
 func enter_versus(stage_id: String) -> void:
+	_abort_crane()
+	_solo.abort()
 	_close_sheet()
+	_hud.set_mental(-1)
 	_title.visible = false
 	_hud.visible = true
 	_in_game = true
@@ -317,7 +330,13 @@ func _start_solo(stage_id: String) -> void:
 	_solo.start(stage_id, tr(str(STAGES[stage_id]["name"])))
 
 
+func _abort_crane() -> void:
+	if _crane_mg != null and is_instance_valid(_crane_mg):
+		_crane_mg.abort()
+
+
 func _quit_to_title() -> void:
+	_abort_crane()
 	_solo.abort()
 	if _versus.is_active():
 		_versus.leave_match()
@@ -522,6 +541,10 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false) ->
 	var col: VBoxContainer = UI.vbox(12)
 	panel.add_child(col)
 	_solo.paused = true
+	_sheet_is_receipt = receipt
+	_sheet_is_lobby = false
+	if _hud != null:
+		_hud.set_blocked(true)
 	return col
 
 
@@ -548,6 +571,10 @@ func _close_sheet() -> void:
 	_lobby_status = null
 	_lobby_code = null
 	_solo.paused = false
+	_sheet_is_receipt = false
+	_sheet_is_lobby = false
+	if _hud != null and is_instance_valid(_hud):
+		_hud.set_blocked(false)
 
 
 func _sheet_title(col: VBoxContainer, t: String) -> void:
@@ -833,6 +860,9 @@ func _show_versus_lobby() -> void:
 	_sheet = Control.new()
 	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui.add_child(_sheet)
+	_sheet_is_lobby = true
+	_hud.set_blocked(true)
+	var use_eos: bool = _versus.eos_available()
 	var board: Panel = Panel.new()
 	board.add_theme_stylebox_override("panel", UI.flat_style(Color("#5b4636"), 0, 0))
 	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -887,8 +917,13 @@ func _show_versus_lobby() -> void:
 	var find: Button = UI.primary(tr("相手を探す"), UI.S_LEAD)
 	find.pressed.connect(func() -> void:
 		sfx.play("click")
-		_versus.request("queue", _vs_format))
+		if use_eos:
+			_versus.request_eos("ranked", _vs_format)
+		else:
+			_versus.request("queue", _vs_format))
 	rc.add_child(find)
+	if use_eos:
+		rc.add_child(UI.para(tr("Epic Online Services で相手を探します。見つからなければゲームサーバーで探します。"), UI.S_SMALL, UI.INK_SOFT))
 
 	# フレンド対戦
 	var friend: PanelContainer = UI.paper(UI.POP, 20, 5)
@@ -904,6 +939,12 @@ func _show_versus_lobby() -> void:
 		sfx.play("click")
 		_versus.request("room_create", _vs_format))
 	fc.add_child(make)
+	if use_eos:
+		var invite: Button = UI.link(tr("Epic のフレンドを招待する →"), UI.S_BODY)
+		invite.pressed.connect(func() -> void:
+			sfx.play("click")
+			_versus.request_eos("invite", _vs_format))
+		fc.add_child(invite)
 	_lobby_code = UI.text("", UI.S_HEAD, UI.INK, UI.F_DOT)
 	fc.add_child(_lobby_code)
 	var join_row: HBoxContainer = UI.hbox(8)

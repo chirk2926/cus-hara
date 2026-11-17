@@ -75,6 +75,10 @@ func stop_recording() -> PackedByteArray:
 	level_changed.emit(0.0)
 	if _samples.size() < int(_src_rate * 0.25):
 		return PackedByteArray()
+	# 上限（20秒）を少しでも超えるとサーバーに断られるので、少し手前で切る
+	var cap: int = int(_src_rate * (MAX_SECONDS - 0.1))
+	if _samples.size() > cap:
+		_samples = _samples.slice(0, cap)
 	return encode_mulaw(_resample(_samples, _src_rate, float(RATE)))
 
 

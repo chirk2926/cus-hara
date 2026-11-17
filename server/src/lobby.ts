@@ -161,7 +161,7 @@ export class Lobby {
     this.rooms.set(code, {
       code, host: conn, format: f, lang: conn.lang,
       // ランクマッチは公平のため返事の時間を固定
-      rateScale: wantRanked ? 1 : ANSWER_RATE[String(answerTime)] ?? 1,
+      rateScale: wantRanked ? 1 : (Object.hasOwn(ANSWER_RATE, String(answerTime)) ? ANSWER_RATE[String(answerTime)] : 1),
       kind: wantRanked ? "ranked" : "friend", eosLobby, created: Date.now(),
     });
     conn.send({ t: "room_created", code, format: f, lang: conn.lang });
@@ -174,6 +174,15 @@ export class Lobby {
     if (room.host.player.id === conn.player.id) return void conn.send({ t: "error", code: "own_room", message: "自分の部屋には参加できません" });
     const b = this.busy(conn.player.id);
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
+    // ランクの部屋（EOS で組んだ相手）のチート対策: 同じ回線どうし・レーティング差が大きすぎる相手は不可
+    if (room.kind === "ranked") {
+      if (!config.allowSameIpRanked && room.host.ip === conn.ip) {
+        return void conn.send({ t: "error", code: "same_network", message: "同じ回線のプレイヤーどうしでは、ランクマッチはできません" });
+      }
+      if (Math.abs(room.host.player.rating - conn.player.rating) > config.rankedRoomMaxGap) {
+        return void conn.send({ t: "error", code: "rating_gap", message: "レーティングの差が大きすぎるため、このランクマッチには入れません" });
+      }
+    }
     this.rooms.delete(code);
     // フレンド対戦は部屋を作った人の言語で進める
     this.startMatch(room.kind, room.format, room.lang, room.host, conn, room.rateScale);

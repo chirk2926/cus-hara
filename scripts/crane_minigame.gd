@@ -52,6 +52,24 @@ func is_running() -> bool:
 	return _phase != ""
 
 
+## 途中でやめる（タイトルへ戻る・店を変えるとき）。台を元に戻し、cancelled で終わる
+func abort() -> void:
+	if _phase == "":
+		return
+	_phase = ""
+	if _ui != null:
+		_ui.queue_free()
+		_ui = null
+	if _marker != null and is_instance_valid(_marker):
+		_marker.queue_free()
+	_marker = null
+	_held = null
+	if is_instance_valid(arcade):
+		arcade.set_crane_manual(_cr, false)
+	main.camera_release(0.0)
+	_done.emit({"result": "cancelled", "cheat": false, "moved": _moved})
+
+
 ## ミニゲームを最後まで行い、結果を返す
 func run() -> Dictionary:
 	_cr = arcade.get_service_crane()
@@ -269,7 +287,7 @@ func _pick_target() -> Node3D:
 	var best_d: float = INF
 	for p in _prizes:
 		var n: Node3D = p
-		if not is_instance_valid(n):
+		if not is_instance_valid(n) or not n.visible:
 			continue
 		var d: float = Vector2(n.position.x, n.position.z).distance_to(Arcade.CHUTE)
 		if d < best_d:
@@ -306,6 +324,8 @@ func _make_marker() -> void:
 
 
 func _update_marker() -> void:
+	if _marker == null or not is_instance_valid(_marker):
+		return
 	var t: Node3D = _pick_target()
 	_marker.visible = t != null and _phase == "adjust"
 	if t != null:
@@ -424,9 +444,12 @@ func _drop_prize(prize: Node3D, land_local: Vector3, into_chute: bool) -> void:
 		prize.position = Vector3(randf_range(0.0, 0.4), Arcade.CASE_FLOOR_Y, randf_range(-0.3, 0.0))
 		prize.rotation = Vector3.ZERO
 		_prizes.append(prize)
-		var back: Tween = create_tween()
+		# ミニゲームの節は終わるとすぐ消えるので、木（SceneTree）の tween で戻す
+		var back: Tween = get_tree().create_tween()
 		back.tween_interval(3.0)
-		back.tween_callback(func() -> void: prize.visible = true)
+		back.tween_callback(func() -> void:
+			if is_instance_valid(prize):
+				prize.visible = true)
 	prize.set_meta("dropped", true)
 
 
@@ -447,10 +470,12 @@ func _finish(res: Dictionary) -> void:
 	if _ui != null:
 		_ui.queue_free()
 		_ui = null
-	if _marker != null:
+	if _marker != null and is_instance_valid(_marker):
 		_marker.queue_free()
-		_marker = null
+	_marker = null
 	_held = null
+	if not is_instance_valid(arcade):
+		return
 	arcade.set_crane_manual(_cr, false)
 	main.camera_release(0.8)
 	await get_tree().create_timer(0.8).timeout

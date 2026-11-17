@@ -122,7 +122,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
   }
 
   if (method === "GET" && p === "/api/v1/leaderboard") {
-    return { players: leaderboard(clamp(Number(url.searchParams.get("limit") ?? 50), 1, 100)) };
+    return { players: leaderboard(clamp(Number.isFinite(Number(url.searchParams.get("limit") ?? 50)) ? Math.floor(Number(url.searchParams.get("limit") ?? 50)) : 50, 1, 100)) };
   }
 
   // ここから下はログインが必要

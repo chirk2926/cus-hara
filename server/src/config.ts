@@ -41,9 +41,11 @@ export const config = {
 
   // 1人のプレイヤーが1分間に使える AI 呼び出しの回数（運営側の API 料金を守るため）
   llmPerMinute: num("LLM_PER_MINUTE", 20),
-  // EOS（Epic Online Services）のロビーで組んだ相手と、ランクマッチの部屋を作ることを許すか（要件#32）。
-  // EOS のロビーをサーバーで確かめる仕組みが無いうちは、なりすましでレーティングを稼げるので既定は無効。
-  allowRankedRooms: str("ALLOW_RANKED_ROOMS", "0") === "1",
+  // EOS（Epic Online Services）のロビーで組んだ相手と、ランクマッチの部屋を作ることを許すか（要件#32, #48）。
+  // 部屋に入るときに、同じ回線・レーティング差・同じ相手との連戦を確かめる（チート対策）。0 で無効
+  allowRankedRooms: str("ALLOW_RANKED_ROOMS", "1") === "1",
+  // ランクの部屋に入れるレーティング差の上限
+  rankedRoomMaxGap: num("RANKED_ROOM_MAX_GAP", 400),
   // チート対策（要件#47。docs/SERVER.md「チート対策」）
   // 同じIPアドレス（同じ回線）どうしをランクマッチで組まない。1 で許す（テスト用）
   allowSameIpRanked: str("ALLOW_SAME_IP_RANKED", "0") === "1",

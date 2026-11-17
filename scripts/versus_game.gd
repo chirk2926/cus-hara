@@ -11,6 +11,20 @@ const UI = preload("res://scripts/ui_kit.gd")
 const VoiceScript = preload("res://scripts/voice.gd")
 const Scenarios = preload("res://scripts/scenarios.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
+const EosScript = preload("res://scripts/eos_matchmaker.gd")
+
+## サーバーのエラーコード → 画面の言葉（サーバーの文は日本語だけなので、ここで訳す）
+const ERROR_TEXT: Dictionary = {
+	"bad_format": "対戦の形式（文字・音声）が正しくありません",
+	"voice_unavailable": "このサーバーは音声対戦に対応していません",
+	"busy": "もう相手を探しているか、部屋で待っています。先に「探すのをやめる」を押してください",
+	"ranked_rooms_disabled": "このサーバーでは、部屋でのランクマッチは使えません",
+	"room_not_found": "その部屋コードは見つかりません。コードを確かめるか、相手に作り直してもらってください",
+	"own_room": "自分の部屋には参加できません",
+	"same_network": "同じ回線のプレイヤーどうしでは、ランクマッチはできません",
+	"rating_gap": "レーティングの差が大きすぎるため、このランクマッチには入れません",
+	"unauthorized": "ログイン情報が無効です",
+}
 
 signal lobby_event(kind: String, data: Dictionary)   # ロビー画面向け: queued / queue_status / room_created / error / cancelled
 signal finished(summary: Dictionary)
@@ -28,6 +42,8 @@ var main = null
 var hud = null
 var api = null
 var voice = null
+var eos = null           # Epic Online Services のマッチング（入っていなければ使わない）
+var _eos_flow: String = ""   # "" | "ranked" | "invite": EOS 経由で部屋を作ろうとしている
 var paused: bool = false
 
 var state: String = "idle"   # idle | connecting | queued | room | match
@@ -58,6 +74,14 @@ func setup(main_node, hud_node, api_node) -> void:
 			hud.set_voice_level(v))
 	voice.auto_stopped.connect(_on_voice_stop)
 	api.message.connect(_on_message)
+	eos = EosScript.new()
+	add_child(eos)
+	eos.status.connect(func(t: String) -> void: lobby_event.emit("status", {"text": t}))
+	eos.need_room.connect(_on_eos_need_room)
+	eos.room_found.connect(func(code: String) -> void:
+		_eos_flow = ""
+		request("room_join", _eos_format, code))
+	eos.failed.connect(_on_eos_failed)
 	attach_hud(hud_node)
 
 
@@ -80,6 +104,59 @@ func is_busy() -> bool:
 
 # ---------------------------------------------------------------- ロビーからの操作
 
+var _eos_format: String = "text"
+
+
+## EOS（Epic のロビー・フレンド招待）が使えるか
+func eos_available() -> bool:
+	return eos != null and eos.available()
+
+
+## Epic のロビーで相手を探す（ランク）。だめならゲームサーバーのマッチングに切り替える
+func request_eos(kind: String, format: String) -> void:
+	if not eos_available():
+		request("queue" if kind == "ranked" else "room_create", format)
+		return
+	_eos_format = format
+	_eos_flow = kind
+	state = "connecting"
+	var me: Dictionary = await api.ensure_login()
+	if me.has("error"):
+		state = "idle"
+		_eos_flow = ""
+		lobby_event.emit("error", {"message": str(me["error"])})
+		return
+	var p: Dictionary = GameSettings.last_profile
+	var rating: int = int(p.get("rating", 1000))
+	var pname: String = str(p.get("name", GameSettings.player_name))
+	if kind == "ranked":
+		eos.find_match(GameSettings.language, format, rating, pname)
+	else:
+		eos.invite_friend(GameSettings.language, format, rating, pname)
+
+
+func _on_eos_need_room(ranked: bool) -> void:
+	_pending = {"t": "room_create", "format": _eos_format, "code": "", "ranked": ranked, "eos_lobby": eos.lobby_id()}
+	if api.is_open():
+		_send_pending()
+	else:
+		api.open_socket()
+
+
+func _on_eos_failed(message: String) -> void:
+	lobby_event.emit("status", {"text": message})
+	var flow: String = _eos_flow
+	_eos_flow = ""
+	eos.leave()
+	if state == "match":
+		return
+	state = "idle"
+	# ランクはゲームサーバーのマッチングで続ける。招待は部屋コードで
+	if flow == "ranked":
+		request("queue", _eos_format)
+	elif flow == "invite":
+		request("room_create", _eos_format)
+
 ## kind: "queue" | "room_create" | "room_join"
 func request(kind: String, format: String, code: String = "") -> void:
 	_pending = {"t": kind, "format": format, "code": code}
@@ -97,8 +174,12 @@ func request(kind: String, format: String, code: String = "") -> void:
 
 
 func cancel() -> void:
-	if state == "queued" or state == "room" or state == "connecting":
+	# 状態に関係なく、試合中でなければサーバーに「やめる」を送る（サーバー側の待ちが残らないように）
+	if state != "match" and api.is_open():
 		api.send({"t": "cancel"})
+	if eos != null:
+		eos.cancel()
+	_eos_flow = ""
 	state = "idle"
 	_pending = {}
 
@@ -118,7 +199,12 @@ func _send_pending() -> void:
 		"queue":
 			api.send({"t": "queue", "format": p["format"]})
 		"room_create":
-			api.send({"t": "room_create", "format": p["format"], "answer_time": GameSettings.answer_time})
+			var m: Dictionary = {"t": "room_create", "format": p["format"], "answer_time": GameSettings.answer_time}
+			if bool(p.get("ranked", false)):
+				m["ranked"] = true
+			if str(p.get("eos_lobby", "")) != "":
+				m["eos_lobby"] = str(p["eos_lobby"])
+			api.send(m)
 		"room_join":
 			api.send({"t": "room_join", "code": p["code"]})
 
@@ -131,6 +217,14 @@ func _on_message(msg: Dictionary) -> void:
 		"hello":
 			if bool(msg.get("resumed", false)):
 				hud.set_status(tr("つなぎ直しました"))
+			elif state == "match":
+				# 待ち時間を過ぎてから戻った: サーバーではもう試合が終わっている
+				_on_match_end({"result": "lose", "reason": "disconnected", "kind": str(_match.get("kind", "")),
+					"you_points": int(_totals.get("you", 0)), "opponent_points": int(_totals.get("opponent", 0))})
+			elif _pending.is_empty() and (state == "queued" or state == "room"):
+				# 待っている間に切れた: サーバーの待ちは消えているので、やり直してもらう
+				state = "idle"
+				lobby_event.emit("error", {"message": tr("接続が切れたため、待つのをやめました。もう一度押してください")})
 			else:
 				_send_pending()
 		"queued":
@@ -140,6 +234,8 @@ func _on_message(msg: Dictionary) -> void:
 			lobby_event.emit("queue_status", msg)
 		"room_created":
 			state = "room"
+			if _eos_flow != "":
+				eos.set_room_code(str(msg.get("code", "")))
 			lobby_event.emit("room_created", msg)
 		"room_expired":
 			state = "idle"
@@ -147,9 +243,16 @@ func _on_message(msg: Dictionary) -> void:
 		"cancelled":
 			lobby_event.emit("cancelled", msg)
 		"error":
-			if state != "match":
+			var code: String = str(msg.get("code", ""))
+			# busy は「もう待っている」なので、状態は変えない（やめるボタンで cancel が届くように）
+			if state != "match" and code != "busy":
 				state = "idle"
-			lobby_event.emit("error", msg)
+			var shown: Dictionary = msg.duplicate()
+			if ERROR_TEXT.has(code):
+				shown["message"] = tr(str(ERROR_TEXT[code]))
+			lobby_event.emit("error", shown)
+			if _eos_flow != "" and state != "match":
+				_on_eos_failed(shown.get("message", ""))
 		"match_found":
 			_on_match_found(msg)
 		"round_start":
@@ -187,6 +290,9 @@ func _on_match_found(msg: Dictionary) -> void:
 	var resumed: bool = state == "match"
 	state = "match"
 	_match = msg
+	_eos_flow = ""
+	if eos != null:
+		eos.leave()
 	var stage: String = str(msg.get("stage", "konbini"))
 	_rounds = int(msg.get("rounds", 2))
 	if not resumed:

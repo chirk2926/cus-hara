@@ -123,7 +123,7 @@ func _process(delta: float) -> void:
 
 ## 店の行動ボタン
 func _on_action(id: String) -> void:
-	if _active and _player_turn and main.mode == "solo":
+	if _active and _player_turn and not paused and main.mode == "solo":
 		_player_turn = false
 		_reply.emit(ACTION_PREFIX + id)
 
@@ -134,7 +134,7 @@ func _change_mental(delta: float) -> void:
 
 
 func _on_reply(text: String) -> void:
-	if _active and _player_turn and main.mode == "solo":
+	if _active and _player_turn and not paused and main.mode == "solo":
 		_player_turn = false
 		_reply.emit(text)
 
@@ -254,6 +254,7 @@ func _play_customer(my_run: int) -> void:
 		if reply.begins_with(ACTION_PREFIX):
 			# ---- 店の行動ボタン（要件#34）・台の調整（要件#37）
 			var id: String = reply.substr(ACTION_PREFIX.length())
+			var crane_cheat: bool = false
 			if id == ShopActions.CRANE_ADJUST:
 				hud.set_status(tr("台を調整しています…"))
 				var cr: Dictionary = await main.run_crane_minigame()
@@ -264,7 +265,8 @@ func _play_customer(my_run: int) -> void:
 				_crane_used = true
 				hud.set_actions(ShopActions.buttons(_stage_id, _cust, false))
 				id = "crane_won" if str(cr["result"]) == "won" else "crane_lost"
-				if bool(cr.get("cheat", false)):
+				crane_cheat = bool(cr.get("cheat", false))
+				if crane_cheat:
 					_cost += CHEAT_COST
 			_turns += 1
 			hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
@@ -277,7 +279,7 @@ func _play_customer(my_run: int) -> void:
 			_cost += int(ACTION_COST.get(id, 0))
 			if id == "dogeza":
 				_change_mental(-20.0)
-			if id.begins_with("crane_") and _cost >= CHEAT_COST:
+			if crane_cheat:
 				res["comment"] = str(res.get("comment", "")) + "\n" + tr("（アームは規定外の強さ…店長には内緒だ）")
 		else:
 			_turns += 1
@@ -326,6 +328,14 @@ func _play_customer(my_run: int) -> void:
 			return
 
 	# ---- 結果
+	# 怒らせた・屈したときのメンタルの減りで 0 になったら、その場で早退（SPEC 12.4）
+	match outcome:
+		"yield":
+			_change_mental(-10.0)
+		"explode":
+			_change_mental(-15.0)
+	if (outcome == "yield" or outcome == "explode") and _mental <= 0.0:
+		outcome = "breakdown"
 	var points: int = 0
 	var mood: String = "happy"
 	if outcome == "breakdown":
@@ -351,13 +361,8 @@ func _play_customer(my_run: int) -> void:
 		main.sfx.play("explode")
 		main.shake(0.25)
 	# 店員のメンタル（要件#38）
-	match outcome:
-		"resolved":
-			_change_mental(8.0)
-		"yield":
-			_change_mental(-10.0)
-		"explode":
-			_change_mental(-15.0)
+	if outcome == "resolved":
+		_change_mental(8.0)
 	# 行動ボタンの店の負担
 	if _cost > 0:
 		points -= _cost

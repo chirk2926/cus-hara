@@ -10,6 +10,7 @@ const TRACKS: Dictionary = {
 }
 const FADE: float = 0.8
 
+var _fade: Tween = null
 var _players: Array = []
 var _active: int = 0
 var _current: String = ""
@@ -58,7 +59,11 @@ func play(track: String) -> void:
 	nxt.stream = stream
 	nxt.volume_db = -40.0
 	nxt.play()
+	# 前の切り替えがまだ途中なら止める（すぐ切り替えると、今鳴らす方を前の tween が止めてしまうため）
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
 	var tw: Tween = create_tween()
+	_fade = tw
 	tw.set_parallel(true)
 	tw.tween_property(nxt, "volume_db", _target_db(), FADE)
 	if old.playing:
@@ -68,6 +73,8 @@ func play(track: String) -> void:
 
 func stop() -> void:
 	_current = ""
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
 	for p in _players:
 		var pl: AudioStreamPlayer = p
 		if pl.playing:

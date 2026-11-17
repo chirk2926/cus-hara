@@ -205,16 +205,28 @@ test("同じ人は二重に並べない／音声の形式チェック", async ()
   a.c.close();
 });
 
-test("EOS で組んだ部屋（要件#32）: ランクの部屋は既定で作れない", async () => {
+test("EOS で組んだランクの部屋（要件#32, #48）: 同じ回線は不可、別の回線ならランクマッチになる", async () => {
+  const { config } = await import("../src/config.ts");
   const a = await guest(srv.base, srv.wsUrl, "EOSホスト");
+  const b = await guest(srv.base, srv.wsUrl, "EOS参加");
+  config.allowSameIpRanked = false;
   a.c.send({ t: "room_create", format: "text", ranked: true, eos_lobby: "abc" });
-  const err = await a.c.wait((m) => m.t === "error");
-  assert.equal(err.code, "ranked_rooms_disabled");
-  a.c.send({ t: "room_create", format: "text", eos_lobby: "abc" });
   const room = await a.c.wait((m) => m.t === "room_created");
-  assert.ok(room.code);
-  a.c.send({ t: "cancel" });
-  a.c.close();
+  b.c.send({ t: "room_join", code: room.code });
+  const err = await b.c.wait((m) => m.t === "error");
+  assert.equal(err.code, "same_network");
+  config.allowSameIpRanked = true;
+  b.c.send({ t: "room_join", code: room.code });
+  const f = await b.c.wait((m) => m.t === "match_found");
+  assert.equal(f.kind, "ranked");
+  b.c.send({ t: "leave" });
+  await a.c.wait((m) => m.t === "match_end");
+  config.allowRankedRooms = false;
+  a.c.send({ t: "room_create", format: "text", ranked: true, eos_lobby: "abc" });
+  const err2 = await a.c.wait((m) => m.t === "error" && m.code === "ranked_rooms_disabled");
+  assert.ok(err2);
+  config.allowRankedRooms = true;
+  a.c.close(); b.c.close();
 });
 
 test("チート対策（要件#47）: 同じ回線どうしは組まない／誰も発言せずに抜けたら勝者は上がらない／同じ相手との連戦", async () => {

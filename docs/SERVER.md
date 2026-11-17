@@ -46,7 +46,7 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | 名前 | 既定 | 意味 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | なし | Claude API のキー。**サーバーにだけ置く**（クライアントには渡らない） |
-| `CLAUDE_MODEL` | `claude-opus-5-5` | 使うモデル。速さ・料金を優先するなら `claude-haiku-5-5` |
+| `CLAUDE_MODEL` | `claude-haiku-5-5` | 使うモデル（要件#33。サーバーは Haiku だけを提供） |
 | `LLM_MODE` | `auto` | `auto`=キーがあればAI / `claude`=必ずAI / `offline`=使わない |
 | `LLM_TIMEOUT_MS` | 45000 | AIの応答待ちの上限 |
 | `LLM_PER_MINUTE` | 20 | 1人のプレイヤーが1分間に使えるAI呼び出し回数（運営の料金を守る。超えるとキーワード判定） |
@@ -61,6 +61,10 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | `TRUST_PROXY` | なし | `1` ならリバースプロキシの `X-Forwarded-For` を信じる |
 | `VS_*` / `MM_ANYONE_AFTER_SEC` | | 対戦の秒数・マッチングの設定（`src/config.ts`） |
 | `TIME_SCALE` | 1 | テスト用に時間を速める倍率 |
+| `ALLOW_RANKED_ROOMS` | `1` | EOS で組んだ部屋をランクマッチにしてよいか（`0` で禁止） |
+| `RANKED_ROOM_MAX_GAP` | 400 | ランクの部屋に入れるレート差の上限 |
+| `ALLOW_SAME_IP_RANKED` | `0` | `1` なら同じIPどうしでもランクマッチを組む（テスト用。本番は `0`） |
+| `SAME_PAIR_LIMIT_24H` | 3 | 同じ2人が24時間に何試合までレーティングを動かせるか |
 
 本番では、前に HTTPS 終端（Caddy、nginx など）を置き、`wss://` で WebSocket を通すこと。
 
@@ -155,3 +159,19 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 - `matches`: 対戦ごとの結果とレーティングの増減、終わり方（completed / left / disconnected）。
 - ランクマッチの結果だけがレーティングと勝敗数を変える。フレンド対戦は記録だけ。
 - バックアップは `DB_PATH` のファイル（と `-wal`）をコピーする。
+
+## 7. チート対策（要件#47）
+
+| 狙われること | 対策 | 場所 |
+|---|---|---|
+| 判定・時間・点数の改ざん（対戦） | もともと全部サーバーが決める。クライアントは入力を送るだけ | `match.ts` |
+| 2つのアカウントで自分と組んでレーティングを稼ぐ | 同じIPどうしはランクマッチで組まない・ランクの部屋に入れない（`same_network`） | `lobby.ts` |
+| 同じ相手と何度も組む（談合） | 24時間に同じ2人で `SAME_PAIR_LIMIT_24H` 試合を超えたらレーティングを動かさない（`rating_note: same_pair`） | `match.ts` `db.ts` |
+| すぐに抜けて相手に勝ちを渡す | 抜けた側が一度も入力していなければ、勝った側のレーティングも動かさない（`rating_note: early_leave`） | `match.ts` |
+| EOS の部屋で好きな相手を選ぶ | ランクの部屋はレート差 `RANKED_ROOM_MAX_GAP` 以内だけ | `lobby.ts` |
+| 1人用の点数の改ざん | 1人用もサーバーが会話ごとに怒り・納得を持ち、納得はサーバーの値だけ、怒りは大きい方を採る。決着後の入力は 409 | `http.ts` |
+| AI の使いすぎ（運営の料金） | 1人あたり1分の上限（`LLM_PER_MINUTE`）。超えたらキーワード判定 | `ratelimit.ts` |
+| 変な値（答える時間・件数など） | 決まった値以外は既定値にする（`Object.hasOwn` で確認） | `lobby.ts` `http.ts` |
+
+クライアント（ゲーム）側は改造できる前提なので、レーティングと点数に効くことはすべてサーバーで決める。
+

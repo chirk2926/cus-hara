@@ -64,6 +64,8 @@ const GEN_SYSTEM: String = """あなたはコミカルな接客ゲーム「カ�
 - demand: お客さんの不当な要求の要約（例:「店員の土下座と弁当10個の無料提供」）。明らかに度を越していること。
 - patience: 気の長さ。0.7（気長）〜1.4（短気）。
 - start_anger: 最初の怒り。30〜55の整数。
+- actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを返す）・compensate（補填する）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
+- crane: クレーンゲームについてのクレームなら true。
 
 # 守ること
 - クレームには小さな「一理」があり、正当な解決策（交換・規定内の返金・説明・確認など）が存在すること。
@@ -88,6 +90,9 @@ static func leaks_meta(text: String) -> bool:
 
 func _lang_line() -> String:
 	return LANG_EN if GameSettings.language == "en" else ""
+
+
+const ACTION_EFFECTS: Array = ["good", "neutral", "bad", "yield"]
 
 
 func _customer_schema() -> Dictionary:
@@ -115,8 +120,20 @@ func _customer_schema() -> Dictionary:
 			"demand": {"type": "string"},
 			"patience": {"type": "number"},
 			"start_anger": {"type": "integer"},
+			"actions": {
+				"type": "object",
+				"properties": {
+					"discount": {"type": "string", "enum": ACTION_EFFECTS},
+					"dogeza": {"type": "string", "enum": ACTION_EFFECTS},
+					"medal_return": {"type": "string", "enum": ACTION_EFFECTS},
+					"compensate": {"type": "string", "enum": ACTION_EFFECTS},
+				},
+				"required": ["discount", "dogeza", "medal_return", "compensate"],
+				"additionalProperties": false,
+			},
+			"crane": {"type": "boolean"},
 		},
-		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger"],
+		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "actions", "crane"],
 		"additionalProperties": false,
 	}
 
@@ -154,7 +171,7 @@ func generate_customer(stage_id: String, avoid_titles: Array) -> Dictionary:
 	for k in ["title", "name", "memo", "opening", "demand"]:
 		if leaks_meta(str(res.get(k, ""))):
 			return {"error": tr("AIの出力に不適切な内容が混ざりました")}
-	return _sanitize_customer(res)
+	return _sanitize_customer(res, stage_id)
 
 
 ## 1ターン分の採点。history: [{"role": "customer"|"staff", "text": String}]（最新のスタッフ返答を含む）
@@ -198,7 +215,14 @@ func test_connection() -> Dictionary:
 	return {"ok": true}
 
 
-func _sanitize_customer(d: Dictionary) -> Dictionary:
+func _sanitize_customer(d: Dictionary, stage_id: String = "konbini") -> Dictionary:
+	var actions: Dictionary = {}
+	var raw_actions: Variant = d.get("actions", {})
+	if typeof(raw_actions) == TYPE_DICTIONARY:
+		for k in ["discount", "dogeza", "medal_return", "compensate"]:
+			var v: String = str((raw_actions as Dictionary).get(k, ""))
+			if v in ACTION_EFFECTS:
+				actions[k] = v
 	var look: Dictionary = {}
 	var raw_look: Variant = d.get("look", {})
 	if typeof(raw_look) == TYPE_DICTIONARY:
@@ -213,6 +237,8 @@ func _sanitize_customer(d: Dictionary) -> Dictionary:
 		"demand": str(d.get("demand", "")).left(100),
 		"patience": clampf(float(d.get("patience", 1.0)), 0.7, 1.4),
 		"start_anger": clampi(int(d.get("start_anger", 40)), 30, 55),
+		"actions": actions,
+		"crane": stage_id == "arcade" and bool(d.get("crane", false)),
 	}
 
 

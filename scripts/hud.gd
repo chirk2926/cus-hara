@@ -57,6 +57,7 @@ var _text_row: HBoxContainer
 var _voice_row: HBoxContainer
 var _voice_mode: bool = false
 var _input_on: bool = false
+var _blocked: bool = false   # 紙の画面（休憩・設定など）が上に開いている間は入力を受けない
 var _say_tween: Tween = null
 var _banner_tween: Tween = null
 var _delta_tween: Tween = null
@@ -164,10 +165,12 @@ func _build() -> void:
 	var tag_row: HBoxContainer = UI.hbox(0)
 	left.add_child(tag_row)
 	var nametag: PanelContainer = UI.paper(UI.INK, 8, 3)
+	# 店名が長くても列より広がらないように（広がると列ごと右が切れる。要件#44）
+	nametag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tag_row.add_child(nametag)
 	var nt: VBoxContainer = UI.vbox(2)
 	nametag.add_child(nt)
-	_shop = UI.text("", UI.S_BODY, UI.POP, UI.F_SIGN)
+	_shop = UI.para("", UI.S_BODY, UI.POP, UI.F_SIGN)
 	nt.add_child(_shop)
 	var nt2: HBoxContainer = UI.hbox(12)
 	nt.add_child(nt2)
@@ -180,7 +183,8 @@ func _build() -> void:
 	nt.add_child(_mental_row)
 	_mental_row.add_child(UI.text(tr("メンタル"), UI.S_SMALL, UI.PAPER, UI.F_DOT))
 	_mental = Paper.DotBar.new()
-	_mental.custom_minimum_size = Vector2(150, 12)
+	_mental.custom_minimum_size = Vector2(110, 12)
+	_mental.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_mental.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_mental_row.add_child(_mental)
 	_mental_row.visible = false
@@ -323,8 +327,15 @@ func _focus_field() -> void:
 
 
 ## 記入欄の外で文字キーを押しても、記入欄に入るようにする（要件#40）
+## 上に紙の画面が開いている間は true（休憩中に返事が送れてしまわないように）
+func set_blocked(on: bool) -> void:
+	_blocked = on
+	if on and _field != null and _field.has_focus():
+		_field.release_focus()
+
+
 func _input(event: InputEvent) -> void:
-	if not _input_on or _voice_mode or not visible or not _text_row.visible or _field.has_focus():
+	if _blocked or not _input_on or _voice_mode or not visible or not _text_row.visible or _field.has_focus():
 		return
 	if event is InputEventKey and event.is_pressed():
 		var k: InputEventKey = event
@@ -334,10 +345,13 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _voice_mode or not _input_on or not visible:
+	if not _voice_mode or not visible:
 		return
 	if event is InputEventKey and not event.is_echo() and (event as InputEventKey).keycode == GameSettings.push_to_talk_key:
 		if _field.has_focus():
+			return
+		# 押すのは入力できるときだけ。離すのはいつでも受ける（表示が「話しています」のまま残らないように）
+		if event.is_pressed() and (not _input_on or _blocked):
 			return
 		_voice_press(event.is_pressed())
 		get_viewport().set_input_as_handled()
@@ -495,6 +509,8 @@ func set_input_enabled(on: bool, placeholder: String) -> void:
 	_field.placeholder_text = placeholder
 	_send.disabled = not on
 	_talk.disabled = not on
+	if not on:
+		_talk.text = tr("押して話す（スペース）")
 	for c in _tags.get_children():
 		if c is Button:
 			(c as Button).disabled = not on
@@ -507,7 +523,7 @@ func set_input_enabled(on: bool, placeholder: String) -> void:
 
 
 func _voice_press(down: bool) -> void:
-	if not _input_on and down:
+	if (not _input_on or _blocked) and down:
 		return
 	if down:
 		_talk.text = tr("話しています…（離すと送信）")
@@ -518,7 +534,7 @@ func _voice_press(down: bool) -> void:
 
 
 func _on_tag(phrase: String) -> void:
-	if not _input_on:
+	if not _input_on or _blocked:
 		return
 	if sfx != null:
 		sfx.play("click")
@@ -528,7 +544,7 @@ func _on_tag(phrase: String) -> void:
 
 
 func _submit() -> void:
-	if not _input_on:
+	if not _input_on or _blocked:
 		return
 	var t: String = _field.text.strip_edges()
 	if t == "":

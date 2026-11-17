@@ -39,20 +39,20 @@ func request(method: String, path: String, body: Variant = null, auth: bool = tr
 	var err: int = http.request(base_url() + path, headers, m, payload)
 	if err != OK:
 		http.queue_free()
-		return {"ok": false, "status": 0, "message": "サーバーへの接続を始められませんでした（接続先: %s）" % base_url()}
+		return {"ok": false, "status": 0, "message": tr("サーバーへの接続を始められませんでした（接続先: %s）") % base_url()}
 	var res: Array = await http.request_completed
 	http.queue_free()
 	var result: int = int(res[0])
 	var code: int = int(res[1])
 	var raw: PackedByteArray = res[3]
 	if result == HTTPRequest.RESULT_TIMEOUT:
-		return {"ok": false, "status": 0, "message": "サーバーの応答が時間切れになりました"}
+		return {"ok": false, "status": 0, "message": tr("サーバーの応答が時間切れになりました")}
 	if result != HTTPRequest.RESULT_SUCCESS:
-		return {"ok": false, "status": 0, "message": "ゲームサーバーにつながりません。ネット接続と、設定の「サーバーのURL」を確かめてください"}
+		return {"ok": false, "status": 0, "message": tr("ゲームサーバーにつながりません。ネット接続を確かめてください")}
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	var data: Dictionary = parsed if typeof(parsed) == TYPE_DICTIONARY else {}
 	if code != 200:
-		var msg: String = "サーバーのエラー（%d）" % code
+		var msg: String = tr("サーバーのエラー（%d）") % code
 		var e: Variant = data.get("error", null)
 		if typeof(e) == TYPE_DICTIONARY:
 			msg = str((e as Dictionary).get("message", msg))

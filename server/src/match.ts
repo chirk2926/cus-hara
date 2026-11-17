@@ -79,8 +79,8 @@ export class Match {
     this.format = format;
     this.lang = lang;
     this.seats = [
-      { player: a.player, conn: a, ratingBefore: a.player.rating, graceTimer: null },
-      { player: b.player, conn: b, ratingBefore: b.player.rating, graceTimer: null },
+      { player: a.player, conn: a, ratingBefore: (playerById(a.player.id) ?? a.player).rating, graceTimer: null },
+      { player: b.player, conn: b, ratingBefore: (playerById(b.player.id) ?? b.player).rating, graceTimer: null },
     ];
   }
 
@@ -439,6 +439,8 @@ export class Match {
     }
     if (bytes.length < 1600 || bytes.length > MAX_BYTES) {
       this.send(seat, { t: "notice", text: this.lang === "ja" ? "声が短すぎるか長すぎます（0.1〜20秒）。" : "Voice clip is too short or too long (0.1–20 s)." });
+      // 番は続いているので、入力できる状態に戻してもらう
+      this.sendPhase();
       return;
     }
     // 相手にはすぐ声を届ける（ボイスチャットとして聞こえる）
@@ -536,6 +538,9 @@ export class Match {
     for (const v of [0, 1]) {
       const fresh = playerById(this.seats[v].player.id) ?? this.seats[v].player;
       const after = fresh.rating;
+      // 同じ接続で「もう一戦」したとき古いレートを使わないよう、接続の持つプレイヤー情報も新しくする
+      const c = this.seats[v].conn;
+      if (c) Object.assign(c.player, fresh);
       this.send(v, {
         t: "match_end",
         reason,
