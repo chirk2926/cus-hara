@@ -97,18 +97,16 @@ func _build() -> void:
 	_echo.clip_text = true
 	_echo.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	head.add_child(_echo)
-	# 接客用語のタグ（左）と、店の行動ボタン（右）。1行に収める
-	var tag_line: HBoxContainer = UI.hbox(16)
-	db.add_child(tag_line)
+	# 接客用語のタグ
 	_tags = UI.hbox(8)
-	_tags.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_tags.clip_contents = true
-	tag_line.add_child(_tags)
-	_actions = UI.hbox(8)
-	tag_line.add_child(_actions)
+	db.add_child(_tags)
 
+	# 入力の行: [店の行動ボタン（ハンコ）][記入欄][返事をする]。記入欄が縮むので、はみ出さない
 	_text_row = UI.hbox(16)
 	db.add_child(_text_row)
+	_actions = UI.hbox(8)
+	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_text_row.add_child(_actions)
 	_field = UI.field("", UI.S_LEAD)
 	_field.max_length = 200
 	_field.text_submitted.connect(func(_t: String) -> void: _submit())
