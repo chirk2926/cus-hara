@@ -29,10 +29,14 @@ scripts/
   sfx.gd                 効果音をコードで合成して再生
   ui_kit.gd              UI部品（色、パネル、ボタン、ゲージ）の共通関数
   arcade_stage.gd        ゲームセンターの3D（クレーンゲーム）
-  stage_world.gd         ステージ切替とコンビニの3D        ← Opus下書き・未レビュー（HANDOVER参照）
-  customer_character.gd  お客さんの3Dキャラと表情アニメ    ← 同上
+  stage_world.gd         ステージ切替とコンビニの3D（Opus下書き。見た目はスクリーンショットで確認）
+  customer_character.gd  お客さんの3Dキャラと表情アニメ（同上）
+  versus_game.gd         対戦モードのルールと進行（ホスト主導、RPC）
+  net_session.gd         対戦の接続層（Steamロビー／IP直結）
 assets/fonts/            Noto Sans JP（Medium / ExtraBold）と OFL.txt
-.github/workflows/build.yml   インポート→自動プレイ→Windows出力
+packaging/msix/          Microsoft Store 用のマニフェストとロゴ
+packaging/steam/         Steam アップロード用のビルド定義のひな形
+.github/workflows/build.yml   インポート→自動プレイ→対戦の自動プレイ→Windows出力→MSIX作成（→画面撮影）
 docs/                    本資料群
 ```
 
@@ -51,7 +55,7 @@ docs/                    本資料群
 | `display_anger` (0〜100) | 表情・震え・照明の赤みに毎フレーム反映される |
 | `sfx`, `llm`, `smoke` | 効果音、APIクライアント、自動テスト中かどうか |
 
-対戦モードを足すときは `solo_game.gd` と同じ形の `versus_game.gd` を作り、このAPIと `hud.gd` を使う。
+対戦モード（`versus_game.gd`）も同じAPIと `hud.gd` を使う。対戦用に `enter_versus(stage_id)`（HUDとステージの準備）がある。
 
 ## 4. 3D側の約束（インターフェース）
 
@@ -91,11 +95,31 @@ finished(stage_id, results, total) を発行 → main が結果画面を出す
 - お客さんが毎回変わるよう、人物の方向性（`PERSONALITIES`）をコード側で乱数選択して渡す。
 - 会話履歴は1つのユーザーメッセージにまとめて渡す（短いのでキャッシュは使っていない）。
 
-## 7. 自動テスト
+## 7. 対戦モードの設計（versus_game.gd / net_session.gd）
+
+### 接続層（net_session.gd）
+- つながった後は Godot 標準の `multiplayer`（RPC）を使う。接続方法（Steam / ENet）の違いはこのファイルに閉じ込めてある。
+- ホストは常に peer id 1、相手は1人だけ。シグナルは `connected` / `closed(reason)` / `status(text)`。
+- Steam は GodotSteam（GDExtension）の `Steam` シングルトンと `SteamMultiplayerPeer` クラスを **実行時に探して** 使う（`Engine.has_singleton` / `ClassDB.class_exists`）。入っていないビルドでもコンパイル・起動できる。
+- `SteamMultiplayerPeer` の関数名は GodotSteam のバージョンで違う可能性があるため、`host_with_lobby` / `connect_to_lobby` があればそれを、無ければ `create_host` / `create_client` を呼ぶ。**どちらも実機で確認していない。**
+
+### 進行（versus_game.gd）
+- ノード名は必ず `Versus`（両者で同じパス `/root/Main/Versus` にするため。`main.gd` で設定）。
+- ホストが `_host_match()` → `_host_round()` のコルーチンで進める。入力待ちは `_host_collect()`（`_submitted` シグナルを待つ）。
+- ホスト → 全員（`@rpc("authority", "call_local", "reliable")`）: `show_match_start` / `show_round_start` / `show_phase` / `show_line` / `show_judged` / `show_round_end` / `show_match_end`。ホスト自身も同じ関数で表示するので、表示の作りは1通り。
+- ゲスト → ホスト: `hello(名前, レーティング)`、`submit_text(文章)`。ホストは送り主と「いま誰の番か」を照合し、合わない入力は捨てる。
+- 店員の番の怒り上昇は両者がそれぞれ計算し、ホストが0.5秒ごとに `sync_gauges` で正しい値を送る。時間切れの判定はホストだけが行う。
+- レーティングは `show_match_end` を受けた各自が、交換済みの相手のレーティングから計算して保存する。
+
+## 8. 自動テストと画面確認
 
 `godot --headless -- --smoke` で、台本モードのまま全ステージを8倍速で自動プレイする（`main.gd` の `_run_smoke`、`solo_game.gd` の `_smoke_autoplay`）。お客さん4人で「良い返事／暴言／無言（時間切れ）／屈服」の4通りを通す。成功で `SMOKE OK` を出して終了コード0、150秒で `SMOKE TIMEOUT`。CIはログに `SCRIPT ERROR` / `Parse Error` があれば失敗にする。
 
-## 8. 既知の設計上の注意
+対戦は `-- --smoke-host` と `-- --smoke-join` を同時に動かす（同じPCの中でIP直結）。1ラウンド目は店員役が良い返事、2ラウンド目は暴言を返し、両方の決着を通す。両方のログに `VERSUS OK` が出れば成功。
+
+見た目は `-- --shots` で確認する。主な画面を `docs/screenshots/` に JPG で保存して終了する（`main.gd` の `_run_shots`）。CIでは、コミットメッセージに `[shots]` を含むプッシュのときだけ実行し、画像をリポジトリにコミットし直す（画面なしのサーバーで、ソフトウェア描画の Vulkan を使う）。
+
+## 9. 既知の設計上の注意
 
 - APIキーは平文保存。配布前に暗号化保存（`ConfigFile.save_encrypted_pass`）などを検討する。
 - レーティングをPC内保存にすると改ざんできる（SPEC 6節）。

@@ -18,6 +18,24 @@ godot --headless -- --smoke
 
 `SMOKE OK` が出れば、台本モードで全ステージを最後まで通せている。
 
+対戦の自動テスト（2つの端末で同時に実行する）:
+
+```bash
+godot --headless -- --smoke-host
+```
+
+```bash
+godot --headless -- --smoke-join
+```
+
+画面の確認用スクリーンショット（`docs/screenshots/` に保存される）:
+
+```bash
+godot -- --shots
+```
+
+CIに撮らせたいときは、コミットメッセージに `[shots]` を入れてプッシュする。
+
 ## 2. Windows 用 exe の作り方
 
 - 自動: GitHub に push すると `.github/workflows/build.yml` が動き、成果物 `CusHara-windows`（`CusHara.exe`）が Actions の画面からダウンロードできる。
@@ -41,6 +59,9 @@ exe にデータ（pck）を埋め込む設定なので、配るのは exe 1つ�
 | AIの人格・採点基準 | `llm_client.gd` の `GM_SYSTEM` / `GEN_SYSTEM` / `PERSONALITIES` |
 | 使えるAIモデルの一覧・既定 | `game_settings.gd` の `MODELS` と `model` の初期値 |
 | ゲームセンターの台の配置・色・景品 | `arcade_stage.gd` の `_build_cranes()` / `PALETTE` / `_fill_prizes()` |
+| 対戦の制限時間・往復数・怒りの速さ | `versus_game.gd` の先頭の定数 |
+| レーティングのK値・ランク名 | `game_settings.gd` の `RATING_K` / `VERSUS_RANKS` |
+| 客役の定型文・客役セリフの評価 | `versus_game.gd` の `CUSTOMER_PHRASES`、`offline_judge.gd` の `judge_customer_line` |
 | ステージを増やす | `main.gd` の `STAGES` と `STAGE_ORDER`、`scenarios.gd`、`llm_client.gd` の `STAGE_TEXT`、`stage_world.gd` の `build()` |
 
 GDScript を書くときの決まり（このプロジェクトで事故を避けるため）:
@@ -65,27 +86,47 @@ GDScript を書くときの決まり（このプロジェクトで事故を避�
 | お客さんが来ないまま止まる | `customer_character.gd` が `arrived` を必ず発行しているか |
 | CIの出力ステップで失敗 | テンプレートのバージョン（`GODOT_RELEASE`）と `export_presets.cfg` の preset 名 |
 
-## 6. Steam で配布する（未実施。手順の設計）
+## 6. Steam で配布する
 
 前提: Steamworks への登録（登録料が必要）とアプリIDの取得。これは依頼者本人の作業。
 
-1. CI の成果物 `CusHara.exe` を `steam/content/` に置く。
-2. Steamworks SDK の `steamcmd` 用に、アプリ定義（`app_build_<AppID>.vdf`）とデポ定義（`depot_build_<DepotID>.vdf`）を作る。`ContentRoot` を `steam/content`、`FileMapping` を `*` → `.` にする。
-3. `steamcmd +login <アカウント> +run_app_build <vdfのパス> +quit` でアップロードし、Steamworks の管理画面でビルドをブランチに設定する。
-4. 起動オプションは `CusHara.exe` を指定。
-5. 対戦モード（Steam招待・マッチング）には GodotSteam（GDExtension）を `addons/` に入れる必要がある。入れたら `steam_appid.txt`（開発時のみ）も必要。**まだ入れていない。**
+用意してあるもの: `packaging/steam/app_build.vdf`（アップロード定義のひな形）と `packaging/steam/README.md`（手順）。
 
-## 7. Microsoft Store で配布する（未実施。手順の設計）
+1. CI の成果物 `CusHara-windows`（`CusHara.exe`）を `packaging/steam/content/` に置く。
+2. `app_build.vdf` のアプリIDとデポIDを自分のものに書き換える。
+3. Steamworks SDK の `steamcmd` でアップロードし、管理画面でビルドをブランチに設定する。
+
+```bash
+steamcmd +login <アカウント名> +run_app_build <app_build.vdf の絶対パス> +quit
+```
+
+### 対戦のSteam招待・マッチングを有効にする（未実施）
+ゲーム側のコード（`net_session.gd`）は書いてあるが、GodotSteam 本体は入れていない。入れないと、ロビー画面のSteamボタンは押せないままになる。
+
+1. GodotSteam の GDExtension 版（Godot 4.5 用）を公式サイトから入手し、`addons/godotsteam/` に置く。
+2. 開発中は、プロジェクトのフォルダに `steam_appid.txt`（アプリIDだけを書いたファイル）を置く。配布物には入れない。
+3. Steam を起動した状態でゲームを起動し、ロビー画面でSteamボタンが押せることを確認する。
+4. フレンド招待とランダムマッチを2台で試す。うまくいかないときは `net_session.gd` の `_on_lobby_created` / `_on_lobby_joined` を、入れた GodotSteam のドキュメントと見比べる（関数名がバージョンで違う可能性がある）。
+
+作業環境からは GodotSteam の公式サイトに接続できず、関数名を確認できなかった。ここは必ず実機で確かめること。
+
+## 7. Microsoft Store で配布する
 
 前提: Microsoft パートナーセンターの開発者登録と、アプリ名の予約。これも依頼者本人の作業。
 
-1. パートナーセンターで予約した「パッケージ名」「発行者ID（CN=...）」を控える。
-2. `AppxManifest.xml` を作る（Identity の Name / Publisher / Version、`<Application Executable="CusHara.exe" EntryPoint="Windows.FullTrustApplication">`、Capability に `runFullTrust` と `internetClient`）。ロゴ画像（44×44、150×150、ストアロゴ50×50）が必要。
-3. Windows SDK の `makeappx pack /d <フォルダ> /p CusHara.msix` で MSIX を作る（GitHub Actions の `windows-latest` で実行できる）。
-4. ストア提出用は署名不要（ストアが署名する）。手元で試すときだけ `signtool` で自己署名する。
-5. パートナーセンターに MSIX をアップロードして審査に出す。
+用意してあるもの: `packaging/msix/AppxManifest.xml`（ひな形）、`packaging/msix/Assets/`（ロゴ）、`packaging/store_icon_1024.png`（ストア掲載用アイコン）、CIの `msix` ジョブ。
 
-注意: ストア版ではAPIキーをユーザーに入力させる点と、外部サービス（Anthropic）への通信があることをストアの説明とプライバシーポリシーに書く必要がある。
+1. パートナーセンターの「製品 ID」ページで、パッケージ名（Identity Name）・発行者（Publisher、`CN=...`）・発行者表示名を控える。
+2. GitHub のリポジトリの Settings → Secrets and variables → Actions → Variables に登録する:
+   `MSIX_IDENTITY_NAME` / `MSIX_PUBLISHER` / `MSIX_PUBLISHER_DISPLAY` / `MSIX_VERSION`（例 `1.0.0.0`。4つの数字）。
+   未登録のときは仮の値（`CusHara.Dev` / `CN=CusHaraDev`）で作られる。**仮の値のままではストアに提出できない。**
+3. プッシュすると CI が `CusHara-msix`（`CusHara.msix`）を成果物として作る。
+4. パートナーセンターに MSIX をアップロードして審査に出す。ストア提出用は署名不要（ストアが署名する）。手元で試すときだけ、自己署名証明書で `signtool` 署名し、証明書を信頼済みに入れる必要がある。
+
+注意:
+- マニフェストは `runFullTrust`（通常のデスクトップアプリ）と `internetClient` / `internetClientServer`（AI通信と対戦）を宣言している。`runFullTrust` はストア提出時に利用理由の入力を求められる。
+- ストアの説明とプライバシーポリシーに、APIキーをユーザーが入力すること、外部サービス（Anthropic）と通信することを書く必要がある。
+- MSIX を実際にインストールして起動する確認は、まだ誰も行っていない。
 
 ## 8. ライセンス
 

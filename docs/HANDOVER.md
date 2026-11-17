@@ -3,58 +3,63 @@
 次に作業する人（依頼者本人、または Opus など）が、ここだけ読めば続きを始められるようにまとめる。
 読む順: この文書 → [REQUIREMENTS_LOG.md](REQUIREMENTS_LOG.md) → [SPEC.md](SPEC.md) → [DESIGN.md](DESIGN.md) → [MAINTENANCE.md](MAINTENANCE.md)。
 
-## 1. いちばん大事なこと: このコードは一度も実行されていない
+## 1. 確認できていること・できていないこと
 
-作業環境では Godot の実行が許可されず、**コンパイルも起動も確認できていない**。確認の手段は GitHub Actions（`.github/workflows/build.yml`）だけで、その結果もまだ見ていない。
-GDScript の文法エラーや API 名の間違いが残っている前提で、最初に次を行うこと。
+作業環境では Godot を実行できないため、確認はすべて GitHub Actions（`.github/workflows/build.yml`）で行った。
 
-1. GitHub の Actions タブで最新の「Build」を開き、「Import project」と「Smoke test」のログを読む。
-2. `SCRIPT ERROR` / `Parse Error` の行に、ファイル名と行番号が出る。上から順に直す。
-3. `SMOKE OK` が出て、成果物 `CusHara-windows` ができたら、exe を Windows で起動して目で確認する。
+| 確認内容 | 方法 | 結果 |
+|---|---|---|
+| 全スクリプトがコンパイルできる | CI の Import / Smoke test | 通過 |
+| 1人用を両ステージで最後まで遊べる（納得・暴言でブチギレ・時間切れ・屈服の4通り） | CI の自動プレイ（`--smoke`、画面なし） | 通過 |
+| 対戦を2プロセスで最後まで遊べる（IP直結、2ラウンド、レーティング更新まで） | CI の自動対戦（`--smoke-host` / `--smoke-join`） | 通過 |
+| Windows 用 exe が出力される | CI の Export | 通過（約43MB） |
+| 画面の見た目 | CI が描画した `docs/screenshots/*.jpg` を Fable が目で確認 | 確認して修正（2節） |
 
-手元に Godot 4.5 があれば、`godot --headless --import` と `godot --headless -- --smoke` で同じことができる。
+**まだ誰も確認していないこと**（人の手でしかできない）:
+
+1. **Windows の実機で exe を起動して遊ぶこと。** 日本語入力（IME）での文字入力、効果音、フルスクリーン、操作の手触り、怒りゲージの速さが妥当かどうか。
+2. **AIモードの実通信。** APIキーを入れての接続テスト、お客さん生成、採点。リクエストの形は資料どおりに書いたが、一度も送っていない。
+3. **Steam の招待・マッチング。** GodotSteam を入れていないので動かない。入れた後の動作も未検証（MAINTENANCE 6節）。
+4. **MSIX のインストールと起動**、およびストア提出。
+5. **人間同士の対戦の面白さとバランス。** 自動テストは決着がつくことしか見ていない。
 
 ## 2. 何がどこまでできているか
 
 | 部分 | 作成者 | 状態 |
 |---|---|---|
-| プロジェクト設定、Windows出力設定、CI | Fable | 作成済み・未実行 |
-| 1人用の進行（`solo_game.gd`） | Fable | 作成済み・未実行 |
-| 画面（`main.gd`、`hud.gd`、`ui_kit.gd`） | Fable | 作成済み・未実行。レイアウトは目で見ての調整が必要 |
-| Claude API 連携（`llm_client.gd`） | Fable | 作成済み・**実通信は未確認** |
-| キーワード採点（`offline_judge.gd`） | Fable | 作成済み・未実行 |
-| 効果音（`sfx.gd`）、設定保存（`game_settings.gd`） | Fable | 作成済み・未実行 |
-| ゲームセンター3D（`arcade_stage.gd`、クレーンゲーム15台） | Fable | 作成済み・**見た目は未確認** |
-| 台本データ（`scenarios.gd`、コンビニ8人・ゲームセンター7人） | Sonnet（下書き） | 括弧の対応と全キーの有無だけ機械的に確認済み。作成者は「各8人」と報告したが実際のゲームセンターは7人。**内容のFableレビューは未実施** |
-| コンビニ3D・ステージ切替（`stage_world.gd`） | Opus（下書き） | ファイルは届いた。**Fableのレビュー未実施** |
-| お客さん3Dキャラ（`customer_character.gd`） | Opus（下書き） | ファイルは届いた。**Fableのレビュー未実施** |
-| 対戦モード・レーティング | ― | **未着手**（仕様案は SPEC 6節） |
-| Steam 用の配布設定（vdf、GodotSteam） | ― | **未着手**（手順は MAINTENANCE 6節） |
-| Microsoft Store 用の MSIX | ― | **未着手**（手順は MAINTENANCE 7節） |
-| 仕様書・設計書・保守資料 | Fable | 初版 |
+| 1人用の進行（`solo_game.gd`） | Fable | 自動プレイ通過 |
+| 画面（`main.gd`、`hud.gd`、`ui_kit.gd`） | Fable | スクリーンショットで確認。HUDの幅と吹き出しの位置を修正済み |
+| Claude API 連携（`llm_client.gd`） | Fable | **実通信は未確認** |
+| キーワード採点（`offline_judge.gd`） | Fable | 自動プレイ通過 |
+| ゲームセンター3D（`arcade_stage.gd`、クレーンゲーム15台） | Fable | スクリーンショットで確認・調整済み |
+| 台本（`scenarios.gd`、コンビニ8人・ゲームセンター9人） | Sonnet 下書き → Fable が全行レビューして修正 | 採点キーワードを整理、状況メモの矛盾を修正、クレーンゲームの客を2人追加 |
+| コンビニ3D・ステージ切替（`stage_world.gd`） | Opus 下書き | スクリーンショットで見た目を確認。**コードの行単位レビューは未実施** |
+| お客さん3Dキャラ（`customer_character.gd`） | Opus 下書き | 同上 |
+| 対戦モード（`versus_game.gd`、`net_session.gd`）とレーティング | Fable | IP直結は自動対戦通過。**Steam接続は未検証** |
+| Microsoft Store 用 MSIX（`packaging/msix/`、CIの `msix` ジョブ） | Fable | CIで作成。**インストール確認は未実施**。本番のIDは未設定 |
+| Steam 用アップロード定義（`packaging/steam/`） | Fable | ひな形のみ。アプリID未設定、GodotSteam 未導入 |
+| 仕様書・設計書・保守資料 | Fable | 実装に合わせて更新済み |
 
 ## 3. 残作業（優先順）
 
-1. **CIを緑にする**（1節）。3D側の約束は DESIGN 4節。
-2. **サブエージェント下書きのレビュー**（要件#10「品質に関わる部分はFable」）:
-   - `scenarios.gd`: 文法（括弧・カンマ・キーの欠け）、セリフの面白さ、`solution_keywords` が `memo` の正解と合っているか。「景品交換」という語は全スクリプトに無いことを確認済み（要件#11）。ゲームセンターは7人なので1人以上の追加が望ましい。
-   - `stage_world.gd`: `arcade` のとき `arcade_stage.gd` に任せているか（自前のゲームセンターを作っていないか）。カメラから見た構図。
-   - `customer_character.gd`: 顔が2m先から読めるか、怒りの段階表現、`arrived` / `left` が必ず発行されるか。
-3. **実機での見た目・手触りの調整**: 文字サイズ、パネルの重なり、怒りの上昇速度（日本語入力の時間に対して速すぎないか）、クレーンゲームの見栄え。
-4. **AIモードの実通信確認**: 設定画面でキーを入れ「接続テスト」→ 1シフト遊ぶ。`fallbacks` や `output_config` で400が出ないかを見る。
-5. **対戦モード**（要件#12, #15, #16）: `versus_game.gd` と通信層を新規作成。まずIP直結で動かし、CIで2プロセスの自動対戦を通してから GodotSteam を足すのが安全。GodotSteam の API はバージョン差があるので公式ドキュメントで確認すること。
-6. **Steam / Microsoft Store 用の成果物**（要件#8）。どちらも依頼者のアカウント登録とIDが先に必要。
-7. **仕上げ**: BGM、Godotのライセンス表記、APIキーの暗号化保存、タイトルの「対戦 ― 準備中」ボタンの有効化。
+1. **実機確認**（1節の 1〜2）。見つかった問題は、数値なら MAINTENANCE 3節の表の場所を直す。
+2. **Steam 連携を動かす**: GodotSteam の導入 → 招待・マッチングの実機確認（MAINTENANCE 6節）。アプリIDの取得は依頼者の作業。
+3. **Microsoft Store 提出の準備**: 本番のIDをリポジトリ変数に登録 → MSIX のインストール確認 → 提出（MAINTENANCE 7節）。
+4. **`stage_world.gd` と `customer_character.gd` のコードレビュー**（要件#10）。動作と見た目は確認済みだが、行単位では読んでいない。
+5. **対戦の改善**: 客役のセリフのAI採点、同じ相手との再戦、Steamリーダーボード（レーティングの改ざん対策）。
+6. **仕上げ**: BGM、ゲーム内のライセンス表記（Godot / フォント）、APIキーの暗号化保存、遊び方画面への対戦ルールの追記。
 
 ## 4. 依頼者に確認が必要なこと
 
 - 要件#11 の解釈（景品交換カウンターも、景品交換を題材にしたクレームも無くす）で合っているか。
-- 対戦のレーティングをPC内保存でよいか（改ざん可能）。Steamリーダーボードまで要るか。
+- 対戦のレーティングはPC内保存でよいか（改ざん可能）。厳密な順位が必要なら Steam リーダーボードが要る。
 - AIの既定モデル。現在は `claude-opus-5-5`。反応速度と料金を優先するなら Haiku 5.5 が向くが、既定は変えていない。
-- ゲーム名「カスハラ防衛線」、店名「ハッピーマート」「ゲームパラダイス」は仮の案。
+- ゲーム名「カスハラ防衛線」、店名「ハッピーマート」「ゲームパラダイス」、ランク名は仮の案。
+- CI がスクリーンショットをこのブランチに自動コミットする設定（`[shots]` を含むプッシュのときだけ）を入れた。不要なら `build.yml` の「Render screenshots」ステップと `permissions: contents: write` を消す。
 
 ## 5. 作業の進め方の決まり
 
 - 依頼者の指示は、受けたらすぐ REQUIREMENTS_LOG.md に追記する（要件#13）。
 - ブランチは `claude/wizardly-keller-c3rj2v`。リポジトリにはこのブランチしか無い（マージ先が無いためプルリクエストは作っていない）。
 - 仕様を変えたら SPEC.md、作りを変えたら DESIGN.md を同じコミットで直す。
+- プッシュしたら Actions の結果を見る。見た目を変えたら `[shots]` 付きでプッシュし、`docs/screenshots/` の画像で確かめる。CI が画像をコミットし直すので、次の作業の前に `git pull` すること。
