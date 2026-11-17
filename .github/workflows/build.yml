@@ -46,6 +46,21 @@ jobs:
           fi
           grep -q "SMOKE OK" smoke.log
 
+      - name: Versus smoke test (two processes play a match over localhost)
+        run: |
+          set -o pipefail
+          (timeout 300 godot --headless -- --smoke-host > vs_host.log 2>&1 &)
+          sleep 2
+          timeout 300 godot --headless -- --smoke-join 2>&1 | tee vs_join.log
+          sleep 3
+          echo "---- host log"; cat vs_host.log
+          if grep -E "SCRIPT ERROR|Parse Error|VERSUS TIMEOUT" vs_host.log vs_join.log; then
+            echo "::error::Versus smoke test failed"
+            exit 1
+          fi
+          grep -q "VERSUS OK" vs_host.log
+          grep -q "VERSUS OK" vs_join.log
+
       - name: Export Windows build
         run: |
           mkdir -p build/windows

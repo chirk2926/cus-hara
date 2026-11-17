@@ -12,6 +12,8 @@ const LlmScript = preload("res://scripts/llm_client.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
 const UI = preload("res://scripts/ui_kit.gd")
 const ScenariosScript = preload("res://scripts/scenarios.gd")
+const NetScript = preload("res://scripts/net_session.gd")
+const VersusScript = preload("res://scripts/versus_game.gd")
 
 const GAME_TITLE: String = "カスハラ防衛線"
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
@@ -48,6 +50,11 @@ var _camera: Camera3D = null
 var _customer = null
 var _hud = null
 var _solo = null
+var _net = null
+var _versus = null
+var _mode: String = ""          # "solo" | "versus"
+var _lobby_status: Label = null
+var _smoke_join_tries: int = 0
 var _ui: CanvasLayer = null
 var _title: Control = null
 var _overlay: Control = null
@@ -64,7 +71,8 @@ var _cam_override_target: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	randomize()
-	smoke = OS.get_cmdline_user_args().has("--smoke")
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	smoke = args.has("--smoke") or args.has("--smoke-host") or args.has("--smoke-join")
 
 	sfx = SfxScript.new()
 	add_child(sfx)
@@ -95,12 +103,27 @@ func _ready() -> void:
 	_solo.setup(self, _hud)
 	_solo.finished.connect(_on_solo_finished)
 
+	_net = NetScript.new()
+	add_child(_net)
+	_net.connected.connect(_on_net_connected)
+	_net.closed.connect(_on_net_closed)
+	_net.status.connect(_on_net_status)
+	_versus = VersusScript.new()
+	_versus.name = "Versus"   # 両者で同じノードパスにする（RPCのため）
+	add_child(_versus)
+	_versus.setup(self, _hud, _net)
+	_versus.finished.connect(_on_versus_finished)
+	if _net.steam_available():
+		_net.steam_init()   # 起動中にSteamの招待を受け取れるようにする
+
 	_build_title()
 	_show_title()
 
-	if smoke:
+	if args.has("--smoke"):
 		_run_smoke()
-	elif OS.get_cmdline_user_args().has("--shots"):
+	elif args.has("--smoke-host") or args.has("--smoke-join"):
+		_run_versus_smoke(args.has("--smoke-host"))
+	elif args.has("--shots"):
 		_run_shots()
 
 
@@ -202,13 +225,17 @@ func _start_solo(stage_id: String) -> void:
 	_title.visible = false
 	_hud.visible = true
 	_in_game = true
+	_mode = "solo"
 	display_anger = 0.0
+	_hud.set_quick_phrases(_hud.DEFAULT_PHRASES)
 	set_stage(stage_id)
 	_solo.start(stage_id, str(STAGES[stage_id]["name"]))
 
 
 func _quit_to_title() -> void:
 	_solo.abort()
+	_versus.abort()
+	_net.close("")
 	_free_customer()
 	_close_overlay()
 	_show_title()
@@ -234,7 +261,8 @@ func _refresh_title() -> void:
 	var parts: PackedStringArray = PackedStringArray()
 	for sid in STAGE_ORDER:
 		parts.append("%s %d" % [str(STAGES[sid]["short"]), GameSettings.get_high_score(str(sid))])
-	_score_label.text = "ハイスコア  " + "  /  ".join(parts)
+	_score_label.text = "ハイスコア  %s\n対戦レーティング %d（%s）  %d勝 %d敗 %d分" % ["  /  ".join(parts), GameSettings.rating,
+		GameSettings.rank_name(GameSettings.rating), GameSettings.versus_wins, GameSettings.versus_losses, GameSettings.versus_draws]
 
 
 func _build_title() -> void:
@@ -277,9 +305,10 @@ func _build_title() -> void:
 		col.add_child(b)
 		col.add_child(UI.wrap_label(str(info["desc"]), 14, UI.C_MUTED))
 
-	var versus: Button = UI.button("対戦（客 vs 店員）― 準備中", 20, UI.C_GRAY)
-	versus.disabled = true
+	var versus: Button = UI.button("対戦する（客 vs 店員）", 24, UI.C_GREEN.darkened(0.15))
+	versus.pressed.connect(_show_versus_lobby)
 	col.add_child(versus)
+	col.add_child(UI.wrap_label("2人で客役と店員役に分かれて対決。2ラウンドで役を交代し、レーティングが変わる。", 14, UI.C_MUTED))
 
 	var sub: HBoxContainer = HBoxContainer.new()
 	sub.add_theme_constant_override("separation", 10)
@@ -340,11 +369,12 @@ func _show_pause() -> void:
 	if not _in_game or _overlay != null:
 		return
 	var col: VBoxContainer = _open_overlay("メニュー", 420)
-	col.add_child(UI.wrap_label("一時停止中。怒りゲージは止まっています。", 16, UI.C_MUTED))
+	var in_versus: bool = _mode == "versus"
+	col.add_child(UI.wrap_label("対戦中は時間が止まりません。やめると相手の勝ちになります。" if in_versus else "一時停止中。怒りゲージは止まっています。", 16, UI.C_MUTED))
 	var resume: Button = UI.button("つづける", 24, UI.C_GREEN)
 	resume.pressed.connect(_close_overlay)
 	col.add_child(resume)
-	var back: Button = UI.button("タイトルへ戻る", 20, UI.C_GRAY)
+	var back: Button = UI.button("対戦をやめてタイトルへ" if in_versus else "タイトルへ戻る", 20, UI.C_GRAY)
 	back.pressed.connect(_quit_to_title)
 	col.add_child(back)
 
@@ -492,6 +522,169 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.pressed.connect(_quit_to_title)
 	row.add_child(back)
+
+
+# ---------------------------------------------------------------- 対戦モード
+
+func _player_name() -> String:
+	var n: String = str(_net.steam_name())
+	if n == "":
+		n = OS.get_environment("USERNAME")
+	if n == "":
+		n = "プレイヤー"
+	return n.left(16)
+
+
+## versus_game.gd から呼ばれる。対戦用にステージとHUDを用意する。
+func enter_versus(stage_id: String) -> void:
+	_close_overlay()
+	_title.visible = false
+	_hud.visible = true
+	_in_game = true
+	_mode = "versus"
+	display_anger = 0.0
+	_free_customer()
+	set_stage(stage_id)
+
+
+func _show_versus_lobby() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_overlay("対戦する（客 vs 店員）", 720)
+	col.add_child(UI.label("あなたのレーティング  %d（%s）" % [GameSettings.rating, GameSettings.rank_name(GameSettings.rating)], 20, UI.C_TEXT, true))
+	col.add_child(UI.wrap_label("2ラウンドで客役と店員役を交代します。店員役は納得ゲージを100に、客役は怒りゲージを100にすれば勝ち。", 15, UI.C_MUTED))
+
+	col.add_child(UI.label("Steamで対戦", 20, UI.C_ACCENT, true))
+	var steam_ok: bool = _net.steam_available()
+	var steam_row: HBoxContainer = HBoxContainer.new()
+	steam_row.add_theme_constant_override("separation", 10)
+	col.add_child(steam_row)
+	var invite: Button = UI.button("フレンドを招待", 20, UI.C_BLUE)
+	invite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	invite.disabled = not steam_ok
+	invite.pressed.connect(func() -> void:
+		_net.steam_host_friends())
+	steam_row.add_child(invite)
+	var random_match: Button = UI.button("ランダムマッチ", 20, UI.C_PURPLE)
+	random_match.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	random_match.disabled = not steam_ok
+	random_match.pressed.connect(func() -> void:
+		_net.steam_find_match())
+	steam_row.add_child(random_match)
+	if not steam_ok:
+		col.add_child(UI.wrap_label("このビルドにはSteam連携が入っていません（Steam版でのみ使えます）。", 14, UI.C_MUTED))
+
+	col.add_child(UI.label("IPアドレスで対戦（LAN・テスト用）", 20, UI.C_ACCENT, true))
+	var ip_row: HBoxContainer = HBoxContainer.new()
+	ip_row.add_theme_constant_override("separation", 10)
+	col.add_child(ip_row)
+	var host_btn: Button = UI.button("部屋を作る", 20, UI.C_GRAY)
+	host_btn.pressed.connect(func() -> void:
+		_net.host_enet())
+	ip_row.add_child(host_btn)
+	var ip_edit: LineEdit = UI.line_edit("相手のIPアドレス", 18)
+	ip_edit.text = "127.0.0.1"
+	ip_row.add_child(ip_edit)
+	var join_btn: Button = UI.button("参加する", 20, UI.C_GRAY)
+	join_btn.pressed.connect(func() -> void:
+		_net.join_enet(ip_edit.text.strip_edges()))
+	ip_row.add_child(join_btn)
+
+	_lobby_status = UI.wrap_label("", 16, UI.C_GREEN.lightened(0.3))
+	col.add_child(_lobby_status)
+	var back: Button = UI.button("もどる", 20, Color(0.2, 0.2, 0.25))
+	back.pressed.connect(func() -> void:
+		_net.close("")
+		_close_overlay()
+		_refresh_title())
+	col.add_child(back)
+
+
+func _set_lobby_status(text: String, is_error: bool) -> void:
+	if _lobby_status != null and is_instance_valid(_lobby_status):
+		_lobby_status.text = text
+		_lobby_status.add_theme_color_override("font_color", UI.C_RED.lightened(0.3) if is_error else UI.C_GREEN.lightened(0.3))
+
+
+func _on_net_status(text: String) -> void:
+	_set_lobby_status(text, false)
+
+
+func _on_net_connected() -> void:
+	_set_lobby_status("つながりました。対戦を始めます…", false)
+	_versus.begin(_player_name())
+
+
+func _on_net_closed(reason: String) -> void:
+	if smoke:
+		print("NET CLOSED: ", reason)
+		if _smoke_join_tries > 0:
+			_retry_smoke_join()
+		return
+	var was_active: bool = _versus.is_active()
+	_versus.opponent_left()   # 試合中なら勝ち扱いにして結果画面を出す
+	if was_active and _in_game and _overlay == null:
+		_quit_to_title()
+		_show_versus_lobby()
+	_set_lobby_status(reason, true)
+
+
+func _on_versus_finished(summary: Dictionary) -> void:
+	if smoke:
+		print("VERSUS OK ", summary)
+		await _wait(8.0)
+		get_tree().quit(0)
+		return
+	var score: float = float(summary.get("score", 0.5))
+	var headline: String = "引き分け"
+	if score > 0.75:
+		headline = "勝ち！"
+	elif score < 0.25:
+		headline = "負け…"
+	sfx.play("win" if score > 0.75 else "lose")
+	var col: VBoxContainer = _open_overlay("対戦結果 ― " + headline, 640)
+	if bool(summary.get("disconnected", false)):
+		col.add_child(UI.wrap_label("相手との接続が切れたため、あなたの勝ちになりました。", 18, UI.C_TEXT))
+	else:
+		col.add_child(UI.label("あなた %d 点  ―  %s %d 点" % [int(summary.get("mine", 0)), str(summary.get("opponent", "相手")), int(summary.get("theirs", 0))], 24, UI.C_TEXT, true))
+	var before: int = int(summary.get("rating_before", GameSettings.rating))
+	var delta: int = int(summary.get("rating_delta", 0))
+	col.add_child(UI.label("レーティング  %d → %d（%+d）" % [before, GameSettings.rating, delta], 26, UI.C_ACCENT, true))
+	col.add_child(UI.label("ランク: " + GameSettings.rank_name(GameSettings.rating), 22, UI.C_TEXT, true))
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	col.add_child(row)
+	var again: Button = UI.button("もう一度対戦する", 22, UI.C_GREEN.darkened(0.15))
+	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	again.pressed.connect(func() -> void:
+		_quit_to_title()
+		_show_versus_lobby())
+	row.add_child(again)
+	var back: Button = UI.button("タイトルへ", 22, UI.C_GRAY)
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back.pressed.connect(_quit_to_title)
+	row.add_child(back)
+	# 結果が相手に届いてから回線を閉じる
+	await _wait(1.5)
+	_net.close("")
+
+
+## 2プロセスで対戦を自動プレイする（CI用）。`-- --smoke-host` と `-- --smoke-join` を同時に動かす。
+func _run_versus_smoke(as_host: bool) -> void:
+	Engine.time_scale = 8.0
+	get_tree().create_timer(240.0, true, false, true).timeout.connect(func() -> void:
+		print("VERSUS TIMEOUT")
+		get_tree().quit(1))
+	if as_host:
+		print("VERSUS host: ", _net.host_enet())
+	else:
+		_smoke_join_tries = 40
+		_net.join_enet("127.0.0.1")
+
+
+func _retry_smoke_join() -> void:
+	_smoke_join_tries -= 1
+	await get_tree().create_timer(1.0, true, false, true).timeout
+	_net.join_enet("127.0.0.1")
 
 
 # ---------------------------------------------------------------- 自動テスト

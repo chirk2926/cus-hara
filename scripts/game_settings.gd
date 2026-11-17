@@ -15,6 +15,23 @@ var volume: float = 0.8
 var fullscreen: bool = false
 var high_scores: Dictionary = {}
 
+# 対戦モードのレーティング（このPCに保存）
+const RATING_START: int = 1000
+const RATING_K: float = 32.0
+const VERSUS_RANKS: Array = [
+	[1700, "伝説のクレーム処理班"],
+	[1500, "エリアマネージャー"],
+	[1350, "店長"],
+	[1200, "副店長"],
+	[1050, "バイトリーダー"],
+	[900, "アルバイト"],
+	[-999999, "研修生"],
+]
+var rating: int = RATING_START
+var versus_wins: int = 0
+var versus_losses: int = 0
+var versus_draws: int = 0
+
 
 func _ready() -> void:
 	load_settings()
@@ -30,6 +47,10 @@ func load_settings() -> void:
 	use_llm = bool(cfg.get_value("llm", "enabled", true))
 	volume = float(cfg.get_value("audio", "volume", 0.8))
 	fullscreen = bool(cfg.get_value("video", "fullscreen", false))
+	rating = int(cfg.get_value("versus", "rating", RATING_START))
+	versus_wins = int(cfg.get_value("versus", "wins", 0))
+	versus_losses = int(cfg.get_value("versus", "losses", 0))
+	versus_draws = int(cfg.get_value("versus", "draws", 0))
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
 	if typeof(hs) == TYPE_DICTIONARY:
 		high_scores = hs
@@ -43,6 +64,10 @@ func save_settings() -> void:
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("score", "high_scores", high_scores)
+	cfg.set_value("versus", "rating", rating)
+	cfg.set_value("versus", "wins", versus_wins)
+	cfg.set_value("versus", "losses", versus_losses)
+	cfg.set_value("versus", "draws", versus_draws)
 	cfg.save(PATH)
 
 
@@ -77,3 +102,32 @@ func submit_score(stage_id: String, value: int) -> bool:
 		save_settings()
 		return true
 	return false
+
+
+# ---------------------------------------------------------------- 対戦レーティング
+
+static func rank_name(value: int) -> String:
+	for r in VERSUS_RANKS:
+		if value >= int(r[0]):
+			return str(r[1])
+	return "研修生"
+
+
+## Elo方式の増減。score: 勝ち=1.0 / 引き分け=0.5 / 負け=0.0
+static func elo_delta(mine: int, theirs: int, score: float) -> int:
+	var expected: float = 1.0 / (1.0 + pow(10.0, float(theirs - mine) / 400.0))
+	return int(round(RATING_K * (score - expected)))
+
+
+## 対戦結果を記録して、レーティングの増減を返す
+func record_versus(opponent_rating: int, score: float) -> int:
+	var d: int = elo_delta(rating, opponent_rating, score)
+	rating = maxi(0, rating + d)
+	if score > 0.75:
+		versus_wins += 1
+	elif score < 0.25:
+		versus_losses += 1
+	else:
+		versus_draws += 1
+	save_settings()
+	return d

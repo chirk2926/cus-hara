@@ -13,6 +13,10 @@ const NEGATION: Array = ["かねます", "できません", "出来ません", "
 ## 否定の判定から除く謝罪の言い回し（「ございません」の「ません」を否定と誤認しないため）
 const APOLOGY_FORMS: Array = ["申し訳ございません", "申し訳ありません", "すみません", "すいません"]
 
+# 対戦モードで客役のセリフを評価するための語
+const ABUSE: Array = ["死ね", "しね", "殺す", "殺し", "ころす", "クズ", "ゴミ", "消えろ", "ぶっ殺"]
+const PRESSURE: Array = ["責任者", "店長", "誠意", "客だ", "どうしてくれ", "納得", "おかしい", "ありえない", "本部", "二度と", "時間を返", "常連"]
+
 const GENERIC_LINES: Dictionary = {
 	"calm": ["……まあ、話は聞いてやる。", "ふん。少しは分かってるじゃないか。", "それで？どうしてくれるんだ？"],
 	"angry": ["なんだその態度は！", "こっちは客だぞ！！", "話にならん！責任者を出せ！"],
@@ -159,3 +163,27 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 		"customer_reply": line(customer, key),
 		"comment": comment,
 	}
+
+
+## 対戦モード: 客役プレイヤーのセリフを評価する。
+## 筋の通った圧力は怒りを上げ、暴言・繰り返し・無言は店員側の納得を上げる（客役へのペナルティ）。
+static func judge_customer_line(customer: Dictionary, line_text: String, used: Array) -> Dictionary:
+	var text: String = line_text.strip_edges()
+	if text == "":
+		return {"anger_delta": 0, "resolve_delta": 12, "comment": "お客さんが言葉に詰まった！"}
+	if _count(text, ABUSE) > 0:
+		return {"anger_delta": 0, "resolve_delta": 15, "comment": "度を越した暴言。店長が止めに入った。"}
+	if used.has(text):
+		return {"anger_delta": 0, "resolve_delta": 8, "comment": "同じセリフの繰り返しは響かない。"}
+	var pressure: float = 3.0
+	if text.length() >= 12:
+		pressure += 2.0
+	if text.length() >= 30:
+		pressure += 2.0
+	if text.find("！") != -1 or text.find("!") != -1:
+		pressure += 1.0
+	var demand_words: Array = customer.get("yield_keywords", [])
+	if _count(text, demand_words) > 0:
+		pressure += 2.0
+	pressure += float(mini(_count(text, PRESSURE), 2)) * 1.5
+	return {"anger_delta": int(round(clampf(pressure, 0.0, 12.0))), "resolve_delta": 0, "comment": "お客さんの圧が強まった…"}
