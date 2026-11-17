@@ -15,6 +15,7 @@ signal pause_pressed
 signal talk_started(duration: float)
 signal voice_start
 signal voice_stop
+signal action_pressed(id: String)
 
 ## 定型文（日本語の文がキー。英語は翻訳ファイルで差し替わる）
 const DEFAULT_PHRASES: Array = [
@@ -37,12 +38,17 @@ var _note: Label
 var _lcd
 var _bubble
 var _bubble_name: Label
-var _bubble_text: Label
+var _bubble_text: RichTextLabel
 var _banner: Label
 var _delta: Label
 var _echo: Label
 var _status: Label
-var _tags: HFlowContainer
+var _tags: HBoxContainer
+var _actions: HBoxContainer
+var _desk: PanelContainer
+var _upper: MarginContainer
+var _mental
+var _mental_row: HBoxContainer
 var _field: LineEdit
 var _send: Button
 var _talk: Button
@@ -67,34 +73,103 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var margin: MarginContainer = MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	add_child(margin)
-	var root: VBoxContainer = UI.vbox(12)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_child(root)
+	# ---- 下: 伝言の記入欄。画面の下に固定し、上の部品の大きさに左右されない（要件#29）
+	_desk = UI.paper(UI.PAPER, 16, 4)
+	_desk.anchor_left = 0.0
+	_desk.anchor_right = 1.0
+	_desk.anchor_top = 1.0
+	_desk.anchor_bottom = 1.0
+	_desk.offset_left = 24
+	_desk.offset_right = -24
+	_desk.offset_top = -16
+	_desk.offset_bottom = -16
+	_desk.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	add_child(_desk)
+	var db: VBoxContainer = UI.vbox(8)
+	_desk.add_child(db)
+	var head: HBoxContainer = UI.hbox(16)
+	db.add_child(head)
+	_status = UI.text("", UI.S_SMALL, UI.INK_SOFT)
+	head.add_child(_status)
+	_echo = UI.text("", UI.S_SMALL, UI.INK)
+	_echo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_echo.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_echo.clip_text = true
+	_echo.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	head.add_child(_echo)
+	# 接客用語のタグ（左）と、店の行動ボタン（右）。1行に収める
+	var tag_line: HBoxContainer = UI.hbox(16)
+	db.add_child(tag_line)
+	_tags = UI.hbox(8)
+	_tags.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tags.clip_contents = true
+	tag_line.add_child(_tags)
+	_actions = UI.hbox(8)
+	tag_line.add_child(_actions)
+
+	_text_row = UI.hbox(16)
+	db.add_child(_text_row)
+	_field = UI.field("", UI.S_LEAD)
+	_field.max_length = 200
+	_field.text_submitted.connect(func(_t: String) -> void: _submit())
+	_text_row.add_child(_field)
+	_send = UI.primary(tr("返事をする"), UI.S_LEAD)
+	_send.focus_mode = Control.FOCUS_NONE
+	_send.pressed.connect(_submit)
+	_text_row.add_child(_send)
+
+	_voice_row = UI.hbox(16)
+	db.add_child(_voice_row)
+	_talk = UI.primary(tr("押して話す（スペース）"), UI.S_LEAD)
+	_talk.focus_mode = Control.FOCUS_NONE
+	_talk.custom_minimum_size = Vector2(360, 0)
+	_talk.button_down.connect(func() -> void: _voice_press(true))
+	_talk.button_up.connect(func() -> void: _voice_press(false))
+	_voice_row.add_child(_talk)
+	_level = ProgressBar.new()
+	_level.show_percentage = false
+	_level.max_value = 1.0
+	_level.custom_minimum_size = Vector2(160, 12)
+	_level.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_level.add_theme_stylebox_override("background", UI.flat_style(UI.PAPER_DIM, 0, 0))
+	_level.add_theme_stylebox_override("fill", UI.flat_style(UI.OK, 0, 0))
+	_voice_row.add_child(_level)
+	var type_instead: Button = UI.link(tr("文字で入力する"), UI.S_SMALL, UI.INK_SOFT)
+	type_instead.focus_mode = Control.FOCUS_NONE
+	type_instead.pressed.connect(func() -> void:
+		_text_row.visible = true
+		_focus_field())
+	_voice_row.add_child(type_instead)
+	_voice_row.visible = false
+
+	# ---- 上: 記入欄より上の残りの場所
+	_upper = MarginContainer.new()
+	_upper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_upper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_upper.add_theme_constant_override("margin_left", 24)
+	_upper.add_theme_constant_override("margin_right", 24)
+	_upper.add_theme_constant_override("margin_top", 16)
+	_upper.add_theme_constant_override("margin_bottom", 200)
+	add_child(_upper)
+	move_child(_upper, 0)
+	_desk.resized.connect(_fit_upper)
 
 	var mid: HBoxContainer = UI.hbox(24)
 	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(mid)
+	_upper.add_child(mid)
 
-	# ---- 左: 名札・引き継ぎメモ・付箋
-	var left: VBoxContainer = UI.vbox(16)
+	# ---- 左: 名札・引き継ぎメモ・付箋（はみ出す分は切る。記入欄は押し下げない）
+	var left: VBoxContainer = UI.vbox(12)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.custom_minimum_size = Vector2(300, 0)
+	left.clip_contents = true
 	mid.add_child(left)
 
 	var tag_row: HBoxContainer = UI.hbox(0)
 	left.add_child(tag_row)
 	var nametag: PanelContainer = UI.paper(UI.INK, 8, 3)
 	tag_row.add_child(nametag)
-	var nt: VBoxContainer = UI.vbox(0)
+	var nt: VBoxContainer = UI.vbox(2)
 	nametag.add_child(nt)
 	_shop = UI.text("", UI.S_BODY, UI.POP, UI.F_SIGN)
 	nt.add_child(_shop)
@@ -104,6 +179,15 @@ func _build() -> void:
 	nt2.add_child(_progress)
 	_score = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_DOT)
 	nt2.add_child(_score)
+	# 店員のメンタル（要件#38）
+	_mental_row = UI.hbox(8)
+	nt.add_child(_mental_row)
+	_mental_row.add_child(UI.text(tr("メンタル"), UI.S_SMALL, UI.PAPER, UI.F_DOT))
+	_mental = Paper.DotBar.new()
+	_mental.custom_minimum_size = Vector2(150, 12)
+	_mental.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_mental_row.add_child(_mental)
+	_mental_row.visible = false
 	var menu: Button = UI.link(tr("休憩"), UI.S_SMALL, UI.INK)
 	menu.focus_mode = Control.FOCUS_NONE
 	menu.tooltip_text = tr("一時停止（Esc）")
@@ -116,7 +200,7 @@ func _build() -> void:
 
 	var memo = Paper.Memo.new()
 	left.add_child(memo)
-	var mb: VBoxContainer = UI.vbox(6)
+	var mb: VBoxContainer = UI.vbox(4)
 	memo.add_child(mb)
 	mb.add_child(UI.text(tr("引き継ぎメモ"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
 	_memo_title = UI.para("", UI.S_LEAD, UI.INK, UI.F_HAND)
@@ -124,11 +208,11 @@ func _build() -> void:
 	_memo_body = UI.para("", UI.S_BODY, UI.INK, UI.F_HAND)
 	_memo_body.max_lines_visible = 6
 	mb.add_child(_memo_body)
-	_memo_demand = UI.para("", UI.S_BODY, UI.SHU, UI.F_HAND)
+	_memo_demand = UI.para("", UI.S_SMALL, UI.SHU, UI.F_HAND)
 	_memo_demand.max_lines_visible = 3
 	mb.add_child(_memo_demand)
 
-	var note: PanelContainer = UI.paper(UI.POP, 14, 3)
+	var note: PanelContainer = UI.paper(UI.POP, 12, 3)
 	note.custom_minimum_size = Vector2(240, 0)
 	note.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.add_child(note)
@@ -137,25 +221,33 @@ func _build() -> void:
 	nb.add_child(UI.text(tr("店長より"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
 	_note = UI.para(tr("落ち着いて、まずは話を聞こう。"), UI.S_BODY, UI.INK, UI.F_HAND)
 	_note.custom_minimum_size = Vector2(210, 0)
+	_note.max_lines_visible = 3
 	nb.add_child(_note)
-	left.add_child(UI.spacer())
 
-	# ---- 中央: 顔は空ける → 判定 → フキダシ
+	# ---- 中央: 顔は空ける → フキダシ（文字の量に合わせて高さが変わる。要件#30）
 	var center: VBoxContainer = UI.vbox(8)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mid.add_child(center)
-	var face_gap: Control = UI.spacer()
-	face_gap.size_flags_stretch_ratio = 1.2
-	center.add_child(face_gap)
+	center.add_child(UI.spacer())
 	_bubble = Paper.Bubble.new()
 	center.add_child(_bubble)
 	var bb: VBoxContainer = UI.vbox(2)
 	_bubble.add_child(bb)
 	_bubble_name = UI.text("", UI.S_SMALL, UI.SHU, UI.F_BOLD)
 	bb.add_child(_bubble_name)
-	_bubble_text = UI.para("", UI.S_LEAD, UI.INK, UI.F_BOLD)
-	_bubble_text.custom_minimum_size = Vector2(0, 60)
+	_bubble_text = RichTextLabel.new()
+	_bubble_text.bbcode_enabled = false
+	_bubble_text.fit_content = true
+	_bubble_text.scroll_active = false
+	# 文字を出していく途中で折り返しが変わらないよう、全文で配置してから見せる
+	_bubble_text.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING
+	_bubble_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bubble_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bubble_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble_text.add_theme_font_override("normal_font", UI.font(UI.F_BOLD))
+	_bubble_text.add_theme_font_size_override("normal_font_size", UI.S_LEAD)
+	_bubble_text.add_theme_color_override("default_color", UI.INK)
 	bb.add_child(_bubble_text)
 	_bubble.visible = false
 
@@ -190,62 +282,11 @@ func _build() -> void:
 	_delta.add_theme_constant_override("outline_size", 10)
 	_delta.modulate = Color(1, 1, 1, 0)
 	right.add_child(_delta)
-	right.add_child(UI.spacer())
 
-	# ---- 下: 伝言の記入欄
-	var desk: PanelContainer = UI.paper(UI.PAPER, 16, 4)
-	root.add_child(desk)
-	var db: VBoxContainer = UI.vbox(8)
-	desk.add_child(db)
-	var head: HBoxContainer = UI.hbox(16)
-	db.add_child(head)
-	_status = UI.text("", UI.S_SMALL, UI.INK_SOFT)
-	head.add_child(_status)
-	_echo = UI.text("", UI.S_SMALL, UI.INK)
-	_echo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_echo.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_echo.clip_text = true
-	_echo.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	head.add_child(_echo)
-	_tags = HFlowContainer.new()
-	_tags.add_theme_constant_override("h_separation", 8)
-	_tags.add_theme_constant_override("v_separation", 8)
-	db.add_child(_tags)
 
-	_text_row = UI.hbox(16)
-	db.add_child(_text_row)
-	_field = UI.field("", UI.S_LEAD)
-	_field.max_length = 200
-	_field.text_submitted.connect(func(_t: String) -> void: _submit())
-	_text_row.add_child(_field)
-	_send = UI.primary(tr("返事をする"), UI.S_LEAD)
-	_send.focus_mode = Control.FOCUS_NONE
-	_send.pressed.connect(_submit)
-	_text_row.add_child(_send)
-
-	_voice_row = UI.hbox(16)
-	db.add_child(_voice_row)
-	_talk = UI.primary(tr("押して話す（スペース）"), UI.S_LEAD)
-	_talk.focus_mode = Control.FOCUS_NONE
-	_talk.custom_minimum_size = Vector2(360, 0)
-	_talk.button_down.connect(func() -> void: _voice_press(true))
-	_talk.button_up.connect(func() -> void: _voice_press(false))
-	_voice_row.add_child(_talk)
-	_level = ProgressBar.new()
-	_level.show_percentage = false
-	_level.max_value = 1.0
-	_level.custom_minimum_size = Vector2(160, 12)
-	_level.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_level.add_theme_stylebox_override("background", UI.flat_style(UI.PAPER_DIM, 0, 0))
-	_level.add_theme_stylebox_override("fill", UI.flat_style(UI.OK, 0, 0))
-	_voice_row.add_child(_level)
-	var type_instead: Button = UI.link(tr("文字で入力する"), UI.S_SMALL, UI.INK_SOFT)
-	type_instead.focus_mode = Control.FOCUS_NONE
-	type_instead.pressed.connect(func() -> void:
-		_text_row.visible = true
-		_field.grab_focus())
-	_voice_row.add_child(type_instead)
-	_voice_row.visible = false
+## 記入欄の高さが変わったら、上の場所をその分だけ縮める
+func _fit_upper() -> void:
+	_upper.add_theme_constant_override("margin_bottom", int(_desk.size.y) + 16 + 12)
 
 
 func _process(delta: float) -> void:
@@ -254,6 +295,25 @@ func _process(delta: float) -> void:
 		if _blip <= 0.0:
 			_blip = 0.07
 			sfx.play("talk", randf_range(0.85, 1.15))
+
+
+## 記入欄に入力を向ける。クリックしなくても打てるように、少し遅らせてからもう一度
+func _focus_field() -> void:
+	if not is_inside_tree():
+		return
+	_field.call_deferred("grab_focus")
+	_field.call_deferred("set_caret_column", _field.text.length())
+
+
+## 記入欄の外で文字キーを押しても、記入欄に入るようにする（要件#40）
+func _input(event: InputEvent) -> void:
+	if not _input_on or _voice_mode or not visible or not _text_row.visible or _field.has_focus():
+		return
+	if event is InputEventKey and event.is_pressed():
+		var k: InputEventKey = event
+		if k.unicode >= 32 or k.keycode == KEY_BACKSPACE or k.keycode == KEY_ENTER:
+			if get_viewport().gui_get_focus_owner() == null or not (get_viewport().gui_get_focus_owner() is LineEdit):
+				_field.grab_focus()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -278,6 +338,31 @@ func set_memo(title: String, body: String, demand: String) -> void:
 	_memo_title.text = title
 	_memo_body.text = body
 	_memo_demand.text = (tr("※ 要求: ") + demand) if demand != "" else ""
+
+
+## 店員のメンタル（0〜100）。負の値を渡すと隠す
+func set_mental(v: float) -> void:
+	_mental_row.visible = v >= 0.0
+	if v >= 0.0:
+		_mental.value = v
+		_mental.color = UI.LCD_ON if v > 60.0 else (UI.POP if v > 30.0 else Color("#ff8a6a"))
+
+
+## 店の行動ボタン。items: [[id, 表示名], ...]。空なら消す
+func set_actions(items: Array) -> void:
+	for c in _actions.get_children():
+		c.queue_free()
+	for it in items:
+		var id: String = str(it[0])
+		var b: Button = UI.stamp(tr(str(it[1])), UI.S_SMALL)
+		b.focus_mode = Control.FOCUS_NONE
+		b.disabled = not _input_on
+		b.pressed.connect(func() -> void:
+			if _input_on:
+				if sfx != null:
+					sfx.play("click")
+				action_pressed.emit(id))
+		_actions.add_child(b)
 
 
 func set_comment(t: String) -> void:
@@ -395,7 +480,10 @@ func set_input_enabled(on: bool, placeholder: String) -> void:
 			(c as Button).disabled = not on
 	if on and _text_row.visible:
 		_field.text = ""
-		_field.grab_focus()
+		_focus_field()
+	for c in _actions.get_children():
+		if c is Button:
+			(c as Button).disabled = not on
 
 
 func _voice_press(down: bool) -> void:
@@ -416,7 +504,7 @@ func _on_tag(phrase: String) -> void:
 		sfx.play("click")
 	_field.text = _field.text + phrase
 	_field.caret_column = _field.text.length()
-	_field.grab_focus()
+	_focus_field()
 
 
 func _submit() -> void:

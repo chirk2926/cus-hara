@@ -13,6 +13,7 @@ import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
 import type { Lang } from "./lang.ts";
+import { isAllowed, judgeAction, actionLabel, actionAsStaffLine } from "./actions.ts";
 
 interface Seat {
   player: Player;
@@ -23,7 +24,8 @@ interface Seat {
 
 interface Input {
   text: string;
-  via: "text" | "voice" | "timeout";
+  via: "text" | "voice" | "timeout" | "action";
+  action?: string;
   pcm?: Int16Array;
   debugText?: string;
 }
@@ -64,6 +66,9 @@ export class Match {
   readonly kind: Kind;
   readonly format: Format;
   readonly lang: Lang;
+
+  /** 怒りの上がる速さの倍率（フレンド対戦で部屋を作った人の「返事の時間」。ランクマッチは 1） */
+  rateScale = 1;
 
   constructor(kind: Kind, format: Format, lang: Lang, a: Conn, b: Conn) {
     this.kind = kind;
@@ -189,7 +194,7 @@ export class Match {
     this.usedTitles.push(card.title);
     this.anger = card.start_anger;
     this.resolveVal = 0;
-    this.rate = config.versus.baseAngerRate * card.patience;
+    this.rate = config.versus.baseAngerRate * card.patience * this.rateScale;
     for (const v of [0, 1]) this.send(v, this.roundStart(v));
     await sleep(config.versus.roundIntroMs);
     if (this.finished) return null;
@@ -228,6 +233,24 @@ export class Match {
         break;
       }
       this.setPhase("judging", -1, 0);
+      if (input.via === "action" && input.action) {
+        // 店の行動ボタン（要件#34）: 点数は表どおり
+        const j = judgeAction(card, input.action, this.anger, this.resolveVal, this.lang);
+        const label = actionAsStaffLine(input.action, this.lang);
+        history.push({ role: "staff", text: label });
+        this.broadcastLine("staff", staff, label, "action");
+        this.anger = clamp(this.anger + j.anger_delta, 0, 100);
+        this.resolveVal = clamp(this.resolveVal + j.resolve_delta, 0, 100);
+        this.broadcastJudged(j.anger_delta, j.resolve_delta, j.comment, "staff");
+        if (j.yielded) outcome = "yield";
+        else if (this.anger >= 100) outcome = "explode";
+        else if (this.resolveVal >= 100) outcome = "resolved";
+        if (outcome !== "") break;
+        exchanges++;
+        await sleep(config.versus.pauseAfterLineMs);
+        if (this.finished) return null;
+        continue;
+      }
       const reply = await this.inputToText(staff, input, "staff");
       if (this.finished) return null;
       if (reply === "") {
@@ -390,6 +413,14 @@ export class Match {
     const text = typeof raw === "string" ? raw.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
     if (!this.waiting || this.waiting.seat !== seat || text === "") return;
     this.resolveWaiting({ text, via: "text" });
+  }
+
+  /** 店員役が店の行動ボタンを押した */
+  onAction(seat: number, raw: unknown): void {
+    if (!this.waiting || this.waiting.seat !== seat || this.waiting.phase !== "staff_turn" || !this.card) return;
+    const id = typeof raw === "string" ? raw : "";
+    if (id.startsWith("crane_") || !isAllowed(this.stage, this.card, id)) return;
+    this.resolveWaiting({ text: actionLabel(id, this.lang), via: "action", action: id });
   }
 
   onVoice(seat: number, b64: unknown, debugText: unknown): void {

@@ -1,0 +1,24 @@
+{
+	"_comment": "店の行動ボタン（要件#34, #37）。サーバー(server/src/actions.ts)とゲーム(scripts/offline_judge.gd)が同じ表を使う。お客さんごとの効果は台本の actions。",
+	"stages": {
+		"konbini": ["discount", "dogeza"],
+		"arcade": ["medal_return", "compensate"]
+	},
+	"labels": {
+		"ja": {"discount": "割引する", "dogeza": "土下座する", "medal_return": "メダルを返す", "compensate": "補填する", "crane_won": "台を調整した（取れた）", "crane_lost": "台を調整した（取れなかった）"},
+		"en": {"discount": "Offer a discount", "dogeza": "Kneel and bow", "medal_return": "Return medals", "compensate": "Make it good", "crane_won": "Adjusted the machine (they won)", "crane_lost": "Adjusted the machine (no luck)"}
+	},
+	"effects": {
+		"good": {"anger": -12, "resolve": 35, "reply": "calm"},
+		"neutral": {"anger": 4, "resolve": 0, "reply": "neutral"},
+		"bad": {"anger": 10, "resolve": 0, "reply": "angry"},
+		"yield": {"anger": -10, "resolve": 0, "yielded": true, "reply": "yielded"},
+		"crane_won": {"anger": -25, "resolve": 70, "reply": "calm"},
+		"crane_lost": {"anger": 8, "resolve": 5, "reply": "angry"}
+	},
+	"comments": {
+		"ja": {"good": "その対応で正解！", "neutral": "今それは関係ないぞ…", "bad": "逆効果だった…", "yield": "不当な要求を飲んじゃダメだ…。", "crane_won": "取れた！これは効く。", "crane_lost": "取れなかった…期待させた分だけ怒らせた。"},
+		"en": {"good": "That's the right move!", "neutral": "That's beside the point...", "bad": "That backfired...", "yield": "You caved to an unreasonable demand...", "crane_won": "They won it! That worked.", "crane_lost": "No luck... raising hopes made it worse."}
+	},
+	"default": {"discount": "bad", "dogeza": "bad", "medal_return": "neutral", "compensate": "neutral"}
+}

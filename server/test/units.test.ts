@@ -94,3 +94,31 @@ test("英語の判定: 正しい対応・屈服・丁寧な断り", () => {
   const rude = judgeStaff(c, "Shut up and go away", [], 40, 0, "en");
   assert.ok(rude.anger_delta >= 25);
 });
+
+test("店の行動ボタン（要件#34）: 台本の効果どおり・ステージ外は使えない", async () => {
+  const { judgeAction, isAllowed, effectKind } = await import("../src/actions.ts");
+  const konbini = allCustomers("konbini");
+  const lecturer = konbini[0];
+  assert.equal(effectKind(lecturer, "dogeza"), "yield");
+  const d = judgeAction(lecturer, "dogeza", 40, 0, "ja");
+  assert.equal(d.yielded, true);
+  assert.ok(isAllowed("konbini", lecturer, "discount"));
+  assert.ok(!isAllowed("konbini", lecturer, "medal_return"), "コンビニにメダルは無い");
+  const medal = allCustomers("arcade").find((c) => c.title === "メダル沼の主婦")!;
+  const good = judgeAction(medal, "compensate", 40, 0, "ja");
+  assert.ok(good.anger_delta < 0 && good.resolve_delta > 0 && !good.yielded);
+  const crane = allCustomers("arcade")[0];
+  assert.ok(isAllowed("arcade", crane, "crane_won"), "クレーンの客は台の調整ができる");
+  assert.ok(!isAllowed("arcade", medal, "crane_won"));
+  const won = judgeAction(crane, "crane_won", 40, 0, "en");
+  assert.ok(won.resolve_delta >= 50);
+  assert.ok(/[a-z]/i.test(won.comment));
+});
+
+test("ネタ枠（rare）は出にくい", async () => {
+  const { randomCustomer } = await import("../src/scenarios.ts");
+  let rare = 0;
+  for (let i = 0; i < 2000; i++) if (randomCustomer("konbini").rare) rare++;
+  const share = rare / 2000;
+  assert.ok(share > 0.02 && share < 0.15, `ネタ枠の割合 ${share}`);
+});

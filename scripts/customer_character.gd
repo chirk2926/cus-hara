@@ -8,6 +8,10 @@ extends Node3D
 
 signal arrived
 signal left
+signal tripped   # 怒って帰る途中で転んだ（要件#42）
+
+## 怒って帰るときに転ぶ確率
+const TRIP_CHANCE: float = 0.25
 
 const WALK_SPEED: float = 1.35
 const ANGRY_SKIN: Color = Color(0.95, 0.28, 0.22)
@@ -162,7 +166,17 @@ func leave(to: Vector3, mood: String) -> void:
 	_walk_tween.tween_interval(0.35)
 	_walk_tween.tween_property(self, "rotation:y", target_rot, 0.35).set_trans(Tween.TRANS_SINE)
 	_walk_tween.tween_callback(_start_walk)
-	_walk_tween.tween_property(self, "position", to, dur)
+	if m == "angry" and randf() < TRIP_CHANCE:
+		# 3割ほど歩いたところで転び、起き上がってから出ていく
+		var mid: Vector3 = from.lerp(to, 0.3)
+		mid.y = from.y
+		_walk_tween.tween_property(self, "position", mid, dur * 0.3)
+		_walk_tween.tween_callback(_trip)
+		_walk_tween.tween_interval(1.9)
+		_walk_tween.tween_callback(_start_walk)
+		_walk_tween.tween_property(self, "position", to, dur * 0.7)
+	else:
+		_walk_tween.tween_property(self, "position", to, dur)
 	_walk_tween.tween_callback(_finish_leave)
 
 
@@ -286,6 +300,31 @@ func _stop_walk() -> void:
 
 func _emit_arrived() -> void:
 	arrived.emit()
+
+
+## 前のめりに転んで、しばらくして起き上がる
+func _trip() -> void:
+	_walking = false
+	_set_expr("explode", 1.9)
+	_arm_override = "up"
+	_arm_override_time = 1.1
+	_shake = 0.6
+	tripped.emit()
+	var tw: Tween = _new_react_tween()
+	# つまずく → 前に倒れる
+	tw.tween_property(_hop, "rotation:x", -0.25, 0.1).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_hop, "rotation:x", 1.42, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(_hop, "position:y", 0.12, 0.28)
+	# 床で少し弾む
+	tw.tween_property(_hop, "rotation:x", 1.3, 0.08)
+	tw.tween_property(_hop, "rotation:x", 1.45, 0.08)
+	tw.tween_interval(0.7)
+	# 起き上がる（よろけながら）
+	tw.tween_property(_hop, "rotation:x", 0.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(_hop, "position:y", 0.0, 0.45)
+	tw.tween_property(_hop, "rotation:z", 0.12, 0.1)
+	tw.tween_property(_hop, "rotation:z", -0.08, 0.1)
+	tw.tween_property(_hop, "rotation:z", 0.0, 0.1)
 
 
 func _finish_leave() -> void:

@@ -28,7 +28,8 @@ export const config = {
 
   // AI: auto = APIキーがあれば Claude、なければキーワード判定 / claude = 必ず Claude / offline = 使わない
   llmMode: str("LLM_MODE", "auto") as LlmMode,
-  model: str("CLAUDE_MODEL", "claude-opus-5-5"),
+  // 既定は Haiku（要件#33。速さと運営の料金のため）
+  model: str("CLAUDE_MODEL", "claude-haiku-5-5"),
   llmTimeoutMs: num("LLM_TIMEOUT_MS", 45000),
 
   // 音声の文字起こし（音声対戦に必要）

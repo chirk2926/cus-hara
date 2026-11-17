@@ -163,6 +163,29 @@ static func tag(label: String, size: int = S_BODY) -> Button:
 	return b
 
 
+## ハンコの形のボタン: 店の「行動」（割引・土下座・補填など）。朱色の枠と文字、塗りは無し
+static func stamp(label: String, size: int = S_SMALL) -> Button:
+	var b: Button = _button_base(label, size, F_BOLD)
+	_colors(b, SHU, PAPER, Color(SHU.r, SHU.g, SHU.b, 0.35))
+	var n: StyleBoxFlat = flat_style(Color(PAPER.r, PAPER.g, PAPER.b, 0.0), 0, 6)
+	n.content_margin_left = 12
+	n.content_margin_right = 12
+	n.content_margin_top = 6
+	n.content_margin_bottom = 6
+	n.set_border_width_all(2)
+	n.border_color = SHU
+	var h: StyleBoxFlat = n.duplicate()
+	h.bg_color = SHU
+	var d: StyleBoxFlat = n.duplicate()
+	d.border_color = Color(SHU.r, SHU.g, SHU.b, 0.35)
+	b.add_theme_stylebox_override("normal", n)
+	b.add_theme_stylebox_override("hover", h)
+	b.add_theme_stylebox_override("pressed", h)
+	b.add_theme_stylebox_override("disabled", d)
+	b.add_theme_stylebox_override("focus", _focus_style())
+	return b
+
+
 ## 文字だけのボタン（下線の代わりに、マウスを乗せると朱色になる）
 static func link(label: String, size: int = S_BODY, color: Color = INK) -> Button:
 	var b: Button = _button_base(label, size, F_BOLD)

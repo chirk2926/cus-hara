@@ -20,8 +20,12 @@ interface Room {
   host: Conn;
   format: Format;
   lang: Lang;
+  rateScale: number;
   created: number;
 }
+
+/** 部屋を作った人の「返事の時間」→ 怒りの速さの倍率（要件#35） */
+const ANSWER_RATE: Record<string, number> = { slow: 0.6, normal: 1.0, fast: 1.4 };
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 見間違えやすい I O 0 1 は使わない
 const ROOM_TTL_MS = 15 * 60_000;
@@ -134,7 +138,7 @@ export class Lobby {
 
   // ---------------------------------------------------------------- フレンド対戦（部屋コード）
 
-  createRoom(conn: Conn, format: unknown): void {
+  createRoom(conn: Conn, format: unknown, answerTime?: unknown): void {
     const f = this.checkFormat(conn, format);
     if (!f) return;
     const b = this.busy(conn.player.id);
@@ -143,7 +147,7 @@ export class Lobby {
     do {
       code = Array.from(crypto.randomBytes(6), (x) => ROOM_ALPHABET[x % ROOM_ALPHABET.length]).join("");
     } while (this.rooms.has(code));
-    this.rooms.set(code, { code, host: conn, format: f, lang: conn.lang, created: Date.now() });
+    this.rooms.set(code, { code, host: conn, format: f, lang: conn.lang, rateScale: ANSWER_RATE[String(answerTime)] ?? 1, created: Date.now() });
     conn.send({ t: "room_created", code, format: f, lang: conn.lang });
   }
 
@@ -156,13 +160,14 @@ export class Lobby {
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
     this.rooms.delete(code);
     // フレンド対戦は部屋を作った人の言語で進める
-    this.startMatch("friend", room.format, room.lang, room.host, conn);
+    this.startMatch("friend", room.format, room.lang, room.host, conn, room.rateScale);
   }
 
   // ---------------------------------------------------------------- 試合
 
-  private startMatch(kind: "ranked" | "friend", format: Format, lang: Lang, a: Conn, b: Conn): void {
+  private startMatch(kind: "ranked" | "friend", format: Format, lang: Lang, a: Conn, b: Conn, rateScale = 1): void {
     const m = new Match(kind, format, lang, a, b);
+    m.rateScale = rateScale;
     this.matches.set(a.player.id, m);
     this.matches.set(b.player.id, m);
     m.onEnd = (ended) => {

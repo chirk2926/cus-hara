@@ -26,6 +26,12 @@ export interface Customer {
   solution_keywords?: string[];
   yield_keywords?: string[];
   lines?: Record<string, string | string[]>;
+  /** 店の行動ボタンの効果（good / neutral / bad / yield）。data/actions.json */
+  actions?: Record<string, string>;
+  /** クレーンゲームのお客さん（台の調整ができる） */
+  crane?: boolean;
+  /** ネタ枠（まれに出る） */
+  rare?: boolean;
 }
 
 export const STAGES = ["konbini", "arcade"] as const;
@@ -60,7 +66,14 @@ export function randomCustomer(stage: StageId, avoidTitles: string[] = [], lang:
   const list = allCustomers(stage, lang);
   const fresh = list.filter((c) => !avoidTitles.includes(c.title));
   const pool = fresh.length > 0 ? fresh : list;
-  return structuredClone(pool[Math.floor(Math.random() * pool.length)]);
+  // ネタ枠（rare）は出にくくする（重み 0.25）
+  const weights = pool.map((c) => (c.rare ? 0.25 : 1));
+  let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < pool.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return structuredClone(pool[i]);
+  }
+  return structuredClone(pool[pool.length - 1]);
 }
 
 /** クライアントに見せてよい項目だけにする（採点用のキーワードは渡さない） */
@@ -74,5 +87,7 @@ export function publicCustomer(c: Customer) {
     demand: c.demand,
     patience: c.patience,
     start_anger: c.start_anger,
+    crane: c.crane === true,
+    rare: c.rare === true,
   };
 }

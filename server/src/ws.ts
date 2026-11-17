@@ -77,7 +77,7 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           lobby.cancel(c);
           break;
         case "room_create":
-          lobby.createRoom(c, msg.format);
+          lobby.createRoom(c, msg.format, msg.answer_time);
           break;
         case "room_join":
           lobby.joinRoom(c, msg.code);
@@ -90,6 +90,11 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
         case "voice": {
           const f = lobby.matchOf(c.player.id);
           f?.match.onVoice(f.seat, msg.audio, msg.debug_text);
+          break;
+        }
+        case "act": {
+          const f = lobby.matchOf(c.player.id);
+          f?.match.onAction(f.seat, msg.id);
           break;
         }
         case "leave":

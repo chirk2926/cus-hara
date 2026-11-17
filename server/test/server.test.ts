@@ -157,6 +157,39 @@ test("ランクマッチは同じ言語どうしで組む", async () => {
   a.c.close(); b.c.close(); c.c.close();
 });
 
+test("1人用の行動ボタンと、対戦の行動・フレンド部屋の返事の時間", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "行動" });
+  const start = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, g.body.token);
+  const act = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, action: "dogeza", anger: 40, resolve: 0 }, g.body.token);
+  assert.equal(act.status, 200);
+  assert.equal(act.body.action, "dogeza");
+  const bad = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, action: "medal_return", anger: 40, resolve: 0 }, g.body.token);
+  assert.equal(bad.status, 400, "コンビニでメダルは返せない");
+
+  const a = await guest(srv.base, srv.wsUrl, "部屋主");
+  const b = await guest(srv.base, srv.wsUrl, "客");
+  a.c.send({ t: "room_create", format: "text", answer_time: "slow" });
+  const room = await a.c.wait((m) => m.t === "room_created");
+  b.c.send({ t: "room_join", code: room.code });
+  const rs = await a.c.wait((m) => m.t === "round_start");
+  assert.ok(rs.rate < 1.1 * 1.4 * 0.61 + 0.01, `ゆっくりなら怒りの速さが下がる: ${rs.rate}`);
+  // 店員役が行動ボタンを押す
+  const staffClient = rs.role === "staff" ? a.c : b.c;
+  const custClient = rs.role === "staff" ? b.c : a.c;
+  await custClient.wait((m) => m.t === "phase" && m.phase === "customer_turn" && m.turn === "you");
+  custClient.send({ t: "say", text: "責任者を出せ！" });
+  await staffClient.wait((m) => m.t === "phase" && m.phase === "staff_turn" && m.turn === "you");
+  const found = await a.c.wait((m) => m.t === "match_found");
+  const id = found.stage === "konbini" ? "discount" : "compensate";
+  staffClient.send({ t: "act", id: "medal_return_x" }); // 存在しない行動は無視される
+  staffClient.send({ t: "act", id });
+  const line = await custClient.wait((m) => m.t === "line" && m.via === "action");
+  assert.match(line.text, found.stage === "konbini" ? /割引/ : /補填/);
+  a.c.send({ t: "leave" });
+  await b.c.wait((m) => m.t === "match_end");
+  a.c.close(); b.c.close();
+});
+
 test("同じ人は二重に並べない／音声の形式チェック", async () => {
   const a = await guest(srv.base, srv.wsUrl, "二重");
   a.c.send({ t: "queue", format: "text" });

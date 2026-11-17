@@ -8,12 +8,14 @@ extends Node
 ## 対戦は常にサーバー経由。
 
 const PATH: String = "user://settings.cfg"
-## 配布版が最初に使うサーバー。運営するサーバーのURLが決まったらここを書き換える（docs/SERVER.md）。
+## 接続するゲームサーバー（1つだけ。要件#31）。運営するサーバーのURLが決まったらここを書き換える（docs/SERVER.md）。
+## 設定画面からは変えられない。テストのときだけ起動引数 `-- --server=URL` で変える。
 const DEFAULT_SERVER_URL: String = "http://127.0.0.1:8787"
+## 「自分のAPIキー」を選んだときだけ選べるモデル（要件#33。サーバーは Haiku だけを使う）
 const MODELS: Array = [
-	["claude-opus-5-5", "Claude Opus 5.5（高品質）"],
-	["claude-sonnet-5-5", "Claude Sonnet 5.5（バランス）"],
 	["claude-haiku-5-5", "Claude Haiku 5.5（高速・低コスト）"],
+	["claude-sonnet-5-5", "Claude Sonnet 5.5（バランス）"],
+	["claude-opus-5-5", "Claude Opus 5.5（高品質）"],
 ]
 const SOURCES: Array = [
 	["server", "ゲームサーバー（おすすめ）"],
@@ -29,8 +31,13 @@ var token: String = ""
 var player_name: String = ""
 var solo_source: String = "server"
 var api_key: String = ""
-var model: String = "claude-opus-5-5"
+var model: String = "claude-haiku-5-5"
 var volume: float = 0.8
+var bgm_volume: float = 0.5
+## 返事の時間（要件#35）。怒りの上がる速さにかける倍率: ゆっくり 0.6 / ふつう 1.0 / はやい 1.4
+const ANSWER_TIMES: Array = [["slow", "ゆっくり（タイピングが苦手な人向け）"], ["normal", "ふつう"], ["fast", "はやい"]]
+const ANSWER_RATE: Dictionary = {"slow": 0.6, "normal": 1.0, "fast": 1.4}
+var answer_time: String = "normal"
 var fullscreen: bool = false
 var push_to_talk_key: int = KEY_SPACE
 var high_scores: Dictionary = {}
@@ -92,7 +99,6 @@ func load_settings() -> void:
 	language = str(cfg.get_value("ui", "language", language))
 	if not ["ja", "en"].has(language):
 		language = ""
-	server_url = str(cfg.get_value("server", "url", server_url))
 	token = str(cfg.get_value("server", "token", ""))
 	player_name = str(cfg.get_value("server", "name", ""))
 	var lp: Variant = cfg.get_value("server", "profile", {})
@@ -104,6 +110,10 @@ func load_settings() -> void:
 	api_key = str(cfg.get_value("ai", "api_key", ""))
 	model = str(cfg.get_value("ai", "model", model))
 	volume = float(cfg.get_value("audio", "volume", 0.8))
+	bgm_volume = float(cfg.get_value("audio", "bgm_volume", 0.5))
+	answer_time = str(cfg.get_value("play", "answer_time", "normal"))
+	if not ANSWER_RATE.has(answer_time):
+		answer_time = "normal"
 	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
 	fullscreen = bool(cfg.get_value("video", "fullscreen", false))
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -114,7 +124,6 @@ func load_settings() -> void:
 func save_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
 	cfg.set_value("ui", "language", language)
-	cfg.set_value("server", "url", server_url)
 	cfg.set_value("server", "token", token)
 	cfg.set_value("server", "name", player_name)
 	cfg.set_value("server", "profile", last_profile)
@@ -122,6 +131,8 @@ func save_settings() -> void:
 	cfg.set_value("ai", "api_key", api_key)
 	cfg.set_value("ai", "model", model)
 	cfg.set_value("audio", "volume", volume)
+	cfg.set_value("audio", "bgm_volume", bgm_volume)
+	cfg.set_value("play", "answer_time", answer_time)
 	cfg.set_value("audio", "push_to_talk_key", push_to_talk_key)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("score", "high_scores", high_scores)
@@ -147,6 +158,11 @@ func get_api_key() -> String:
 
 func own_key_ready() -> bool:
 	return get_api_key() != ""
+
+
+## 怒りの上がる速さにかける倍率（1人用とフレンド対戦）
+func answer_rate() -> float:
+	return float(ANSWER_RATE.get(answer_time, 1.0))
 
 
 func get_high_score(stage_id: String) -> int:

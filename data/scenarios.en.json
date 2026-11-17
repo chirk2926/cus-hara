@@ -56,6 +56,10 @@
 					"resolved": "Hmph, with chopsticks I have no complaints. Be careful next time. ...See you tomorrow.",
 					"explode": "That's it! I'm posting twenty years of rage online! Brace yourselves!",
 					"yielded": "Ha ha ha! Should've done that from the start! What a lovely day!"
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "yield"
 				}
 			},
 			{
@@ -113,6 +117,10 @@
 					"resolved": "Fine, I'll pay. ...I'll tag the store later. Maybe. A little.",
 					"explode": "I can't even! I'm making you go viral! Search #WorstStoreEver!",
 					"yielded": "Thank youuu! See, talking works! The shoutout... if I feel like it!"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
 				}
 			},
 			{
@@ -170,6 +178,10 @@
 					"resolved": "Thank you. ...Phew, perfect temperature. That's all I wanted.",
 					"explode": "Unforgivable! I'm calling the consumer center! My tongue demands justice!",
 					"yielded": "Wow, what an understanding clerk! My tongue feels totally better!"
+				},
+				"actions": {
+					"discount": "bad",
+					"dogeza": "bad"
 				}
 			},
 			{
@@ -227,6 +239,10 @@
 					"resolved": "Very well. You pass. I'll accept a new card. ...You show promise, kid.",
 					"explode": "FAIL! Fail in every category! I'm sending HQ a thirty-page report!",
 					"yielded": "That's what you should've done to begin with. Sixty points. Barely."
+				},
+				"actions": {
+					"discount": "bad",
+					"dogeza": "bad"
 				}
 			},
 			{
@@ -284,6 +300,10 @@
 					"resolved": "Mm, delicious. Small daikon's fine if it's soaked through.",
 					"explode": "I wanna flip the whole oden pot! I won't! But remember this!",
 					"yielded": "Yes! All the daikon are mine! Tonight's a daikon party!"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "neutral"
 				}
 			},
 			{
@@ -342,6 +362,10 @@
 					"resolved": "Boop. ...I did it! Thanks, pal, I'll be back! (Next time for water.)",
 					"explode": "Forget this place! I'm goin' home! ...Wait, where's the door?",
 					"yielded": "Woohoo! Best clerk ever! We're drinkin' till sunrise!"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "neutral"
 				}
 			},
 			{
@@ -400,6 +424,10 @@
 					"resolved": "Thanks a bunch! You're a good one. Here, take a candy home!",
 					"explode": "Forget it! I'm never comin' back! ...See ya tomorrow, though!",
 					"yielded": "Thank youuu! Knew you'd get it! I'm bringin' all my friends! Discounts for everyone!"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "neutral"
 				}
 			},
 			{
@@ -458,7 +486,132 @@
 					"resolved": "Fine, fine. I'll buy one. ...And I'll actually pay next time.",
 					"explode": "That's it! Zero stars for this place! I'm never coming back!",
 					"yielded": "Heh, should've apologized from the start. Thanks for the magazines!"
+				},
+				"actions": {
+					"discount": "bad",
+					"dogeza": "yield"
 				}
+			},
+			{
+				"title": "The Crunch Critic",
+				"name": "Hibiki Norisawa",
+				"look": {
+					"body_color": "#6b8e3a",
+					"skin_color": "#f0c8a2",
+					"hair_color": "#2e2e2e",
+					"hair": "short",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.97
+				},
+				"memo": "Claims his rice ball's seaweed doesn't crunch loudly enough. The product is fine; he didn't open the wrapper in the numbered 1-2-3 order, so the seaweed got soggy. You can explain how to open it and exchange it for one new rice ball.",
+				"opening": "Excuse me! This rice ball has ZERO crunch! I live for that sound! This is an audio disaster!",
+				"demand": "A written crunch-volume guarantee, plus a clerk standing next to him yelling \"CRUNCH!\" every time he takes a bite",
+				"patience": 1.2,
+				"start_anger": 33,
+				"solution_keywords": [
+					"open it",
+					"numbered",
+					"in order",
+					"pull",
+					"exchange",
+					"new one"
+				],
+				"yield_keywords": [
+					"guarantee",
+					"say crunch",
+					"yell crunch",
+					"sound effect",
+					"every bite"
+				],
+				"lines": {
+					"calm": [
+						"Wait, you pull tab one, then two, then three? ...Huh. Audio is a deep, deep field.",
+						"You'll swap it for a new one? This time I'm capturing the perfect crunch.",
+						"So there's a film between the rice and the seaweed... That's genius engineering."
+					],
+					"angry": [
+						"That wasn't a crunch, that was a SQUISH! My ears don't lie!",
+						"I'm talking about VOLUME! I'm talking DECIBELS!",
+						"Hear that silence? That's this rice ball. That's its whole sound."
+					],
+					"neutral": [
+						"...Okay, but what about the crunch?",
+						"And how many decibels is that, roughly?"
+					],
+					"demand": [
+						"Write me a crunch guarantee! Eighty decibels minimum!",
+						"Fine, then YOU say 'CRUNCH!' every time I bite! Out loud!"
+					],
+					"resolved": "...Crunch. ...CRUNCH!! THAT'S IT! Thank you! I'm making this my alarm tone!",
+					"explode": "Forget it! I'm reviewing this store as one big SQUISH! With audio!",
+					"yielded": "Great, so you'll do the sound every bite! Ready? Three, two, one... Louder! From the diaphragm!"
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				},
+				"rare": true
+			},
+			{
+				"title": "Mr. Door Manners",
+				"name": "Heizo Akita",
+				"look": {
+					"body_color": "#8a6d3b",
+					"skin_color": "#eec29c",
+					"hair_color": "#9a9a9a",
+					"hair": "bald",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 1.03
+				},
+				"memo": "Claims the automatic door didn't greet him. The door works normally and has never talked (the entry chime did ring). Greet him properly yourself and explain that the chime is the store's welcome, and he'll be satisfied.",
+				"opening": "Hey! That automatic door just opened on me without a word! Not even a nod! Doors these days have no manners!",
+				"demand": "The automatic door must kneel and bow to the floor (or, failing that, a clerk does it for the door)",
+				"patience": 1.1,
+				"start_anger": 40,
+				"solution_keywords": [
+					"welcome",
+					"chime",
+					"ding",
+					"greet",
+					"good to see you",
+					"hello"
+				],
+				"yield_keywords": [
+					"kneel",
+					"bow to the floor",
+					"apologize for the door",
+					"redo the entrance"
+				],
+				"lines": {
+					"calm": [
+						"Oh? That ding-dong was its greeting? ...So the door was trying, in its own way.",
+						"Now THAT was a proper welcome. The door should take notes.",
+						"A chime, eh? Come to think of it, it has a lovely voice."
+					],
+					"angry": [
+						"Being a door is no excuse! Anyone can just OPEN!",
+						"Back in my day, doors opened with RESPECT!",
+						"Look! It just closed without a word again! Zero remorse!"
+					],
+					"neutral": [
+						"...And what are you doing about that door's upbringing?",
+						"Don't change the subject. We are discussing the DOOR."
+					],
+					"demand": [
+						"Make that door bow to the floor! If it can't, you do it for it!",
+						"Open it again and have everyone welcome me properly! Take two!"
+					],
+					"resolved": "Mm, a fine greeting. ...I'll thank the door on my way out. Good work, door.",
+					"explode": "That's it! I'll never pass through that door again! ...Where's the back entrance?",
+					"yielded": "Ha ha ha! You see that, door?! THAT is sincerity!"
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "yield"
+				},
+				"rare": true
 			}
 		],
 		"arcade": [
@@ -518,7 +671,12 @@
 					"resolved": "Yes, got it! ...Honestly, I didn't even want this thing that much.",
 					"explode": "Forget it! I'll smash this claw! ...I won't! But remember this!",
 					"yielded": "Yes! Prize get! So if I lose, I just complain to staff. Noted!"
-				}
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "bad"
+				},
+				"crane": true
 			},
 			{
 				"title": "The Medal Game Housewife",
@@ -575,6 +733,10 @@
 					"resolved": "Thank you. I feel better now that it's been checked. I'll come play again. Good day!",
 					"explode": "That's quite enough! My grandchildren will never set foot in here!",
 					"yielded": "How lovely! Thank you! I'll tell all my friends this place pays out!"
+				},
+				"actions": {
+					"medal_return": "yield",
+					"compensate": "good"
 				}
 			},
 			{
@@ -633,6 +795,10 @@
 					"resolved": "...The machine was fine? Well. My fingers just weren't warmed up. Next time I win.",
 					"explode": "That's it! I'm retiring! Never coming back! ...See you tomorrow!",
 					"yielded": "Heh, you get it. My undefeated record remains intact."
+				},
+				"actions": {
+					"medal_return": "yield",
+					"compensate": "bad"
 				}
 			},
 			{
@@ -689,6 +855,10 @@
 					"resolved": "Sooo cute! Omg, this is amazing! Thank youuu, bye!",
 					"explode": "This is the worst! I'm posting ALL of it! Give me my money back!",
 					"yielded": "Yay! Free is the best! I'm bringing all my friends!"
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "yield"
 				}
 			},
 			{
@@ -747,6 +917,10 @@
 					"resolved": "Hm, with the new setting it's easier to hit. A true professional. I'll be back.",
 					"explode": "Enough! I retire from this arcade forever! ...Until next week!",
 					"yielded": "Yes, I was number one all along! Fwahaha!"
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "bad"
 				}
 			},
 			{
@@ -805,6 +979,10 @@
 					"resolved": "Fine, we'll get in line. ...See, let's wait nicely. Good boy.",
 					"explode": "That's enough! I'll never forget that you crushed my child's dreams!",
 					"yielded": "Oh, thank you! I knew you'd understand!"
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "bad"
 				}
 			},
 			{
@@ -863,6 +1041,10 @@
 					"resolved": "Okay, we'll come tomorrow afternoon. ...Thank you. My son gets it too.",
 					"explode": "Forget it! We're going to a bigger arcade! You're finished!",
 					"yielded": "Ha ha, now we can walk right in! Let's go, son!"
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "yield"
 				}
 			},
 			{
@@ -919,7 +1101,12 @@
 					"resolved": "...The claw is normal. Hypothesis rejected. So I'm just bad... no, that's pending.",
 					"explode": "Cover-up! This is a cover-up! I'll post a hundred exposé videos!",
 					"yielded": "See?! You caved because you're guilty! I recorded everything!"
-				}
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "yield"
+				},
+				"crane": true
 			},
 			{
 				"title": "The Stuck-Prize Madame",
@@ -975,7 +1162,135 @@
 					"resolved": "Thank you. ...Its little stuck face was so cute. I'll treasure it.",
 					"explode": "That's quite enough! It's going in the neighborhood newsletter!",
 					"yielded": "My, so many! Next week I'll bring a bigger bag!"
-				}
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "yield"
+				},
+				"crane": true
+			},
+			{
+				"title": "Stared Down by a Plushie",
+				"name": "Gota Mesen",
+				"look": {
+					"body_color": "#3d7a5c",
+					"skin_color": "#f3d1b5",
+					"hair_color": "#6a3a2a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "mask",
+					"height": 0.92
+				},
+				"memo": "Claims a crane-game teddy bear is looking down on him. The eyes are just how it was made; no malice intended. No prizes or medals can be given, but you can turn the plushies in the case so they face away from him.",
+				"opening": "That teddy bear has been judging me this whole time! It just smirked at me, I swear! What's the store going to do about it?!",
+				"demand": "A handwritten apology letter from the bear, plus 500 medals for emotional distress",
+				"patience": 1.0,
+				"start_anger": 37,
+				"solution_keywords": [
+					"turn it",
+					"rearrange",
+					"face away",
+					"facing",
+					"position",
+					"how it was made"
+				],
+				"yield_keywords": [
+					"apology letter",
+					"500 medals",
+					"five hundred",
+					"emotional distress",
+					"give you medals"
+				],
+				"lines": {
+					"calm": [
+						"...You'll turn it around? Thanks. Eye contact makes me nervous.",
+						"Well, if it didn't mean anything by it... I guess the bear's got its own stuff going on.",
+						"From the side it looks kinda lonely. ...Maybe I'll give it a try."
+					],
+					"angry": [
+						"THERE! It did it again! You saw that, right?!",
+						"Those eyes are saying 'you'll never win me.' I know that look!",
+						"I did NOT spend a thousand yen to be looked down on by a stuffed animal!"
+					],
+					"neutral": [
+						"...Never mind that, is it still looking at me?",
+						"Uh-huh. And what about the bear's attitude?"
+					],
+					"demand": [
+						"Make the bear write an apology! Handwritten!",
+						"My feelings are hurt. Five hundred medals and we're even!"
+					],
+					"resolved": "...You've got a cute profile, buddy. Hang tight. I'm coming to get you.",
+					"explode": "Forget it! That bear and I will never understand each other! This isn't over, bear!",
+					"yielded": "Yes! ...See that, bear? I WIN! Now YOU get to look up at ME!"
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "yield"
+				},
+				"crane": true,
+				"rare": true
+			},
+			{
+				"title": "Victim of Too Much Fun",
+				"name": "Jota Chien",
+				"look": {
+					"body_color": "#2b3a67",
+					"skin_color": "#e9bd97",
+					"hair_color": "#1f1f1f",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 1.07
+				},
+				"memo": "Says the rhythm game was so fun he missed the last train, so it's the store's fault. The last train isn't the store's responsibility, but you can point out the clock, the nearby taxi stand, and the time of the first morning train.",
+				"opening": "Hey! That rhythm game is WAY too fun! I looked up and the last train was gone! That's totally on you guys, right?!",
+				"demand": "Full taxi fare home, plus modifying the rhythm game to be boring so he can never get hooked again",
+				"patience": 1.3,
+				"start_anger": 46,
+				"solution_keywords": [
+					"first train",
+					"taxi stand",
+					"clock",
+					"schedule",
+					"station",
+					"get home safe"
+				],
+				"yield_keywords": [
+					"taxi fare",
+					"pay for your",
+					"make it boring",
+					"modify the",
+					"cover the cost"
+				],
+				"lines": {
+					"calm": [
+						"First train's at 4:58... So an hour to kill. ...That's like six more songs.",
+						"The taxi stand's right around the corner? Okay. Thanks, that helps.",
+						"There was a clock right there? I was so locked in I never looked up once."
+					],
+					"angry": [
+						"Stealing my judgment with pure fun? That's a TRAP!",
+						"Why'd you let me clear the final boss song right before closing?!",
+						"What about my 9 a.m. class tomorrow?!"
+					],
+					"neutral": [
+						"...Okay, so how am I supposed to get home?",
+						"Does that have anything to do with my train?"
+					],
+					"demand": [
+						"Pay my taxi fare! You're responsible for the fun!",
+						"Make that machine boring so this never happens again!"
+					],
+					"resolved": "Okay, I'll catch the first train. ...But honestly, it WAS really fun. I'll be back. Earlier next time.",
+					"explode": "Forget it! I'm writing a review exposing how fun this place is! ...Wait, that's just an ad.",
+					"yielded": "Sweet, free taxi! ...Okay then, three more songs and I'm out!"
+				},
+				"actions": {
+					"medal_return": "neutral",
+					"compensate": "bad"
+				},
+				"rare": true
 			}
 		]
 	}

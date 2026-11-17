@@ -17,6 +17,7 @@ const VersusScript = preload("res://scripts/versus_game.gd")
 const LlmScript = preload("res://scripts/llm_client.gd")
 const ApiScript = preload("res://scripts/server_api.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
+const BgmScript = preload("res://scripts/bgm.gd")
 const UI = preload("res://scripts/ui_kit.gd")
 const Paper = preload("res://scripts/ui_paper.gd")
 const ScenariosScript = preload("res://scripts/scenarios.gd")
@@ -39,6 +40,7 @@ const RANKS: Array = [
 
 # ゲームモードから使う公開メンバー
 var sfx = null
+var bgm = null
 var llm = null
 var api = null
 var smoke: bool = false
@@ -82,6 +84,8 @@ func _ready() -> void:
 
 	sfx = SfxScript.new()
 	add_child(sfx)
+	bgm = BgmScript.new()
+	add_child(bgm)
 	llm = LlmScript.new()
 	add_child(llm)
 	api = ApiScript.new()
@@ -158,6 +162,7 @@ func _process(delta: float) -> void:
 		_customer.call("set_anger", clampf(display_anger / 100.0, 0.0, 1.0))
 	if _world != null:
 		_world.call("set_tension", clampf((display_anger - 60.0) / 40.0, 0.0, 1.0) if _in_game else 0.0)
+	bgm.set_tension(clampf((display_anger - 60.0) / 40.0, 0.0, 1.0) if _in_game else 0.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -183,6 +188,9 @@ func spawn_customer(look: Dictionary) -> void:
 	_customer = CustomerScript.new()
 	add_child(_customer)
 	_customer.call("setup", look)
+	_customer.tripped.connect(func() -> void:
+		sfx.play("explode", 1.6)
+		shake(0.12))
 	var from: Vector3 = _world.call("get_customer_entrance")
 	var to: Vector3 = _world.call("get_customer_stand")
 	_customer.position = from
@@ -227,6 +235,7 @@ func enter_versus(stage_id: String) -> void:
 	display_anger = 0.0
 	_free_customer()
 	set_stage(stage_id)
+	bgm.play("versus")
 
 
 func _on_talk_started(duration: float) -> void:
@@ -251,6 +260,7 @@ func _start_solo(stage_id: String) -> void:
 	mode = "solo"
 	display_anger = 0.0
 	set_stage(stage_id)
+	bgm.play(stage_id)
 	_solo.start(stage_id, tr(str(STAGES[stage_id]["name"])))
 
 
@@ -270,6 +280,7 @@ func _show_title() -> void:
 	display_anger = 0.0
 	_hud.visible = false
 	_title.visible = true
+	bgm.play("title")
 	if _current_stage == "":
 		set_stage("konbini")
 	_refresh_title()
@@ -366,7 +377,7 @@ func _build_title() -> void:
 	# 下の「切り取りタブ」（求人ポスターの電話番号の短冊）
 	var tabs: HBoxContainer = UI.hbox(0)
 	col.add_child(tabs)
-	for item in [["遊び方", "_show_howto"], ["設定", "_show_settings"], ["終了", "_quit_game"]]:
+	for item in [["遊び方", "_show_howto"], ["設定", "_show_settings"], ["ライセンス", "_show_licenses"], ["終了", "_quit_game"]]:
 		var t: Button = UI.link(tr(str(item[0])), UI.S_BODY)
 		t.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -385,6 +396,38 @@ func _build_title() -> void:
 
 func _quit_game() -> void:
 	get_tree().quit()
+
+
+## ライセンス表記（要件#39）。Godot（MIT）と、エンジンが含むライブラリ、フォント、サーバーの依存を表示する
+func _show_licenses() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(900, "left")
+	_sheet_title(col, tr("ライセンス"))
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 470)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var body: VBoxContainer = UI.vbox(8)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(body)
+	body.add_child(UI.text("Godot Engine", UI.S_LEAD, UI.INK, UI.F_BOLD))
+	body.add_child(UI.para(tr("このゲームは Godot Engine で作られています。") + " https://godotengine.org/license", UI.S_SMALL, UI.INK_SOFT))
+	body.add_child(UI.para(Engine.get_license_text(), UI.S_SMALL, UI.INK))
+	body.add_child(UI.text(tr("フォント"), UI.S_LEAD, UI.INK, UI.F_BOLD))
+	body.add_child(UI.para("Noto Sans JP (c) Google / Adobe, Yusei Magic (c) The Yusei Magic Project Authors, DotGothic16 (c) The DotGothic16 Project Authors, Dela Gothic One (c) The Dela Gothic Project Authors — SIL Open Font License 1.1", UI.S_SMALL, UI.INK))
+	body.add_child(UI.text(tr("エンジンに含まれるライブラリ"), UI.S_LEAD, UI.INK, UI.F_BOLD))
+	var parts: PackedStringArray = PackedStringArray()
+	for info in Engine.get_copyright_info():
+		var d: Dictionary = info
+		var names: PackedStringArray = PackedStringArray()
+		for p in (d.get("parts", []) as Array):
+			var pd: Dictionary = p
+			names.append("%s (%s)" % [", ".join(PackedStringArray(pd.get("copyright", []))), str(pd.get("license", ""))])
+		parts.append("%s: %s" % [str(d.get("name", "")), "; ".join(names)])
+	body.add_child(UI.para("\n".join(parts), UI.S_SMALL, UI.INK_SOFT))
+	var ok: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	ok.pressed.connect(_close_sheet)
+	col.add_child(ok)
 
 
 # ---------------------------------------------------------------- 紙の画面（設定・遊び方・休憩・結果・ロビー）
@@ -495,17 +538,23 @@ func _show_settings() -> void:
 	var src_opt: OptionButton = _option(_translated(GameSettings.SOURCES), GameSettings.solo_source)
 	_form_row(grid, tr("1人用のAI"), src_opt)
 
-	var url_edit: LineEdit = UI.field("http://", UI.S_BODY)
-	url_edit.text = GameSettings.server_url
-	_form_row(grid, tr("サーバーのURL"), url_edit)
-
+	# 自分のAPIキーとモデルは「自分のAPIキー」を選んだときだけ出す（要件#33）
 	var key_edit: LineEdit = UI.field("sk-ant-...", UI.S_BODY)
 	key_edit.secret = true
 	key_edit.text = GameSettings.api_key
-	_form_row(grid, tr("自分のAPIキー"), key_edit)
+	var key_label: Label = _form_row(grid, tr("自分のAPIキー"), key_edit)
 
-	var model_opt: OptionButton = _option(GameSettings.MODELS, GameSettings.model)
-	_form_row(grid, tr("自分のキーのモデル"), model_opt)
+	var model_opt: OptionButton = _option(_translated(GameSettings.MODELS), GameSettings.model)
+	var model_label: Label = _form_row(grid, tr("自分のキーのモデル"), model_opt)
+	var show_key: Callable = func(idx: int) -> void:
+		var own: bool = str(GameSettings.SOURCES[maxi(idx, 0)][0]) == "own_key"
+		for c in [key_edit, key_label, model_opt, model_label]:
+			(c as Control).visible = own
+	show_key.call(src_opt.selected)
+	src_opt.item_selected.connect(show_key)
+
+	var time_opt: OptionButton = _option(_translated(GameSettings.ANSWER_TIMES), GameSettings.answer_time)
+	_form_row(grid, tr("返事の時間"), time_opt)
 
 	var vol: HSlider = HSlider.new()
 	vol.min_value = 0.0
@@ -516,12 +565,23 @@ func _show_settings() -> void:
 	vol.value_changed.connect(func(v: float) -> void:
 		GameSettings.volume = v
 		sfx.play("click"))
-	_form_row(grid, tr("音量"), vol)
+	_form_row(grid, tr("効果音の音量"), vol)
+
+	var bgm_vol: HSlider = HSlider.new()
+	bgm_vol.min_value = 0.0
+	bgm_vol.max_value = 1.0
+	bgm_vol.step = 0.05
+	bgm_vol.value = GameSettings.bgm_volume
+	bgm_vol.custom_minimum_size = Vector2(240, 24)
+	bgm_vol.value_changed.connect(func(v: float) -> void:
+		GameSettings.bgm_volume = v
+		bgm.refresh_volume())
+	_form_row(grid, tr("BGMの音量"), bgm_vol)
 
 	var full: CheckBox = UI.check(tr("フルスクリーンにする"), GameSettings.fullscreen)
 	_form_row(grid, tr("画面"), full)
 
-	col.add_child(UI.para(tr("「ゲームサーバー」では、AIの判定はサーバーで行います（APIキーは不要）。「自分のAPIキー」はサーバーが使えないときの予備で、料金はキーの持ち主にかかります。キーはこのPCの設定ファイルにだけ保存されます。"), UI.S_SMALL, UI.INK_SOFT))
+	col.add_child(UI.para(tr("「ゲームサーバー」では、AIの判定はサーバーで行います（APIキーは不要）。「自分のAPIキー」はサーバーが使えないときの予備で、料金はキーの持ち主にかかります。キーはこのPCの設定ファイルにだけ保存されます。「返事の時間」は1人用と、自分が作ったフレンド対戦の部屋に効きます（ランクマッチは全員同じ）。"), UI.S_SMALL, UI.INK_SOFT))
 	var test_label: Label = UI.para("", UI.S_SMALL, UI.INK_SOFT)
 	col.add_child(test_label)
 
@@ -539,10 +599,11 @@ func _show_settings() -> void:
 		var lang_before: String = GameSettings.language
 		GameSettings.language = str(GameSettings.LANGS[maxi(lang_opt.selected, 0)][0])
 		GameSettings.solo_source = str(GameSettings.SOURCES[maxi(src_opt.selected, 0)][0])
-		GameSettings.server_url = url_edit.text.strip_edges()
+		GameSettings.answer_time = str(GameSettings.ANSWER_TIMES[maxi(time_opt.selected, 0)][0])
 		GameSettings.api_key = key_edit.text.strip_edges()
 		GameSettings.model = str(GameSettings.MODELS[maxi(model_opt.selected, 0)][0])
 		GameSettings.volume = vol.value
+		GameSettings.bgm_volume = bgm_vol.value
 		GameSettings.fullscreen = full.button_pressed
 		GameSettings.save_settings()
 		GameSettings.apply_window()
@@ -599,11 +660,12 @@ func _option(items: Array, current: String) -> OptionButton:
 	return o
 
 
-func _form_row(grid: GridContainer, label: String, control: Control) -> void:
+func _form_row(grid: GridContainer, label: String, control: Control) -> Label:
 	var l: Label = UI.text(label, UI.S_BODY, UI.INK_SOFT)
 	grid.add_child(l)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(control)
+	return l
 
 
 ## 言語を変えたとき、文言を作り直す

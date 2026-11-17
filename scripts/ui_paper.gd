@@ -183,3 +183,27 @@ class Receipt extends PanelContainer:
 			var w: float = minf(step, size.x - x)
 			draw_colored_polygon(PackedVector2Array([Vector2(x, y - 1), Vector2(x + w, y - 1), Vector2(x + w * 0.5, y + 8)]), COLOR)
 			x += step
+
+
+## ドットの並んだ小さなメーター（店員のメンタルなど）
+class DotBar extends Control:
+	var value: float = 100.0:
+		set(v):
+			value = clampf(v, 0.0, 100.0)
+			queue_redraw()
+	var color: Color = UI.LCD_ON:
+		set(v):
+			color = v
+			queue_redraw()
+	var segments: int = 10
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var gap: float = 3.0
+		var w: float = (size.x - gap * float(segments - 1)) / float(segments)
+		var lit: int = int(ceil(value / 100.0 * float(segments)))
+		for i in range(segments):
+			var r: Rect2 = Rect2(Vector2(float(i) * (w + gap), 0.0), Vector2(w, size.y))
+			draw_rect(r, color if i < lit else Color(1, 1, 1, 0.15))

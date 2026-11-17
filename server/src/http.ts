@@ -9,6 +9,7 @@ import { judgeStaff } from "./keyword_judge.ts";
 import { llmEnabled, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
+import { isAllowed, judgeAction, actionAsStaffLine } from "./actions.ts";
 import { type Lang, toLang, LANGS } from "./lang.ts";
 import type { Lobby } from "./lobby.ts";
 import { log } from "./log.ts";
@@ -166,10 +167,31 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     const body = await readJson(req);
     const s = typeof body.session_id === "string" ? soloSessions.get(body.session_id) : undefined;
     if (!s || s.playerId !== player.id) throw new HttpError(404, "no_session", "このお客さんとの会話は終わっています。次のお客さんへ進んでください");
-    const reply = typeof body.reply === "string" ? body.reply.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
-    if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
     const anger = clamp(num(body.anger, 50), 0, 100);
     const resolve = clamp(num(body.resolve, 0), 0, 100);
+    // 店の行動ボタン（要件#34, #37）: 点数は表どおり。AIがあればお客さんの反応のセリフだけAIに作らせる
+    if (typeof body.action === "string" && body.action !== "") {
+      const id = body.action;
+      if (!isAllowed(s.stage, s.customer, id)) throw new HttpError(400, "bad_action", "この場面では使えない行動です");
+      const fixed = judgeAction(s.customer, id, anger, resolve, s.lang);
+      s.history.push({ role: "staff", text: actionAsStaffLine(id, s.lang) });
+      let line = fixed.customer_reply;
+      let judgedBy: "ai" | "keyword" = "keyword";
+      if (s.source === "ai" && allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
+        try {
+          const ai = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false, s.lang);
+          line = ai.customer_reply;
+          judgedBy = "ai";
+        } catch {
+          // 台本のセリフのまま
+        }
+      }
+      s.history.push({ role: "customer", text: line });
+      s.updated = Date.now();
+      return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id };
+    }
+    const reply = typeof body.reply === "string" ? body.reply.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
+    if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
     s.history.push({ role: "staff", text: reply });
     let result = null;
     let judgedBy: "ai" | "keyword" = "keyword";
