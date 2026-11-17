@@ -50,14 +50,20 @@ scripts/
   ui_kit.gd           色・書体・紙・ボタン・入力欄の共通関数（UI_GUIDE の決まりをコードにしたもの）
   ui_paper.gd         自前で描く部品: フキダシ、引き継ぎメモ、レジ表示器、レシート
   sfx.gd              効果音をコードで合成
+  bgm.gd              BGM の再生とクロスフェード（曲は tools/make_bgm.py で作る）
+  shop_actions.gd     店の行動ボタン（data/actions.json）。サーバーを使わないときの判定
+  crane_minigame.gd   台の調整のミニゲーム（カメラ移動・景品のドラッグ・アームの強さ・お客さんが遊ぶ演出）
+  eos_matchmaker.gd   EOS で相手を探す入り口（骨組み。docs/EOS.md）
   stage_world.gd      ステージ切替とコンビニの3D（Opus下書き）
   arcade_stage.gd     ゲームセンターの3D（クレーンゲーム）
   customer_character.gd お客さんの3Dキャラと表情（Opus下書き）
 data/
   scenarios.json / scenarios.en.json   台本（サーバーと共通）
   judge_words.json                      キーワード判定の語（サーバーと共通）
+  actions.json                          店の行動ボタンの効果の表（サーバーと共通）
   i18n/en.json                          画面の文言の英訳（日本語の文 → 英語）
 tools/i18n.py          翻訳キーの抽出と訳漏れ検査
+tools/make_bgm.py      BGM を作曲・合成して assets/bgm/*.ogg を作る
 packaging/             Microsoft Store（MSIX）と Steam の配布設定
 server/                ゲームサーバー（SERVER.md）
 ```
@@ -133,3 +139,12 @@ CI（`.github/workflows/build.yml`）は、サーバーのテスト → サー�
 - 音声の文字起こしは外部サービスに頼る（SERVER.md 3節）。
 - ゲストのアカウントはトークンを失うと戻せない（設定ファイルを消すと別人になる）。
 - BGM は無い（効果音のみ）。
+
+## 10. 台の調整のミニゲームの作り（crane_minigame.gd）
+
+- `arcade_stage.gd` が台ごとに景品のノードを覚えている（`_cranes[i]["prizes"]`）。ミニゲームは6台目（`SERVICE_CRANE`）を使う。
+- `set_crane_manual(cr, true)` でその台の自動のアニメを止め、`set_claw(cr, x, z, drop, open)` でアームを直接動かす。
+- 景品の選択は、ぶつかり判定を使わず「視線（カメラからの光線）と景品の中心の距離」で選ぶ。ドラッグはケースの床（水平面）と視線の交点。
+- お客さんが遊ぶ演出は Tween の連続（横 → 奥 → 下りる → つかむ → 上がる → 運ぶ → 離す）。つかんだ景品は爪のノードの子にして一緒に動かし、落とすときに台の子へ戻す（`reparent`）。
+- 結果は solo_game.gd に返り、行動 `crane_won` / `crane_lost` として判定される（表は data/actions.json）。
+- カメラは main.gd の `camera_to(pos, target, dur)` / `camera_release(dur)`。

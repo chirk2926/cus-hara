@@ -172,8 +172,9 @@ python3 tools/i18n.py missing en
 3. サーバー: `server/src/lang.ts` の `LANGS`、`keyword_judge.ts` の `COMMENTS` と `OFFTOPIC`、`llm.ts` の `LANG_LINE` に足す。
 4. クライアント: `game_settings.gd` の `LANGS`、`offline_judge.gd` の `COMMENTS`、`llm_client.gd` の言語指定に足す。
 
-## 10. ライセンス
+## 10. ライセンス（詳しくは ENGINE.md）
 
 - フォント（Noto Sans JP、Yusei Magic、DotGothic16、Dela Gothic One）: すべて SIL Open Font License 1.1（`assets/fonts/licenses/`。配布物に同梱すること）。
-- Godot Engine: MIT。配布物にライセンス表記が必要（Godotの公式ドキュメント「Complying with licenses」参照）。**まだゲーム内に表記していない。**
+- Godot Engine: MIT。有料販売してよい（ロイヤリティなし）。ライセンス表記はゲーム内の「ライセンス」画面で表示している。
+- BGM: `tools/make_bgm.py` で作ったオリジナル。作り直すときは `python3 tools/make_bgm.py`（ffmpeg が必要）。
 - サーバーの依存（@anthropic-ai/sdk、ws、zod）: MIT。
