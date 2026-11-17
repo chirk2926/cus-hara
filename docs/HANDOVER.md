@@ -1,65 +1,67 @@
 # 引き継ぎ書（2026-11-17 時点）
 
 次に作業する人（依頼者本人、または Opus など）が、ここだけ読めば続きを始められるようにまとめる。
-読む順: この文書 → [REQUIREMENTS_LOG.md](REQUIREMENTS_LOG.md) → [SPEC.md](SPEC.md) → [DESIGN.md](DESIGN.md) → [MAINTENANCE.md](MAINTENANCE.md)。
+読む順: この文書 → [REQUIREMENTS_LOG.md](REQUIREMENTS_LOG.md) → [SPEC.md](SPEC.md) → [DESIGN.md](DESIGN.md) → [SERVER.md](SERVER.md) → [UI_GUIDE.md](UI_GUIDE.md) → [MAINTENANCE.md](MAINTENANCE.md)。
 
 ## 1. 確認できていること・できていないこと
 
-作業環境では Godot を実行できないため、確認はすべて GitHub Actions（`.github/workflows/build.yml`）で行った。
+作業環境では Godot を実行できないため、ゲームの確認はすべて GitHub Actions（`.github/workflows/build.yml`）で行っている。サーバーは手元でもテストできる。
 
 | 確認内容 | 方法 | 結果 |
 |---|---|---|
-| 全スクリプトがコンパイルできる | CI の Import / Smoke test | 通過 |
-| 1人用を両ステージで最後まで遊べる（納得・暴言でブチギレ・時間切れ・屈服の4通り） | CI の自動プレイ（`--smoke`、画面なし） | 通過 |
-| 対戦を2プロセスで最後まで遊べる（IP直結、2ラウンド、レーティング更新まで） | CI の自動対戦（`--smoke-host` / `--smoke-join`） | 通過 |
-| Windows 用 exe が出力される | CI の Export | 通過（約43MB） |
-| 画面の見た目 | CI が描画した `docs/screenshots/*.jpg` を Fable が目で確認 | 確認して修正（2節） |
+| サーバーの単体・結合テスト17件（ランク・フレンド・音声中継・切断と再接続・言語の分離・ゲーム外の依頼） | `cd server && npm test`（CIでも） | 通過 |
+| 英訳の漏れ | `python3 tools/i18n.py check`（CIでも） | 0件 |
+| 全スクリプトのコンパイル | CI の Import | 通過 |
+| 1人用を両ステージ最後まで（台本・日本語） | CI `--smoke --source=offline` | 通過 |
+| 1人用を両ステージ最後まで（サーバー経由・英語） | CI `--smoke --source=server --lang=en` | 通過 |
+| ランクマッチ（文字）を2つのゲームが最後まで戦う | CI `--vs-smoke=text` ×2 | 通過 |
+| ランクマッチ（音声・英語）を2つのゲームが最後まで戦う | CI `--vs-smoke=voice` ×2（文字起こしはモック。声のデータは合成音） | 通過 |
+| Windows 用 exe / MSIX が作られる | CI | Windows exe は通過。MSIX は CI の `msix` ジョブ |
+| 画面の見た目 | CI が描画した `docs/screenshots/*.jpg` | 新しいUIは確認中（2節） |
 
 **まだ誰も確認していないこと**（人の手でしかできない）:
-
-1. **Windows の実機で exe を起動して遊ぶこと。** 日本語入力（IME）での文字入力、効果音、フルスクリーン、操作の手触り、怒りゲージの速さが妥当かどうか。
-2. **AIモードの実通信。** APIキーを入れての接続テスト、お客さん生成、採点。リクエストの形は資料どおりに書いたが、一度も送っていない。
-3. **Steam の招待・マッチング。** GodotSteam を入れていないので動かない。入れた後の動作も未検証（MAINTENANCE 6節）。
-4. **MSIX のインストールと起動**、およびストア提出。
-5. **人間同士の対戦の面白さとバランス。** 自動テストは決着がつくことしか見ていない。
+1. **Windows の実機で遊ぶこと。** 日本語入力（IME）、マイク（押して話す）、効果音、フルスクリーン、操作の手触り、怒りの上がる速さ。
+2. **本物の Claude API での動作。** サーバーに `ANTHROPIC_API_KEY` を入れて、1人用と対戦を遊ぶ。CI はキーなし（キーワード判定）で動かしている。
+3. **本物の文字起こしサーバーとの接続**（whisper.cpp など。SERVER.md 3節）。
+4. **人どうしの対戦の面白さとバランス**（秒数・点数）。
+5. **MSIX のインストールと起動**、Steam へのアップロード。
+6. **インターネット上にサーバーを置いての運用**（HTTPS、負荷）。
 
 ## 2. 何がどこまでできているか
 
-| 部分 | 作成者 | 状態 |
-|---|---|---|
-| 1人用の進行（`solo_game.gd`） | Fable | 自動プレイ通過 |
-| 画面（`main.gd`、`hud.gd`、`ui_kit.gd`） | Fable | スクリーンショットで確認。HUDの幅と吹き出しの位置を修正済み |
-| Claude API 連携（`llm_client.gd`） | Fable | **実通信は未確認** |
-| キーワード採点（`offline_judge.gd`） | Fable | 自動プレイ通過 |
-| ゲームセンター3D（`arcade_stage.gd`、クレーンゲーム15台） | Fable | スクリーンショットで確認・調整済み |
-| 台本（`scenarios.gd`、コンビニ8人・ゲームセンター9人） | Sonnet 下書き → Fable が全行レビューして修正 | 採点キーワードを整理、状況メモの矛盾を修正、クレーンゲームの客を2人追加 |
-| コンビニ3D・ステージ切替（`stage_world.gd`） | Opus 下書き | スクリーンショットで見た目を確認。**コードの行単位レビューは未実施** |
-| お客さん3Dキャラ（`customer_character.gd`） | Opus 下書き | 同上 |
-| 対戦モード（`versus_game.gd`、`net_session.gd`）とレーティング | Fable | IP直結は自動対戦通過。**Steam接続は未検証** |
-| Microsoft Store 用 MSIX（`packaging/msix/`、CIの `msix` ジョブ） | Fable | CIで作成。**インストール確認は未実施**。本番のIDは未設定 |
-| Steam 用アップロード定義（`packaging/steam/`） | Fable | ひな形のみ。アプリID未設定、GodotSteam 未導入 |
-| 仕様書・設計書・保守資料 | Fable | 実装に合わせて更新済み |
+| 部分 | 状態 |
+|---|---|
+| ゲームサーバー（`server/`）: アカウント、1人用API、マッチング、部屋、対戦の進行、音声の中継と文字起こし、レーティング、ランキング | 実装・テスト済み |
+| 1人用（既定はサーバー経由。予備に自分のキー・台本） | 実装・自動プレイ済み |
+| 対戦（ランクマッチ／フレンド対戦 × 文字／音声） | 実装・自動対戦済み（人どうしは未検証） |
+| UI の作り直し（UI_GUIDE.md「お店の備品」） | 実装済み。スクリーンショットで仕上げ中 |
+| 多言語（日本語・英語） | 実装済み。英語の台本17人・判定語・画面の文言209件 |
+| ゲーム外の依頼への対策 | 実装・テスト済み（サーバー、自分のキー、キーワード判定の3か所） |
+| 3D（コンビニ・ゲームセンター・お客さん） | 実装済み（コンビニとお客さんは Opus 下書きで、コードの行単位レビューは未実施） |
+| Microsoft Store（MSIX） | CI で作成。本番ID未設定、インストール未確認 |
+| Steam | アップロード定義のひな形のみ |
 
 ## 3. 残作業（優先順）
 
-1. **実機確認**（1節の 1〜2）。見つかった問題は、数値なら MAINTENANCE 3節の表の場所を直す。
-2. **Steam 連携を動かす**: GodotSteam の導入 → 招待・マッチングの実機確認（MAINTENANCE 6節）。アプリIDの取得は依頼者の作業。
-3. **Microsoft Store 提出の準備**: 本番のIDをリポジトリ変数に登録 → MSIX のインストール確認 → 提出（MAINTENANCE 7節）。
-4. **`stage_world.gd` と `customer_character.gd` のコードレビュー**（要件#10）。動作と見た目は確認済みだが、行単位では読んでいない。
-5. **対戦の改善**: 客役のセリフのAI採点、同じ相手との再戦、Steamリーダーボード（レーティングの改ざん対策）。
-6. **仕上げ**: BGM、ゲーム内のライセンス表記（Godot / フォント）、APIキーの暗号化保存、遊び方画面への対戦ルールの追記。
+1. **実機確認**（1節の 1〜2）。問題が見つかったら MAINTENANCE.md 3節の表の場所を直す。
+2. **サーバーの公開**: HTTPS 付きでサーバーを置き、`scripts/game_settings.gd` の `DEFAULT_SERVER_URL` を書き換える（MAINTENANCE.md 8節）。**これをしないと配布版は 127.0.0.1 を見に行く。**
+3. **音声対戦の本番化**: 文字起こしサーバーを用意し、`STT_PROVIDER` / `STT_URL` を設定して実際に話して試す。
+4. **見た目の仕上げ**: `[shots]` 付きでプッシュし、`docs/screenshots/` を UI_GUIDE.md 5節のチェックで見直す。
+5. **配布**: Microsoft Store の本番ID登録と提出、Steam のアプリID取得とアップロード（MAINTENANCE.md 6・7節）。
+6. **改善**: 遊び方の画面を対戦用に詳しくする、BGM、ゲーム内のライセンス表記、自分のAPIキーの暗号化保存、`stage_world.gd` と `customer_character.gd` のコードレビュー、Steam のフレンド招待から部屋コードを渡す機能。
 
 ## 4. 依頼者に確認が必要なこと
 
 - 要件#11 の解釈（景品交換カウンターも、景品交換を題材にしたクレームも無くす）で合っているか。
-- 対戦のレーティングはPC内保存でよいか（改ざん可能）。厳密な順位が必要なら Steam リーダーボードが要る。
-- AIの既定モデル。現在は `claude-opus-5-5`。反応速度と料金を優先するなら Haiku 5.5 が向くが、既定は変えていない。
-- ゲーム名「カスハラ防衛線」、店名「ハッピーマート」「ゲームパラダイス」、ランク名は仮の案。
-- CI がスクリーンショットをこのブランチに自動コミットする設定（`[shots]` を含むプッシュのときだけ）を入れた。不要なら `build.yml` の「Render screenshots」ステップと `permissions: contents: write` を消す。
+- 要件#15（Steam のフレンド招待・マッチング）は、#19 の「マッチング形式」で自前サーバーのマッチングに置き換えた。Steam 版と Microsoft Store 版の人どうしでも対戦できる。Steam の招待機能も別に欲しいか。
+- 音声対戦の文字起こしをどこで行うか（自前の whisper サーバー／有料の文字起こしAPI）。費用と精度が変わる。
+- サーバーのAIモデル。既定は `claude-opus-5-5`。反応速度と料金を優先するなら `claude-haiku-5-5`（環境変数で変えられる）。
+- ゲーム名「カスハラ防衛線」（英語名 Customer Harassment Defense Line）、店名、ランク名は仮の案。
 
 ## 5. 作業の進め方の決まり
 
 - 依頼者の指示は、受けたらすぐ REQUIREMENTS_LOG.md に追記する（要件#13）。
 - ブランチは `claude/wizardly-keller-c3rj2v`。リポジトリにはこのブランチしか無い（マージ先が無いためプルリクエストは作っていない）。
-- 仕様を変えたら SPEC.md、作りを変えたら DESIGN.md を同じコミットで直す。
+- 仕様を変えたら SPEC.md、作りを変えたら DESIGN.md、サーバーを変えたら SERVER.md を同じコミットで直す。
+- 画面の文を足したら `python3 tools/i18n.py check` → `data/i18n/en.json` に英訳。
 - プッシュしたら Actions の結果を見る。見た目を変えたら `[shots]` 付きでプッシュし、`docs/screenshots/` の画像で確かめる。CI が画像をコミットし直すので、次の作業の前に `git pull` すること。
