@@ -60,16 +60,24 @@ class Bubble extends Container:
 		draw_line(a, tip, ink, 3.0, true)
 		draw_line(tip, b, ink, 3.0, true)
 
+	## 四角の周りをたどり、外向きのトゲを交互に出した多角形
 	func _burst(r: Rect2) -> PackedVector2Array:
 		var pts: PackedVector2Array = PackedVector2Array()
-		var c: Vector2 = r.get_center()
-		var rx: float = r.size.x * 0.5
-		var ry: float = r.size.y * 0.5
-		var n: int = 28
-		for i in range(n * 2):
-			var ang: float = TAU * float(i) / float(n * 2)
-			var k: float = 1.06 if i % 2 == 0 else 0.9
-			pts.append(c + Vector2(cos(ang) * rx * k, sin(ang) * ry * k))
+		var spike: float = 12.0
+		var step: float = 26.0
+		var corners: Array = [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
+		var normals: Array = [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]
+		for side in range(4):
+			var a: Vector2 = corners[side]
+			var b: Vector2 = corners[(side + 1) % 4]
+			var nrm: Vector2 = normals[side]
+			var length: float = a.distance_to(b)
+			var count: int = maxi(2, int(length / step))
+			for i in range(count):
+				var t0: float = float(i) / float(count)
+				var tm: float = (float(i) + 0.5) / float(count)
+				pts.append(a.lerp(b, t0))
+				pts.append(a.lerp(b, tm) + nrm * spike)
 		return pts
 
 

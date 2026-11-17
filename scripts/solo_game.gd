@@ -184,7 +184,7 @@ func _play_customer(my_run: int) -> void:
 	await main.spawn_customer(look)
 	if my_run != _run:
 		return
-	var speaker: String = "%s（%s）" % [str(_cust.get("title", tr("お客さん"))), str(_cust.get("name", ""))]
+	var speaker: String = tr("%s（%s）") % [str(_cust.get("title", tr("お客さん"))), str(_cust.get("name", ""))]
 	hud.set_memo(str(_cust.get("title", "")), str(_cust.get("memo", "")), str(_cust.get("demand", "")))
 	var opening: String = str(_cust.get("opening", "……"))
 	_history.append({"role": "customer", "text": opening})

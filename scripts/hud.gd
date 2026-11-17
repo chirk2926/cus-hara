@@ -122,8 +122,10 @@ func _build() -> void:
 	_memo_title = UI.para("", UI.S_LEAD, UI.INK, UI.F_HAND)
 	mb.add_child(_memo_title)
 	_memo_body = UI.para("", UI.S_BODY, UI.INK, UI.F_HAND)
+	_memo_body.max_lines_visible = 6
 	mb.add_child(_memo_body)
 	_memo_demand = UI.para("", UI.S_BODY, UI.SHU, UI.F_HAND)
+	_memo_demand.max_lines_visible = 3
 	mb.add_child(_memo_demand)
 
 	var note: PanelContainer = UI.paper(UI.POP, 14, 3)
@@ -146,13 +148,6 @@ func _build() -> void:
 	var face_gap: Control = UI.spacer()
 	face_gap.size_flags_stretch_ratio = 1.2
 	center.add_child(face_gap)
-	_banner = UI.text("", UI.S_HUGE, UI.PAPER, UI.F_SIGN)
-	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_banner.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	_banner.add_theme_color_override("font_outline_color", UI.INK)
-	_banner.add_theme_constant_override("outline_size", 14)
-	_banner.modulate = Color(1, 1, 1, 0)
-	center.add_child(_banner)
 	_bubble = Paper.Bubble.new()
 	center.add_child(_bubble)
 	var bb: VBoxContainer = UI.vbox(2)
@@ -163,6 +158,23 @@ func _build() -> void:
 	_bubble_text.custom_minimum_size = Vector2(0, 60)
 	bb.add_child(_bubble_text)
 	_bubble.visible = false
+
+	# 判定の大きな文字: 画面の上の中央（名札とレジ表示器の間）。お客さんの顔には重ねない
+	_banner = UI.text("", UI.S_HUGE, UI.PAPER, UI.F_SIGN)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_banner.add_theme_color_override("font_outline_color", UI.INK)
+	_banner.add_theme_constant_override("outline_size", 14)
+	_banner.modulate = Color(1, 1, 1, 0)
+	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner.anchor_left = 0.27
+	_banner.anchor_right = 0.73
+	_banner.anchor_top = 0.0
+	_banner.anchor_bottom = 0.0
+	_banner.offset_top = 24
+	_banner.offset_bottom = 160
+	add_child(_banner)
 
 	# ---- 右: レジ表示器
 	var right: VBoxContainer = UI.vbox(12)

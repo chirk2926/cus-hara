@@ -341,7 +341,7 @@ func _build_title() -> void:
 	col.add_child(body)
 	var b: VBoxContainer = UI.vbox(4)
 	body.add_child(b)
-	b.add_child(UI.text(tr("カスハラ防衛線"), UI.S_HUGE, UI.INK, UI.F_SIGN))
+	b.add_child(UI.para(tr("カスハラ防衛線"), UI.S_HUGE, UI.INK, UI.F_SIGN))
 	b.add_child(UI.text(tr("時給：お客様の笑顔（たぶん）"), UI.S_BODY, UI.INK_SOFT, UI.F_HAND))
 	b.add_child(UI.gap(12))
 	b.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
@@ -591,8 +591,7 @@ func _translated(items: Array) -> Array:
 
 
 func _option(items: Array, current: String) -> OptionButton:
-	var o: OptionButton = OptionButton.new()
-	o.add_theme_font_size_override("font_size", UI.S_BODY)
+	var o: OptionButton = UI.option()
 	for i in range(items.size()):
 		o.add_item(str(items[i][1]), i)
 		if str(items[i][0]) == current:
@@ -979,7 +978,7 @@ func _run_shots() -> void:
 		await spawn_customer(cust["look"])
 		_hud.set_memo(str(cust["title"]), str(cust["memo"]), str(cust["demand"]))
 		_hud.set_gauges(38.0, 20.0, 42.0)
-		await customer_say("%s（%s）" % [str(cust["title"]), str(cust["name"])], str(cust["opening"]))
+		await customer_say(tr("%s（%s）") % [str(cust["title"]), str(cust["name"])], str(cust["opening"]))
 		_hud.set_input_enabled(true, tr("ここに返事を書く…"))
 		_hud.set_status(tr("キレられる前に返事を書こう（Enterで渡す）"))
 		await _wait(0.6)
@@ -988,7 +987,7 @@ func _run_shots() -> void:
 		_hud.set_gauges(92.0, 20.0, 6.0)
 		_hud.show_delta(18, 0)
 		_hud.show_banner(tr("ブチギレ！") + "  -300", Color("#ff8a6a"))
-		await customer_say("%s（%s）" % [str(cust["title"]), str(cust["name"])], str((cust["lines"] as Dictionary)["angry"][0]), true)
+		await customer_say(tr("%s（%s）") % [str(cust["title"]), str(cust["name"])], str((cust["lines"] as Dictionary)["angry"][0]), true)
 		customer_react("angry")
 		await _wait(0.8)
 		await _shot(dir, prefix + s + "_2_angry")
@@ -1030,6 +1029,7 @@ func _run_shots() -> void:
 	await _shot(dir, prefix + "08_lobby")
 	_close_sheet()
 	_in_game = true
+	_title.visible = false
 	_hud.visible = true
 	_on_versus_finished({"result": "win", "reason": "completed", "kind": "ranked", "you_points": 312, "opponent_points": 184,
 		"rating_before": 1068, "rating_after": 1084, "rating_delta": 16, "rank": "バイトリーダー"})

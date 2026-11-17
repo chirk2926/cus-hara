@@ -57,10 +57,10 @@ static func text(t: String, size: int, color: Color = INK, face: String = F_BODY
 	return l
 
 
-## 折り返す文字（日本語は単語の区切りが無いので任意の位置で折り返す）
+## 折り返す文字。英語は単語の途中で切らない（日本語は文字の間で自然に折り返される）
 static func para(t: String, size: int, color: Color = INK, face: String = F_BODY) -> Label:
 	var l: Label = text(t, size, color, face)
-	l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
 
@@ -212,6 +212,32 @@ static func field(placeholder: String, size: int = S_LEAD) -> LineEdit:
 	e.add_theme_stylebox_override("read_only", ro)
 	e.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return e
+
+
+## 選択欄（入力欄と同じく、紙の上の下線）
+static func option() -> OptionButton:
+	var o: OptionButton = OptionButton.new()
+	o.add_theme_font_size_override("font_size", S_BODY)
+	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		o.add_theme_color_override(k, INK)
+	var n: StyleBoxFlat = StyleBoxFlat.new()
+	n.bg_color = PAPER
+	n.border_width_bottom = 2
+	n.border_color = INK_SOFT
+	n.content_margin_left = 6
+	n.content_margin_right = 6
+	n.content_margin_top = 6
+	n.content_margin_bottom = 6
+	var h: StyleBoxFlat = n.duplicate()
+	h.bg_color = POP.lerp(PAPER, 0.6)
+	var f: StyleBoxFlat = n.duplicate()
+	f.border_color = SHU
+	f.border_width_bottom = 3
+	o.add_theme_stylebox_override("normal", n)
+	o.add_theme_stylebox_override("hover", h)
+	o.add_theme_stylebox_override("pressed", h)
+	o.add_theme_stylebox_override("focus", f)
+	return o
 
 
 static func check(label: String, on: bool) -> CheckBox:
