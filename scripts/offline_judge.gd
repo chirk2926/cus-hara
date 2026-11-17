@@ -9,7 +9,9 @@ const FIRM: Array = ["いたしかねます", "できかねます", "お受け�
 const POLITE: Array = ["ございます", "いたします", "でしょうか", "くださいませ", "恐れ入ります", "おります", "いただけます"]
 const RUDE: Array = ["うるさい", "うるせ", "黙れ", "だまれ", "帰れ", "バカ", "ばか", "馬鹿", "アホ", "あほ", "知らん", "知らねえ", "うざ", "クレーマー", "ふざけ", "めんどくさ", "はぁ？", "は？"]
 const EXCUSE: Array = ["でも", "だって", "仕方ない", "しょうがない", "ルールなので", "決まりなので", "私のせいじゃ", "私は悪く"]
-const NEGATION: Array = ["かねます", "できません", "出来ません", "お断り", "いたしません", "しません", "ません"]
+const NEGATION: Array = ["かねます", "できません", "出来ません", "お断り", "いたしません", "しません", "ません", "無理", "できない", "出来ない", "応じられ"]
+## 否定の判定から除く謝罪の言い回し（「ございません」の「ません」を否定と誤認しないため）
+const APOLOGY_FORMS: Array = ["申し訳ございません", "申し訳ありません", "すみません", "すいません"]
 
 const GENERIC_LINES: Dictionary = {
 	"calm": ["……まあ、話は聞いてやる。", "ふん。少しは分かってるじゃないか。", "それで？どうしてくれるんだ？"],
@@ -69,7 +71,10 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 	var sol_words: Array = customer.get("solution_keywords", [])
 	var yield_words: Array = customer.get("yield_keywords", [])
 	var solution: int = mini(_count(text, sol_words), 2)
-	var negated: bool = _count(text, NEGATION) > 0
+	var stripped: String = text
+	for form in APOLOGY_FORMS:
+		stripped = stripped.replace(str(form), "")
+	var negated: bool = _count(stripped, NEGATION) > 0
 
 	if _count(text, yield_words) > 0 and not negated:
 		yielded = true
