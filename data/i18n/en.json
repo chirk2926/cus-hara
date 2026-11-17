@@ -271,13 +271,13 @@
 	"自分の部屋には参加できません": "You can't join your own room.",
 	"解像度": "Resolution",
 	"自動（画面に合わせる）": "Auto (fit the screen)",
-	"「%s」の方向で話してみろ。": "Try steering toward \"%s\".",
-	"「%s」も効くかもしれない。": "\"%s\" might work too.",
+	"「%s」の方向で話してみろ。": "Try \"%s\".",
+	"「%s」も効くかもしれない。": "\"%s\" may help.",
 	"【要注意】": "[ALERT] ",
-	"メモの規定を確かめて、できることを具体的に伝えろ。": "Check the rules in the memo and tell them exactly what we can do.",
+	"メモの規定を確かめて、できることを具体的に伝えろ。": "Check the memo and offer what we can do.",
 	"店長: ": "Manager: ",
 	"店長が来た！": "The manager is here!",
-	"要求は飲むなよ。": "And don't give in to the demand.",
+	"要求は飲むなよ。": "Don't cave!",
 	"要注意人物だ。何を言い出すか分からないぞ。納得させれば点数 ×1.5！": "Heads up, this one's a wild card. No telling what they'll say. Win them over for ×1.5 points!",
 	"！要注意人物が来店！": "! WILD CUSTOMER ALERT !"
 }

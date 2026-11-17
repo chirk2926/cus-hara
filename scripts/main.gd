@@ -225,7 +225,7 @@ func dismiss_customer(mood: String) -> void:
 		_customer = null
 
 
-## 店長（要件#52）。紺のスーツ・めがね・七三。お客さんの横（左）まで来て、プレイヤーにアドバイスする
+## 店長（要件#52）。紺のスーツ・めがね・七三。お客さんの右うしろまで来て、プレイヤーにアドバイスする
 const MANAGER_LOOK: Dictionary = {"body_color": "#2e3550", "skin_color": "#efc7a0", "hair_color": "#3a3a3a",
 	"hair": "short", "build": "normal", "accessory": "glasses", "height": 1.05}
 var _manager = null
@@ -239,7 +239,8 @@ func manager_enter() -> void:
 	_manager.call("setup", MANAGER_LOOK)
 	var from: Vector3 = _world.call("get_customer_entrance")
 	var stand: Vector3 = _world.call("get_customer_stand")
-	var to: Vector3 = stand + Vector3(-1.25, 0.0, 0.2)
+	# お客さんのすぐ右うしろ（左はメモの紙で隠れるため。フキダシより上に頭が見える）
+	var to: Vector3 = stand + Vector3(0.8, 0.0, -0.2)
 	_manager.position = from
 	_manager.call("enter", from, to)
 	await _manager.arrived
