@@ -24,12 +24,12 @@ scripts/
   solo_game.gd           1人用モードのルールと進行
   llm_client.gd          Claude API 呼び出し（お客さん生成・採点・接続テスト）
   offline_judge.gd       キーワード採点（台本モードとAI失敗時）
-  scenarios.gd           台本のお客さんデータ（コンビニ8人・ゲームセンター8人）
+  scenarios.gd           台本のお客さんデータ（コンビニ8人・ゲームセンター7人）
   game_settings.gd       設定とハイスコアの保存（オートロード名 GameSettings）
   sfx.gd                 効果音をコードで合成して再生
   ui_kit.gd              UI部品（色、パネル、ボタン、ゲージ）の共通関数
   arcade_stage.gd        ゲームセンターの3D（クレーンゲーム）
-  stage_world.gd         ステージ切替とコンビニの3D        ← サブエージェント作成中（HANDOVER参照）
+  stage_world.gd         ステージ切替とコンビニの3D        ← Opus下書き・未レビュー（HANDOVER参照）
   customer_character.gd  お客さんの3Dキャラと表情アニメ    ← 同上
 assets/fonts/            Noto Sans JP（Medium / ExtraBold）と OFL.txt
 .github/workflows/build.yml   インポート→自動プレイ→Windows出力
