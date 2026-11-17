@@ -51,7 +51,7 @@ var _blip_timer: float = 0.0
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build()
 	set_quick_phrases(DEFAULT_PHRASES)
@@ -60,7 +60,7 @@ func _ready() -> void:
 
 func _build() -> void:
 	var margin: MarginContainer = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(side, 14)
@@ -132,17 +132,6 @@ func _build() -> void:
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.add_theme_constant_override("separation", 8)
 	mid.add_child(center)
-	_bubble = UI.panel(UI.C_PANEL_LIGHT, 18, 16, Color(0.15, 0.15, 0.2), 3)
-	center.add_child(_bubble)
-	var bubble_box: VBoxContainer = VBoxContainer.new()
-	bubble_box.add_theme_constant_override("separation", 2)
-	_bubble.add_child(bubble_box)
-	_bubble_name = UI.label("", 16, UI.C_RED, true)
-	bubble_box.add_child(_bubble_name)
-	_bubble_text = UI.wrap_label("", 24, UI.C_TEXT_DARK, true)
-	_bubble_text.custom_minimum_size = Vector2(0, 72)
-	bubble_box.add_child(_bubble_text)
-	_bubble.visible = false
 	center.add_child(UI.spacer())
 	_banner = UI.label("", 44, Color.WHITE, true)
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -150,11 +139,18 @@ func _build() -> void:
 	_banner.add_theme_constant_override("outline_size", 12)
 	_banner.modulate = Color(1, 1, 1, 0)
 	center.add_child(_banner)
-	_echo = UI.panel(Color(0.16, 0.36, 0.72, 0.92), 14, 10)
-	center.add_child(_echo)
-	_echo_text = UI.wrap_label("", 18, Color.WHITE)
-	_echo.add_child(_echo_text)
-	_echo.visible = false
+	# 吹き出しはお客さんの顔の下（胴体のあたり）に出す。顔と店内を隠さないため。
+	_bubble = UI.panel(UI.C_PANEL_LIGHT, 18, 16, Color(0.15, 0.15, 0.2), 3)
+	center.add_child(_bubble)
+	var bubble_box: VBoxContainer = VBoxContainer.new()
+	bubble_box.add_theme_constant_override("separation", 2)
+	_bubble.add_child(bubble_box)
+	_bubble_name = UI.label("", 16, UI.C_RED, true)
+	bubble_box.add_child(_bubble_name)
+	_bubble_text = UI.wrap_label("", 22, UI.C_TEXT_DARK, true)
+	_bubble_text.custom_minimum_size = Vector2(0, 66)
+	bubble_box.add_child(_bubble_text)
+	_bubble.visible = false
 
 	# 右: ゲージ
 	var right: VBoxContainer = VBoxContainer.new()
@@ -207,6 +203,14 @@ func _build() -> void:
 	var bottom_box: VBoxContainer = VBoxContainer.new()
 	bottom_box.add_theme_constant_override("separation", 8)
 	bottom.add_child(bottom_box)
+	# 自分（または相手の店員）の直前の返答を1行で表示する
+	_echo = UI.panel(Color(0.16, 0.36, 0.72, 0.92), 10, 6)
+	bottom_box.add_child(_echo)
+	_echo_text = UI.label("", 16, Color.WHITE)
+	_echo_text.clip_text = true
+	_echo_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_echo.add_child(_echo_text)
+	_echo.visible = false
 	_status = UI.label("", 16, UI.C_MUTED)
 	bottom_box.add_child(_status)
 	_quick_row = HFlowContainer.new()

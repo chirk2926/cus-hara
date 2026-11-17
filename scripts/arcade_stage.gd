@@ -223,7 +223,10 @@ func _build_room() -> void:
 	_box(self, Vector3(0.03, 0.05, 3.2), Vector3(4.98, 2.35, -5.35), _mat(Color(1.0, 0.82, 0.25), 3.0))
 
 	# 奥の壁の大看板
-	_text(self, "ゲームパラダイス", Vector3(0.0, 2.76, -6.96), 200, 0.003, Color(1.0, 0.45, 0.78), Color(0.35, 0.0, 0.25))
+	# 大看板はお客さんの頭に隠れないよう、中央を避けて左右に分ける
+	_text(self, "ゲームパラダイス", Vector3(-2.9, 2.8, -6.96), 170, 0.003, Color(1.0, 0.45, 0.78), Color(0.35, 0.0, 0.25))
+	_text(self, "クレーンゲーム", Vector3(2.0, 2.8, -6.96), 120, 0.003, Color(0.45, 0.9, 1.0), Color(0.0, 0.2, 0.35))
+	_poster("取れるまで\n応援します", Vector3(-4.97, 1.5, -6.2), 90.0, Color(0.75, 0.2, 0.6), Color(1.0, 1.0, 1.0))
 	var zone: Label3D = _text(self, "クレーンゲーム\nコーナー", Vector3(-4.96, 2.78, -3.2), 120, 0.0026, Color(0.45, 0.9, 1.0), Color(0.0, 0.2, 0.35))
 	zone.rotation_degrees = Vector3(0.0, 90.0, 0.0)
 
@@ -236,7 +239,6 @@ func _build_room() -> void:
 	# 天井から吊るしたPOP
 	_hanging_pop("新景品\n入荷！", Vector3(-2.3, 2.62, -1.9), Color(1.0, 0.82, 0.25), Color(0.75, 0.1, 0.2))
 	_hanging_pop("1PLAY\n100円", Vector3(2.2, 2.62, -2.4), Color(1.0, 1.0, 1.0), Color(0.15, 0.35, 0.9))
-	_hanging_pop("取れるまで\n応援します", Vector3(-0.2, 2.7, -4.4), Color(1.0, 1.0, 1.0), Color(0.75, 0.2, 0.6))
 
 	# 貼り紙
 	_poster("夜間の年少者の\n入場について", Vector3(4.97, 1.55, -1.4), -90.0, Color(0.95, 0.95, 0.9), Color(0.75, 0.1, 0.1))
@@ -326,7 +328,8 @@ func _crane(pos: Vector3, yaw: float, theme: int, title: String, big: float, det
 	var body: StandardMaterial3D = _mat(col, 0.0, 0.45)
 	var dark: StandardMaterial3D = _mat(Color(0.08, 0.08, 0.12), 0.0, 0.5)
 	var white: StandardMaterial3D = _mat(Color(0.95, 0.95, 0.97), 0.0, 0.4)
-	var chrome: StandardMaterial3D = _mat(Color(0.85, 0.87, 0.9), 0.0, 0.18, 0.9)
+	# 金属部品。映り込む物が少ない暗い店内でも銀色に見えるよう、金属度は控えめにする
+	var chrome: StandardMaterial3D = _mat(Color(0.88, 0.9, 0.94), 0.12, 0.3, 0.45)
 	var neon: StandardMaterial3D = _mat(accent, 2.6)
 	var blink: StandardMaterial3D = _new_mat(accent, 2.0)
 	_blink_mats.append({"mat": blink, "phase": _rng.randf_range(0.0, 6.28), "speed": _rng.randf_range(2.0, 5.0)})

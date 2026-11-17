@@ -6,7 +6,7 @@ const KONBINI: Array = [
 		"title": "説教好きの常連",
 		"name": "権田 剛",
 		"look": {
-			"body_color": "#8a5a3c",
+			"body_color": "#3f6b4f",
 			"skin_color": "#f1c9a5",
 			"hair_color": "#333333",
 			"hair": "short",
@@ -568,7 +568,7 @@ const ARCADE: Array = [
 		"title": "割り込み親子",
 		"name": "順番 待子",
 		"look": {
-			"body_color": "#8a6a3a",
+			"body_color": "#2f7f8f",
 			"skin_color": "#f2cdb0",
 			"hair_color": "#3a2a2a",
 			"hair": "perm",
@@ -611,7 +611,7 @@ const ARCADE: Array = [
 		"title": "深夜の親子連れ",
 		"name": "条例 遵",
 		"look": {
-			"body_color": "#6a4a2a",
+			"body_color": "#39445e",
 			"skin_color": "#e8b890",
 			"hair_color": "#222222",
 			"hair": "short",

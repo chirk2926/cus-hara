@@ -267,14 +267,14 @@ func _refresh_title() -> void:
 
 func _build_title() -> void:
 	_title = Control.new()
-	_title.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui.add_child(_title)
 	var shade: ColorRect = ColorRect.new()
 	shade.color = Color(0.02, 0.02, 0.06, 0.45)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_title.add_child(shade)
 	var margin: MarginContainer = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(side, 48)
 	_title.add_child(margin)
@@ -338,14 +338,14 @@ func _build_title() -> void:
 func _open_overlay(title_text: String, width: int = 640) -> VBoxContainer:
 	_close_overlay()
 	_overlay = Control.new()
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui.add_child(_overlay)
 	var shade: ColorRect = ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.62)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(shade)
 	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(center)
 	var card: PanelContainer = UI.panel(Color(0.08, 0.09, 0.15, 0.98), 20, 26, Color(1, 1, 1, 0.15), 2)
 	card.custom_minimum_size = Vector2(width, 0)
@@ -764,11 +764,22 @@ func _run_shots() -> void:
 		_cam_override_target = Vector3(-1.9, 1.35, -3.7)
 		await _wait(0.4)
 		await _shot(dir, s + "_5_back")
-		_cam_override_pos = Vector3(0.9, 1.5, -0.2)
-		_cam_override_target = Vector3(0.0, 1.35, -0.35)
-		display_anger = 90.0
-		await _wait(1.2)
-		await _shot(dir, s + "_6_face")
+		_cam_override_pos = Vector3(0.45, 1.5, 0.75)
+		_cam_override_target = Vector3(0.0, 1.45, -0.35)
+		display_anger = 0.0
+		await _wait(1.5)
+		await _shot(dir, s + "_6_face_calm")
+		display_anger = 70.0
+		await _wait(1.5)
+		await _shot(dir, s + "_7_face_angry")
+		display_anger = 100.0
+		customer_react("explode")
+		await _wait(0.5)
+		await _shot(dir, s + "_8_face_explode")
+		_cam_override_pos = Vector3(2.6, 1.6, -3.6)
+		_cam_override_target = Vector3(3.55, 1.5, -6.15)
+		await _wait(0.4)
+		await _shot(dir, s + "_9_right")
 		_cam_override = false
 		_free_customer()
 	display_anger = 0.0
