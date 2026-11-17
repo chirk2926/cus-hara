@@ -62,7 +62,7 @@ jobs:
           rm -f godot.zip templates.tpz
           echo "$RUNNER_TEMP/godot" >> "$GITHUB_PATH"
 
-      - name: Start the game server (no AI key: keyword judging, mock speech-to-text)
+      - name: "Start the game server (no AI key, keyword judging, mock speech-to-text)"
         run: |
           cd server && npm ci
           (LLM_MODE=offline STT_PROVIDER=mock TIME_SCALE=4 DB_PATH="$RUNNER_TEMP/ci.db" PORT=8787 \
