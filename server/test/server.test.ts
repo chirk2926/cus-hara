@@ -160,11 +160,12 @@ test("ランクマッチは同じ言語どうしで組む", async () => {
 test("1人用の行動ボタンと、対戦の行動・フレンド部屋の返事の時間", async () => {
   const g = await api(srv.base, "POST", "/api/v1/guest", { name: "行動" });
   const start = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, g.body.token);
+  // 先に使えない行動を試す（土下座でお客さんによっては会話が終わり、その後は 409 になるため）
+  const bad = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, action: "medal_return", anger: 40, resolve: 0 }, g.body.token);
+  assert.equal(bad.status, 400, "コンビニでメダルは返せない");
   const act = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, action: "dogeza", anger: 40, resolve: 0 }, g.body.token);
   assert.equal(act.status, 200);
   assert.equal(act.body.action, "dogeza");
-  const bad = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, action: "medal_return", anger: 40, resolve: 0 }, g.body.token);
-  assert.equal(bad.status, 400, "コンビニでメダルは返せない");
 
   const a = await guest(srv.base, srv.wsUrl, "部屋主");
   const b = await guest(srv.base, srv.wsUrl, "客");
