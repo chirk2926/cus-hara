@@ -5,6 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   GODOT_VERSION: 4.5
   GODOT_RELEASE: 4.5-stable
@@ -53,3 +56,24 @@ jobs:
         with:
           name: CusHara-windows
           path: build/windows/
+
+      # コミットメッセージに [shots] を含むときだけ、実際に描画した画面を docs/screenshots/ に保存してコミットする
+      - name: Render screenshots
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[shots]')
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libgl1-mesa-dri libvulkan1
+          rm -rf docs/screenshots
+          xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --resolution 1280x720 -- --shots 2>&1 | tee shots.log || true
+          if ! grep -q "SHOTS OK" shots.log; then
+            echo "Vulkan rendering failed; retrying with OpenGL"
+            xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --rendering-driver opengl3 --resolution 1280x720 -- --shots 2>&1 | tee shots.log || true
+          fi
+          grep -E "SCRIPT ERROR|ERROR|SHOT" shots.log | head -60 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/screenshots shots.log
+          git commit -m "スクリーンショットを更新 [skip ci]" || exit 0
+          git pull --rebase -q origin "${GITHUB_REF_NAME}"
+          git push -q origin "HEAD:${GITHUB_REF_NAME}"

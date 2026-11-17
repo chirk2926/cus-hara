@@ -11,6 +11,7 @@ const SoloScript = preload("res://scripts/solo_game.gd")
 const LlmScript = preload("res://scripts/llm_client.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
 const UI = preload("res://scripts/ui_kit.gd")
+const ScenariosScript = preload("res://scripts/scenarios.gd")
 
 const GAME_TITLE: String = "カスハラ防衛線"
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
@@ -56,6 +57,9 @@ var _current_stage: String = ""
 var _shake: float = 0.0
 var _time: float = 0.0
 var _in_game: bool = false
+var _cam_override: bool = false
+var _cam_override_pos: Vector3 = Vector3.ZERO
+var _cam_override_target: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -96,6 +100,8 @@ func _ready() -> void:
 
 	if smoke:
 		_run_smoke()
+	elif OS.get_cmdline_user_args().has("--shots"):
+		_run_shots()
 
 
 func _process(delta: float) -> void:
@@ -107,8 +113,12 @@ func _process(delta: float) -> void:
 	if _shake > 0.001:
 		pos += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), 0.0) * _shake
 		_shake = lerpf(_shake, 0.0, minf(1.0, delta * 5.0))
+	var target: Vector3 = CAMERA_TARGET
+	if _cam_override:
+		pos = _cam_override_pos
+		target = _cam_override_target
 	_camera.position = pos
-	_camera.look_at(CAMERA_TARGET, Vector3.UP)
+	_camera.look_at(target, Vector3.UP)
 
 	if _customer != null and is_instance_valid(_customer):
 		_customer.call("set_anger", clampf(display_anger / 100.0, 0.0, 1.0))
@@ -498,4 +508,94 @@ func _run_smoke() -> void:
 		var res: Array = await _solo.finished
 		print("SMOKE result: ", res[1], " total=", res[2])
 	print("SMOKE OK")
+	get_tree().quit(0)
+
+
+# ---------------------------------------------------------------- スクリーンショット撮影
+
+func _wait(sec: float) -> void:
+	await get_tree().create_timer(sec).timeout
+
+
+func _shot(dir: String, id: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img: Image = get_viewport().get_texture().get_image()
+	img.save_jpg(dir.path_join(id + ".jpg"), 0.88)
+	print("SHOT ", id)
+
+
+## 起動引数 `-- --shots` で、主な画面を docs/screenshots/ に保存して終了する（見た目の確認用）。
+func _run_shots() -> void:
+	var dir: String = ProjectSettings.globalize_path("res://docs/screenshots")
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_tree().create_timer(500.0).timeout.connect(func() -> void:
+		print("SHOTS TIMEOUT")
+		get_tree().quit(1))
+	await _wait(1.5)
+	await _shot(dir, "01_title")
+	for sid in STAGE_ORDER:
+		var s: String = str(sid)
+		var list: Array = ScenariosScript.customers(s)
+		var cust: Dictionary = list[0]
+		_title.visible = false
+		_hud.visible = true
+		_in_game = true
+		display_anger = 38.0
+		set_stage(s)
+		_hud.clear_round()
+		_hud.set_top(str(STAGES[s]["name"]), "お客さん 1 / 4 人目", "スコア 0")
+		await spawn_customer(cust["look"])
+		_hud.set_memo(str(cust["title"]), str(cust["memo"]), str(cust["demand"]))
+		_hud.set_gauges(38.0, 20.0, 42.0)
+		await customer_say("%s（%s）" % [str(cust["title"]), str(cust["name"])], str(cust["opening"]))
+		_hud.set_input_enabled(true, "ここに返事を入力…")
+		_hud.set_status("お客さんがキレる前に返事を入力しよう（Enterで送信）")
+		await _wait(0.6)
+		await _shot(dir, s + "_1_play")
+		display_anger = 96.0
+		_hud.set_gauges(96.0, 20.0, 3.0)
+		_hud.show_delta(18, 0)
+		customer_react("angry")
+		await _wait(1.5)
+		await _shot(dir, s + "_2_angry")
+		_hud.visible = false
+		display_anger = 20.0
+		await _wait(1.0)
+		await _shot(dir, s + "_3_scene")
+		_cam_override = true
+		_cam_override_pos = Vector3(3.9, 2.5, 1.6)
+		_cam_override_target = Vector3(-1.5, 0.9, -4.5)
+		await _wait(0.4)
+		await _shot(dir, s + "_4_wide")
+		_cam_override_pos = Vector3(-1.9, 1.5, -1.5)
+		_cam_override_target = Vector3(-1.9, 1.35, -3.7)
+		await _wait(0.4)
+		await _shot(dir, s + "_5_back")
+		_cam_override_pos = Vector3(0.9, 1.5, -0.2)
+		_cam_override_target = Vector3(0.0, 1.35, -0.35)
+		display_anger = 90.0
+		await _wait(1.2)
+		await _shot(dir, s + "_6_face")
+		_cam_override = false
+		_free_customer()
+	display_anger = 0.0
+	_hud.visible = true
+	_on_solo_finished("arcade", [
+		{"title": "クレーン三千円男", "outcome": "resolved", "points": 1520, "turns": 3},
+		{"title": "メダル沼の主婦", "outcome": "explode", "points": -300, "turns": 2},
+		{"title": "割り込み親子", "outcome": "resolved", "points": 1430, "turns": 4},
+		{"title": "音ゲー判定おじさん", "outcome": "yield", "points": -600, "turns": 1},
+	], 2050)
+	await _wait(0.6)
+	await _shot(dir, "08_result")
+	_close_overlay()
+	_show_title()
+	_show_settings()
+	await _wait(0.6)
+	await _shot(dir, "09_settings")
+	_close_overlay()
+	_show_howto()
+	await _wait(0.6)
+	await _shot(dir, "10_howto")
+	print("SHOTS OK")
 	get_tree().quit(0)
