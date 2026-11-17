@@ -1,0 +1,30 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="カスハラ防衛線"
+config/description="理不尽なお客さんがキレる前に、言葉で切り抜ける接客サバイバル"
+config/version="0.1.0"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.5", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameSettings="*res://scripts/game_settings.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom_font="res://assets/fonts/NotoSansJP_500Medium.ttf"
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
