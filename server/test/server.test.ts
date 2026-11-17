@@ -216,3 +216,63 @@ test("EOS で組んだ部屋（要件#32）: ランクの部屋は既定で作�
   a.c.send({ t: "cancel" });
   a.c.close();
 });
+
+test("チート対策（要件#47）: 同じ回線どうしは組まない／誰も発言せずに抜けたら勝者は上がらない／同じ相手との連戦", async () => {
+  const { config } = await import("../src/config.ts");
+  // 1. 同じIP（テストはすべて 127.0.0.1）どうしはランクマッチで組まれない
+  config.allowSameIpRanked = false;
+  const a = await guest(srv.base, srv.wsUrl, "同IP-A");
+  const b = await guest(srv.base, srv.wsUrl, "同IP-B");
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  await new Promise((r) => setTimeout(r, 400));
+  assert.ok(!a.c.inbox.some((m) => m.t === "match_found"), "同じ回線どうしは組まれない");
+  a.c.send({ t: "cancel" });
+  b.c.send({ t: "cancel" });
+  config.allowSameIpRanked = true;
+
+  // 2. 誰も発言しないうちに抜けた → 勝った側は上がらない、抜けた側は下がる
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  await b.c.wait((m) => m.t === "match_found");
+  b.c.send({ t: "leave" });
+  const ea = await a.c.wait((m) => m.t === "match_end");
+  const eb = await b.c.wait((m) => m.t === "match_end");
+  assert.equal(ea.rating_delta, 0);
+  assert.equal(ea.rating_note, "early_leave");
+  assert.ok(eb.rating_delta < 0);
+
+  // 3. 同じ相手と24時間で上限回数を超えたら動かない
+  const before = config.samePairLimit24h;
+  config.samePairLimit24h = 1;
+  a.c.inbox.length = 0;
+  b.c.inbox.length = 0;
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  await b.c.wait((m) => m.t === "match_found");
+  b.c.send({ t: "leave" });
+  const eb2 = await b.c.wait((m) => m.t === "match_end");
+  assert.equal(eb2.rating_delta, 0);
+  assert.equal(eb2.rating_note, "same_pair");
+  config.samePairLimit24h = before;
+  a.c.close(); b.c.close();
+});
+
+test("チート対策: 1人用は納得をサーバーの値で検証し、決着後は受け付けない", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "ソロ検証" });
+  const t = g.body.token;
+  const start = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, t);
+  const sid = start.body.session_id;
+  // 納得を 99 と偽っても、サーバーは自分の値（0）を使う
+  const r1 = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: sid, reply: "うるさい", anger: 0, resolve: 99 }, t);
+  assert.equal(r1.body.resolve, 0);
+  assert.ok(r1.body.anger >= start.body.customer.start_anger, "怒りは下げられない");
+  // 屈服させて決着させる
+  const lecturer = start.body.customer;
+  const r2 = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: sid, action: "dogeza", anger: 0, resolve: 0 }, t);
+  if (r2.body.yielded) {
+    const r3 = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: sid, reply: "申し訳ございません", anger: 0, resolve: 0 }, t);
+    assert.equal(r3.status, 409, "決着後は受け付けない");
+  }
+  assert.ok(lecturer.title);
+});

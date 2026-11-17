@@ -112,6 +112,8 @@ export class Lobby {
       for (const b of sorted) {
         // 同じ形式・同じ言語どうしだけを組む
         if (b === a || paired.has(b) || b.format !== a.format || b.lang !== a.lang || b.conn.player.id === a.conn.player.id) continue;
+        // チート対策: 同じ回線（IP）どうしは組まない（1人で2つのアカウントを使ったレーティング稼ぎを防ぐ）
+        if (!config.allowSameIpRanked && b.conn.ip === a.conn.ip) continue;
         const diff = Math.abs(a.conn.player.rating - b.conn.player.rating);
         if (diff <= this.window(a, now) && diff <= this.window(b, now) && diff < bestDiff) {
           best = b;

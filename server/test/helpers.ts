@@ -8,6 +8,7 @@ process.env.DB_PATH = ":memory:";
 process.env.TIME_SCALE = "25";
 process.env.QUIET = "1";
 process.env.GUESTS_PER_HOUR = "1000";
+process.env.ALLOW_SAME_IP_RANKED = "1";
 
 const { openDb } = await import("../src/db.ts");
 const { Lobby } = await import("../src/lobby.ts");

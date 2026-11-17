@@ -243,5 +243,7 @@
 	"行動の負担: -%d 点": "Cost of actions: -%d pts",
 	"台を調整する": "Tweak the machine",
 	"EOS はまだ設定されていません。ゲームサーバーのマッチングを使います": "EOS isn't set up yet. Using the game server's matchmaking.",
-	"EOS はまだ設定されていません。部屋コードを友達に伝えてください": "EOS isn't set up yet. Tell your friend the room code."
+	"EOS はまだ設定されていません。部屋コードを友達に伝えてください": "EOS isn't set up yet. Tell your friend the room code.",
+	"同じ相手と続けて対戦したため、レートは変わりません。": "You've played this opponent too often recently, so ratings don't change.",
+	"始まってすぐに決着したため、勝った側のレートは上がりません。": "The match ended right away, so the winner's rating doesn't go up."
 }

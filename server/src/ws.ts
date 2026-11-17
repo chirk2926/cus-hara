@@ -27,7 +27,9 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
   }, 20_000);
   heartbeat.unref();
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
+    const fwd = req.headers["x-forwarded-for"];
+    const ip = typeof fwd === "string" && process.env.TRUST_PROXY === "1" ? fwd.split(",")[0].trim() : req.socket.remoteAddress ?? "unknown";
     alive.set(ws, true);
     ws.on("pong", () => alive.set(ws, true));
     let conn: Conn | null = null;
@@ -58,7 +60,7 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           return;
         }
         clearTimeout(authTimer);
-        conn = { player, lang: toLang(msg.lang), send: sendRaw, close: (c, r) => ws.close(c, r) };
+        conn = { player, lang: toLang(msg.lang), ip, send: sendRaw, close: (c, r) => ws.close(c, r) };
         const resumed = lobby.resume(conn);
         sendRaw({ t: "hello", player: publicPlayer(player), resumed });
         log("ws auth", player.name, resumed ? "(resumed)" : "");

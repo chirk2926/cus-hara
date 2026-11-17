@@ -65,7 +65,7 @@ jobs:
       - name: "Start the game server (no AI key, keyword judging, mock speech-to-text)"
         run: |
           cd server && npm ci
-          (LLM_MODE=offline STT_PROVIDER=mock TIME_SCALE=4 DB_PATH="$RUNNER_TEMP/ci.db" PORT=8787 \
+          (LLM_MODE=offline STT_PROVIDER=mock ALLOW_SAME_IP_RANKED=1 TIME_SCALE=4 DB_PATH="$RUNNER_TEMP/ci.db" PORT=8787 \
             nohup npm start > "$RUNNER_TEMP/server.log" 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8787/healthz && break; sleep 1; done
           curl -sf http://127.0.0.1:8787/api/v1/info
@@ -136,6 +136,9 @@ jobs:
           for lang in ja en; do
             xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --resolution 1280x720 -- --shots --lang=$lang --profile=shots_$lang 2>&1 | tee shots_$lang.log || true
           done
+          # 画面の大きさ・縦横比が違う環境（要件#44, #45）
+          xvfb-run -a -s "-screen 0 1024x768x24" timeout 900 godot --resolution 1024x768 -- --shots --lang=en --shot-tag=4x3 --profile=shots_43 2>&1 | tee shots_43.log || true
+          xvfb-run -a -s "-screen 0 1920x1040x24" timeout 900 godot --resolution 1920x1040 -- --shots --lang=ja --shot-tag=wide --profile=shots_wide 2>&1 | tee shots_wide.log || true
           cat shots_*.log > docs/screenshots/render.log || true
           grep -E "SCRIPT ERROR|ERROR|SHOT" docs/screenshots/render.log | head -80 || true
           git config user.name "github-actions[bot]"

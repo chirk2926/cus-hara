@@ -8,7 +8,7 @@ import { llmEnabled, generateCustomer, judgeStaffTurn, judgeCustomerTurn, type H
 import { sttEnabled, transcribe } from "./stt.ts";
 import { MAX_BYTES, mulawToPcm16, isNearlySilent } from "./audio.ts";
 import { eloDelta, rankName } from "./rating.ts";
-import { type Player, playerById, recordMatch } from "./db.ts";
+import { type Player, playerById, recordMatch, recentPairCount } from "./db.ts";
 import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
@@ -69,6 +69,10 @@ export class Match {
 
   /** 怒りの上がる速さの倍率（フレンド対戦で部屋を作った人の「返事の時間」。ランクマッチは 1） */
   rateScale = 1;
+  /** 席ごとに、実際に発言・行動した回数（すぐ抜けた試合の判定に使う） */
+  private inputs: [number, number] = [0, 0];
+  /** レーティングが動かなかった理由（結果画面に出す） */
+  private ratingNote = "";
 
   constructor(kind: Kind, format: Format, lang: Lang, a: Conn, b: Conn) {
     this.kind = kind;
@@ -412,6 +416,7 @@ export class Match {
   onSay(seat: number, raw: unknown): void {
     const text = typeof raw === "string" ? raw.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
     if (!this.waiting || this.waiting.seat !== seat || text === "") return;
+    this.inputs[seat]++;
     this.resolveWaiting({ text, via: "text" });
   }
 
@@ -420,6 +425,7 @@ export class Match {
     if (!this.waiting || this.waiting.seat !== seat || this.waiting.phase !== "staff_turn" || !this.card) return;
     const id = typeof raw === "string" ? raw : "";
     if (id.startsWith("crane_") || !isAllowed(this.stage, this.card, id)) return;
+    this.inputs[seat]++;
     this.resolveWaiting({ text: actionLabel(id, this.lang), via: "action", action: id });
   }
 
@@ -439,6 +445,7 @@ export class Match {
     const role = this.roleOf(seat);
     this.send(1 - seat, { t: "voice", role, by: "opponent", audio: b64 });
     const debug = config.sttProvider === "mock" && typeof debugText === "string" ? debugText : undefined;
+    this.inputs[seat]++;
     this.resolveWaiting({ text: "", via: "voice", pcm: mulawToPcm16(new Uint8Array(bytes)), debugText: debug });
   }
 
@@ -493,6 +500,18 @@ export class Match {
         const score = winnerSeat === -1 ? 0.5 : winnerSeat === v ? 1 : 0;
         deltas[v] = eloDelta(this.seats[v].ratingBefore, this.seats[1 - v].ratingBefore, score);
       }
+      // チート対策（要件#47）
+      // 1. 同じ相手と24時間で何度も当たっている → レーティングを動かさない（なれあい・稼ぎ）
+      if (recentPairCount(this.seats[0].player.id, this.seats[1].player.id) >= config.samePairLimit24h) {
+        deltas[0] = 0;
+        deltas[1] = 0;
+        this.ratingNote = "same_pair";
+      }
+      // 2. 誰も発言しないうちに抜けた試合 → 勝った側は上がらない（抜けた側は下がる）
+      if ((reason === "left" || reason === "disconnected") && this.inputs[0] + this.inputs[1] === 0 && winnerSeat >= 0) {
+        deltas[winnerSeat] = 0;
+        if (this.ratingNote === "") this.ratingNote = "early_leave";
+      }
     }
     if (recordable) {
       try {
@@ -527,6 +546,7 @@ export class Match {
         rating_before: this.seats[v].ratingBefore,
         rating_after: after,
         rating_delta: deltas[v],
+        rating_note: this.ratingNote,
         rank: rankName(after),
         player: publicPlayer(fresh),
       });

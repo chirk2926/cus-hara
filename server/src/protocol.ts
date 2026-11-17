@@ -11,6 +11,8 @@ export type Role = "staff" | "customer";
 export interface Conn {
   player: Player;
   lang: Lang;
+  /** 接続元のIPアドレス（チート対策で、同じ回線どうしのランクマッチを避けるため） */
+  ip: string;
   send(msg: Record<string, unknown>): void;
   close(code?: number, reason?: string): void;
 }

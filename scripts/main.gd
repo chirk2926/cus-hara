@@ -384,6 +384,11 @@ func _build_title() -> void:
 	poster.position = Vector2(56, 28)
 	poster.custom_minimum_size = Vector2(500, 0)
 	poster.rotation_degrees = -1.2
+	# 画面に入りきらないときは縮める（英語でボタンが画面外に出て操作できなくなっていた。要件#45）
+	poster.resized.connect(_fit_to_screen.bind(poster, false))
+	get_viewport().size_changed.connect(func() -> void:
+		if is_instance_valid(poster):
+			_fit_to_screen(poster, false))
 	_title.add_child(poster)
 	var col: VBoxContainer = UI.vbox(0)
 	poster.add_child(col)
@@ -405,7 +410,8 @@ func _build_title() -> void:
 	col.add_child(body)
 	var b: VBoxContainer = UI.vbox(4)
 	body.add_child(b)
-	b.add_child(UI.para(tr("カスハラ防衛線"), UI.S_HUGE, UI.INK, UI.F_SIGN))
+	var game_title: String = tr("カスハラ防衛線")
+	b.add_child(UI.para(game_title, UI.S_HUGE if game_title.length() <= 12 else UI.S_HEAD, UI.INK, UI.F_SIGN))
 	b.add_child(UI.text(tr("時給：お客様の笑顔（たぶん）"), UI.S_BODY, UI.INK_SOFT, UI.F_HAND))
 	b.add_child(UI.gap(12))
 	b.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
@@ -507,6 +513,7 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false) ->
 	if align != "left":
 		row.add_child(UI.spacer())
 	var panel: PanelContainer = Paper.Receipt.new() if receipt else UI.paper(UI.PAPER, 28, 6)
+	panel.resized.connect(_fit_to_screen.bind(panel, true))
 	panel.custom_minimum_size = Vector2(width, 0)
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(panel)
@@ -516,6 +523,22 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false) ->
 	panel.add_child(col)
 	_solo.paused = true
 	return col
+
+
+## 部品が画面に入りきらないとき、全体を縮めて収める（要件#45）。centered: 真ん中を基準に縮める
+func _fit_to_screen(c: Control, centered: bool) -> void:
+	if not is_instance_valid(c) or not c.is_inside_tree():
+		return
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var need: Vector2 = c.size
+	if need.x <= 0.0 or need.y <= 0.0:
+		return
+	# 上の端は動かさずに縮める（下にはみ出した分が収まる）
+	var room_y: float = vp.y - 16.0 - maxf(c.global_position.y, 0.0)
+	var room_x: float = vp.x - 32.0
+	var k: float = clampf(minf(room_y / need.y, room_x / need.x), 0.5, 1.0)
+	c.pivot_offset = Vector2(need.x * 0.5, 0.0) if centered else Vector2.ZERO
+	c.scale = Vector2(k, k)
 
 
 func _close_sheet() -> void:
@@ -1004,6 +1027,11 @@ func _on_versus_finished(summary: Dictionary) -> void:
 		_receipt_line(col, tr("レート"), "%d → %d" % [int(summary.get("rating_before", 0)), int(summary.get("rating_after", 0))], UI.S_LEAD)
 		_receipt_line(col, "", "%+d" % int(summary.get("rating_delta", 0)), UI.S_LEAD, UI.SHU if int(summary.get("rating_delta", 0)) >= 0 else UI.INK)
 		_receipt_line(col, tr("ランク"), tr(str(summary.get("rank", ""))))
+		match str(summary.get("rating_note", "")):
+			"same_pair":
+				col.add_child(UI.para(tr("同じ相手と続けて対戦したため、レートは変わりません。"), UI.S_SMALL, UI.INK_SOFT))
+			"early_leave":
+				col.add_child(UI.para(tr("始まってすぐに決着したため、勝った側のレートは上がりません。"), UI.S_SMALL, UI.INK_SOFT))
 	else:
 		_receipt_line(col, tr("フレンド対戦"), tr("レート変動なし"))
 	_receipt_rule(col)
@@ -1076,7 +1104,9 @@ func _run_shots() -> void:
 	get_tree().create_timer(500.0).timeout.connect(func() -> void:
 		print("SHOTS TIMEOUT")
 		get_tree().quit(1))
-	var prefix: String = GameSettings.language + "_"
+	# --shot-tag=xxx で、画面サイズ違いの撮影を別の名前で保存する
+	var tag: String = _arg("--shot-tag=")
+	var prefix: String = GameSettings.language + ("_" + tag if tag != "" else "") + "_"
 	GameSettings.last_profile = {"name": "テスト店員" if GameSettings.language == "ja" else "Test Clerk", "rating": 1084, "rank": "バイトリーダー"}
 	_server_info = {"ai": true, "voice": true}
 	_refresh_title()
@@ -1084,7 +1114,13 @@ func _run_shots() -> void:
 	await _shot(dir, prefix + "01_title")
 	for sid in STAGE_ORDER:
 		var s: String = str(sid)
-		var cust: Dictionary = ScenariosScript.customers(s)[0]
+		# ゲームセンターは、メモが一番長いお客さん（重なりのバグの再現用。要件#44）
+		var list: Array = ScenariosScript.customers(s)
+		var cust: Dictionary = list[0]
+		if s == "arcade":
+			for c in list:
+				if str((c as Dictionary).get("memo", "")).length() + str((c as Dictionary).get("demand", "")).length() > str(cust.get("memo", "")).length() + str(cust.get("demand", "")).length():
+					cust = c
 		_title.visible = false
 		_hud.visible = true
 		_in_game = true

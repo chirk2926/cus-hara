@@ -37,9 +37,23 @@ interface SoloSession {
   history: HistoryEntry[];
   used: string[];
   updated: number;
+  /** サーバーが覚えている怒りと納得（チート対策: クライアントが送る値はこれで検証する） */
+  anger: number;
+  resolve: number;
+  /** 最後にサーバーが返事をした時刻（怒りは時間とともにしか上がらない） */
+  lastAt: number;
+  finished: boolean;
 }
 
 const soloSessions = new Map<string, SoloSession>();
+
+/** 判定のあとの怒り・納得をセッションに覚える。決着したら以後の入力は受け付けない */
+function settle(s: SoloSession, anger: number, r: { anger_delta: number; resolve_delta: number; yielded: boolean }): void {
+  s.anger = Math.min(100, Math.max(0, anger + r.anger_delta));
+  s.resolve = Math.min(100, Math.max(0, s.resolve + r.resolve_delta));
+  s.lastAt = Date.now();
+  if (r.yielded || s.anger >= 100 || s.resolve >= 100) s.finished = true;
+}
 setInterval(() => {
   const now = Date.now();
   for (const [id, s] of soloSessions) if (now - s.updated > 30 * 60_000) soloSessions.delete(id);
@@ -158,6 +172,10 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       history: [{ role: "customer", text: customer.opening }],
       used: [],
       updated: Date.now(),
+      anger: customer.start_anger,
+      resolve: 0,
+      lastAt: Date.now(),
+      finished: false,
     };
     soloSessions.set(session.id, session);
     return { session_id: session.id, source, notice, customer: publicCustomer(customer) };
@@ -167,8 +185,11 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     const body = await readJson(req);
     const s = typeof body.session_id === "string" ? soloSessions.get(body.session_id) : undefined;
     if (!s || s.playerId !== player.id) throw new HttpError(404, "no_session", "このお客さんとの会話は終わっています。次のお客さんへ進んでください");
-    const anger = clamp(num(body.anger, 50), 0, 100);
-    const resolve = clamp(num(body.resolve, 0), 0, 100);
+    if (s.finished) throw new HttpError(409, "finished", "このお客さんとの会話は終わっています");
+    // チート対策（要件#47）: 納得はサーバーの値だけを使う。怒りは、待っている間に上がる分だけ
+    // クライアントの値を受け入れる（サーバーが覚えている値より下げることはできない）
+    const resolve = s.resolve;
+    const anger = Math.max(s.anger, clamp(num(body.anger, s.anger), 0, 100));
     // 店の行動ボタン（要件#34, #37）: 点数は表どおり。AIがあればお客さんの反応のセリフだけAIに作らせる
     if (typeof body.action === "string" && body.action !== "") {
       const id = body.action;
@@ -188,7 +209,8 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       }
       s.history.push({ role: "customer", text: line });
       s.updated = Date.now();
-      return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id };
+      settle(s, anger, fixed);
+      return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id, anger: s.anger, resolve: s.resolve };
     }
     const reply = typeof body.reply === "string" ? body.reply.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
     if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
@@ -212,7 +234,8 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     s.used.push(reply);
     s.history.push({ role: "customer", text: result.customer_reply });
     s.updated = Date.now();
-    return { ...result, judged_by: judgedBy, notice };
+    settle(s, anger, result);
+    return { ...result, judged_by: judgedBy, notice, anger: s.anger, resolve: s.resolve };
   }
 
   throw new HttpError(404, "not_found", "そのAPIはありません");

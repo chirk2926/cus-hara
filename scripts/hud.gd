@@ -159,9 +159,7 @@ func _build() -> void:
 	# ---- 左: 名札・引き継ぎメモ・付箋（はみ出す分は切る。記入欄は押し下げない）
 	var left: VBoxContainer = UI.vbox(12)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	left.custom_minimum_size = Vector2(300, 0)
-	left.clip_contents = true
-	mid.add_child(left)
+	_column(mid, left, 300.0, false)
 
 	var tag_row: HBoxContainer = UI.hbox(0)
 	left.add_child(tag_row)
@@ -196,15 +194,22 @@ func _build() -> void:
 	menu.pressed.connect(func() -> void: pause_pressed.emit())
 	tag_row.add_child(menu)
 
+	# メモは残りの高さに収め、入りきらない分は切る（下の付箋は必ず見える。要件#44）
+	var memo_box: Control = Control.new()
+	memo_box.clip_contents = true
+	memo_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	memo_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(memo_box)
 	var memo = Paper.Memo.new()
-	left.add_child(memo)
+	memo.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	memo_box.add_child(memo)
 	var mb: VBoxContainer = UI.vbox(4)
 	memo.add_child(mb)
 	mb.add_child(UI.text(tr("引き継ぎメモ"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
 	_memo_title = UI.para("", UI.S_LEAD, UI.INK, UI.F_HAND)
 	mb.add_child(_memo_title)
 	_memo_body = UI.para("", UI.S_BODY, UI.INK, UI.F_HAND)
-	_memo_body.max_lines_visible = 6
+
 	mb.add_child(_memo_body)
 	_memo_demand = UI.para("", UI.S_SMALL, UI.SHU, UI.F_HAND)
 	_memo_demand.max_lines_visible = 3
@@ -225,8 +230,9 @@ func _build() -> void:
 	# ---- 中央: 顔は空ける → フキダシ（文字の量に合わせて高さが変わる。要件#30）
 	var center: VBoxContainer = UI.vbox(8)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mid.add_child(center)
+	# 文が長いときは、記入欄に重ねずに上へ伸ばす（要件#44）
+	center.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_column(mid, center, 0.0, true)
 	center.add_child(UI.spacer())
 	_bubble = Paper.Bubble.new()
 	center.add_child(_bubble)
@@ -269,8 +275,7 @@ func _build() -> void:
 	# ---- 右: レジ表示器
 	var right: VBoxContainer = UI.vbox(12)
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	right.custom_minimum_size = Vector2(300, 0)
-	mid.add_child(right)
+	_column(mid, right, 300.0, false)
 	_lcd = Paper.Lcd.new()
 	_lcd.caption = tr("お客様表示")
 	right.add_child(_lcd)
@@ -280,6 +285,20 @@ func _build() -> void:
 	_delta.add_theme_constant_override("outline_size", 10)
 	_delta.modulate = Color(1, 1, 1, 0)
 	right.add_child(_delta)
+
+
+## 列を「中身の大きさを外に伝えない入れ物」に入れる。中身が入りきらなくても、上の場所全体は広がらない
+## （以前は、長いメモやセリフで上の場所が伸びて記入欄に重なっていた。要件#44）
+func _column(row: HBoxContainer, content: Control, width: float, expand: bool) -> void:
+	var holder: Control = Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.clip_contents = not expand
+	holder.custom_minimum_size = Vector2(width, 0.0)
+	if expand:
+		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(holder)
+	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(content)
 
 
 ## 記入欄の高さが変わったら、上の場所をその分だけ縮める
@@ -335,6 +354,9 @@ func set_top(shop_text: String, progress_text: String, score_text: String) -> vo
 func set_memo(title: String, body: String, demand: String) -> void:
 	_memo_title.text = title
 	_memo_body.text = body
+	# 長いメモは文字を小さくして収める
+	var long_memo: bool = body.length() + demand.length() > (110 if GameSettings.language == "ja" else 230)
+	_memo_body.add_theme_font_size_override("font_size", UI.S_SMALL if long_memo else UI.S_BODY)
 	_memo_demand.text = (tr("※ 要求: ") + demand) if demand != "" else ""
 
 

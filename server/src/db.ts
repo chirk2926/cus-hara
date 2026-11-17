@@ -128,6 +128,15 @@ export function recordMatch(m: MatchRecord): void {
   }
 }
 
+/** 24時間以内に、この2人がランクマッチで当たった回数（チート対策） */
+export function recentPairCount(a: string, b: string): number {
+  const since = Date.now() - 24 * 3_600_000;
+  const row = openDb()
+    .prepare("SELECT COUNT(*) AS n FROM matches WHERE kind = 'ranked' AND created_at >= ? AND ((p1 = ? AND p2 = ?) OR (p1 = ? AND p2 = ?))")
+    .get(since, a, b, b, a) as { n: number } | undefined;
+  return row ? Number(row.n) : 0;
+}
+
 export function leaderboard(limit: number): Array<{ rank: number; name: string; rating: number; wins: number; losses: number }> {
   const rows = openDb()
     .prepare("SELECT name, rating, wins, losses FROM players WHERE wins + losses + draws > 0 ORDER BY rating DESC, wins DESC LIMIT ?")

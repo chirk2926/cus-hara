@@ -44,6 +44,13 @@ export const config = {
   // EOS（Epic Online Services）のロビーで組んだ相手と、ランクマッチの部屋を作ることを許すか（要件#32）。
   // EOS のロビーをサーバーで確かめる仕組みが無いうちは、なりすましでレーティングを稼げるので既定は無効。
   allowRankedRooms: str("ALLOW_RANKED_ROOMS", "0") === "1",
+  // チート対策（要件#47。docs/SERVER.md「チート対策」）
+  // 同じIPアドレス（同じ回線）どうしをランクマッチで組まない。1 で許す（テスト用）
+  allowSameIpRanked: str("ALLOW_SAME_IP_RANKED", "0") === "1",
+  // 同じ相手とのランクマッチは、24時間でこの回数を超えたらレーティングが動かない
+  samePairLimit24h: num("SAME_PAIR_LIMIT_24H", 3),
+  // 試合が始まってすぐ（どちらも一度も発言しないうちに）抜けた場合、勝った側のレーティングは上がらない
+
   // 1つのIPアドレスから1時間に作れるゲストアカウントの数
   guestsPerHour: num("GUESTS_PER_HOUR", 20),
 
