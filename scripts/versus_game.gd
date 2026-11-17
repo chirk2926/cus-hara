@@ -10,6 +10,7 @@ extends Node
 const UI = preload("res://scripts/ui_kit.gd")
 const VoiceScript = preload("res://scripts/voice.gd")
 const Scenarios = preload("res://scripts/scenarios.gd")
+const ShopActions = preload("res://scripts/shop_actions.gd")
 
 signal lobby_event(kind: String, data: Dictionary)   # ロビー画面向け: queued / queue_status / room_created / error / cancelled
 signal finished(summary: Dictionary)
@@ -64,6 +65,7 @@ func setup(main_node, hud_node, api_node) -> void:
 func attach_hud(hud_node) -> void:
 	hud = hud_node
 	hud.reply_submitted.connect(_on_text)
+	hud.action_pressed.connect(_on_action)
 	hud.voice_start.connect(_on_voice_start)
 	hud.voice_stop.connect(_on_voice_stop)
 
@@ -116,7 +118,7 @@ func _send_pending() -> void:
 		"queue":
 			api.send({"t": "queue", "format": p["format"]})
 		"room_create":
-			api.send({"t": "room_create", "format": p["format"]})
+			api.send({"t": "room_create", "format": p["format"], "answer_time": GameSettings.answer_time})
 		"room_join":
 			api.send({"t": "room_join", "code": p["code"]})
 
@@ -219,11 +221,13 @@ func _on_round_start(msg: Dictionary) -> void:
 	_update_top()
 	if _role == "staff":
 		hud.set_quick_phrases(hud.DEFAULT_PHRASES)
+		hud.set_actions(ShopActions.buttons(str(_match.get("stage", "konbini")), _card, false))
 		hud.set_memo(str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
 		hud.set_comment(tr("あなたは店員役。怒りを100にせず、納得を100にすれば勝ち。"))
 		hud.show_banner(tr("あなたは店員役"), UI.LCD_ON)
 	else:
 		hud.set_quick_phrases(CUSTOMER_PHRASES)
+		hud.set_actions([])
 		hud.set_memo(tr("あなたの役: ") + str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
 		hud.set_comment(tr("あなたは客役。怒りを100にするか、店員に不当な要求を飲ませれば勝ち。暴言・無言・くり返しは逆効果。"))
 		hud.show_banner(tr("あなたは客役"), Color("#ff8a6a"))
@@ -380,6 +384,15 @@ func _on_match_end(msg: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- 入力
+
+## 店員役が店の行動ボタンを押した（効果はサーバーが表どおりに決める）
+func _on_action(id: String) -> void:
+	if state != "match" or not _my_turn or _phase != "staff_turn" or main.mode != "versus":
+		return
+	_my_turn = false
+	api.send({"t": "act", "id": id})
+	hud.set_status(tr("送りました…"))
+
 
 func _on_text(text: String) -> void:
 	if state != "match" or not _my_turn or main.mode != "versus":

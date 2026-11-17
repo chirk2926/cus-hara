@@ -21,6 +21,7 @@ const BgmScript = preload("res://scripts/bgm.gd")
 const UI = preload("res://scripts/ui_kit.gd")
 const Paper = preload("res://scripts/ui_paper.gd")
 const ScenariosScript = preload("res://scripts/scenarios.gd")
+const CraneScript = preload("res://scripts/crane_minigame.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
 const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
@@ -69,6 +70,7 @@ var _cam_override_pos: Vector3 = Vector3.ZERO
 var _cam_override_target: Vector3 = Vector3.ZERO
 var _server_info: Dictionary = {}
 var _vs_format: String = "text"
+var _crane_mg = null
 
 
 func _ready() -> void:
@@ -236,6 +238,56 @@ func enter_versus(stage_id: String) -> void:
 	_free_customer()
 	set_stage(stage_id)
 	bgm.play("versus")
+
+
+## カメラを指定の位置へ動かす（台の調整のミニゲームなど）
+func camera_to(pos: Vector3, target: Vector3, dur: float) -> void:
+	var from_pos: Vector3 = _camera.position
+	var from_target: Vector3 = _cam_override_target if _cam_override else CAMERA_TARGET
+	_cam_override = true
+	_cam_override_pos = from_pos
+	_cam_override_target = from_target
+	var tw: Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(self, "_cam_override_pos", pos, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(self, "_cam_override_target", target, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## カメラをいつもの位置（カウンター）に戻す
+func camera_release(dur: float) -> void:
+	if not _cam_override:
+		return
+	var tw: Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(self, "_cam_override_pos", CAMERA_POS, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(self, "_cam_override_target", CAMERA_TARGET, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.chain().tween_callback(func() -> void: _cam_override = false)
+
+
+func get_camera() -> Camera3D:
+	return _camera
+
+
+## 画面の一番上に部品を足す（ミニゲームの作業メモなど）
+func add_overlay(c: Control) -> void:
+	_ui.add_child(c)
+
+
+## 台の調整のミニゲーム（要件#37）。ゲームセンターでないときは {"result": "cancelled"}
+func run_crane_minigame() -> Dictionary:
+	var arcade = _world.call("get_arcade")
+	if arcade == null:
+		return {"result": "cancelled", "cheat": false, "moved": false}
+	var mg = CraneScript.new()
+	_crane_mg = mg
+	add_child(mg)
+	mg.setup(self, arcade)
+	_hud.visible = false
+	var res: Dictionary = await mg.run()
+	mg.queue_free()
+	if _in_game:
+		_hud.visible = true
+	return res
 
 
 func _on_talk_started(duration: float) -> void:
@@ -727,6 +779,8 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 			mark = tr("激怒")
 		elif outcome == "yield":
 			mark = tr("屈服")
+		elif outcome == "breakdown":
+			mark = tr("早退")
 		_receipt_line(col, "%s  %s" % [str(res.get("title", "")), mark], "%+d" % int(res.get("points", 0)))
 	_receipt_rule(col)
 	_receipt_line(col, tr("合計"), tr("%d 点") % total, UI.S_HEAD)
@@ -1065,6 +1119,17 @@ func _run_shots() -> void:
 		await _wait(0.4)
 		await _shot(dir, prefix + s + "_4_wide")
 		_cam_override = false
+		if s == "arcade":
+			# 台の調整のミニゲーム（要件#37）
+			_hud.visible = true
+			run_crane_minigame()
+			await _wait(1.8)
+			await _shot(dir, prefix + "arcade_5_crane_adjust")
+			_crane_mg._auto_adjust()
+			await _wait(4.2)
+			await _shot(dir, prefix + "arcade_6_crane_play")
+			await _wait(6.0)
+			_hud.visible = false
 		_free_customer()
 	display_anger = 0.0
 	_hud.visible = true

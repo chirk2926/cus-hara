@@ -55,6 +55,13 @@ func get_customer_entrance() -> Vector3:
 	return ENTRANCE_POS
 
 
+## ゲームセンターのときだけ、arcade_stage.gd のノード（台の調整のミニゲーム用）
+func get_arcade() -> Node3D:
+	if _arcade != null and is_instance_valid(_arcade):
+		return _arcade
+	return null
+
+
 func get_stage_id() -> String:
 	return _stage_id
 

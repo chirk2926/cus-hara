@@ -386,7 +386,7 @@ func _crane(pos: Vector3, yaw: float, theme: int, title: String, big: float, det
 	_box(root, Vector3(0.9, 0.02, 0.1), Vector3(0.0, 1.86, 0.3), _mat(Color(1.0, 0.98, 0.92), 3.0))
 	_box(root, Vector3(0.9, 0.02, 0.1), Vector3(0.0, 1.86, -0.3), _mat(Color(1.0, 0.98, 0.92), 3.0))
 
-	_fill_prizes(root, theme, detailed, big)
+	var prizes: Array = _fill_prizes(root, theme, detailed, big)
 
 	# --- クレーン機構
 	var rail: MeshInstance3D = _box(root, Vector3(1.0, 0.03, 0.04), Vector3(0.0, 1.82, 0.0), chrome)
@@ -420,19 +420,21 @@ func _crane(pos: Vector3, yaw: float, theme: int, title: String, big: float, det
 	_sph(root, Vector3(0.1, 0.1, 0.1), Vector3(0.42, 2.22, 0.25), lamp_mat)
 
 	_cranes.append({
+		"root": root, "prizes": prizes, "manual": false,
 		"carriage": carriage, "rail": rail, "wire": wire, "claw": claw, "prongs": prongs,
 		"phase": _rng.randf_range(0.0, 20.0), "speed": _rng.randf_range(0.35, 0.6),
 	})
 
 
 ## ケースの中に景品を積む
-func _fill_prizes(root: Node3D, theme: int, detailed: bool, big: float) -> void:
+func _fill_prizes(root: Node3D, theme: int, detailed: bool, big: float) -> Array:
 	var kind: int = theme % 6
+	var out: Array = []
 	if big > 1.2:
 		# ジャンボ機: 巨大ぬいぐるみを1体、どーんと置く
-		_plush(root, Vector3(0.1, 0.83, -0.05), 0.5, 0, PLUSH_COLORS[0], true)
-		_plush(root, Vector3(-0.3, 0.83, -0.25), 0.2, 3, PLUSH_COLORS[6], true)
-		return
+		out.append(_plush(root, Vector3(0.1, 0.83, -0.05), 0.5, 0, PLUSH_COLORS[0], true))
+		out.append(_plush(root, Vector3(-0.3, 0.83, -0.25), 0.2, 3, PLUSH_COLORS[6], true))
+		return out
 	var count: int = 11 if detailed else 8
 	for i in range(count):
 		var px: float = _rng.randf_range(-0.4, 0.4)
@@ -444,19 +446,20 @@ func _fill_prizes(root: Node3D, theme: int, detailed: bool, big: float) -> void:
 		var p: Vector3 = Vector3(px, layer, pz)
 		var c: Color = PLUSH_COLORS[_rng.randi() % PLUSH_COLORS.size()]
 		if kind == 0 or kind == 5:
-			_plush(root, p, 0.19, _rng.randi() % 3, c, detailed)
+			out.append(_plush(root, p, 0.19, _rng.randi() % 3, c, detailed))
 		elif kind == 1 or kind == 6:
-			_plush(root, p, 0.19, 1 + (_rng.randi() % 2), c.lerp(Color(1, 1, 1), 0.35), detailed)
+			out.append(_plush(root, p, 0.19, 1 + (_rng.randi() % 2), c.lerp(Color(1, 1, 1), 0.35), detailed))
 		elif kind == 2:
-			_plush(root, p, 0.18, 3, Color(1.0, 0.86, 0.3), detailed)
+			out.append(_plush(root, p, 0.18, 3, Color(1.0, 0.86, 0.3), detailed))
 		elif kind == 3:
-			_figure_box(root, p, PALETTE[_rng.randi() % PALETTE.size()])
+			out.append(_figure_box(root, p, PALETTE[_rng.randi() % PALETTE.size()]))
 		else:
-			_snack(root, p, PALETTE[_rng.randi() % PALETTE.size()])
+			out.append(_snack(root, p, PALETTE[_rng.randi() % PALETTE.size()]))
+	return out
 
 
 ## ぬいぐるみ。kind: 0=くま 1=うさぎ 2=ねこ 3=ひよこ / s: 大きさ（高さの目安は s*1.4）
-func _plush(parent: Node3D, pos: Vector3, s: float, kind: int, color: Color, detailed: bool) -> void:
+func _plush(parent: Node3D, pos: Vector3, s: float, kind: int, color: Color, detailed: bool) -> Node3D:
 	var root: Node3D = _node(parent, pos)
 	root.rotation_degrees = Vector3(_rng.randf_range(-14.0, 14.0), _rng.randf_range(-50.0, 50.0), _rng.randf_range(-14.0, 14.0))
 	var fur: StandardMaterial3D = _mat(color, 0.0, 0.95)
@@ -494,9 +497,10 @@ func _plush(parent: Node3D, pos: Vector3, s: float, kind: int, color: Color, det
 		# ほっぺ
 		_sph(root, Vector3(0.12, 0.08, 0.04) * s, Vector3(-0.27 * s, 0.92 * s, 0.3 * s), _mat(Color(1.0, 0.6, 0.65), 0.0, 0.9))
 		_sph(root, Vector3(0.12, 0.08, 0.04) * s, Vector3(0.27 * s, 0.92 * s, 0.3 * s), _mat(Color(1.0, 0.6, 0.65), 0.0, 0.9))
+	return root
 
 
-func _figure_box(parent: Node3D, pos: Vector3, color: Color) -> void:
+func _figure_box(parent: Node3D, pos: Vector3, color: Color) -> Node3D:
 	var root: Node3D = _node(parent, pos + Vector3(0.0, 0.1, 0.0))
 	root.rotation_degrees = Vector3(_rng.randf_range(-8.0, 8.0), _rng.randf_range(-35.0, 35.0), _rng.randf_range(-20.0, 20.0))
 	_box(root, Vector3(0.15, 0.21, 0.09), Vector3.ZERO, _mat(color, 0.0, 0.5))
@@ -504,9 +508,10 @@ func _figure_box(parent: Node3D, pos: Vector3, color: Color) -> void:
 	_sph(root, Vector3(0.05, 0.05, 0.03), Vector3(0.0, 0.045, 0.03), _mat(Color(1.0, 0.85, 0.7), 0.0, 0.7))
 	_box(root, Vector3(0.04, 0.06, 0.02), Vector3(0.0, -0.005, 0.03), _mat(color.lerp(Color(1, 1, 1), 0.5), 0.0, 0.7))
 	_box(root, Vector3(0.13, 0.03, 0.004), Vector3(0.0, -0.075, 0.046), _mat(Color(1.0, 0.95, 0.4), 0.4))
+	return root
 
 
-func _snack(parent: Node3D, pos: Vector3, color: Color) -> void:
+func _snack(parent: Node3D, pos: Vector3, color: Color) -> Node3D:
 	var root: Node3D = _node(parent, pos + Vector3(0.0, 0.05, 0.0))
 	root.rotation_degrees = Vector3(_rng.randf_range(-25.0, 25.0), _rng.randf_range(0.0, 180.0), _rng.randf_range(-25.0, 25.0))
 	var r: float = _rng.randf()
@@ -519,6 +524,7 @@ func _snack(parent: Node3D, pos: Vector3, color: Color) -> void:
 	else:
 		_sph(root, Vector3(0.14, 0.1, 0.14), Vector3.ZERO, _mat(color, 0.0, 0.35))
 		_box(root, Vector3(0.2, 0.03, 0.05), Vector3.ZERO, _mat(color.lerp(Color(1, 1, 1), 0.4), 0.0, 0.4))
+	return root
 
 
 ## クレーン以外の小物（両替機・ビデオゲーム筐体・カゴ）
@@ -566,6 +572,8 @@ func _process(delta: float) -> void:
 	# クレーンが左右・前後に動き、ときどき降りてつかむ動作をする
 	for item in _cranes:
 		var cr: Dictionary = item
+		if bool(cr["manual"]):
+			continue   # 台の調整のミニゲームで手動で動かしている台
 		var ph: float = _time * float(cr["speed"]) + float(cr["phase"])
 		var cx: float = sin(ph) * 0.33
 		var cz: float = sin(ph * 0.63 + 1.3) * 0.24
@@ -598,3 +606,47 @@ func _process(delta: float) -> void:
 	if _tension_light != null:
 		var pulse: float = 0.75 + 0.25 * sin(_time * (4.0 + 8.0 * _tension))
 		_tension_light.light_energy = 4.0 * _tension * pulse
+
+
+# ---------------------------------------------------------------- 台の調整のミニゲーム用（crane_minigame.gd から使う）
+## 台の中の座標（ローカル）: 床の高さ・取り出し口の中心・景品を置ける範囲
+const CASE_FLOOR_Y: float = 0.83
+const CHUTE: Vector2 = Vector2(-0.33, 0.24)          # 取り出し口の中心（x, z）
+const CHUTE_HALF: float = 0.15                       # 取り出し口の半分の幅
+const CASE_MIN: Vector2 = Vector2(-0.44, -0.34)
+const CASE_MAX: Vector2 = Vector2(0.44, 0.34)
+const CARRIAGE_Y: float = 1.78
+## ミニゲームで使う台（カウンターから見て左手前の島の「ぬいぐるみ」。_build_cranes の6台目）
+const SERVICE_CRANE: int = 5
+
+
+func get_service_crane() -> Dictionary:
+	if _cranes.size() > SERVICE_CRANE:
+		return _cranes[SERVICE_CRANE]
+	return {}
+
+
+func set_crane_manual(cr: Dictionary, on: bool) -> void:
+	cr["manual"] = on
+
+
+## アームを置く。x, z: 台のローカル座標。drop: ワイヤーの伸び（0〜0.75）。open_deg: 爪の開き（8=閉じる〜34=開く）
+func set_claw(cr: Dictionary, x: float, z: float, drop: float, open_deg: float) -> void:
+	var carriage: Node3D = cr["carriage"]
+	carriage.position = Vector3(x, CARRIAGE_Y, z)
+	var rail: MeshInstance3D = cr["rail"]
+	rail.position = Vector3(0.0, 1.82, z)
+	var length: float = 0.16 + drop
+	var wire: MeshInstance3D = cr["wire"]
+	wire.scale = Vector3(0.012, length, 0.012)
+	wire.position = Vector3(0.0, -length * 0.5, 0.0)
+	var claw: Node3D = cr["claw"]
+	claw.position = Vector3(0.0, -length - 0.03, 0.0)
+	for h in (cr["prongs"] as Array):
+		var hinge: Node3D = h
+		hinge.rotation_degrees = Vector3(0.0, 0.0, open_deg)
+
+
+## 爪の先の高さ（台のローカル）。この高さが景品の上に来るまでワイヤーを伸ばす
+func claw_tip_y(drop: float) -> float:
+	return CARRIAGE_Y - (0.16 + drop) - 0.03 - 0.17
