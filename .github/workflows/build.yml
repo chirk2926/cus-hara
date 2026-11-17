@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.5
+  GODOT_RELEASE: 4.5-stable
+
+jobs:
+  windows:
+    name: Check scripts and build Windows exe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot and export templates
+        run: |
+          set -e
+          BASE=https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}
+          curl -sSL -o godot.zip ${BASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip
+          curl -sSL -o templates.tpz ${BASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz
+          unzip -q godot.zip -d "$RUNNER_TEMP/godot"
+          mv "$RUNNER_TEMP/godot/Godot_v${GODOT_RELEASE}_linux.x86_64" "$RUNNER_TEMP/godot/godot"
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -q templates.tpz -d "$RUNNER_TEMP/tpl"
+          mv "$RUNNER_TEMP"/tpl/templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+          rm -f godot.zip templates.tpz
+          echo "$RUNNER_TEMP/godot" >> "$GITHUB_PATH"
+
+      - name: Import project
+        run: godot --headless --import 2>&1 | tee import.log
+
+      - name: Smoke test (auto-play every stage in script mode)
+        run: |
+          set -o pipefail
+          timeout 300 godot --headless -- --smoke 2>&1 | tee smoke.log
+          if grep -E "SCRIPT ERROR|Parse Error|SMOKE TIMEOUT" import.log smoke.log; then
+            echo "::error::Script errors found"
+            exit 1
+          fi
+          grep -q "SMOKE OK" smoke.log
+
+      - name: Export Windows build
+        run: |
+          mkdir -p build/windows
+          godot --headless --export-release "Windows Desktop" build/windows/CusHara.exe 2>&1 | tee export.log
+          test -s build/windows/CusHara.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CusHara-windows
+          path: build/windows/
