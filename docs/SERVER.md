@@ -93,7 +93,8 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | `GET /api/v1/me` | 要 | `{player}`（名前・レーティング・ランク名・勝敗） |
 | `POST /api/v1/me` | 要 | `{name}` → 名前を変える |
 | `GET /api/v1/leaderboard?limit=50` | | 対戦したことのある人のレーティング順 |
-| `POST /api/v1/solo/start` | 要 | `{stage, avoid, lang}` → `{session_id, source, notice, customer}`。お客さんを作る（AI。失敗・上限なら台本） |
+| `POST /api/v1/solo/start` | 要 | `{stage, avoid, lang, event?}` → `{session_id, source, notice, event, customer}`。お客さんを作る（AI。失敗・上限なら台本）。`event: "wild"` で要注意人物（ネタ枠から選ぶ・AIには突飛な人物を頼む。要件#52） |
+| `POST /api/v1/solo/hint` | 要 | `{session_id}` → `{keyword, action}`。店長のアドバイス（解決の方向の言葉1つと、効く行動ボタン1つ）。1人のお客さんにつき1回（2回目は 409） |
 | `POST /api/v1/solo/turn` | 要 | `{session_id, reply, anger, resolve}` → `{anger_delta, resolve_delta, yielded, customer_reply, comment, judged_by, notice}` |
 
 `customer` には採点用のキーワードを入れない（答えが分からないように）。会話の履歴はサーバーが持つ（クライアントが送ってきた履歴は使わない）。

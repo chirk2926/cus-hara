@@ -289,3 +289,20 @@ test("チート対策: 1人用は納得をサーバーの値で検証し、決�
   }
   assert.ok(lecturer.title);
 });
+
+test("要注意人物のイベントと店長のアドバイス（要件#52）", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "店長" });
+  const wild = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini", event: "wild" }, g.body.token);
+  assert.equal(wild.status, 200);
+  assert.equal(wild.body.event, "wild");
+  assert.equal(wild.body.customer.rare, true, "要注意人物はネタ枠から選ぶ");
+  const hint = await api(srv.base, "POST", "/api/v1/solo/hint", { session_id: wild.body.session_id }, g.body.token);
+  assert.equal(hint.status, 200);
+  assert.equal(typeof hint.body.keyword, "string");
+  assert.ok(hint.body.keyword.length > 0, "解決の方向の言葉を1つ教える");
+  const again = await api(srv.base, "POST", "/api/v1/solo/hint", { session_id: wild.body.session_id }, g.body.token);
+  assert.equal(again.status, 409, "アドバイスは1人につき1回");
+  const other = await api(srv.base, "POST", "/api/v1/guest", { name: "他人" });
+  const steal = await api(srv.base, "POST", "/api/v1/solo/hint", { session_id: wild.body.session_id }, other.body.token);
+  assert.equal(steal.status, 404, "他人の会話のアドバイスは聞けない");
+});

@@ -62,12 +62,15 @@ export function allCustomers(stage: StageId, lang: Lang = "ja"): Customer[] {
   return stages[stage] ?? stages["konbini"] ?? [];
 }
 
-export function randomCustomer(stage: StageId, avoidTitles: string[] = [], lang: Lang = "ja"): Customer {
-  const list = allCustomers(stage, lang);
+export function randomCustomer(stage: StageId, avoidTitles: string[] = [], lang: Lang = "ja", wildOnly = false): Customer {
+  const all = allCustomers(stage, lang);
+  // 「要注意人物」イベント（要件#52）: ネタ枠（rare）だけから選ぶ
+  const rares = all.filter((c) => c.rare);
+  const list = wildOnly && rares.length > 0 ? rares : all;
   const fresh = list.filter((c) => !avoidTitles.includes(c.title));
   const pool = fresh.length > 0 ? fresh : list;
   // ネタ枠（rare）は出にくくする（重み 0.25）
-  const weights = pool.map((c) => (c.rare ? 0.25 : 1));
+  const weights = pool.map((c) => (c.rare && !wildOnly ? 0.25 : 1));
   let r = Math.random() * weights.reduce((a, b) => a + b, 0);
   for (let i = 0; i < pool.length; i++) {
     r -= weights[i];

@@ -59,11 +59,11 @@ export const config = {
   // 対戦のルール（数値の意味は docs/SPEC.md の対戦モード）
   versus: {
     rounds: 2,
-    openingSec: num("VS_OPENING_SEC", 35),
-    customerSec: num("VS_CUSTOMER_SEC", 25),
+    openingSec: num("VS_OPENING_SEC", 45),
+    customerSec: num("VS_CUSTOMER_SEC", 35),
     voiceExtraSec: num("VS_VOICE_EXTRA_SEC", 10),
     maxExchanges: 8,
-    baseAngerRate: 1.1,
+    baseAngerRate: 0.75, // 要件#49 で 1.1 から下げた
     pauseAfterLineMs: num("VS_PAUSE_MS", 1600),
     roundIntroMs: num("VS_ROUND_INTRO_MS", 5000),
     roundOutroMs: num("VS_ROUND_OUTRO_MS", 5500),

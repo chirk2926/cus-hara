@@ -39,6 +39,20 @@ const ANSWER_TIMES: Array = [["slow", "ゆっくり（タイピングが苦手�
 const ANSWER_RATE: Dictionary = {"slow": 0.6, "normal": 1.0, "fast": 1.4}
 var answer_time: String = "normal"
 var fullscreen: bool = false
+## 解像度（ウィンドウの大きさ）。"auto" = 画面に収まる一番大きいもの。どれを選んでも、画面（タスクバーを除く）より大きくはしない
+const RESOLUTIONS: Array = [
+	["auto", "自動（画面に合わせる）"],
+	["1280x720", "1280 × 720"],
+	["1366x768", "1366 × 768"],
+	["1600x900", "1600 × 900"],
+	["1920x1080", "1920 × 1080"],
+	["2560x1440", "2560 × 1440"],
+]
+## これより小さいウィンドウにはしない（画面の部品が入りきらなくなるため）
+const MIN_WINDOW: Vector2i = Vector2i(960, 540)
+var resolution: String = "auto"
+## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
+var _resolution_from_cmdline: bool = false
 var push_to_talk_key: int = KEY_SPACE
 var high_scores: Dictionary = {}
 ## サーバーから最後に受け取った自分の情報（表示用。正しい値は常にサーバーにある）
@@ -58,6 +72,7 @@ func _ready() -> void:
 			server_url = a.substr(9)
 	if language == "":
 		language = "ja" if OS.get_locale_language() == "ja" else "en"
+	_resolution_from_cmdline = OS.get_cmdline_args().has("--resolution")
 	apply_language()
 	apply_window()
 
@@ -116,6 +131,9 @@ func load_settings() -> void:
 		answer_time = "normal"
 	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
 	fullscreen = bool(cfg.get_value("video", "fullscreen", false))
+	resolution = str(cfg.get_value("video", "resolution", "auto"))
+	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
+		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
 	if typeof(hs) == TYPE_DICTIONARY:
 		high_scores = hs
@@ -135,20 +153,58 @@ func save_settings() -> void:
 	cfg.set_value("play", "answer_time", answer_time)
 	cfg.set_value("audio", "push_to_talk_key", push_to_talk_key)
 	cfg.set_value("video", "fullscreen", fullscreen)
+	cfg.set_value("video", "resolution", resolution)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 
 
+## 画面の設定を反映する。ゲームの画面は 1280×720 を基準に、ウィンドウの大きさに合わせて拡大・縮小される
+## （project.godot の stretch: canvas_items / expand）。なので、ウィンドウが画面に収まっていれば部品も必ず収まる。
 func apply_window() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
+	DisplayServer.window_set_min_size(MIN_WINDOW)
 	if fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		return
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	if _resolution_from_cmdline:
+		return
+	var screen: int = DisplayServer.window_get_current_screen()
+	var usable: Rect2i = DisplayServer.screen_get_usable_rect(screen)
+	# タイトルバーや枠の分を少し残す
+	var room: Vector2i = Vector2i(maxi(usable.size.x - 16, MIN_WINDOW.x), maxi(usable.size.y - 48, MIN_WINDOW.y))
+	var want: Vector2i = window_size_for(resolution, room)
+	DisplayServer.window_set_size(want)
+	DisplayServer.window_set_position(usable.position + (usable.size - want) / 2)
+
+
+## 解像度の設定から、実際のウィンドウの大きさを決める。room = 使える画面の大きさ
+static func window_size_for(res: String, room: Vector2i) -> Vector2i:
+	var want: Vector2i = Vector2i(1280, 720)
+	if res == "auto":
+		# 16:9 で、使える画面に収まる一番大きい候補
+		want = Vector2i(1280, 720)
+		for r in RESOLUTIONS:
+			var v: Vector2i = parse_resolution(str(r[0]))
+			if v.x > 0 and v.x <= room.x and v.y <= room.y and v.x > want.x:
+				want = v
 	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		want = parse_resolution(res)
+	# 画面より大きければ、縦横の比を保って縮める
+	if want.x > room.x or want.y > room.y:
+		var k: float = minf(float(room.x) / float(want.x), float(room.y) / float(want.y))
+		want = Vector2i(int(want.x * k), int(want.y * k))
+	return Vector2i(maxi(want.x, MIN_WINDOW.x), maxi(want.y, MIN_WINDOW.y))
 
 
-## 設定画面のキーが空なら環境変数 ANTHROPIC_API_KEY を使う（開発用）
+static func parse_resolution(res: String) -> Vector2i:
+	var parts: PackedStringArray = res.split("x")
+	if parts.size() != 2:
+		return Vector2i(1280, 720)
+	return Vector2i(int(parts[0]), int(parts[1]))
+
+
 func get_api_key() -> String:
 	var k: String = api_key.strip_edges()
 	if k == "":

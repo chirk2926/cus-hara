@@ -225,6 +225,51 @@ func dismiss_customer(mood: String) -> void:
 		_customer = null
 
 
+## 店長（要件#52）。紺のスーツ・めがね・七三。お客さんの横（左）まで来て、プレイヤーにアドバイスする
+const MANAGER_LOOK: Dictionary = {"body_color": "#2e3550", "skin_color": "#efc7a0", "hair_color": "#3a3a3a",
+	"hair": "short", "build": "normal", "accessory": "glasses", "height": 1.05}
+var _manager = null
+
+
+## 店長を売り場の奥から歩かせ、お客さんの横に着くまで待つ
+func manager_enter() -> void:
+	manager_leave_now()
+	_manager = CustomerScript.new()
+	add_child(_manager)
+	_manager.call("setup", MANAGER_LOOK)
+	var from: Vector3 = _world.call("get_customer_entrance")
+	var stand: Vector3 = _world.call("get_customer_stand")
+	var to: Vector3 = stand + Vector3(-1.25, 0.0, 0.2)
+	_manager.position = from
+	_manager.call("enter", from, to)
+	await _manager.arrived
+
+
+func manager_talk(duration: float) -> void:
+	if _manager != null and is_instance_valid(_manager):
+		_manager.call("talk", duration)
+		_manager.call("react", "calm")
+
+
+## 店長が戻っていく（待たない）
+func manager_leave() -> void:
+	if _manager == null or not is_instance_valid(_manager):
+		return
+	var m = _manager
+	_manager = null
+	m.call("leave", _world.call("get_customer_entrance"), "happy")
+	await m.left
+	if is_instance_valid(m):
+		m.queue_free()
+
+
+## すぐ消す（店を変える・タイトルへ戻るとき）
+func manager_leave_now() -> void:
+	if _manager != null and is_instance_valid(_manager):
+		_manager.queue_free()
+	_manager = null
+
+
 func customer_say(speaker: String, text: String, angry: bool = false) -> void:
 	await _hud.say(speaker, text, angry)
 
@@ -313,6 +358,7 @@ func _free_customer() -> void:
 	if _customer != null and is_instance_valid(_customer):
 		_customer.queue_free()
 	_customer = null
+	manager_leave_now()
 
 
 # ---------------------------------------------------------------- 画面遷移
@@ -683,6 +729,10 @@ func _show_settings() -> void:
 
 	var full: CheckBox = UI.check(tr("フルスクリーンにする"), GameSettings.fullscreen)
 	_form_row(grid, tr("画面"), full)
+	var res_opt: OptionButton = _option(_translated(GameSettings.RESOLUTIONS), GameSettings.resolution)
+	_form_row(grid, tr("解像度"), res_opt)
+	full.toggled.connect(func(on: bool) -> void: res_opt.disabled = on)
+	res_opt.disabled = GameSettings.fullscreen
 
 	col.add_child(UI.para(tr("「ゲームサーバー」では、AIの判定はサーバーで行います（APIキーは不要）。「自分のAPIキー」はサーバーが使えないときの予備で、料金はキーの持ち主にかかります。キーはこのPCの設定ファイルにだけ保存されます。「返事の時間」は1人用と、自分が作ったフレンド対戦の部屋に効きます（ランクマッチは全員同じ）。"), UI.S_SMALL, UI.INK_SOFT))
 	var test_label: Label = UI.para("", UI.S_SMALL, UI.INK_SOFT)
@@ -708,6 +758,7 @@ func _show_settings() -> void:
 		GameSettings.volume = vol.value
 		GameSettings.bgm_volume = bgm_vol.value
 		GameSettings.fullscreen = full.button_pressed
+		GameSettings.resolution = str(GameSettings.RESOLUTIONS[maxi(res_opt.selected, 0)][0])
 		GameSettings.save_settings()
 		GameSettings.apply_window()
 		return lang_before != GameSettings.language
@@ -1193,6 +1244,16 @@ func _run_shots() -> void:
 		await _wait(0.3)
 		await _shot(dir, prefix + s + "_3_voice")
 		_hud.set_voice_mode(false)
+		# 店長がアドバイスに来るイベント（要件#52）
+		_hud.set_input_enabled(false, "")
+		_hud.show_banner(tr("店長が来た！"), UI.POP)
+		await manager_enter()
+		manager_talk(3.0)
+		var kws: Array = cust.get("solution_keywords", [])
+		_hud.set_comment(tr("店長: ") + (tr("「%s」の方向で話してみろ。") % str(kws[0] if not kws.is_empty() else "")) + " " + tr("要求は飲むなよ。"))
+		await _wait(0.5)
+		await _shot(dir, prefix + s + "_3b_manager")
+		manager_leave_now()
 		_hud.visible = false
 		_cam_override = true
 		_cam_override_pos = Vector3(3.9, 2.5, 1.6)

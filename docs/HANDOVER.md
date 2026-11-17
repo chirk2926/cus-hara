@@ -83,8 +83,29 @@
 - 要件#11 の解釈（景品交換カウンターも、景品交換を題材にしたクレームも無くす）で合っているか。
 - 要件#15（Steam のフレンド招待・マッチング）は、#19 の「マッチング形式」で自前サーバーのマッチングに置き換えた。Steam 版と Microsoft Store 版の人どうしでも対戦できる。Steam の招待機能も別に欲しいか。
 - 音声対戦の文字起こしをどこで行うか（自前の whisper サーバー／有料の文字起こしAPI）。費用と精度が変わる。
-- サーバーのAIモデル。既定は `claude-opus-5-5`。反応速度と料金を優先するなら `claude-haiku-5-5`（環境変数で変えられる）。
+- サーバーのAIモデル。既定は `claude-haiku-5-5`（要件#33）。品質を上げたいときは環境変数 `CLAUDE_MODEL` で変えられる。
+- 難易度（要件#49）: 怒りの上がる速さを下げた（1人用 1.25→0.8、対戦 1.1→0.75）。実際に遊んで、まだ難しい／簡単すぎるなら、`solo_game.gd` の `BASE_ANGER_RATE` と `server/src/config.ts` の `baseAngerRate` を調整する。
 - ゲーム名「カスハラ防衛線」（英語名 Customer Harassment Defense Line）、店名、ランク名は仮の案。
+
+## 4b. 依頼者にお願いしたいこと（EOS。要件#48, #50）
+
+EOS のコードはできているが、**次の準備が無いと動かない**（無いあいだはゲームサーバーのマッチングで動くので、遊べなくなることはない）。
+準備ができたら、引き継いだ人（または Claude）が実機で確かめる（docs/EOS.md「実機で確かめること」）。
+
+| # | お願いすること | どこで | できたら渡してほしいもの |
+|---|---|---|---|
+| 1 | Epic Games の開発者アカウントを作り、組織（Organization）とプロダクト（Product）を作る | https://dev.epicgames.com/portal | ― |
+| 2 | プロダクトの「Product Settings」で、クライアント（ポリシー: GameClient。Lobbies と Connect を許可）を作る | 開発者ポータル | Product ID / Sandbox ID / Deployment ID / Client ID / Client Secret |
+| 3 | フレンド招待を使うなら「Epic Account Services」を設定する（アプリ名・使う権限: 基本プロフィール・フレンド・オンライン状態）。審査（Brand Review）が要る | 開発者ポータル | 設定したかどうか |
+| 4 | 暗号キー（64文字の16進数）を1つ決める。例: PowerShell で `-join ((1..32) \| % { '{0:x2}' -f (Get-Random -Max 256) })` | 自分のPC | その文字列 |
+| 5 | 上の値を `config/eos.cfg` に書く（または引き継ぐ人に安全な方法で渡す。**チャットや公開リポジトリに貼らない**） | このリポジトリ | ― |
+| 6 | Godot 用 EOS プラグイン（EOSG, 3ddelano/epic-online-services-godot）の Releases から zip を取り、`addons/epic-online-services-godot/` を `addons/` に置いて、Godot の「プロジェクト設定 → プラグイン」で有効にする。プラグインには EOS SDK の dll も入っている（Epic のライセンスに同意が要る） | GitHub・Godot | プラグインの版 |
+| 7 | 2台のPC（または2つの Epic アカウント）で、ランクマッチとフレンド招待を試す時間をとる | ― | 結果（動いた／エラーの画面） |
+
+補足:
+- EOS の利用は無料。Steam 版・Microsoft Store 版でも使える。
+- `client_secret` はゲームに同梱される値で、Claude の API キーのような秘密鍵ではない。ただし公開リポジトリには入れないこと（ビルドのときだけ書き込む運用でもよい）。
+- Steam のアカウントで EOS にログインさせたい場合は、Steamworks のアプリIDとの連携設定（開発者ポータルの Identity Providers）も必要。今は「Epic アカウント → 無ければ端末ID」の順でログインする。
 
 ## 5. 作業の進め方の決まり
 

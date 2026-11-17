@@ -159,8 +159,11 @@ func _supports_fallback(model: String) -> bool:
 
 
 ## お客さんを1人生成する。avoid_titles: 直近に出た人物（重複回避）
-func generate_customer(stage_id: String, avoid_titles: Array) -> Dictionary:
+func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false) -> Dictionary:
 	var persona: String = str(PERSONALITIES[randi() % PERSONALITIES.size()])
+	if wild:
+		# 要注意人物のイベント（要件#52）。病気や障害を連想させる描写はさせない
+		persona = "ネタ枠・要注意人物（言動が突拍子もなく、理屈が独特すぎて会話がかみ合わない、完全にコメディの人物。病気や障害を連想させる描写はしない）"
 	var user_text: String = "舞台: %s\n人物の方向性: %s\n" % [str(STAGE_TEXT.get(stage_id, STAGE_TEXT["konbini"])), persona]
 	if not avoid_titles.is_empty():
 		user_text += "すでに登場した人物（似た人物・似たクレームは避ける）: %s\n" % ", ".join(PackedStringArray(avoid_titles))

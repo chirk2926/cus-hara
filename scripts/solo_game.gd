@@ -15,8 +15,8 @@ signal finished(stage_id: String, results: Array, total: int)
 signal _reply(text: String)
 
 const CUSTOMERS_PER_SHIFT: int = 4
-const BASE_ANGER_RATE: float = 1.25     # 返事を考えている間、1秒あたりに上がる怒り
-const RATE_STEP: float = 0.15           # お客さん1人ごとの上昇率
+const BASE_ANGER_RATE: float = 0.8      # 返事を考えている間、1秒あたりに上がる怒り（要件#49で 1.25 から下げた）
+const RATE_STEP: float = 0.08           # お客さん1人ごとの上昇率（要件#49で 0.15 から下げた）
 const SCORE_RESOLVED: int = 1000
 const SCORE_EXPLODED: int = -300
 const SCORE_YIELDED: int = -600
@@ -27,6 +27,14 @@ const CHEAT_COST: int = 150
 ## 店員のメンタル（要件#38）
 const MENTAL_MAX: float = 100.0
 const ACTION_PREFIX: String = "\u0001action:"
+## たまに起きるイベント（要件#52）
+## 要注意人物: 2人目以降のお客さんが、この確率でとびきり突飛な人になる（1シフト1回まで）。納得させると点数 ×1.5
+const WILD_CHANCE: float = 0.18
+const WILD_BONUS: float = 1.5
+## 店長のアドバイス: 返事の番が来るとき、怒りが高い（または話が長引いている）と、この確率で店長が来る（1シフト1回まで）
+const MANAGER_CHANCE: float = 0.4
+const MANAGER_CALM: float = 10.0    # 店長の顔を見てお客さんが落ち着く分
+const MANAGER_MENTAL: float = 10.0  # 店員のメンタルの回復
 
 var main = null
 var hud = null
@@ -55,6 +63,9 @@ var _player_turn: bool = false
 var _mental: float = MENTAL_MAX
 var _cost: int = 0            # このお客さんでの行動の負担
 var _crane_used: bool = false
+var _wild: bool = false          # このお客さんは要注意人物
+var _wild_used: bool = false     # このシフトで要注意人物が来たか
+var _manager_used: bool = false  # このシフトで店長が来たか
 
 
 func setup(main_node, hud_node) -> void:
@@ -90,6 +101,8 @@ func start(stage_id: String, stage_name: String) -> void:
 	_titles = []
 	_total = 0
 	_pool = []
+	_wild_used = false
+	_manager_used = false
 	_mental = MENTAL_MAX
 	hud.set_mental(_mental)
 	hud.set_voice_mode(false)
@@ -151,11 +164,94 @@ func _update_top() -> void:
 	hud.set_top(_stage_name, tr("お客さん %d / %d") % [_index + 1, CUSTOMERS_PER_SHIFT], tr("%d 点") % _total)
 
 
+## 要注意人物の見た目: 背が高く、派手な色、ヘッドホンかマスク
+func _make_wild_look() -> void:
+	var look: Dictionary = {}
+	if typeof(_cust.get("look", null)) == TYPE_DICTIONARY:
+		look = (_cust["look"] as Dictionary).duplicate()
+	var loud: Array = ["#ff3fa4", "#38e05a", "#ffb000", "#7a3cff", "#00c2d4"]
+	look["body_color"] = loud[randi() % loud.size()]
+	look["hair_color"] = loud[randi() % loud.size()]
+	look["hair"] = ["perm", "long", "cap"][randi() % 3]
+	look["accessory"] = ["headphones", "glasses", "mask"][randi() % 3]
+	look["height"] = 1.15
+	_cust["look"] = look
+	_cust["title"] = tr("【要注意】") + str(_cust.get("title", ""))
+
+
+## 店長がアドバイスに来るイベント（要件#52）。来ている間は怒りが止まる（_player_turn が false のため）
+func _maybe_manager_visit(my_run: int) -> void:
+	if _manager_used or _turns < 1:
+		return
+	var tense: bool = _anger >= 60.0 or _turns >= 3
+	if not tense and not main.smoke:
+		return
+	if not (randf() < MANAGER_CHANCE or main.smoke):
+		return
+	_manager_used = true
+	hud.set_input_enabled(false, "")
+	hud.set_status(tr("店長が来た！"))
+	hud.show_banner(tr("店長が来た！"), UI.POP)
+	main.sfx.play("door", 0.9)
+	await main.manager_enter()
+	if my_run != _run:
+		return
+	var advice: Dictionary = await _manager_advice()
+	if my_run != _run:
+		return
+	var lines: PackedStringArray = PackedStringArray()
+	var kw: String = str(advice.get("keyword", ""))
+	var act: String = str(advice.get("action", ""))
+	if kw != "":
+		lines.append(tr("「%s」の方向で話してみろ。") % kw)
+	if act != "":
+		lines.append(tr("「%s」も効くかもしれない。") % ShopActions.label(act))
+	if lines.is_empty():
+		lines.append(tr("メモの規定を確かめて、できることを具体的に伝えろ。"))
+	lines.append(tr("要求は飲むなよ。"))
+	hud.set_comment(tr("店長: ") + " ".join(lines))
+	main.manager_talk(3.0)
+	_anger = maxf(0.0, _anger - MANAGER_CALM)
+	_change_mental(MANAGER_MENTAL)
+	hud.show_delta(-int(MANAGER_CALM), 0)
+	main.customer_react("calm")
+	main.sfx.play("good", 0.9)
+	_refresh(false)
+	await _wait(2.8)
+	if my_run != _run:
+		return
+	main.manager_leave()
+
+
+## 店長のアドバイスの中身: 正しい方向の言葉1つと、効く行動ボタン1つ
+func _manager_advice() -> Dictionary:
+	if _source == "server" and _session_id != "":
+		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/hint", {"session_id": _session_id})
+		if bool(res.get("ok", false)):
+			return res["body"]
+		return {}
+	var out: Dictionary = {"keyword": "", "action": ""}
+	var words: Variant = _cust.get("solution_keywords", [])
+	if typeof(words) == TYPE_ARRAY and not (words as Array).is_empty():
+		out["keyword"] = str((words as Array)[randi() % (words as Array).size()])
+	for b in ShopActions.buttons(_stage_id, _cust, false):
+		var id: String = str((b as Array)[0])
+		if ShopActions.effect_kind(_cust, id) == "good":
+			out["action"] = id
+			break
+	return out
+
+
 func _wait(sec: float) -> void:
 	await get_tree().create_timer(sec).timeout
 
 
 func _next_offline() -> Dictionary:
+	if _wild:
+		var rares: Array = Scenarios.customers(_stage_id).filter(func(c: Variant) -> bool:
+			return bool((c as Dictionary).get("rare", false)) and not _titles.has(str((c as Dictionary).get("title", ""))))
+		if not rares.is_empty():
+			return (rares[randi() % rares.size()] as Dictionary).duplicate(true)
 	if _pool.is_empty():
 		_pool = Scenarios.customers(_stage_id).duplicate()
 		_pool.shuffle()
@@ -168,7 +264,10 @@ func _prepare_customer() -> Dictionary:
 	var src: String = GameSettings.solo_source
 	if src == "server":
 		hud.set_status(tr("お客さんが来ます…"))
-		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/start", {"stage": _stage_id, "avoid": _titles, "lang": GameSettings.language})
+		var req: Dictionary = {"stage": _stage_id, "avoid": _titles, "lang": GameSettings.language}
+		if _wild:
+			req["event"] = "wild"
+		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/start", req)
 		if bool(res.get("ok", false)):
 			var body: Dictionary = res["body"]
 			_source = "server"
@@ -180,7 +279,7 @@ func _prepare_customer() -> Dictionary:
 		hud.set_comment(tr("サーバーにつながりません。台本のお客さんで続けます。") + "\n" + str(res.get("message", "")))
 	elif src == "own_key" and GameSettings.own_key_ready():
 		hud.set_status(tr("AIが次のお客さんを考えています…"))
-		var data: Dictionary = await main.llm.generate_customer(_stage_id, _titles)
+		var data: Dictionary = await main.llm.generate_customer(_stage_id, _titles, _wild)
 		if not data.has("error"):
 			_source = "own_key"
 			return data
@@ -195,11 +294,18 @@ func _play_customer(my_run: int) -> void:
 	_update_top()
 	hud.set_comment(tr("落ち着いて、まずは話を聞こう。"))
 
+	# 要注意人物のイベント（要件#52）。自動テストでは2人目で必ず起こす
+	_wild = false
+	if _index >= 1 and not _wild_used and (randf() < WILD_CHANCE or (main.smoke and _index == 1)):
+		_wild = true
+		_wild_used = true
 	var data: Dictionary = await _prepare_customer()
 	if my_run != _run:
 		return
 	_cust = data
 	_titles.append(str(_cust.get("title", "")))
+	if _wild:
+		_make_wild_look()
 	_anger = float(_cust.get("start_anger", 40))
 	_resolve = 0.0
 	_turns = 0
@@ -216,6 +322,11 @@ func _play_customer(my_run: int) -> void:
 	var look: Dictionary = {}
 	if typeof(_cust.get("look", null)) == TYPE_DICTIONARY:
 		look = _cust["look"]
+	if _wild:
+		hud.show_banner(tr("！要注意人物が来店！"), UI.SHU)
+		hud.set_comment(tr("要注意人物だ。何を言い出すか分からないぞ。納得させれば点数 ×1.5！"))
+		main.sfx.play("warn", 0.8)
+		main.shake(0.12)
 	await main.spawn_customer(look)
 	if my_run != _run:
 		return
@@ -231,6 +342,9 @@ func _play_customer(my_run: int) -> void:
 	# ---- 会話
 	var outcome: String = ""
 	while outcome == "":
+		await _maybe_manager_visit(my_run)
+		if my_run != _run:
+			return
 		_player_turn = true
 		hud.set_status(tr("キレられる前に返事を書こう（Enterで渡す）"))
 		hud.set_input_enabled(true, tr("ここに返事を書く…"))
@@ -346,6 +460,8 @@ func _play_customer(my_run: int) -> void:
 		main.sfx.play("lose")
 	elif outcome == "resolved":
 		points = SCORE_RESOLVED + int((100.0 - _anger) * 6.0) + maxi(0, 300 - _turns * 50)
+		if _wild:
+			points = int(float(points) * WILD_BONUS)
 		hud.show_banner(tr("納得して帰った！") + "  +%d" % points, UI.LCD_ON)
 		main.sfx.play("win")
 	elif outcome == "yield":

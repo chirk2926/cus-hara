@@ -218,9 +218,11 @@ export function leaksMeta(text: string): boolean {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const strip = (s: string, n: number) => s.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
 
-export async function generateCustomer(stage: StageId, avoidTitles: string[], lang: Lang = "ja"): Promise<Customer> {
-  // 1割ほどはネタ枠（要件#41）
-  const persona = Math.random() < 0.1 ? "ネタ枠（突飛でばかばかしいクレームをする人）" : PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)];
+export async function generateCustomer(stage: StageId, avoidTitles: string[], lang: Lang = "ja", wild = false): Promise<Customer> {
+  // 1割ほどはネタ枠（要件#41）。「要注意人物」イベント（要件#52）では、もっと突飛な人にする
+  const persona = wild
+    ? "ネタ枠・要注意人物（言動が突拍子もなく、理屈が独特すぎて会話がかみ合わない、完全にコメディの人物。病気や障害を連想させる描写はしない）"
+    : Math.random() < 0.1 ? "ネタ枠（突飛でばかばかしいクレームをする人）" : PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)];
   let user = `舞台: ${STAGE_TEXT[stage]}\n人物の方向性: ${persona}\n`;
   if (avoidTitles.length > 0) user += `すでに登場した人物（似た人物・似たクレームは避ける）: ${avoidTitles.join(", ")}\n`;
   user += "この条件でお客さんを1人作ってください。" + LANG_LINE[lang];

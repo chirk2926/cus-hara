@@ -43,6 +43,7 @@ interface SoloSession {
   /** 最後にサーバーが返事をした時刻（怒りは時間とともにしか上がらない） */
   lastAt: number;
   finished: boolean;
+  hinted?: boolean;
 }
 
 const soloSessions = new Map<string, SoloSession>();
@@ -142,13 +143,14 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     if (!isStage(body.stage)) throw new HttpError(400, "bad_stage", "ステージの指定が正しくありません");
     const lang = toLang(body.lang);
     const avoid = Array.isArray(body.avoid) ? body.avoid.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
+    const wild = body.event === "wild";
     let customer: Customer | null = null;
     let source: "ai" | "script" = "script";
     let notice = "";
     if (llmEnabled()) {
       if (allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
         try {
-          customer = await generateCustomer(body.stage, avoid, lang);
+          customer = await generateCustomer(body.stage, avoid, lang, wild);
           source = "ai";
         } catch (e) {
           notice = e instanceof LlmError ? `${e.message}。台本のお客さんで続けます` : "AIでお客さんを作れなかったので、台本のお客さんで続けます";
@@ -158,7 +160,8 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
         notice = "AIの利用回数の上限に達したので、しばらく台本のお客さんになります";
       }
     }
-    if (customer === null) customer = randomCustomer(body.stage, avoid, lang);
+    if (customer === null) customer = randomCustomer(body.stage, avoid, lang, wild);
+    if (wild) customer.rare = true;
     // 1人のプレイヤーが同時に持てるセッションは3つまで
     const mine = [...soloSessions.values()].filter((s) => s.playerId === player.id).sort((a, b) => a.updated - b.updated);
     while (mine.length >= 3) soloSessions.delete(mine.shift()!.id);
@@ -178,7 +181,21 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       finished: false,
     };
     soloSessions.set(session.id, session);
-    return { session_id: session.id, source, notice, customer: publicCustomer(customer) };
+    return { session_id: session.id, source, notice, event: wild ? "wild" : "", customer: publicCustomer(customer) };
+  }
+
+  // 店長のアドバイス（要件#52）: 正しい方向の言葉を1つと、効く行動ボタンを1つ教える。1人のお客さんにつき1回だけ
+  if (method === "POST" && p === "/api/v1/solo/hint") {
+    const body = await readJson(req);
+    const s = soloSessions.get(String(body.session_id ?? ""));
+    if (!s || s.playerId !== player.id) throw new HttpError(404, "no_session", "会話が見つかりません");
+    if (s.finished) throw new HttpError(409, "finished", "このお客さんとの会話は終わっています");
+    if (s.hinted) throw new HttpError(409, "hinted", "店長のアドバイスはもう聞きました");
+    s.hinted = true;
+    const words = s.customer.solution_keywords ?? [];
+    const keyword = words.length > 0 ? words[Math.floor(Math.random() * words.length)] : "";
+    const good = Object.entries(s.customer.actions ?? {}).filter(([id, v]) => v === "good" && isAllowed(s.stage, s.customer, id)).map(([id]) => id);
+    return { keyword, action: good[0] ?? "" };
   }
 
   if (method === "POST" && p === "/api/v1/solo/turn") {
