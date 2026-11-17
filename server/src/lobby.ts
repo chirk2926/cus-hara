@@ -21,6 +21,9 @@ interface Room {
   format: Format;
   lang: Lang;
   rateScale: number;
+  kind: "ranked" | "friend";
+  /** EOS のロビーID（EOS で組んだ部屋のとき） */
+  eosLobby: string | null;
   created: number;
 }
 
@@ -138,7 +141,12 @@ export class Lobby {
 
   // ---------------------------------------------------------------- フレンド対戦（部屋コード）
 
-  createRoom(conn: Conn, format: unknown, answerTime?: unknown): void {
+  /** opts.via_eos: EOS のロビーで組んだ相手と遊ぶ部屋（ranked: true ならランクマッチ。ALLOW_RANKED_ROOMS=1 のときだけ） */
+  createRoom(conn: Conn, format: unknown, answerTime?: unknown, opts: { ranked?: unknown; eos_lobby?: unknown } = {}): void {
+    const wantRanked = opts.ranked === true;
+    if (wantRanked && !config.allowRankedRooms) {
+      return void conn.send({ t: "error", code: "ranked_rooms_disabled", message: "このサーバーでは、部屋でのランクマッチは使えません" });
+    }
     const f = this.checkFormat(conn, format);
     if (!f) return;
     const b = this.busy(conn.player.id);
@@ -147,7 +155,13 @@ export class Lobby {
     do {
       code = Array.from(crypto.randomBytes(6), (x) => ROOM_ALPHABET[x % ROOM_ALPHABET.length]).join("");
     } while (this.rooms.has(code));
-    this.rooms.set(code, { code, host: conn, format: f, lang: conn.lang, rateScale: ANSWER_RATE[String(answerTime)] ?? 1, created: Date.now() });
+    const eosLobby = typeof opts.eos_lobby === "string" ? opts.eos_lobby.slice(0, 64) : null;
+    this.rooms.set(code, {
+      code, host: conn, format: f, lang: conn.lang,
+      // ランクマッチは公平のため返事の時間を固定
+      rateScale: wantRanked ? 1 : ANSWER_RATE[String(answerTime)] ?? 1,
+      kind: wantRanked ? "ranked" : "friend", eosLobby, created: Date.now(),
+    });
     conn.send({ t: "room_created", code, format: f, lang: conn.lang });
   }
 
@@ -160,7 +174,7 @@ export class Lobby {
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
     this.rooms.delete(code);
     // フレンド対戦は部屋を作った人の言語で進める
-    this.startMatch("friend", room.format, room.lang, room.host, conn, room.rateScale);
+    this.startMatch(room.kind, room.format, room.lang, room.host, conn, room.rateScale);
   }
 
   // ---------------------------------------------------------------- 試合

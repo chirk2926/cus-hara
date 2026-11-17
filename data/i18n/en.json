@@ -241,5 +241,7 @@
 	"心が折れた…": "Mentally done...",
 	"今日はもう休もう。店長が代わってくれた。": "Take the rest of the day off. The manager is covering.",
 	"行動の負担: -%d 点": "Cost of actions: -%d pts",
-	"台を調整する": "Tweak the machine"
+	"台を調整する": "Tweak the machine",
+	"EOS はまだ設定されていません。ゲームサーバーのマッチングを使います": "EOS isn't set up yet. Using the game server's matchmaking.",
+	"EOS はまだ設定されていません。部屋コードを友達に伝えてください": "EOS isn't set up yet. Tell your friend the room code."
 }

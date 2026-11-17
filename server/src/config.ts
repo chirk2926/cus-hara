@@ -41,6 +41,9 @@ export const config = {
 
   // 1人のプレイヤーが1分間に使える AI 呼び出しの回数（運営側の API 料金を守るため）
   llmPerMinute: num("LLM_PER_MINUTE", 20),
+  // EOS（Epic Online Services）のロビーで組んだ相手と、ランクマッチの部屋を作ることを許すか（要件#32）。
+  // EOS のロビーをサーバーで確かめる仕組みが無いうちは、なりすましでレーティングを稼げるので既定は無効。
+  allowRankedRooms: str("ALLOW_RANKED_ROOMS", "0") === "1",
   // 1つのIPアドレスから1時間に作れるゲストアカウントの数
   guestsPerHour: num("GUESTS_PER_HOUR", 20),
 

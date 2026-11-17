@@ -204,3 +204,15 @@ test("同じ人は二重に並べない／音声の形式チェック", async ()
   assert.ok(err2);
   a.c.close();
 });
+
+test("EOS で組んだ部屋（要件#32）: ランクの部屋は既定で作れない", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "EOSホスト");
+  a.c.send({ t: "room_create", format: "text", ranked: true, eos_lobby: "abc" });
+  const err = await a.c.wait((m) => m.t === "error");
+  assert.equal(err.code, "ranked_rooms_disabled");
+  a.c.send({ t: "room_create", format: "text", eos_lobby: "abc" });
+  const room = await a.c.wait((m) => m.t === "room_created");
+  assert.ok(room.code);
+  a.c.send({ t: "cancel" });
+  a.c.close();
+});

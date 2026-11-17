@@ -77,7 +77,7 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           lobby.cancel(c);
           break;
         case "room_create":
-          lobby.createRoom(c, msg.format, msg.answer_time);
+          lobby.createRoom(c, msg.format, msg.answer_time, { ranked: msg.ranked, eos_lobby: msg.eos_lobby });
           break;
         case "room_join":
           lobby.joinRoom(c, msg.code);
