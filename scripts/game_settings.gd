@@ -42,12 +42,13 @@ func _ready() -> void:
 	load_settings()
 	# 起動引数 `-- --server=http://...` で接続先を一時的に変えられる（テスト用。保存はしない）
 	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--server="):
-			server_url = a.substr(9)
-		elif a.begins_with("--profile="):
+		if a.begins_with("--profile="):
 			# 同じPCで2つ起動して対戦を試すとき、ログイン情報を分ける
 			_profile = a.substr(10)
 			load_settings()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--server="):
+			server_url = a.substr(9)
 	if language == "":
 		language = "ja" if OS.get_locale_language() == "ja" else "en"
 	apply_language()

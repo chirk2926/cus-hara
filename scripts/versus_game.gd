@@ -1,27 +1,19 @@
 extends Node
-## 対戦モード（客役 vs 店員役）。1試合 = 2ラウンドで役を交代する。
+## 対戦モード（客役 vs 店員役）のクライアント側。進行・判定・時間・レーティングはすべてサーバーが決める。
+## ここはサーバーからのメッセージ（docs/SERVER.md）を画面に映し、入力（文字・声）を送るだけ。
 ##
-## 進行はホスト（peer id 1）がすべて決める。ゲストは入力を送り、ホストから届く結果を表示するだけ。
-##  - ホスト → 全員: @rpc("authority", "call_local") の show_* 関数
-##  - 入力 → ホスト: submit_text()
-## このノードは両者で同じパス（/root/Main/Versus）に置くこと。
-##
-## 採点: 店員の返答は、ホストにAPIキーがあればAI、なければキーワード判定。
-##       客役のセリフは常にキーワード判定（offline_judge.gd の judge_customer_line）。
+## 遊び方の種類:
+##   ランクマッチ: レーティングが近い人と組む（待つほど範囲が広がる）。レーティングが動く
+##   フレンド対戦: 部屋コードを共有した相手とだけ遊ぶ。レーティングは動かない
+## 形式: "text"（文字で返す）/ "voice"（押して話す。相手に声が届き、サーバーが文字起こしして判定）
 
-const Scenarios = preload("res://scripts/scenarios.gd")
-const Judge = preload("res://scripts/offline_judge.gd")
 const UI = preload("res://scripts/ui_kit.gd")
+const VoiceScript = preload("res://scripts/voice.gd")
+const Scenarios = preload("res://scripts/scenarios.gd")
 
+signal lobby_event(kind: String, data: Dictionary)   # ロビー画面向け: queued / queue_status / room_created / error / cancelled
 signal finished(summary: Dictionary)
-signal _submitted(peer: int, text: String)
 
-const ROUNDS: int = 2
-const BASE_ANGER_RATE: float = 1.1      # 店員が考えている間の怒り上昇（毎秒）
-const OPENING_TIME: float = 35.0        # 客役が最初のクレームを書く時間
-const CUSTOMER_TIME: float = 25.0       # 客役が言い返す時間
-const MAX_EXCHANGES: int = 8            # これだけ往復しても決着しなければ判定
-const STAGES: Array = ["konbini", "arcade"]
 const STAGE_NAMES: Dictionary = {"konbini": "コンビニ「ハッピーマート」", "arcade": "ゲームセンター「ゲームパラダイス」"}
 const CUSTOMER_PHRASES: Array = [
 	"責任者を出せ！",
@@ -33,431 +25,306 @@ const CUSTOMER_PHRASES: Array = [
 
 var main = null
 var hud = null
-var net = null
-var paused: bool = false   # 対戦中は止まらない（main との互換のために持つ）
+var api = null
+var voice = null
+var paused: bool = false
 
-var _run: int = 0
-var _active: bool = false
-var _in_match: bool = false
-var _my_name: String = "プレイヤー"
-var _names: Dictionary = {}       # peer id -> 名前
-var _ratings: Dictionary = {}     # peer id -> レーティング
-var _stage_id: String = "konbini"
-var _round: int = 0
-var _my_role: String = ""         # "staff" | "customer"
+var state: String = "idle"   # idle | connecting | queued | room | match
+var _pending: Dictionary = {}
+var _match: Dictionary = {}
+var _role: String = ""
 var _card: Dictionary = {}
 var _anger: float = 0.0
 var _resolve: float = 0.0
-var _rate: float = 1.0
-var _phase: String = ""           # "customer_turn" | "staff_turn" | "judging" | ""
-var _turn_peer: int = 0
-var _turn_left: float = 0.0
-var _score_text: String = ""
-# ホストだけが使う
-var _expect_peer: int = 0
-var _sync_timer: float = 0.0
+var _rate: float = 0.0
+var _phase: String = ""
+var _my_turn: bool = false
+var _seconds_left: float = -1.0
+var _totals: Dictionary = {"you": 0, "opponent": 0}
+var _round: int = 0
+var _rounds: int = 2
+var _smoke_n: int = 0
 
 
-func setup(main_node, hud_node, net_node) -> void:
+func setup(main_node, hud_node, api_node) -> void:
 	main = main_node
 	hud = hud_node
-	net = net_node
-	hud.reply_submitted.connect(_on_local_reply)
+	api = api_node
+	voice = VoiceScript.new()
+	add_child(voice)
+	voice.level_changed.connect(func(v: float) -> void:
+		if hud != null and is_instance_valid(hud):
+			hud.set_voice_level(v))
+	voice.auto_stopped.connect(_on_voice_stop)
+	api.message.connect(_on_message)
+	attach_hud(hud_node)
+
+
+## 画面（HUD）を作り直したときに付け替える
+func attach_hud(hud_node) -> void:
+	hud = hud_node
+	hud.reply_submitted.connect(_on_text)
+	hud.voice_start.connect(_on_voice_start)
+	hud.voice_stop.connect(_on_voice_stop)
 
 
 func is_active() -> bool:
-	return _active
+	return state == "match"
 
 
-func my_id() -> int:
-	return multiplayer.get_unique_id()
+func is_busy() -> bool:
+	return state != "idle"
 
 
-func abort() -> void:
-	_run += 1
-	_active = false
-	_in_match = false
+# ---------------------------------------------------------------- ロビーからの操作
+
+## kind: "queue" | "room_create" | "room_join"
+func request(kind: String, format: String, code: String = "") -> void:
+	_pending = {"t": kind, "format": format, "code": code}
+	state = "connecting"
+	lobby_event.emit("status", {"text": tr("サーバーに接続しています…")})
+	var me: Dictionary = await api.ensure_login()
+	if me.has("error"):
+		state = "idle"
+		lobby_event.emit("error", {"message": str(me["error"])})
+		return
+	if api.is_open():
+		_send_pending()
+	else:
+		api.open_socket()
+
+
+func cancel() -> void:
+	if state == "queued" or state == "room" or state == "connecting":
+		api.send({"t": "cancel"})
+	state = "idle"
+	_pending = {}
+
+
+func leave_match() -> void:
+	if state == "match":
+		api.send({"t": "leave"})
+
+
+func _send_pending() -> void:
+	if _pending.is_empty():
+		return
+	api.send({"t": "lang", "lang": GameSettings.language})
+	var p: Dictionary = _pending
+	_pending = {}
+	match str(p["t"]):
+		"queue":
+			api.send({"t": "queue", "format": p["format"]})
+		"room_create":
+			api.send({"t": "room_create", "format": p["format"]})
+		"room_join":
+			api.send({"t": "room_join", "code": p["code"]})
+
+
+# ---------------------------------------------------------------- サーバーからのメッセージ
+
+func _on_message(msg: Dictionary) -> void:
+	var t: String = str(msg.get("t", ""))
+	match t:
+		"hello":
+			if bool(msg.get("resumed", false)):
+				hud.set_status(tr("つなぎ直しました"))
+			else:
+				_send_pending()
+		"queued":
+			state = "queued"
+			lobby_event.emit("queued", msg)
+		"queue_status":
+			lobby_event.emit("queue_status", msg)
+		"room_created":
+			state = "room"
+			lobby_event.emit("room_created", msg)
+		"room_expired":
+			state = "idle"
+			lobby_event.emit("error", {"message": tr("部屋の期限が切れました。作り直してください")})
+		"cancelled":
+			lobby_event.emit("cancelled", msg)
+		"error":
+			if state != "match":
+				state = "idle"
+			lobby_event.emit("error", msg)
+		"match_found":
+			_on_match_found(msg)
+		"round_start":
+			_on_round_start(msg)
+		"phase":
+			_on_phase(msg)
+		"line":
+			_on_line(msg)
+		"voice":
+			var secs: float = voice.play_base64(str(msg.get("audio", "")))
+			if secs > 0.0:
+				hud.set_status(tr("相手の声: %.1f 秒") % secs)
+		"judged":
+			_on_judged(msg)
+		"round_end":
+			_on_round_end(msg)
+		"match_end":
+			_on_match_end(msg)
+		"opponent_status":
+			if bool(msg.get("connected", true)):
+				hud.set_comment(tr("相手がつなぎ直しました。"))
+			else:
+				hud.set_comment(tr("相手の接続が切れました。%d 秒待って戻らなければ、あなたの勝ちです。") % int(msg.get("grace_seconds", 20)))
+		"notice":
+			hud.set_comment(str(msg.get("text", "")))
+		_:
+			pass
+
+
+func _who(by: String) -> String:
+	return tr("あなた") if by == "you" else str((_match.get("opponent", {}) as Dictionary).get("name", tr("相手")))
+
+
+func _on_match_found(msg: Dictionary) -> void:
+	var resumed: bool = state == "match"
+	state = "match"
+	_match = msg
+	var stage: String = str(msg.get("stage", "konbini"))
+	_rounds = int(msg.get("rounds", 2))
+	if not resumed:
+		main.enter_versus(stage)
+		hud.clear_round()
+		var op: Dictionary = msg.get("opponent", {})
+		var kind_label: String = tr("ランクマッチ") if str(msg.get("kind", "")) == "ranked" else tr("フレンド対戦")
+		hud.set_top(tr(str(STAGE_NAMES.get(stage, ""))), kind_label, "")
+		hud.set_comment(tr("対戦相手: %s（%s・%d）") % [str(op.get("name", "")), str(op.get("rank", "")), int(op.get("rating", 0))])
+		hud.show_banner(tr("対戦開始！"), UI.POP)
+		main.sfx.play("door")
+	var voice_format: bool = str(msg.get("format", "text")) == "voice"
+	hud.set_voice_mode(voice_format)
+	if voice_format and not voice.available():
+		hud.set_voice_mode(false)
+		hud.set_comment(tr("マイクが見つからないので、文字で入力します。"))
+
+
+func _on_round_start(msg: Dictionary) -> void:
+	_round = int(msg.get("round", 0))
+	_role = str(msg.get("role", "staff"))
+	_card = msg.get("card", {}) if typeof(msg.get("card", null)) == TYPE_DICTIONARY else {}
+	_anger = float(msg.get("anger", 40.0))
+	_resolve = float(msg.get("resolve", 0.0))
+	_rate = 0.0
 	_phase = ""
+	_my_turn = false
+	var tot: Variant = msg.get("totals", {})
+	if typeof(tot) == TYPE_DICTIONARY:
+		_totals = tot
+	hud.clear_round()
+	_update_top()
+	if _role == "staff":
+		hud.set_quick_phrases(hud.DEFAULT_PHRASES)
+		hud.set_memo(str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
+		hud.set_comment(tr("あなたは店員役。怒りを100にせず、納得を100にすれば勝ち。"))
+		hud.show_banner(tr("あなたは店員役"), UI.LCD_ON)
+	else:
+		hud.set_quick_phrases(CUSTOMER_PHRASES)
+		hud.set_memo(tr("あなたの役: ") + str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
+		hud.set_comment(tr("あなたは客役。怒りを100にするか、店員に不当な要求を飲ませれば勝ち。暴言・無言・くり返しは逆効果。"))
+		hud.show_banner(tr("あなたは客役"), Color("#ff8a6a"))
+	hud.set_gauges(_anger, _resolve, -1.0)
+	main.display_anger = _anger
+	var look: Dictionary = _card.get("look", {}) if typeof(_card.get("look", null)) == TYPE_DICTIONARY else {}
+	main.spawn_customer(look)
 
 
-## 接続が確立したら両者が呼ぶ。名前とレーティングを交換し、ホストが試合を始める。
-func begin(player_name: String) -> void:
-	_run += 1
-	_active = true
-	_in_match = false
-	_my_name = player_name if player_name != "" else "プレイヤー"
-	_names = {my_id(): _my_name}
-	_ratings = {my_id(): GameSettings.rating}
-	_phase = ""
-	hello.rpc(_my_name, GameSettings.rating)
+func _update_top() -> void:
+	hud.set_top(tr(str(STAGE_NAMES.get(str(_match.get("stage", "")), ""))),
+		tr("ラウンド %d / %d") % [_round + 1, _rounds],
+		tr("あなた %d ― 相手 %d") % [int(_totals.get("you", 0)), int(_totals.get("opponent", 0))])
 
 
-@rpc("any_peer", "call_remote", "reliable")
-func hello(player_name: String, rating: int) -> void:
-	var sender: int = multiplayer.get_remote_sender_id()
-	_names[sender] = player_name.left(16)
-	_ratings[sender] = clampi(rating, 0, 9999)
-	if multiplayer.is_server() and _active and not _in_match:
-		_in_match = true
-		_host_match(_run, sender)
+func _on_phase(msg: Dictionary) -> void:
+	_phase = str(msg.get("phase", ""))
+	_my_turn = str(msg.get("turn", "")) == "you"
+	_anger = float(msg.get("anger", _anger))
+	_resolve = float(msg.get("resolve", _resolve))
+	_rate = float(msg.get("rate", 0.0))
+	var elapsed: float = float(msg.get("elapsed", 0.0))
+	_seconds_left = maxf(0.0, float(msg.get("seconds", 0.0)) - elapsed)
+	if _phase == "staff_turn":
+		_anger = minf(100.0, _anger + _rate * elapsed)
+	var can_input: bool = _my_turn and (_phase == "customer_turn" or _phase == "staff_turn")
+	if can_input:
+		if _phase == "staff_turn":
+			hud.set_input_enabled(true, tr("ここに返事を書く…"))
+		else:
+			hud.set_input_enabled(true, tr("お客さんとして言い返す…"))
+		main.sfx.play("warn", 1.3)
+	else:
+		hud.set_input_enabled(false, "")
+		if voice.is_recording():
+			voice.cancel_recording()
+	_update_status()
+	_refresh()
+	if main.smoke and can_input:
+		_smoke_autoplay()
 
 
-# ================================================================ ホスト側の進行
-
-func _wait(sec: float) -> void:
-	await get_tree().create_timer(sec).timeout
-
-
-func _line_time(text: String) -> float:
-	return clampf(float(text.length()) * 0.045, 0.5, 3.6) + 0.6
-
-
-func _host_match(my_run: int, guest: int) -> void:
-	var host: int = 1
-	var stage: String = str(STAGES[randi() % STAGES.size()])
-	var pool: Array = Scenarios.customers(stage).duplicate()
-	pool.shuffle()
-	show_match_start.rpc({"stage": stage, "names": _names, "ratings": _ratings})
-	await _wait(2.5)
-	if my_run != _run:
-		return
-	var first_staff: int = host if randi() % 2 == 0 else guest
-	var totals: Dictionary = {host: 0, guest: 0}
-	for r in range(ROUNDS):
-		var staff: int = first_staff
-		if r % 2 == 1:
-			staff = guest if first_staff == host else host
-		var customer: int = guest if staff == host else host
-		var card: Dictionary = (pool[r % pool.size()] as Dictionary).duplicate(true)
-		var res: Dictionary = await _host_round(my_run, r, staff, customer, card, totals)
-		if my_run != _run:
-			return
-		totals[int(res["winner_peer"])] = int(totals[int(res["winner_peer"])]) + int(res["points"])
-	var winner: int = 0
-	if int(totals[host]) > int(totals[guest]):
-		winner = host
-	elif int(totals[guest]) > int(totals[host]):
-		winner = guest
-	show_match_end.rpc({"totals": totals, "winner": winner, "ratings": _ratings, "names": _names})
-
-
-func _host_round(my_run: int, r: int, staff: int, customer: int, card: Dictionary, totals: Dictionary) -> Dictionary:
-	_anger = float(card.get("start_anger", 40))
-	_resolve = 0.0
-	_rate = BASE_ANGER_RATE * float(card.get("patience", 1.0))
-	var public_card: Dictionary = {
-		"title": card.get("title", ""), "name": card.get("name", ""), "look": card.get("look", {}),
-		"memo": card.get("memo", ""), "opening": card.get("opening", ""), "demand": card.get("demand", ""),
-	}
-	show_round_start.rpc({"round": r, "staff": staff, "customer": customer, "card": public_card,
-		"anger": _anger, "rate": _rate, "totals": totals})
-	await _wait(5.0)
-	if my_run != _run:
-		return {}
-
-	var history: Array = []
-	var used_staff: Array = []
-	var used_customer: Array = []
-	var exchanges: int = 0
-	var outcome: String = ""
-
-	# 客役が最初のクレームを書く（時間切れ・空ならカードの文面を使う。ペナルティなし）
-	var opening: String = await _host_collect(my_run, customer, "customer_turn", OPENING_TIME)
-	if my_run != _run:
-		return {}
-	if opening == "":
-		opening = str(card.get("opening", "おい！ちょっと！"))
-	used_customer.append(opening)
-	history.append({"role": "customer", "text": opening})
-	show_line.rpc("customer", opening)
-	await _wait(_line_time(opening))
-	if my_run != _run:
-		return {}
-
-	while outcome == "":
-		# ---- 店員の番（この間だけ怒りが上がる。100になったら時間切れ）
-		var reply: String = await _host_collect(my_run, staff, "staff_turn", 0.0)
-		if my_run != _run:
-			return {}
-		if reply == "":
-			_anger = 100.0
-			outcome = "explode"
-			show_judged.rpc({"anger": _anger, "resolve": _resolve, "anger_delta": 0, "resolve_delta": 0,
-				"comment": "時間切れ！お客さんがキレた。", "by": "staff"})
-			break
-		history.append({"role": "staff", "text": reply})
-		show_line.rpc("staff", reply)
-		show_phase.rpc("judging", 0, 0.0)
-		var res: Dictionary = await _judge_staff(card, reply, used_staff, history)
-		if my_run != _run:
-			return {}
-		used_staff.append(reply)
-		_anger = clampf(_anger + float(int(res.get("anger_delta", 0))), 0.0, 100.0)
-		_resolve = clampf(_resolve + float(int(res.get("resolve_delta", 0))), 0.0, 100.0)
-		show_judged.rpc({"anger": _anger, "resolve": _resolve, "anger_delta": int(res.get("anger_delta", 0)),
-			"resolve_delta": int(res.get("resolve_delta", 0)), "comment": str(res.get("comment", "")), "by": "staff"})
-		if bool(res.get("yielded", false)):
-			outcome = "yield"
-		elif _anger >= 100.0:
-			outcome = "explode"
-		elif _resolve >= 100.0:
-			outcome = "resolved"
-		if outcome != "":
-			break
-		exchanges += 1
-		if exchanges >= MAX_EXCHANGES:
-			outcome = "resolved" if _resolve > _anger else "explode"
-			break
-		await _wait(1.6)
-		if my_run != _run:
-			return {}
-
-		# ---- 客役の番（言い返す）
-		var line: String = await _host_collect(my_run, customer, "customer_turn", CUSTOMER_TIME)
-		if my_run != _run:
-			return {}
-		var cres: Dictionary = Judge.judge_customer_line(card, line, used_customer)
-		if line != "":
-			used_customer.append(line)
-		var shown: String = line if line != "" else "……（言葉に詰まっている）"
-		history.append({"role": "customer", "text": shown})
-		_anger = clampf(_anger + float(int(cres["anger_delta"])), 0.0, 100.0)
-		_resolve = clampf(_resolve + float(int(cres["resolve_delta"])), 0.0, 100.0)
-		show_line.rpc("customer", shown)
-		show_judged.rpc({"anger": _anger, "resolve": _resolve, "anger_delta": int(cres["anger_delta"]),
-			"resolve_delta": int(cres["resolve_delta"]), "comment": str(cres["comment"]), "by": "customer"})
-		if _resolve >= 100.0:
-			outcome = "resolved"
-		elif _anger >= 100.0:
-			outcome = "explode"
-		await _wait(_line_time(shown))
-		if my_run != _run:
-			return {}
-
-	var winner_peer: int = staff if outcome == "resolved" else customer
-	var points: int = 100 + int(100.0 - _anger) if outcome == "resolved" else 100 + int(100.0 - _resolve)
-	show_round_end.rpc({"outcome": outcome, "winner_peer": winner_peer, "points": points, "staff": staff, "customer": customer})
-	await _wait(5.5)
-	return {"winner_peer": winner_peer, "points": points}
-
-
-## 指定した相手の入力を待つ。deadline が 0 より大きければ時間切れで空文字を返す。
-## 店員の番（deadline = 0）は、_process が怒りを上げて 100 で時間切れにする。
-func _host_collect(my_run: int, peer: int, phase: String, deadline: float) -> String:
-	_expect_peer = peer
-	_sync_timer = 0.0
-	show_phase.rpc(phase, peer, deadline)
-	while true:
-		var got: Array = await _submitted
-		if my_run != _run:
-			return ""
-		if int(got[0]) == peer:
-			_expect_peer = 0
-			return str(got[1])
-	return ""
-
-
-func _judge_staff(card: Dictionary, reply: String, used: Array, history: Array) -> Dictionary:
-	if GameSettings.llm_ready() and not main.smoke:
-		var res: Dictionary = await main.llm.judge_turn(_stage_id, card, history, _anger, _resolve)
-		if not res.has("error"):
-			return res
-	await _wait(0.6)
-	return Judge.judge(card, reply, used, _anger, _resolve)
-
-
-## 入力の受け口。ゲストは rpc_id(1, ...) で、ホスト自身は直接呼ぶ。
-@rpc("any_peer", "call_remote", "reliable")
-func submit_text(text: String) -> void:
-	if not multiplayer.is_server():
-		return
-	var sender: int = multiplayer.get_remote_sender_id()
-	if sender == 0:
-		sender = 1
-	if sender != _expect_peer:
-		return
-	if _phase != "customer_turn" and _phase != "staff_turn":
-		return
-	_phase = ""
-	_submitted.emit(sender, text.strip_edges().left(200))
+func _update_status() -> void:
+	var s: String = ""
+	match _phase:
+		"customer_turn":
+			s = tr("あなたの番（客役）: 店員を追い詰めよう　残り %d 秒") if _my_turn else tr("相手（客役）がセリフを考えています…　残り %d 秒")
+			s = s % int(ceil(_seconds_left))
+		"staff_turn":
+			s = tr("あなたの番（店員役）: キレられる前に返事を") if _my_turn else tr("相手（店員役）が返事を考えています… 怒りが上がっていく")
+		"judging":
+			s = tr("店長が判定しています…")
+		"intro":
+			s = tr("まもなく開始…")
+		_:
+			s = ""
+	hud.set_status(s)
 
 
 func _process(delta: float) -> void:
-	if not _active or _phase == "":
+	if state != "match":
 		return
-	# 表示用のカウント（両者）
 	if _phase == "staff_turn":
 		_anger = minf(100.0, _anger + _rate * delta)
-		_refresh(true)
-	elif _phase == "customer_turn" and _turn_left > 0.0:
-		_turn_left = maxf(0.0, _turn_left - delta)
-		_update_status()
-	# 時間切れの判定と同期はホストだけが行う
-	if not multiplayer.is_server() or _expect_peer == 0:
-		return
-	if _phase == "staff_turn":
-		_sync_timer -= delta
-		if _sync_timer <= 0.0:
-			_sync_timer = 0.5
-			sync_gauges.rpc(_anger, _resolve)
-		if _anger >= 100.0:
-			var p: int = _expect_peer
-			_phase = ""
-			_submitted.emit(p, "")
-	elif _phase == "customer_turn" and _turn_left <= 0.0:
-		var p2: int = _expect_peer
-		_phase = ""
-		_submitted.emit(p2, "")
+		_refresh()
+	elif _phase == "customer_turn" and _seconds_left > 0.0:
+		var before: int = int(ceil(_seconds_left))
+		_seconds_left = maxf(0.0, _seconds_left - delta)
+		if int(ceil(_seconds_left)) != before:
+			_update_status()
 
 
-# ================================================================ 表示（両者で実行）
-
-func _refresh(countdown: bool) -> void:
+func _refresh() -> void:
 	var left: float = -1.0
-	if countdown and _rate > 0.0:
+	if _phase == "staff_turn" and _rate > 0.0:
 		left = (100.0 - _anger) / _rate
 	hud.set_gauges(_anger, _resolve, left)
 	main.display_anger = _anger
 
 
-func _update_top() -> void:
-	var role: String = "あなたは店員役" if _my_role == "staff" else "あなたは客役"
-	hud.set_top(str(STAGE_NAMES.get(_stage_id, "")), "ラウンド %d / %d ― %s" % [_round + 1, ROUNDS, role], _score_text)
-
-
-func _update_status() -> void:
-	var mine: bool = _turn_peer == my_id()
-	if _phase == "customer_turn":
-		if mine:
-			hud.set_status("あなたの番（客役）: 店員を追い詰めるセリフを入力　あと %d 秒" % int(ceil(_turn_left)))
-		else:
-			hud.set_status("お客さん（相手）がセリフを考えています…　あと %d 秒" % int(ceil(_turn_left)))
-	elif _phase == "staff_turn":
-		if mine:
-			hud.set_status("あなたの番（店員役）: お客さんがキレる前に返事を入力（Enterで送信）")
-		else:
-			hud.set_status("店員（相手）が返事を考えています… 怒りゲージが上がっていきます")
-	elif _phase == "judging":
-		hud.set_status("店長が判定しています…")
-
-
-@rpc("authority", "call_local", "reliable")
-func show_match_start(info: Dictionary) -> void:
-	_in_match = true
-	_stage_id = str(info.get("stage", "konbini"))
-	var names: Dictionary = info.get("names", {})
-	var ratings: Dictionary = info.get("ratings", {})
-	for k in names:
-		_names[int(k)] = str(names[k])
-	for k in ratings:
-		_ratings[int(k)] = int(ratings[k])
-	_score_text = ""
-	main.enter_versus(_stage_id)
-	hud.clear_round()
-	hud.set_top(str(STAGE_NAMES.get(_stage_id, "")), "対戦開始！", "")
-	hud.set_status("対戦相手: %s（レーティング %d）" % [_opponent_name(), _opponent_rating()])
-	hud.show_banner("対戦開始！", UI.C_ACCENT)
-	main.sfx.play("door")
-
-
-func _opponent_id() -> int:
-	for k in _names:
-		if int(k) != my_id():
-			return int(k)
-	return 0
-
-
-func _opponent_name() -> String:
-	return str(_names.get(_opponent_id(), "相手"))
-
-
-func _opponent_rating() -> int:
-	return int(_ratings.get(_opponent_id(), GameSettings.RATING_START))
-
-
-@rpc("authority", "call_local", "reliable")
-func show_round_start(info: Dictionary) -> void:
-	_round = int(info.get("round", 0))
-	_my_role = "staff" if int(info.get("staff", 0)) == my_id() else "customer"
-	_card = info.get("card", {})
-	_anger = float(info.get("anger", 40.0))
-	_resolve = 0.0
-	_rate = float(info.get("rate", 1.0))
-	_phase = ""
-	var totals: Dictionary = info.get("totals", {})
-	var mine: int = 0
-	var theirs: int = 0
-	for k in totals:
-		if int(k) == my_id():
-			mine = int(totals[k])
-		else:
-			theirs = int(totals[k])
-	_score_text = "あなた %d ― 相手 %d" % [mine, theirs]
-	hud.clear_round()
-	_update_top()
-	if _my_role == "staff":
-		hud.set_quick_phrases(hud.DEFAULT_PHRASES)
-		hud.set_memo(str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
-		hud.set_comment("あなたは店員役。怒りを100にせず、納得を100にすれば勝ち。")
-		hud.show_banner("あなたは店員役", UI.C_BLUE.lightened(0.4))
-	else:
-		hud.set_quick_phrases(CUSTOMER_PHRASES)
-		hud.set_memo("あなたの役: " + str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
-		hud.set_comment("あなたは客役。怒りが100になるか、店員が不当な要求を飲めば勝ち。暴言・無言・繰り返しは逆効果。")
-		hud.show_banner("あなたは客役", UI.C_RED.lightened(0.3))
-	_refresh(false)
-	main.sfx.play("door")
-	var look: Dictionary = {}
-	if typeof(_card.get("look", null)) == TYPE_DICTIONARY:
-		look = _card["look"]
-	main.spawn_customer(look)
-
-
-@rpc("authority", "call_local", "reliable")
-func show_phase(phase: String, peer: int, deadline: float) -> void:
-	_phase = phase
-	_turn_peer = peer
-	_turn_left = deadline
-	var mine: bool = peer == my_id()
-	if phase == "customer_turn" and mine:
-		hud.set_input_enabled(true, "クレームのセリフを入力…（空のままだとカードのセリフになります）" if deadline > CUSTOMER_TIME else "言い返すセリフを入力…")
-	elif phase == "staff_turn" and mine:
-		hud.set_input_enabled(true, "ここに返事を入力…")
-	else:
-		hud.set_input_enabled(false, "")
-	_update_status()
-	_refresh(phase == "staff_turn")
-	if main.smoke and mine and phase != "judging":
-		_smoke_autoplay(_run, phase)
-
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func sync_gauges(anger: float, resolve: float) -> void:
-	_anger = anger
-	_resolve = resolve
-
-
-@rpc("authority", "call_local", "reliable")
-func show_line(role: String, text: String) -> void:
-	if _phase == "customer_turn":
-		_phase = ""
-		hud.set_status("")
+func _on_line(msg: Dictionary) -> void:
+	var role: String = str(msg.get("role", ""))
+	var text: String = str(msg.get("text", ""))
+	var by: String = str(msg.get("by", ""))
+	var mark: String = tr("（声）") if str(msg.get("via", "")) == "voice" else ""
 	if role == "customer":
-		main.customer_say("%s（%s）" % [str(_card.get("title", "お客さん")), "あなた" if _my_role == "customer" else _opponent_name()], text)
+		var speaker: String = "%s（%s）%s" % [str(_card.get("title", tr("お客さん"))), _who(by), mark]
+		main.customer_say(speaker, text, _anger >= 70.0)
 	else:
-		hud.show_echo("店員（%s）: " % ("あなた" if _my_role == "staff" else _opponent_name()), text)
+		hud.show_echo(tr("店員（%s）: ") % _who(by), text)
 
 
-@rpc("authority", "call_local", "reliable")
-func show_judged(info: Dictionary) -> void:
-	_anger = float(info.get("anger", _anger))
-	_resolve = float(info.get("resolve", _resolve))
+func _on_judged(msg: Dictionary) -> void:
+	_anger = float(msg.get("anger", _anger))
+	_resolve = float(msg.get("resolve", _resolve))
 	_phase = ""
-	_refresh(false)
-	var a: int = int(info.get("anger_delta", 0))
-	var r: int = int(info.get("resolve_delta", 0))
+	_refresh()
+	var a: int = int(msg.get("anger_delta", 0))
+	var r: int = int(msg.get("resolve_delta", 0))
 	hud.show_delta(a, r)
-	hud.set_comment(str(info.get("comment", "")))
+	hud.set_comment(str(msg.get("comment", "")))
 	if a < 0:
 		main.customer_react("calm")
 		main.sfx.play("good", 1.2)
@@ -466,111 +333,113 @@ func show_judged(info: Dictionary) -> void:
 		main.sfx.play("bad")
 
 
-@rpc("authority", "call_local", "reliable")
-func show_round_end(info: Dictionary) -> void:
+func _on_round_end(msg: Dictionary) -> void:
 	_phase = ""
 	hud.set_input_enabled(false, "")
 	hud.set_status("")
-	var outcome: String = str(info.get("outcome", ""))
-	var won: bool = int(info.get("winner_peer", 0)) == my_id()
-	var pts: int = int(info.get("points", 0))
-	var what: String = "お客さんは納得して帰った"
+	var tot: Variant = msg.get("totals", {})
+	if typeof(tot) == TYPE_DICTIONARY:
+		_totals = tot
+	_update_top()
+	var outcome: String = str(msg.get("outcome", ""))
+	var won: bool = str(msg.get("winner", "")) == "you"
+	var what: String = tr("納得して帰った")
 	var mood: String = "happy"
 	if outcome == "explode":
-		what = "お客さんがブチギレた"
+		what = tr("ブチギレた")
 		mood = "angry"
 		main.customer_react("explode")
 		main.shake(0.25)
 	elif outcome == "yield":
-		what = "店員が不当な要求を飲んだ"
+		what = tr("店員が要求を飲んだ")
 		mood = "smug"
 		main.customer_react("smug")
 	else:
 		main.customer_react("happy")
-	hud.show_banner("%s\n%s  +%d" % [what, "あなたの勝ち！" if won else "相手の勝ち…", pts],
-		UI.C_GREEN.lightened(0.35) if won else UI.C_RED.lightened(0.3))
+	hud.show_banner("%s\n%s +%d" % [what, tr("あなたの勝ち") if won else tr("相手の勝ち"), int(msg.get("points", 0))], UI.LCD_ON if won else Color("#ff8a6a"))
 	main.sfx.play("win" if won else "lose")
-	_leave_later(_run, mood)
+	_leave_later(mood)
 
 
-func _leave_later(my_run: int, mood: String) -> void:
-	await _wait(2.6)
-	if my_run != _run:
+func _leave_later(mood: String) -> void:
+	await get_tree().create_timer(2.6).timeout
+	if state != "match":
 		return
 	hud.hide_bubble()
 	main.dismiss_customer(mood)
 	main.display_anger = 0.0
 
 
-@rpc("authority", "call_local", "reliable")
-func show_match_end(info: Dictionary) -> void:
-	_active = false
-	_in_match = false
+func _on_match_end(msg: Dictionary) -> void:
+	state = "idle"
 	_phase = ""
-	var totals: Dictionary = info.get("totals", {})
-	var mine: int = 0
-	var theirs: int = 0
-	for k in totals:
-		if int(k) == my_id():
-			mine = int(totals[k])
-		else:
-			theirs = int(totals[k])
-	var winner: int = int(info.get("winner", 0))
-	var score: float = 0.5
-	if winner == my_id():
-		score = 1.0
-	elif winner != 0:
-		score = 0.0
-	var before: int = GameSettings.rating
-	var delta: int = GameSettings.record_versus(_opponent_rating(), score)
-	finished.emit({"score": score, "mine": mine, "theirs": theirs, "opponent": _opponent_name(),
-		"rating_before": before, "rating_delta": delta, "disconnected": false})
+	hud.set_input_enabled(false, "")
+	if voice.is_recording():
+		voice.cancel_recording()
+	finished.emit(msg)
 
 
-## 相手が切断したとき（main から呼ばれる）。試合が始まっていれば勝ち扱いにする。
-func opponent_left() -> void:
-	if not _active:
+# ---------------------------------------------------------------- 入力
+
+func _on_text(text: String) -> void:
+	if state != "match" or not _my_turn or main.mode != "versus":
 		return
-	var was_in_match: bool = _in_match
-	abort()
-	if not was_in_match:
+	_my_turn = false
+	api.send({"t": "say", "text": text})
+	hud.set_status(tr("送りました…"))
+
+
+func _on_voice_start() -> void:
+	if state != "match" or not _my_turn:
 		return
-	var before: int = GameSettings.rating
-	var delta: int = GameSettings.record_versus(_opponent_rating(), 1.0)
-	finished.emit({"score": 1.0, "mine": 0, "theirs": 0, "opponent": _opponent_name(),
-		"rating_before": before, "rating_delta": delta, "disconnected": true})
+	if not voice.start_recording():
+		hud.set_comment(tr("マイクを使えませんでした。文字で入力してください。"))
+		hud.set_voice_mode(false)
+		hud.set_input_enabled(true, tr("ここに書く…"))
 
 
-# ================================================================ 入力
-
-func _on_local_reply(text: String) -> void:
-	if not _active or _turn_peer != my_id():
+func _on_voice_stop() -> void:
+	if not voice.is_recording():
 		return
-	if _phase != "customer_turn" and _phase != "staff_turn":
+	var bytes: PackedByteArray = voice.stop_recording()
+	if bytes.is_empty():
+		hud.set_comment(tr("声が短すぎました。ボタンを押している間に話してください。"))
 		return
-	if multiplayer.is_server():
-		submit_text(text)
-	else:
-		_phase = "judging"
-		submit_text.rpc_id(1, text)
+	_send_voice(bytes, "")
 
 
-## 自動テスト（--smoke-host / --smoke-join）用
-func _smoke_autoplay(my_run: int, phase: String) -> void:
-	await _wait(0.8)
-	if my_run != _run or _phase != phase or _turn_peer != my_id():
+func _send_voice(bytes: PackedByteArray, debug_text: String) -> void:
+	_my_turn = false
+	hud.set_input_enabled(false, "")
+	var msg: Dictionary = {"t": "voice", "audio": Marshalls.raw_to_base64(bytes)}
+	if debug_text != "":
+		msg["debug_text"] = debug_text
+	api.send(msg)
+	hud.set_status(tr("声を送りました。文字にしています…"))
+
+
+## 自動テスト用: 自分の番が来たら自動で返す（店員はよい返事、客は圧のあるセリフ）
+func _smoke_autoplay() -> void:
+	_smoke_n += 1
+	var n: int = _smoke_n
+	await get_tree().create_timer(0.4).timeout
+	if not _my_turn or state != "match":
 		return
+	var en: bool = GameSettings.language == "en"
 	var text: String = ""
-	if phase == "staff_turn":
-		var words: Array = Scenarios.customers(_stage_id)[0].get("solution_keywords", [])
-		for c in Scenarios.customers(_stage_id):
+	if _phase == "staff_turn":
+		var words: Array = []
+		for c in Scenarios.customers(str(_match.get("stage", "konbini"))):
 			if str((c as Dictionary).get("title", "")) == str(_card.get("title", "")):
 				words = (c as Dictionary).get("solution_keywords", [])
-		if _round == 0:
-			text = "申し訳ございません。お気持ちお察しいたします。%sと%sで対応いたします。（%d）" % [str(words[0]), str(words[1]), randi() % 1000]
+		var w: String = str(words[n % words.size()]) if not words.is_empty() else ("check" if en else "確認")
+		if en:
+			text = "I'm so sorry, I understand. Please let me %s right away, sir. (%d)" % [w, n]
 		else:
-			text = "うるさい"
+			text = "申し訳ございません。お気持ちお察しいたします。すぐに%sの対応をいたします。（%d）" % [w, n]
 	else:
-		text = "責任者を出せ！こっちは客だぞ！どうしてくれるんだ！（%d）" % (randi() % 1000)
-	hud.set_input_enabled(false, "")
-	_on_local_reply(text)
+		text = ("Get me the manager! I'm a regular here, this is unacceptable! (%d)" % n) if en else ("責任者を出せ！こっちは客だぞ！どうしてくれるんだ！（%d）" % n)
+	if str(_match.get("format", "text")) == "voice":
+		_send_voice(VoiceScript.test_tone(1.0), text)
+	else:
+		_on_text(text)

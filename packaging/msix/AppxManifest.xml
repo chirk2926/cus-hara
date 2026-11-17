@@ -36,5 +36,6 @@
     <Capability Name="internetClient" />
     <Capability Name="internetClientServer" />
     <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="microphone" />
   </Capabilities>
 </Package>

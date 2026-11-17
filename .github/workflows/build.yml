@@ -11,13 +11,42 @@ permissions:
 env:
   GODOT_VERSION: 4.5
   GODOT_RELEASE: 4.5-stable
+  NODE_VERSION: 22.20.0
 
 jobs:
-  windows:
-    name: Check scripts and build Windows exe
+  server:
+    name: Server tests and translation check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install
+        working-directory: server
+        run: npm ci
+      - name: Typecheck
+        working-directory: server
+        run: npm run typecheck
+      - name: Test
+        working-directory: server
+        run: npm test
+      - name: Translations (no missing English text)
+        run: python3 tools/i18n.py check
+
+  windows:
+    name: Check client, play against the server, build Windows exe
+    needs: server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
 
       - name: Download Godot and export templates
         run: |
@@ -33,33 +62,57 @@ jobs:
           rm -f godot.zip templates.tpz
           echo "$RUNNER_TEMP/godot" >> "$GITHUB_PATH"
 
+      - name: Start the game server (no AI key: keyword judging, mock speech-to-text)
+        run: |
+          cd server && npm ci
+          (LLM_MODE=offline STT_PROVIDER=mock TIME_SCALE=4 DB_PATH="$RUNNER_TEMP/ci.db" PORT=8787 \
+            nohup npm start > "$RUNNER_TEMP/server.log" 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8787/healthz && break; sleep 1; done
+          curl -sf http://127.0.0.1:8787/api/v1/info
+
       - name: Import project
         run: godot --headless --import 2>&1 | tee import.log
 
-      - name: Smoke test (auto-play every stage in script mode)
+      - name: Solo smoke test (offline, Japanese)
         run: |
           set -o pipefail
-          timeout 300 godot --headless -- --smoke 2>&1 | tee smoke.log
-          if grep -E "SCRIPT ERROR|Parse Error|SMOKE TIMEOUT" import.log smoke.log; then
+          timeout 300 godot --headless -- --smoke --source=offline --lang=ja --profile=solo_ja 2>&1 | tee smoke_offline.log
+          grep -q "SMOKE OK" smoke_offline.log
+
+      - name: Solo smoke test (via the server, English)
+        run: |
+          set -o pipefail
+          timeout 300 godot --headless -- --smoke --source=server --lang=en --profile=solo_en --server=http://127.0.0.1:8787 2>&1 | tee smoke_server.log
+          grep -q "SMOKE OK" smoke_server.log
+
+      - name: Versus smoke test (ranked, text, two clients)
+        run: |
+          (timeout 300 godot --headless -- --vs-smoke=text --profile=vsA --lang=ja --server=http://127.0.0.1:8787 > vs_a.log 2>&1 &)
+          sleep 1
+          timeout 300 godot --headless -- --vs-smoke=text --profile=vsB --lang=ja --server=http://127.0.0.1:8787 2>&1 | tee vs_b.log
+          sleep 5
+          echo "---- client A"; cat vs_a.log
+          grep -q "VERSUS OK" vs_a.log
+          grep -q "VERSUS OK" vs_b.log
+
+      - name: Versus smoke test (ranked, voice, English, two clients)
+        run: |
+          (timeout 300 godot --headless -- --vs-smoke=voice --profile=vvA --lang=en --server=http://127.0.0.1:8787 > vv_a.log 2>&1 &)
+          sleep 1
+          timeout 300 godot --headless -- --vs-smoke=voice --profile=vvB --lang=en --server=http://127.0.0.1:8787 2>&1 | tee vv_b.log
+          sleep 5
+          echo "---- client A"; cat vv_a.log
+          grep -q "VERSUS OK" vv_a.log
+          grep -q "VERSUS OK" vv_b.log
+
+      - name: Fail on script errors
+        if: always()
+        run: |
+          echo "---- server log"; tail -n 60 "$RUNNER_TEMP/server.log" || true
+          if grep -E "SCRIPT ERROR|Parse Error|SMOKE TIMEOUT|VERSUS TIMEOUT" *.log; then
             echo "::error::Script errors found"
             exit 1
           fi
-          grep -q "SMOKE OK" smoke.log
-
-      - name: Versus smoke test (two processes play a match over localhost)
-        run: |
-          set -o pipefail
-          (timeout 300 godot --headless -- --smoke-host > vs_host.log 2>&1 &)
-          sleep 2
-          timeout 300 godot --headless -- --smoke-join 2>&1 | tee vs_join.log
-          sleep 3
-          echo "---- host log"; cat vs_host.log
-          if grep -E "SCRIPT ERROR|Parse Error|VERSUS TIMEOUT" vs_host.log vs_join.log; then
-            echo "::error::Versus smoke test failed"
-            exit 1
-          fi
-          grep -q "VERSUS OK" vs_host.log
-          grep -q "VERSUS OK" vs_join.log
 
       - name: Export Windows build
         run: |
@@ -80,15 +133,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libgl1-mesa-dri libvulkan1
           rm -rf docs/screenshots
-          xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --resolution 1280x720 -- --shots 2>&1 | tee shots.log || true
-          if ! grep -q "SHOTS OK" shots.log; then
-            echo "Vulkan rendering failed; retrying with OpenGL"
-            xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --rendering-driver opengl3 --resolution 1280x720 -- --shots 2>&1 | tee shots.log || true
-          fi
-          grep -E "SCRIPT ERROR|ERROR|SHOT" shots.log | head -60 || true
+          for lang in ja en; do
+            xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --resolution 1280x720 -- --shots --lang=$lang --profile=shots_$lang 2>&1 | tee shots_$lang.log || true
+          done
+          cat shots_*.log > docs/screenshots/render.log || true
+          grep -E "SCRIPT ERROR|ERROR|SHOT" docs/screenshots/render.log | head -80 || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp shots.log docs/screenshots/render.log
           git add -f docs/screenshots
           git commit -m "スクリーンショットを更新 [skip ci]" || exit 0
           git pull --rebase -q origin "${GITHUB_REF_NAME}"
@@ -103,7 +154,7 @@ jobs:
       MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME || 'CusHara.Dev' }}
       MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER || 'CN=CusHaraDev' }}
       MSIX_PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY || 'CusHara Dev' }}
-      MSIX_VERSION: ${{ vars.MSIX_VERSION || '0.1.0.0' }}
+      MSIX_VERSION: ${{ vars.MSIX_VERSION || '0.2.0.0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

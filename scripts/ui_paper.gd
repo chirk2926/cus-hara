@@ -131,12 +131,12 @@ class Lcd extends Control:
 		draw_string(dot, Vector2(12, 16), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#b9b3c2"))
 		var x0: float = lcd.position.x + 12.0
 		var w: float = lcd.size.x - 24.0
-		_meter(dot, Vector2(x0, lcd.position.y + 10.0), w, "イカリ", anger, UI.LCD_ON if anger < 70.0 else Color("#ff8a6a"))
-		_meter(dot, Vector2(x0, lcd.position.y + 74.0), w, "ナットク", resolve, UI.LCD_ON)
+		_meter(dot, Vector2(x0, lcd.position.y + 10.0), w, tr("イカリ"), anger, UI.LCD_ON if anger < 70.0 else Color("#ff8a6a"))
+		_meter(dot, Vector2(x0, lcd.position.y + 74.0), w, tr("ナットク"), resolve, UI.LCD_ON)
 		if seconds_left >= 0.0:
 			var on: bool = seconds_left >= 10.0 or fmod(_blink, 0.6) < 0.4
 			if on:
-				var t: String = "キレるまで %02d秒" % int(ceil(seconds_left))
+				var t: String = tr("キレるまで %02d秒") % int(ceil(seconds_left))
 				draw_string(dot, Vector2(x0, lcd.end.y - 10.0), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.LCD_ON if seconds_left >= 10.0 else Color("#ff8a6a"))
 
 	func _meter(dot: Font, pos: Vector2, w: float, label: String, v: float, on: Color) -> void:

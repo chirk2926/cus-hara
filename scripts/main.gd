@@ -1,35 +1,33 @@
 extends Node
-## アプリ全体の司令塔。3Dステージ・カメラ・お客さんキャラ・各画面（タイトル/設定/遊び方/結果/メニュー）を管理し、
-## ゲームモード（solo_game.gd）に「見た目を動かす」ための関数を提供する。
+## アプリ全体の司令塔。3Dステージ・カメラ・お客さんキャラと、各画面（タイトル／設定／遊び方／休憩／結果／対戦ロビー）を持ち、
+## ゲームモード（solo_game.gd / versus_game.gd）に「見た目を動かす」関数を提供する。
+## 画面の見た目の決まりは docs/UI_GUIDE.md、全体の作りは docs/DESIGN.md。
 ##
-## 起動引数 `-- --smoke` を付けると、台本モードで全ステージを自動プレイして終了する（CIの動作確認用）。
+## 起動引数（`godot -- <引数>`）:
+##   --smoke            1人用を全ステージ自動プレイして終了（CI）。--source=server|offline で採点先を指定
+##   --vs-smoke=text|voice  ランクマッチに並んで対戦を自動プレイして終了（CI。2つ同時に起動する）
+##   --shots            主な画面を docs/screenshots/ に保存して終了
+##   --server=URL       接続先サーバー（保存しない） / --profile=名前  ログイン情報を分ける / --lang=ja|en
 
 const StageWorldScript = preload("res://scripts/stage_world.gd")
 const CustomerScript = preload("res://scripts/customer_character.gd")
 const HudScript = preload("res://scripts/hud.gd")
 const SoloScript = preload("res://scripts/solo_game.gd")
+const VersusScript = preload("res://scripts/versus_game.gd")
 const LlmScript = preload("res://scripts/llm_client.gd")
+const ApiScript = preload("res://scripts/server_api.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
 const UI = preload("res://scripts/ui_kit.gd")
+const Paper = preload("res://scripts/ui_paper.gd")
 const ScenariosScript = preload("res://scripts/scenarios.gd")
-const NetScript = preload("res://scripts/net_session.gd")
-const VersusScript = preload("res://scripts/versus_game.gd")
 
-const GAME_TITLE: String = "カスハラ防衛線"
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
 const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
 const STAGE_ORDER: Array = ["konbini", "arcade"]
+## 名前・説明は日本語の文をキーにして tr() で訳す
 const STAGES: Dictionary = {
-	"konbini": {
-		"name": "コンビニ「ハッピーマート」",
-		"short": "コンビニ",
-		"desc": "24時間営業。弁当、レジ袋、年齢確認…火種は無限大。",
-	},
-	"arcade": {
-		"name": "ゲームセンター「ゲームパラダイス」",
-		"short": "ゲームセンター",
-		"desc": "クレーンゲームだらけの店。「取れない」は全部こちらのせい。",
-	},
+	"konbini": {"name": "コンビニ「ハッピーマート」", "desc": "24時間営業。弁当、レジ袋、年齢確認…火種はどこにでもある。"},
+	"arcade": {"name": "ゲームセンター「ゲームパラダイス」", "desc": "クレーンゲームだらけの店。「取れない」は全部こちらのせい。"},
 }
 const RANKS: Array = [
 	[5600, "S", "伝説のクレーム処理班"],
@@ -39,27 +37,27 @@ const RANKS: Array = [
 	[-999999, "D", "店長に呼び出されるスタッフ"],
 ]
 
-# ゲームモードから参照される公開メンバー
+# ゲームモードから使う公開メンバー
 var sfx = null
 var llm = null
+var api = null
 var smoke: bool = false
-var display_anger: float = 0.0   # 0〜100。3Dの表情・照明に反映される
+var mode: String = ""             # "" | "solo" | "versus"
+var display_anger: float = 0.0    # 0〜100。3Dの表情・照明に反映される
 
 var _world = null
 var _camera: Camera3D = null
 var _customer = null
 var _hud = null
 var _solo = null
-var _net = null
 var _versus = null
-var _mode: String = ""          # "solo" | "versus"
-var _lobby_status: Label = null
-var _smoke_join_tries: int = 0
 var _ui: CanvasLayer = null
 var _title: Control = null
-var _overlay: Control = null
-var _mode_label: Label = null
-var _score_label: Label = null
+var _sheet: Control = null
+var _profile_label: Label = null
+var _server_label: Label = null
+var _lobby_status: Label = null
+var _lobby_code: Label = null
 var _current_stage: String = ""
 var _shake: float = 0.0
 var _time: float = 0.0
@@ -67,20 +65,30 @@ var _in_game: bool = false
 var _cam_override: bool = false
 var _cam_override_pos: Vector3 = Vector3.ZERO
 var _cam_override_target: Vector3 = Vector3.ZERO
+var _server_info: Dictionary = {}
+var _vs_format: String = "text"
 
 
 func _ready() -> void:
 	randomize()
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	smoke = args.has("--smoke") or args.has("--smoke-host") or args.has("--smoke-join")
+	for a in args:
+		if a.begins_with("--lang="):
+			GameSettings.language = a.substr(7)
+			GameSettings.apply_language()
+		elif a.begins_with("--source="):
+			GameSettings.solo_source = a.substr(9)
+	smoke = args.has("--smoke") or _arg("--vs-smoke=") != ""
 
 	sfx = SfxScript.new()
 	add_child(sfx)
 	llm = LlmScript.new()
 	add_child(llm)
+	api = ApiScript.new()
+	add_child(api)
 
 	_world = StageWorldScript.new()
-	_world.set("label_font", UI.bold_font())
+	_world.set("label_font", UI.font(UI.F_SIGN))
 	add_child(_world)
 	_camera = Camera3D.new()
 	_camera.fov = 60.0
@@ -91,45 +99,49 @@ func _ready() -> void:
 
 	_ui = CanvasLayer.new()
 	add_child(_ui)
-	_hud = HudScript.new()
-	_hud.sfx = sfx
-	_ui.add_child(_hud)
-	_hud.visible = false
-	_hud.pause_pressed.connect(_show_pause)
-	_hud.talk_started.connect(_on_talk_started)
-
 	_solo = SoloScript.new()
 	add_child(_solo)
+	_versus = VersusScript.new()
+	add_child(_versus)
+	_make_hud()
 	_solo.setup(self, _hud)
 	_solo.finished.connect(_on_solo_finished)
-
-	_net = NetScript.new()
-	add_child(_net)
-	_net.connected.connect(_on_net_connected)
-	_net.closed.connect(_on_net_closed)
-	_net.status.connect(_on_net_status)
-	_versus = VersusScript.new()
-	_versus.name = "Versus"   # 両者で同じノードパスにする（RPCのため）
-	add_child(_versus)
-	_versus.setup(self, _hud, _net)
+	_versus.setup(self, _hud, api)
 	_versus.finished.connect(_on_versus_finished)
-	if _net.steam_available():
-		_net.steam_init()   # 起動中にSteamの招待を受け取れるようにする
+	_versus.lobby_event.connect(_on_lobby_event)
 
 	_build_title()
 	_show_title()
 
 	if args.has("--smoke"):
 		_run_smoke()
-	elif args.has("--smoke-host") or args.has("--smoke-join"):
-		_run_versus_smoke(args.has("--smoke-host"))
+	elif _arg("--vs-smoke=") != "":
+		_run_versus_smoke(_arg("--vs-smoke="))
 	elif args.has("--shots"):
 		_run_shots()
+	else:
+		_check_server()
+
+
+func _arg(prefix: String) -> String:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with(prefix):
+			return a.substr(prefix.length())
+	return ""
+
+
+func _make_hud() -> void:
+	_hud = HudScript.new()
+	_hud.sfx = sfx
+	_ui.add_child(_hud)
+	_ui.move_child(_hud, 0)
+	_hud.visible = false
+	_hud.pause_pressed.connect(_show_pause)
+	_hud.talk_started.connect(_on_talk_started)
 
 
 func _process(delta: float) -> void:
 	_time += delta
-	# カメラ: タイトルではゆっくり揺れ、プレイ中は固定＋ブチギレ時の揺れ
 	var pos: Vector3 = CAMERA_POS
 	if not _in_game:
 		pos += Vector3(sin(_time * 0.25) * 0.5, 0.25 + sin(_time * 0.18) * 0.08, 0.6)
@@ -142,7 +154,6 @@ func _process(delta: float) -> void:
 		target = _cam_override_target
 	_camera.position = pos
 	_camera.look_at(target, Vector3.UP)
-
 	if _customer != null and is_instance_valid(_customer):
 		_customer.call("set_anger", clampf(display_anger / 100.0, 0.0, 1.0))
 	if _world != null:
@@ -151,13 +162,13 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		if _overlay != null:
-			_close_overlay()
+		if _sheet != null:
+			_close_sheet()
 		elif _in_game:
 			_show_pause()
 
 
-# ---------------------------------------------------------------- ゲームモード向けAPI
+# ---------------------------------------------------------------- ゲームモード向けの関数
 
 func set_stage(stage_id: String) -> void:
 	if stage_id == _current_stage:
@@ -193,8 +204,8 @@ func dismiss_customer(mood: String) -> void:
 		_customer = null
 
 
-func customer_say(speaker: String, text: String) -> void:
-	await _hud.say(speaker, text)
+func customer_say(speaker: String, text: String, angry: bool = false) -> void:
+	await _hud.say(speaker, text, angry)
 
 
 func customer_react(kind: String) -> void:
@@ -204,6 +215,18 @@ func customer_react(kind: String) -> void:
 
 func shake(strength: float) -> void:
 	_shake = maxf(_shake, strength)
+
+
+## 対戦が始まったとき（versus_game.gd から）
+func enter_versus(stage_id: String) -> void:
+	_close_sheet()
+	_title.visible = false
+	_hud.visible = true
+	_in_game = true
+	mode = "versus"
+	display_anger = 0.0
+	_free_customer()
+	set_stage(stage_id)
 
 
 func _on_talk_started(duration: float) -> void:
@@ -221,28 +244,29 @@ func _free_customer() -> void:
 
 func _start_solo(stage_id: String) -> void:
 	sfx.play("click")
-	_close_overlay()
+	_close_sheet()
 	_title.visible = false
 	_hud.visible = true
 	_in_game = true
-	_mode = "solo"
+	mode = "solo"
 	display_anger = 0.0
-	_hud.set_quick_phrases(_hud.DEFAULT_PHRASES)
 	set_stage(stage_id)
-	_solo.start(stage_id, str(STAGES[stage_id]["name"]))
+	_solo.start(stage_id, tr(str(STAGES[stage_id]["name"])))
 
 
 func _quit_to_title() -> void:
 	_solo.abort()
-	_versus.abort()
-	_net.close("")
+	if _versus.is_active():
+		_versus.leave_match()
+	_versus.cancel()
 	_free_customer()
-	_close_overlay()
+	_close_sheet()
 	_show_title()
 
 
 func _show_title() -> void:
 	_in_game = false
+	mode = ""
 	display_anger = 0.0
 	_hud.visible = false
 	_title.visible = true
@@ -251,227 +275,352 @@ func _show_title() -> void:
 	_refresh_title()
 
 
-func _refresh_title() -> void:
-	if GameSettings.llm_ready():
-		_mode_label.text = "AIお客さんモード: ON（毎回ちがうお客さんをAIが生成）"
-		_mode_label.add_theme_color_override("font_color", UI.C_GREEN.lightened(0.3))
+## サーバーの状態を確かめ、ログインしておく（タイトルに表示）
+func _check_server() -> void:
+	var res: Dictionary = await api.request("GET", "/api/v1/info", null, false)
+	if bool(res.get("ok", false)):
+		_server_info = res["body"]
+		await api.ensure_login()
 	else:
-		_mode_label.text = "台本モード（設定でAPIキーを入れるとAIがお客さんを生成）"
-		_mode_label.add_theme_color_override("font_color", UI.C_MUTED)
-	var parts: PackedStringArray = PackedStringArray()
-	for sid in STAGE_ORDER:
-		parts.append("%s %d" % [str(STAGES[sid]["short"]), GameSettings.get_high_score(str(sid))])
-	_score_label.text = "ハイスコア  %s\n対戦レーティング %d（%s）  %d勝 %d敗 %d分" % ["  /  ".join(parts), GameSettings.rating,
-		GameSettings.rank_name(GameSettings.rating), GameSettings.versus_wins, GameSettings.versus_losses, GameSettings.versus_draws]
+		_server_info = {"error": str(res.get("message", ""))}
+	_refresh_title()
 
 
+func _refresh_title() -> void:
+	if _profile_label == null:
+		return
+	var p: Dictionary = GameSettings.last_profile
+	if p.is_empty():
+		_profile_label.text = tr("名札: まだ登録されていません")
+	else:
+		_profile_label.text = tr("名札: %s　レート %d（%s）") % [str(p.get("name", "")), int(p.get("rating", 1000)), tr(str(p.get("rank", "")))]
+	if _server_info.has("error"):
+		_server_label.text = tr("サーバーにつながりません（1人用は台本で遊べます）")
+		_server_label.add_theme_color_override("font_color", UI.SHU)
+	elif _server_info.is_empty():
+		_server_label.text = tr("サーバーを確認しています…")
+		_server_label.add_theme_color_override("font_color", UI.INK_SOFT)
+	else:
+		var parts: PackedStringArray = PackedStringArray([tr("サーバー接続中")])
+		parts.append(tr("AI判定あり") if bool(_server_info.get("ai", false)) else tr("AIなし（簡易判定）"))
+		if bool(_server_info.get("voice", false)):
+			parts.append(tr("音声対戦あり"))
+		_server_label.text = "・".join(parts)
+		_server_label.add_theme_color_override("font_color", UI.OK)
+
+
+## タイトル: 店頭に貼られた求人ポスター
 func _build_title() -> void:
 	_title = Control.new()
 	_title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(_title)
-	var shade: ColorRect = ColorRect.new()
-	shade.color = Color(0.02, 0.02, 0.06, 0.45)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_title.add_child(shade)
-	var margin: MarginContainer = MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		margin.add_theme_constant_override(side, 48)
-	_title.add_child(margin)
-	var row: HBoxContainer = HBoxContainer.new()
-	margin.add_child(row)
-	var card: PanelContainer = UI.panel(Color(0.06, 0.07, 0.12, 0.88), 22, 28)
-	card.custom_minimum_size = Vector2(520, 0)
-	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(card)
-	row.add_child(UI.spacer())
-	var col: VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	card.add_child(col)
 
-	var title: Label = UI.label(GAME_TITLE, 60, UI.C_ACCENT, true)
-	title.add_theme_color_override("font_outline_color", Color(0.5, 0.1, 0.1))
-	title.add_theme_constant_override("outline_size", 10)
-	col.add_child(title)
-	col.add_child(UI.label("〜お客様は神様…ですか？〜", 20, UI.C_TEXT))
-	col.add_child(UI.wrap_label("理不尽なお客さんがキレる前に、言葉だけで切り抜けろ。", 16, UI.C_MUTED))
-	col.add_child(UI.spacer(false, Vector2(0, 8)))
+	var poster: PanelContainer = UI.paper(UI.PAPER, 0, 6)
+	poster.position = Vector2(56, 28)
+	poster.custom_minimum_size = Vector2(500, 0)
+	poster.rotation_degrees = -1.2
+	_title.add_child(poster)
+	var col: VBoxContainer = UI.vbox(0)
+	poster.add_child(col)
 
+	var band: PanelContainer = PanelContainer.new()
+	band.add_theme_stylebox_override("panel", UI.flat_style(UI.SHU, 12, 0))
+	col.add_child(band)
+	var band_row: HBoxContainer = UI.hbox(12)
+	band.add_child(band_row)
+	band_row.add_child(UI.text(tr("スタッフ大募集"), UI.S_HEAD, UI.PAPER, UI.F_SIGN))
+	band_row.add_child(UI.spacer())
+	band_row.add_child(UI.text(tr("急募"), UI.S_BODY, UI.POP, UI.F_SIGN))
+
+	var body: MarginContainer = MarginContainer.new()
+	for side in ["margin_left", "margin_right"]:
+		body.add_theme_constant_override(side, 24)
+	body.add_theme_constant_override("margin_top", 16)
+	body.add_theme_constant_override("margin_bottom", 8)
+	col.add_child(body)
+	var b: VBoxContainer = UI.vbox(4)
+	body.add_child(b)
+	b.add_child(UI.text(tr("カスハラ防衛線"), UI.S_HUGE, UI.INK, UI.F_SIGN))
+	b.add_child(UI.text(tr("時給：お客様の笑顔（たぶん）"), UI.S_BODY, UI.INK_SOFT, UI.F_HAND))
+	b.add_child(UI.gap(12))
+	b.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
+	b.add_child(UI.rule(UI.INK, 2))
 	for sid in STAGE_ORDER:
 		var info: Dictionary = STAGES[sid]
-		var b: Button = UI.button("%sで働く" % str(info["short"]), 26, UI.C_RED if str(sid) == "konbini" else UI.C_PURPLE)
-		b.tooltip_text = str(info["desc"])
-		b.pressed.connect(_start_solo.bind(str(sid)))
-		col.add_child(b)
-		col.add_child(UI.wrap_label(str(info["desc"]), 14, UI.C_MUTED))
-
-	var versus: Button = UI.button("対戦する（客 vs 店員）", 24, UI.C_GREEN.darkened(0.15))
+		var row: Button = UI.link(tr(str(info["name"])) + "　→", UI.S_LEAD)
+		row.pressed.connect(_start_solo.bind(str(sid)))
+		b.add_child(row)
+		b.add_child(UI.para(tr(str(info["desc"])), UI.S_SMALL, UI.INK_SOFT))
+		b.add_child(UI.rule(UI.PAPER_DIM, 1))
+	b.add_child(UI.gap(8))
+	var versus: Button = UI.primary(tr("対戦する（客 vs 店員）"), UI.S_LEAD)
 	versus.pressed.connect(_show_versus_lobby)
-	col.add_child(versus)
-	col.add_child(UI.wrap_label("2人で客役と店員役に分かれて対決。2ラウンドで役を交代し、レーティングが変わる。", 14, UI.C_MUTED))
+	b.add_child(versus)
+	b.add_child(UI.gap(8))
+	_profile_label = UI.text("", UI.S_SMALL, UI.INK, UI.F_DOT)
+	b.add_child(_profile_label)
+	_server_label = UI.text("", UI.S_SMALL, UI.INK_SOFT)
+	b.add_child(_server_label)
 
-	var sub: HBoxContainer = HBoxContainer.new()
-	sub.add_theme_constant_override("separation", 10)
-	col.add_child(sub)
-	var how: Button = UI.button("遊び方", 20, UI.C_BLUE)
-	how.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	how.pressed.connect(_show_howto)
-	sub.add_child(how)
-	var opt: Button = UI.button("設定", 20, UI.C_GRAY)
-	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	opt.pressed.connect(_show_settings)
-	sub.add_child(opt)
-	var quit: Button = UI.button("終了", 20, Color(0.2, 0.2, 0.25))
-	quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	quit.pressed.connect(func() -> void: get_tree().quit())
-	sub.add_child(quit)
-
-	_mode_label = UI.wrap_label("", 14, UI.C_MUTED)
-	col.add_child(_mode_label)
-	_score_label = UI.wrap_label("", 14, UI.C_TEXT)
-	col.add_child(_score_label)
+	# 下の「切り取りタブ」（求人ポスターの電話番号の短冊）
+	var tabs: HBoxContainer = UI.hbox(0)
+	col.add_child(tabs)
+	for item in [["遊び方", "_show_howto"], ["設定", "_show_settings"], ["終了", "_quit_game"]]:
+		var t: Button = UI.link(tr(str(item[0])), UI.S_BODY)
+		t.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var st: StyleBoxFlat = UI.flat_style(UI.PAPER, 10, 0)
+		st.border_width_top = 2
+		st.border_width_left = 1
+		st.border_color = UI.PAPER_DIM.darkened(0.1)
+		t.add_theme_stylebox_override("normal", st)
+		var sth: StyleBoxFlat = st.duplicate()
+		sth.bg_color = UI.POP.lerp(UI.PAPER, 0.5)
+		t.add_theme_stylebox_override("hover", sth)
+		t.add_theme_stylebox_override("pressed", sth)
+		t.pressed.connect(Callable(self, str(item[1])))
+		tabs.add_child(t)
 
 
-# ---------------------------------------------------------------- オーバーレイ（設定・遊び方・結果・メニュー）
+func _quit_game() -> void:
+	get_tree().quit()
 
-## 画面中央にパネルを出す。戻り値は中身を入れる VBoxContainer。
-func _open_overlay(title_text: String, width: int = 640) -> VBoxContainer:
-	_close_overlay()
-	_overlay = Control.new()
-	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_ui.add_child(_overlay)
+
+# ---------------------------------------------------------------- 紙の画面（設定・遊び方・休憩・結果・ロビー）
+
+## 暗幕の上に紙を1枚置く。align: "left" | "center" | "right"。戻り値は中身を入れる箱
+func _open_sheet(width: int, align: String = "center", receipt: bool = false) -> VBoxContainer:
+	_close_sheet()
+	_sheet = Control.new()
+	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(_sheet)
 	var shade: ColorRect = ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.62)
+	shade.color = UI.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(shade)
-	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(center)
-	var card: PanelContainer = UI.panel(Color(0.08, 0.09, 0.15, 0.98), 20, 26, Color(1, 1, 1, 0.15), 2)
-	card.custom_minimum_size = Vector2(width, 0)
-	center.add_child(card)
-	var col: VBoxContainer = VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	card.add_child(col)
-	col.add_child(UI.label(title_text, 30, UI.C_ACCENT, true))
+	_sheet.add_child(shade)
+	var holder: MarginContainer = MarginContainer.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.add_theme_constant_override("margin_left", 72)
+	holder.add_theme_constant_override("margin_right", 72)
+	holder.add_theme_constant_override("margin_top", 32)
+	holder.add_theme_constant_override("margin_bottom", 32)
+	_sheet.add_child(holder)
+	var row: HBoxContainer = UI.hbox(0)
+	holder.add_child(row)
+	if align != "left":
+		row.add_child(UI.spacer())
+	var panel: PanelContainer = Paper.Receipt.new() if receipt else UI.paper(UI.PAPER, 28, 6)
+	panel.custom_minimum_size = Vector2(width, 0)
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(panel)
+	if align != "right":
+		row.add_child(UI.spacer())
+	var col: VBoxContainer = UI.vbox(12)
+	panel.add_child(col)
 	_solo.paused = true
 	return col
 
 
-func _close_overlay() -> void:
-	if _overlay != null and is_instance_valid(_overlay):
-		_overlay.queue_free()
-	_overlay = null
+func _close_sheet() -> void:
+	if _sheet != null and is_instance_valid(_sheet):
+		_sheet.queue_free()
+	_sheet = null
+	_lobby_status = null
+	_lobby_code = null
 	_solo.paused = false
 
 
+func _sheet_title(col: VBoxContainer, t: String) -> void:
+	col.add_child(UI.text(t, UI.S_HEAD, UI.INK, UI.F_SIGN))
+
+
+## 休憩中の札
 func _show_pause() -> void:
-	if not _in_game or _overlay != null:
+	if not _in_game or _sheet != null:
 		return
-	var col: VBoxContainer = _open_overlay("メニュー", 420)
-	var in_versus: bool = _mode == "versus"
-	col.add_child(UI.wrap_label("対戦中は時間が止まりません。やめると相手の勝ちになります。" if in_versus else "一時停止中。怒りゲージは止まっています。", 16, UI.C_MUTED))
-	var resume: Button = UI.button("つづける", 24, UI.C_GREEN)
-	resume.pressed.connect(_close_overlay)
+	var col: VBoxContainer = _open_sheet(420, "center")
+	_sheet_title(col, tr("休憩中"))
+	var in_versus: bool = mode == "versus"
+	col.add_child(UI.para(tr("対戦中は時間が止まりません。やめると相手の勝ちになります。") if in_versus else tr("一時停止中。怒りゲージは止まっています。"), UI.S_BODY, UI.INK_SOFT))
+	var resume: Button = UI.primary(tr("仕事に戻る"), UI.S_LEAD)
+	resume.pressed.connect(_close_sheet)
 	col.add_child(resume)
-	var back: Button = UI.button("対戦をやめてタイトルへ" if in_versus else "タイトルへ戻る", 20, UI.C_GRAY)
+	var back: Button = UI.link(tr("対戦をやめてタイトルへ") if in_versus else tr("シフトを抜けてタイトルへ"), UI.S_BODY)
 	back.pressed.connect(_quit_to_title)
 	col.add_child(back)
 
 
+## 遊び方: 新人向けマニュアル
 func _show_howto() -> void:
 	sfx.play("click")
-	var col: VBoxContainer = _open_overlay("遊び方", 760)
+	var col: VBoxContainer = _open_sheet(760, "left")
+	_sheet_title(col, tr("新人スタッフ向けマニュアル"))
 	var lines: Array = [
-		"① お客さんが来店し、理不尽なクレームをつけてきます。",
-		"② 返事を考えている間、怒りゲージがじわじわ上がります。100になるとブチギレて失敗。",
-		"③ 入力欄に返事を書いて Enter。定型文ボタンを押すと文章に追加できます。",
-		"④ 謝罪・共感・聞く姿勢で怒りが下がり、「状況メモ」に沿った正しい解決策で納得ゲージが上がります。",
-		"⑤ 納得ゲージが100になれば成功。お客さんは帰ってくれます。",
-		"⑥ ただし「不当な要求」（土下座・全部タダなど）を飲むと大きく減点。丁寧に、でも毅然と断りましょう。",
-		"⑦ 1シフト4人。合計スコアでランク（S〜D）が決まります。",
+		"1. お客さんが来て、理不尽なクレームをつけてきます。",
+		"2. 返事を考えている間、レジ表示器の「イカリ」が上がります。100になるとブチギレて失敗。",
+		"3. 下の記入欄に返事を書いて Enter。接客用語のタグを押すと文に足せます。",
+		"4. 謝る・気持ちをくむ・話を聞くで怒りが下がり、引き継ぎメモに沿った正しい解決策で「ナットク」が上がります。",
+		"5. ナットクが100になれば成功。お客さんは帰ってくれます。",
+		"6. ただし不当な要求（土下座・全部タダなど）を飲むと大きく減点。丁寧に、でもきっぱり断りましょう。",
+		"7. 対戦では、客役と店員役を1ラウンドずつ交代します。客役は店員を追い詰めるセリフを言います（暴言・無言・くり返しは逆効果）。",
+		"8. 音声対戦では「押して話す」ボタン（またはスペースキー）を押している間だけ声が相手に届きます。",
 	]
 	for l in lines:
-		col.add_child(UI.wrap_label(str(l), 18, UI.C_TEXT))
-	var ok: Button = UI.button("とじる", 22, UI.C_BLUE)
-	ok.pressed.connect(_close_overlay)
+		col.add_child(UI.para(tr(str(l)), UI.S_BODY, UI.INK))
+	var ok: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	ok.pressed.connect(_close_sheet)
 	col.add_child(ok)
 
 
+## 設定: 書類の形
 func _show_settings() -> void:
 	sfx.play("click")
-	var col: VBoxContainer = _open_overlay("設定", 720)
+	var col: VBoxContainer = _open_sheet(720, "left")
+	_sheet_title(col, tr("設定"))
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 12)
+	col.add_child(grid)
 
-	col.add_child(UI.label("AIお客さん（Claude API）", 20, UI.C_TEXT, true))
-	col.add_child(UI.wrap_label("AnthropicのAPIキーを入れると、AIがお客さんを毎回生成し、返事を採点します。キーはこのPCの設定ファイルにだけ保存されます。利用料金はキーの持ち主にかかります。", 14, UI.C_MUTED))
-	var use_llm: CheckButton = CheckButton.new()
-	use_llm.text = "AIお客さんを使う"
-	use_llm.button_pressed = GameSettings.use_llm
-	use_llm.add_theme_font_size_override("font_size", 18)
-	col.add_child(use_llm)
-	var key_edit: LineEdit = UI.line_edit("sk-ant-...", 18)
+	var name_edit: LineEdit = UI.field(tr("名前（16文字まで）"), UI.S_BODY)
+	name_edit.text = GameSettings.player_name
+	name_edit.max_length = 16
+	_form_row(grid, tr("名前"), name_edit)
+
+	var lang_opt: OptionButton = _option(GameSettings.LANGS, GameSettings.language)
+	_form_row(grid, tr("言語 / Language"), lang_opt)
+
+	var src_opt: OptionButton = _option(_translated(GameSettings.SOURCES), GameSettings.solo_source)
+	_form_row(grid, tr("1人用のAI"), src_opt)
+
+	var url_edit: LineEdit = UI.field("http://", UI.S_BODY)
+	url_edit.text = GameSettings.server_url
+	_form_row(grid, tr("サーバーのURL"), url_edit)
+
+	var key_edit: LineEdit = UI.field("sk-ant-...", UI.S_BODY)
 	key_edit.secret = true
 	key_edit.text = GameSettings.api_key
-	col.add_child(key_edit)
-	var model_opt: OptionButton = OptionButton.new()
-	model_opt.add_theme_font_size_override("font_size", 18)
-	for i in range(GameSettings.MODELS.size()):
-		model_opt.add_item(str(GameSettings.MODELS[i][1]), i)
-		if str(GameSettings.MODELS[i][0]) == GameSettings.model:
-			model_opt.select(i)
-	col.add_child(model_opt)
-	var test_row: HBoxContainer = HBoxContainer.new()
-	test_row.add_theme_constant_override("separation", 10)
-	col.add_child(test_row)
-	var test_btn: Button = UI.button("接続テスト", 18, UI.C_BLUE)
-	test_row.add_child(test_btn)
-	var test_label: Label = UI.wrap_label("", 16, UI.C_MUTED)
-	test_row.add_child(test_label)
+	_form_row(grid, tr("自分のAPIキー"), key_edit)
 
-	col.add_child(UI.label("音量", 20, UI.C_TEXT, true))
+	var model_opt: OptionButton = _option(GameSettings.MODELS, GameSettings.model)
+	_form_row(grid, tr("自分のキーのモデル"), model_opt)
+
 	var vol: HSlider = HSlider.new()
 	vol.min_value = 0.0
 	vol.max_value = 1.0
 	vol.step = 0.05
 	vol.value = GameSettings.volume
-	col.add_child(vol)
-	var full: CheckButton = CheckButton.new()
-	full.text = "フルスクリーン"
-	full.button_pressed = GameSettings.fullscreen
-	full.add_theme_font_size_override("font_size", 18)
-	col.add_child(full)
+	vol.custom_minimum_size = Vector2(240, 24)
+	vol.value_changed.connect(func(v: float) -> void:
+		GameSettings.volume = v
+		sfx.play("click"))
+	_form_row(grid, tr("音量"), vol)
 
-	var apply: Callable = func() -> void:
-		GameSettings.use_llm = use_llm.button_pressed
+	var full: CheckBox = UI.check(tr("フルスクリーンにする"), GameSettings.fullscreen)
+	_form_row(grid, tr("画面"), full)
+
+	col.add_child(UI.para(tr("「ゲームサーバー」では、AIの判定はサーバーで行います（APIキーは不要）。「自分のAPIキー」はサーバーが使えないときの予備で、料金はキーの持ち主にかかります。キーはこのPCの設定ファイルにだけ保存されます。"), UI.S_SMALL, UI.INK_SOFT))
+	var test_label: Label = UI.para("", UI.S_SMALL, UI.INK_SOFT)
+	col.add_child(test_label)
+
+	var row: HBoxContainer = UI.hbox(24)
+	col.add_child(row)
+	var save: Button = UI.primary(tr("保存する"), UI.S_LEAD)
+	row.add_child(save)
+	var test_btn: Button = UI.link(tr("接続を確かめる"), UI.S_BODY)
+	row.add_child(test_btn)
+	var close_btn: Button = UI.link(tr("保存しないで閉じる"), UI.S_BODY, UI.INK_SOFT)
+	close_btn.pressed.connect(_close_sheet)
+	row.add_child(close_btn)
+
+	var apply: Callable = func() -> bool:
+		var lang_before: String = GameSettings.language
+		GameSettings.language = str(GameSettings.LANGS[maxi(lang_opt.selected, 0)][0])
+		GameSettings.solo_source = str(GameSettings.SOURCES[maxi(src_opt.selected, 0)][0])
+		GameSettings.server_url = url_edit.text.strip_edges()
 		GameSettings.api_key = key_edit.text.strip_edges()
 		GameSettings.model = str(GameSettings.MODELS[maxi(model_opt.selected, 0)][0])
 		GameSettings.volume = vol.value
 		GameSettings.fullscreen = full.button_pressed
 		GameSettings.save_settings()
 		GameSettings.apply_window()
+		return lang_before != GameSettings.language
 
-	vol.value_changed.connect(func(v: float) -> void:
-		GameSettings.volume = v
-		sfx.play("click"))
 	test_btn.pressed.connect(func() -> void:
 		apply.call()
-		test_label.text = "接続中…"
-		var res: Dictionary = await llm.test_connection()
+		test_label.text = tr("確かめています…")
+		var lines: PackedStringArray = PackedStringArray()
+		var res: Dictionary = await api.request("GET", "/api/v1/info", null, false)
 		if not is_instance_valid(test_label):
 			return
-		if res.has("error"):
-			test_label.text = "失敗: " + str(res["error"])
-			test_label.add_theme_color_override("font_color", UI.C_RED.lightened(0.3))
+		if bool(res.get("ok", false)):
+			lines.append(tr("サーバー: つながりました"))
 		else:
-			test_label.text = "接続OK！"
-			test_label.add_theme_color_override("font_color", UI.C_GREEN.lightened(0.3)))
-	var ok: Button = UI.button("保存してとじる", 22, UI.C_GREEN)
-	ok.pressed.connect(func() -> void:
-		apply.call()
-		_close_overlay()
-		_refresh_title())
-	col.add_child(ok)
+			lines.append(tr("サーバー: ") + str(res.get("message", "")))
+		if GameSettings.own_key_ready():
+			var t: Dictionary = await llm.test_connection()
+			if not is_instance_valid(test_label):
+				return
+			lines.append(tr("自分のキー: ") + (tr("使えます") if not t.has("error") else str(t["error"])))
+		test_label.text = "\n".join(lines))
 
+	save.pressed.connect(func() -> void:
+		var lang_changed: bool = apply.call()
+		var new_name: String = name_edit.text.strip_edges()
+		if new_name != "" and new_name != GameSettings.player_name and GameSettings.token != "":
+			await api.rename(new_name)
+		elif new_name != "":
+			GameSettings.player_name = new_name
+			GameSettings.save_settings()
+		if lang_changed:
+			GameSettings.apply_language()
+			_rebuild_ui()
+		_close_sheet()
+		_server_info = {}
+		_refresh_title()
+		_check_server())
+
+
+func _translated(items: Array) -> Array:
+	var out: Array = []
+	for it in items:
+		out.append([it[0], tr(str(it[1]))])
+	return out
+
+
+func _option(items: Array, current: String) -> OptionButton:
+	var o: OptionButton = OptionButton.new()
+	o.add_theme_font_size_override("font_size", UI.S_BODY)
+	for i in range(items.size()):
+		o.add_item(str(items[i][1]), i)
+		if str(items[i][0]) == current:
+			o.select(i)
+	return o
+
+
+func _form_row(grid: GridContainer, label: String, control: Control) -> void:
+	var l: Label = UI.text(label, UI.S_BODY, UI.INK_SOFT)
+	grid.add_child(l)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(control)
+
+
+## 言語を変えたとき、文言を作り直す
+func _rebuild_ui() -> void:
+	if _title != null:
+		_title.queue_free()
+	var old_hud = _hud
+	_make_hud()
+	_solo.attach_hud(_hud)
+	_versus.attach_hud(_hud)
+	old_hud.queue_free()
+	_build_title()
+	_show_title()
+
+
+# ---------------------------------------------------------------- 1人用の結果（レシート）
 
 static func rank_for(total: int) -> Array:
 	for r in RANKS:
@@ -480,221 +629,302 @@ static func rank_for(total: int) -> Array:
 	return RANKS[RANKS.size() - 1]
 
 
+func _receipt_line(col: VBoxContainer, left: String, right: String, size: int = UI.S_BODY, color: Color = UI.INK) -> void:
+	var row: HBoxContainer = UI.hbox(8)
+	col.add_child(row)
+	var l: Label = UI.text(left, size, color, UI.F_DOT)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.clip_text = true
+	row.add_child(l)
+	var r: Label = UI.text(right, size, color, UI.F_DOT)
+	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(r)
+
+
+func _receipt_rule(col: VBoxContainer) -> void:
+	col.add_child(UI.text("- - - - - - - - - - - - - - - - - - - - - -", UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+
+
 func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var is_best: bool = GameSettings.submit_score(stage_id, total)
 	var rank: Array = rank_for(total)
 	sfx.play("win" if total >= 2400 else "lose")
-	var col: VBoxContainer = _open_overlay("シフト終了！", 680)
-	col.add_child(UI.label(str(STAGES[stage_id]["name"]), 18, UI.C_MUTED))
+	var col: VBoxContainer = _open_sheet(440, "center", true)
+	col.add_theme_constant_override("separation", 6)
+	var shop: Label = UI.text(tr(str(STAGES[stage_id]["name"])), UI.S_LEAD, UI.INK, UI.F_DOT)
+	shop.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(shop)
+	var date: Label = UI.text(Time.get_datetime_string_from_system(false, true) + "  " + tr("シフト明細"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
+	date.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(date)
+	_receipt_rule(col)
 	for r in results:
 		var res: Dictionary = r
 		var outcome: String = str(res.get("outcome", ""))
-		var mark: String = "○ 納得"
-		var c: Color = UI.C_GREEN.lightened(0.3)
+		var mark: String = tr("納得")
 		if outcome == "explode":
-			mark = "× ブチギレ"
-			c = UI.C_RED.lightened(0.3)
+			mark = tr("激怒")
 		elif outcome == "yield":
-			mark = "△ 屈した"
-			c = UI.C_PURPLE.lightened(0.35)
-		var line: HBoxContainer = HBoxContainer.new()
-		col.add_child(line)
-		var name_label: Label = UI.label(str(res.get("title", "")), 20, UI.C_TEXT)
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		line.add_child(name_label)
-		var mark_label: Label = UI.label(mark, 20, c, true)
-		mark_label.custom_minimum_size = Vector2(150, 0)
-		line.add_child(mark_label)
-		var pts: Label = UI.label("%+d" % int(res.get("points", 0)), 20, UI.C_TEXT, true)
-		pts.custom_minimum_size = Vector2(90, 0)
-		pts.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		line.add_child(pts)
-	col.add_child(UI.label("合計 %d 点%s" % [total, "  ★ハイスコア更新！" if is_best else ""], 28, UI.C_ACCENT, true))
-	col.add_child(UI.label("ランク %s ― %s" % [str(rank[1]), str(rank[2])], 26, UI.C_TEXT, true))
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	col.add_child(row)
-	var again: Button = UI.button("もう一度", 22, UI.C_RED)
-	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			mark = tr("屈服")
+		_receipt_line(col, "%s  %s" % [str(res.get("title", "")), mark], "%+d" % int(res.get("points", 0)))
+	_receipt_rule(col)
+	_receipt_line(col, tr("合計"), tr("%d 点") % total, UI.S_HEAD)
+	_receipt_line(col, tr("ランク"), "%s  %s" % [str(rank[1]), tr(str(rank[2]))], UI.S_BODY)
+	if is_best:
+		_receipt_line(col, tr("★ ハイスコア更新"), "", UI.S_BODY, UI.SHU)
+	_receipt_rule(col)
+	var thanks: Label = UI.text(tr("またのご来店をお待ちしております"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
+	thanks.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(thanks)
+	col.add_child(UI.gap(8))
+	var again: Button = UI.primary(tr("もう一度シフトに入る"), UI.S_LEAD)
 	again.pressed.connect(_start_solo.bind(stage_id))
-	row.add_child(again)
-	var back: Button = UI.button("タイトルへ", 22, UI.C_GRAY)
-	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(again)
+	var back: Button = UI.link(tr("タイトルへ戻る"), UI.S_BODY)
+	back.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	back.pressed.connect(_quit_to_title)
-	row.add_child(back)
-
-
-# ---------------------------------------------------------------- 対戦モード
-
-func _player_name() -> String:
-	var n: String = str(_net.steam_name())
-	if n == "":
-		n = OS.get_environment("USERNAME")
-	if n == "":
-		n = "プレイヤー"
-	return n.left(16)
-
-
-## versus_game.gd から呼ばれる。対戦用にステージとHUDを用意する。
-func enter_versus(stage_id: String) -> void:
-	_close_overlay()
-	_title.visible = false
-	_hud.visible = true
-	_in_game = true
-	_mode = "versus"
-	display_anger = 0.0
-	_free_customer()
-	set_stage(stage_id)
-
-
-func _show_versus_lobby() -> void:
-	sfx.play("click")
-	var col: VBoxContainer = _open_overlay("対戦する（客 vs 店員）", 720)
-	col.add_child(UI.label("あなたのレーティング  %d（%s）" % [GameSettings.rating, GameSettings.rank_name(GameSettings.rating)], 20, UI.C_TEXT, true))
-	col.add_child(UI.wrap_label("2ラウンドで客役と店員役を交代します。店員役は納得ゲージを100に、客役は怒りゲージを100にすれば勝ち。", 15, UI.C_MUTED))
-
-	col.add_child(UI.label("Steamで対戦", 20, UI.C_ACCENT, true))
-	var steam_ok: bool = _net.steam_available()
-	var steam_row: HBoxContainer = HBoxContainer.new()
-	steam_row.add_theme_constant_override("separation", 10)
-	col.add_child(steam_row)
-	var invite: Button = UI.button("フレンドを招待", 20, UI.C_BLUE)
-	invite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	invite.disabled = not steam_ok
-	invite.pressed.connect(func() -> void:
-		_net.steam_host_friends())
-	steam_row.add_child(invite)
-	var random_match: Button = UI.button("ランダムマッチ", 20, UI.C_PURPLE)
-	random_match.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	random_match.disabled = not steam_ok
-	random_match.pressed.connect(func() -> void:
-		_net.steam_find_match())
-	steam_row.add_child(random_match)
-	if not steam_ok:
-		col.add_child(UI.wrap_label("このビルドにはSteam連携が入っていません（Steam版でのみ使えます）。", 14, UI.C_MUTED))
-
-	col.add_child(UI.label("IPアドレスで対戦（LAN・テスト用）", 20, UI.C_ACCENT, true))
-	var ip_row: HBoxContainer = HBoxContainer.new()
-	ip_row.add_theme_constant_override("separation", 10)
-	col.add_child(ip_row)
-	var host_btn: Button = UI.button("部屋を作る", 20, UI.C_GRAY)
-	host_btn.pressed.connect(func() -> void:
-		_net.host_enet())
-	ip_row.add_child(host_btn)
-	var ip_edit: LineEdit = UI.line_edit("相手のIPアドレス", 18)
-	ip_edit.text = "127.0.0.1"
-	ip_row.add_child(ip_edit)
-	var join_btn: Button = UI.button("参加する", 20, UI.C_GRAY)
-	join_btn.pressed.connect(func() -> void:
-		_net.join_enet(ip_edit.text.strip_edges()))
-	ip_row.add_child(join_btn)
-
-	_lobby_status = UI.wrap_label("", 16, UI.C_GREEN.lightened(0.3))
-	col.add_child(_lobby_status)
-	var back: Button = UI.button("もどる", 20, Color(0.2, 0.2, 0.25))
-	back.pressed.connect(func() -> void:
-		_net.close("")
-		_close_overlay()
-		_refresh_title())
 	col.add_child(back)
 
 
-func _set_lobby_status(text: String, is_error: bool) -> void:
-	if _lobby_status != null and is_instance_valid(_lobby_status):
-		_lobby_status.text = text
-		_lobby_status.add_theme_color_override("font_color", UI.C_RED.lightened(0.3) if is_error else UI.C_GREEN.lightened(0.3))
+# ---------------------------------------------------------------- 対戦ロビー（バックヤードの掲示板）
+
+func _show_versus_lobby() -> void:
+	sfx.play("click")
+	_close_sheet()
+	_sheet = Control.new()
+	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(_sheet)
+	var board: Panel = Panel.new()
+	board.add_theme_stylebox_override("panel", UI.flat_style(Color("#5b4636"), 0, 0))
+	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_sheet.add_child(board)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(side, 32)
+	_sheet.add_child(margin)
+	var root: VBoxContainer = UI.vbox(16)
+	margin.add_child(root)
+
+	var head: HBoxContainer = UI.hbox(16)
+	root.add_child(head)
+	head.add_child(UI.text(tr("バックヤード掲示板"), UI.S_HEAD, UI.PAPER, UI.F_SIGN))
+	head.add_child(UI.spacer())
+	var p: Dictionary = GameSettings.last_profile
+	head.add_child(UI.text(tr("あなた: %s　レート %d（%s）") % [str(p.get("name", GameSettings.player_name)), int(p.get("rating", 1000)), tr(str(p.get("rank", "")))], UI.S_BODY, UI.POP, UI.F_DOT))
+
+	# 形式（文字・音声）
+	var fmt_row: HBoxContainer = UI.hbox(8)
+	root.add_child(fmt_row)
+	fmt_row.add_child(UI.text(tr("対戦の形式:"), UI.S_BODY, UI.PAPER))
+	var group: ButtonGroup = ButtonGroup.new()
+	for f in [["text", "文字で言い合う"], ["voice", "声で言い合う（ボイスチャット）"]]:
+		var t: Button = UI.tag(tr(str(f[1])), UI.S_BODY)
+		t.toggle_mode = true
+		t.button_group = group
+		t.button_pressed = _vs_format == str(f[0])
+		var fid: String = str(f[0])
+		t.toggled.connect(func(on: bool) -> void:
+			if on:
+				_vs_format = fid)
+		if fid == "voice" and _server_info.has("voice") and not bool(_server_info.get("voice", false)):
+			t.disabled = true
+			t.tooltip_text = tr("このサーバーは音声対戦に対応していません")
+		fmt_row.add_child(t)
+
+	var notes: HBoxContainer = UI.hbox(24)
+	notes.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(notes)
+
+	# ランクマッチ
+	var ranked: PanelContainer = UI.paper(UI.PAPER, 20, 5)
+	ranked.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ranked.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	notes.add_child(ranked)
+	var rc: VBoxContainer = UI.vbox(10)
+	ranked.add_child(rc)
+	rc.add_child(UI.text(tr("ランクマッチ"), UI.S_LEAD, UI.INK, UI.F_SIGN))
+	rc.add_child(UI.para(tr("レートの近い相手を探します。待つほど範囲が広がります。勝敗でレートが動きます。同じ言語の人どうしで組みます。"), UI.S_SMALL, UI.INK_SOFT))
+	var find: Button = UI.primary(tr("相手を探す"), UI.S_LEAD)
+	find.pressed.connect(func() -> void:
+		sfx.play("click")
+		_versus.request("queue", _vs_format))
+	rc.add_child(find)
+
+	# フレンド対戦
+	var friend: PanelContainer = UI.paper(UI.POP, 20, 5)
+	friend.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	friend.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	notes.add_child(friend)
+	var fc: VBoxContainer = UI.vbox(10)
+	friend.add_child(fc)
+	fc.add_child(UI.text(tr("フレンド対戦"), UI.S_LEAD, UI.INK, UI.F_SIGN))
+	fc.add_child(UI.para(tr("部屋コードを友達に教えて、その人とだけ遊びます。レートは動きません。"), UI.S_SMALL, UI.INK))
+	var make: Button = UI.link(tr("部屋を作る →"), UI.S_BODY)
+	make.pressed.connect(func() -> void:
+		sfx.play("click")
+		_versus.request("room_create", _vs_format))
+	fc.add_child(make)
+	_lobby_code = UI.text("", UI.S_HEAD, UI.INK, UI.F_DOT)
+	fc.add_child(_lobby_code)
+	var join_row: HBoxContainer = UI.hbox(8)
+	fc.add_child(join_row)
+	var code_edit: LineEdit = UI.field(tr("部屋コード"), UI.S_BODY)
+	code_edit.max_length = 8
+	join_row.add_child(code_edit)
+	var join: Button = UI.link(tr("参加する →"), UI.S_BODY)
+	join.pressed.connect(func() -> void:
+		var code: String = code_edit.text.strip_edges()
+		if code != "":
+			sfx.play("click")
+			_versus.request("room_join", _vs_format, code))
+	join_row.add_child(join)
+
+	# ランキング（シフト表の形）
+	var board_note: PanelContainer = UI.paper(UI.PAPER, 20, 5)
+	board_note.custom_minimum_size = Vector2(320, 0)
+	board_note.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	notes.add_child(board_note)
+	var bc: VBoxContainer = UI.vbox(4)
+	board_note.add_child(bc)
+	bc.add_child(UI.text(tr("今月の優秀スタッフ"), UI.S_LEAD, UI.INK, UI.F_SIGN))
+	var list: VBoxContainer = UI.vbox(2)
+	bc.add_child(list)
+	list.add_child(UI.text(tr("読み込み中…"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+	_load_leaderboard(list)
+
+	var foot: HBoxContainer = UI.hbox(24)
+	root.add_child(foot)
+	_lobby_status = UI.para("", UI.S_BODY, UI.PAPER)
+	foot.add_child(_lobby_status)
+	var stop: Button = UI.link(tr("探すのをやめる"), UI.S_BODY, UI.PAPER)
+	stop.pressed.connect(func() -> void:
+		_versus.cancel()
+		_set_lobby_status(tr("やめました"), false)
+		if _lobby_code != null:
+			_lobby_code.text = "")
+	foot.add_child(stop)
+	var back: Button = UI.link(tr("タイトルへ戻る"), UI.S_BODY, UI.PAPER)
+	back.pressed.connect(func() -> void:
+		_versus.cancel()
+		_close_sheet()
+		_refresh_title())
+	foot.add_child(back)
 
 
-func _on_net_status(text: String) -> void:
-	_set_lobby_status(text, false)
-
-
-func _on_net_connected() -> void:
-	_set_lobby_status("つながりました。対戦を始めます…", false)
-	_versus.begin(_player_name())
-
-
-func _on_net_closed(reason: String) -> void:
-	if smoke:
-		print("NET CLOSED: ", reason)
-		if _smoke_join_tries > 0:
-			_retry_smoke_join()
+func _load_leaderboard(list: VBoxContainer) -> void:
+	var res: Dictionary = await api.request("GET", "/api/v1/leaderboard?limit=10", null, false)
+	if not is_instance_valid(list):
 		return
-	var was_active: bool = _versus.is_active()
-	_versus.opponent_left()   # 試合中なら勝ち扱いにして結果画面を出す
-	if was_active and _in_game and _overlay == null:
-		_quit_to_title()
-		_show_versus_lobby()
-	_set_lobby_status(reason, true)
+	for c in list.get_children():
+		c.queue_free()
+	if not bool(res.get("ok", false)):
+		list.add_child(UI.para(tr("サーバーにつながりません"), UI.S_SMALL, UI.SHU))
+		return
+	var players: Array = (res["body"] as Dictionary).get("players", [])
+	if players.is_empty():
+		list.add_child(UI.text(tr("まだ誰もいません"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+	for pl in players:
+		var d: Dictionary = pl
+		var row: HBoxContainer = UI.hbox(8)
+		list.add_child(row)
+		var n: Label = UI.text("%2d %s" % [int(d.get("rank", 0)), str(d.get("name", ""))], UI.S_SMALL, UI.INK, UI.F_DOT)
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		n.clip_text = true
+		row.add_child(n)
+		row.add_child(UI.text(str(int(d.get("rating", 0))), UI.S_SMALL, UI.INK, UI.F_DOT))
+
+
+func _set_lobby_status(t: String, is_error: bool) -> void:
+	if _lobby_status != null and is_instance_valid(_lobby_status):
+		_lobby_status.text = t
+		_lobby_status.add_theme_color_override("font_color", Color("#ffb3a3") if is_error else UI.PAPER)
+
+
+func _on_lobby_event(kind: String, data: Dictionary) -> void:
+	match kind:
+		"status":
+			_set_lobby_status(str(data.get("text", "")), false)
+		"queued":
+			_set_lobby_status(tr("相手を探しています…"), false)
+		"queue_status":
+			var rng: Variant = data.get("range", null)
+			var range_text: String = tr("誰とでも") if rng == null else tr("レート差 %d まで") % int(rng)
+			_set_lobby_status(tr("相手を探しています… %d 秒（%s・待っている人 %d）") % [int(data.get("seconds", 0)), range_text, int(data.get("waiting_players", 0))], false)
+		"room_created":
+			if _lobby_code != null and is_instance_valid(_lobby_code):
+				_lobby_code.text = str(data.get("code", ""))
+			_set_lobby_status(tr("部屋を作りました。コードを友達に伝えて、参加を待っています…"), false)
+		"cancelled":
+			_set_lobby_status(tr("やめました"), false)
+		"error":
+			_set_lobby_status(str(data.get("message", tr("エラーが起きました"))), true)
 
 
 func _on_versus_finished(summary: Dictionary) -> void:
 	if smoke:
 		print("VERSUS OK ", summary)
-		await _wait(8.0)
+		await get_tree().create_timer(1.0).timeout
 		get_tree().quit(0)
 		return
-	var score: float = float(summary.get("score", 0.5))
-	var headline: String = "引き分け"
-	if score > 0.75:
-		headline = "勝ち！"
-	elif score < 0.25:
-		headline = "負け…"
-	sfx.play("win" if score > 0.75 else "lose")
-	var col: VBoxContainer = _open_overlay("対戦結果 ― " + headline, 640)
-	if bool(summary.get("disconnected", false)):
-		col.add_child(UI.wrap_label("相手との接続が切れたため、あなたの勝ちになりました。", 18, UI.C_TEXT))
+	var result: String = str(summary.get("result", "draw"))
+	sfx.play("win" if result == "win" else "lose")
+	var col: VBoxContainer = _open_sheet(460, "center", true)
+	col.add_theme_constant_override("separation", 6)
+	var head: Label = UI.text(tr("対戦結果"), UI.S_LEAD, UI.INK, UI.F_DOT)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(head)
+	var big: Label = UI.text({"win": tr("勝ち"), "lose": tr("負け"), "draw": tr("引き分け")}.get(result, ""), UI.S_HUGE, UI.SHU if result == "win" else UI.INK, UI.F_SIGN)
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(big)
+	var reason: String = str(summary.get("reason", ""))
+	if reason == "disconnected" or reason == "left":
+		col.add_child(UI.para(tr("相手が途中で抜けたため、決着しました。") if result == "win" else tr("途中で抜けたため、負けになりました。"), UI.S_SMALL, UI.INK_SOFT))
+	_receipt_rule(col)
+	_receipt_line(col, tr("あなた"), tr("%d 点") % int(summary.get("you_points", 0)))
+	_receipt_line(col, tr("相手"), tr("%d 点") % int(summary.get("opponent_points", 0)))
+	_receipt_rule(col)
+	if str(summary.get("kind", "")) == "ranked":
+		_receipt_line(col, tr("レート"), "%d → %d" % [int(summary.get("rating_before", 0)), int(summary.get("rating_after", 0))], UI.S_LEAD)
+		_receipt_line(col, "", "%+d" % int(summary.get("rating_delta", 0)), UI.S_LEAD, UI.SHU if int(summary.get("rating_delta", 0)) >= 0 else UI.INK)
+		_receipt_line(col, tr("ランク"), tr(str(summary.get("rank", ""))))
 	else:
-		col.add_child(UI.label("あなた %d 点  ―  %s %d 点" % [int(summary.get("mine", 0)), str(summary.get("opponent", "相手")), int(summary.get("theirs", 0))], 24, UI.C_TEXT, true))
-	var before: int = int(summary.get("rating_before", GameSettings.rating))
-	var delta: int = int(summary.get("rating_delta", 0))
-	col.add_child(UI.label("レーティング  %d → %d（%+d）" % [before, GameSettings.rating, delta], 26, UI.C_ACCENT, true))
-	col.add_child(UI.label("ランク: " + GameSettings.rank_name(GameSettings.rating), 22, UI.C_TEXT, true))
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	col.add_child(row)
-	var again: Button = UI.button("もう一度対戦する", 22, UI.C_GREEN.darkened(0.15))
-	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_receipt_line(col, tr("フレンド対戦"), tr("レート変動なし"))
+	_receipt_rule(col)
+	col.add_child(UI.gap(8))
+	var again: Button = UI.primary(tr("もう一戦"), UI.S_LEAD)
 	again.pressed.connect(func() -> void:
-		_quit_to_title()
+		_free_customer()
+		_in_game = false
+		_hud.visible = false
+		_show_title()
 		_show_versus_lobby())
-	row.add_child(again)
-	var back: Button = UI.button("タイトルへ", 22, UI.C_GRAY)
-	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(again)
+	var back: Button = UI.link(tr("タイトルへ戻る"), UI.S_BODY)
+	back.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	back.pressed.connect(_quit_to_title)
-	row.add_child(back)
-	# 結果が相手に届いてから回線を閉じる
-	await _wait(1.5)
-	_net.close("")
-
-
-## 2プロセスで対戦を自動プレイする（CI用）。`-- --smoke-host` と `-- --smoke-join` を同時に動かす。
-func _run_versus_smoke(as_host: bool) -> void:
-	Engine.time_scale = 8.0
-	get_tree().create_timer(240.0, true, false, true).timeout.connect(func() -> void:
-		print("VERSUS TIMEOUT")
-		get_tree().quit(1))
-	if as_host:
-		print("VERSUS host: ", _net.host_enet())
-	else:
-		_smoke_join_tries = 40
-		_net.join_enet("127.0.0.1")
-
-
-func _retry_smoke_join() -> void:
-	_smoke_join_tries -= 1
-	await get_tree().create_timer(1.0, true, false, true).timeout
-	_net.join_enet("127.0.0.1")
+	col.add_child(back)
 
 
 # ---------------------------------------------------------------- 自動テスト
 
-## 全ステージを台本モードで自動プレイする。成功で終了コード0、時間切れで1。
+func _wait(sec: float) -> void:
+	await get_tree().create_timer(sec).timeout
+
+
+## 1人用を全ステージ自動プレイする。成功で終了コード0
 func _run_smoke() -> void:
 	Engine.time_scale = 8.0
-	get_tree().create_timer(150.0, true, false, true).timeout.connect(func() -> void:
+	get_tree().create_timer(200.0, true, false, true).timeout.connect(func() -> void:
 		print("SMOKE TIMEOUT")
 		get_tree().quit(1))
+	print("SMOKE source=", GameSettings.solo_source, " lang=", GameSettings.language)
+	if GameSettings.solo_source == "server":
+		var me: Dictionary = await api.ensure_login()
+		print("SMOKE login: ", me)
+		if me.has("error"):
+			get_tree().quit(1)
+			return
 	for sid in STAGE_ORDER:
 		print("SMOKE stage: ", sid)
 		_start_solo(str(sid))
@@ -704,11 +934,17 @@ func _run_smoke() -> void:
 	get_tree().quit(0)
 
 
+## ランクマッチに並んで対戦を自動プレイする（2つ同時に起動して使う）
+func _run_versus_smoke(format: String) -> void:
+	Engine.time_scale = 4.0
+	get_tree().create_timer(240.0, true, false, true).timeout.connect(func() -> void:
+		print("VERSUS TIMEOUT")
+		get_tree().quit(1))
+	_show_versus_lobby()
+	_versus.request("queue", format)
+
+
 # ---------------------------------------------------------------- スクリーンショット撮影
-
-func _wait(sec: float) -> void:
-	await get_tree().create_timer(sec).timeout
-
 
 func _shot(dir: String, id: String) -> void:
 	await RenderingServer.frame_post_draw
@@ -717,89 +953,87 @@ func _shot(dir: String, id: String) -> void:
 	print("SHOT ", id)
 
 
-## 起動引数 `-- --shots` で、主な画面を docs/screenshots/ に保存して終了する（見た目の確認用）。
+## 主な画面を docs/screenshots/ に保存して終了する（見た目の確認用。サーバーにはつながない）
 func _run_shots() -> void:
 	var dir: String = ProjectSettings.globalize_path("res://docs/screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	get_tree().create_timer(500.0).timeout.connect(func() -> void:
 		print("SHOTS TIMEOUT")
 		get_tree().quit(1))
+	var prefix: String = GameSettings.language + "_"
+	GameSettings.last_profile = {"name": "テスト店員" if GameSettings.language == "ja" else "Test Clerk", "rating": 1084, "rank": "バイトリーダー"}
+	_server_info = {"ai": true, "voice": true}
+	_refresh_title()
 	await _wait(1.5)
-	await _shot(dir, "01_title")
+	await _shot(dir, prefix + "01_title")
 	for sid in STAGE_ORDER:
 		var s: String = str(sid)
-		var list: Array = ScenariosScript.customers(s)
-		var cust: Dictionary = list[0]
+		var cust: Dictionary = ScenariosScript.customers(s)[0]
 		_title.visible = false
 		_hud.visible = true
 		_in_game = true
 		display_anger = 38.0
 		set_stage(s)
 		_hud.clear_round()
-		_hud.set_top(str(STAGES[s]["name"]), "お客さん 1 / 4 人目", "スコア 0")
+		_hud.set_top(tr(str(STAGES[s]["name"])), tr("お客さん %d / %d") % [1, 4], tr("%d 点") % 0)
 		await spawn_customer(cust["look"])
 		_hud.set_memo(str(cust["title"]), str(cust["memo"]), str(cust["demand"]))
 		_hud.set_gauges(38.0, 20.0, 42.0)
 		await customer_say("%s（%s）" % [str(cust["title"]), str(cust["name"])], str(cust["opening"]))
-		_hud.set_input_enabled(true, "ここに返事を入力…")
-		_hud.set_status("お客さんがキレる前に返事を入力しよう（Enterで送信）")
+		_hud.set_input_enabled(true, tr("ここに返事を書く…"))
+		_hud.set_status(tr("キレられる前に返事を書こう（Enterで渡す）"))
 		await _wait(0.6)
-		await _shot(dir, s + "_1_play")
-		display_anger = 96.0
-		_hud.set_gauges(96.0, 20.0, 3.0)
+		await _shot(dir, prefix + s + "_1_play")
+		display_anger = 92.0
+		_hud.set_gauges(92.0, 20.0, 6.0)
 		_hud.show_delta(18, 0)
+		_hud.show_banner(tr("ブチギレ！") + "  -300", Color("#ff8a6a"))
+		await customer_say("%s（%s）" % [str(cust["title"]), str(cust["name"])], str((cust["lines"] as Dictionary)["angry"][0]), true)
 		customer_react("angry")
-		await _wait(1.5)
-		await _shot(dir, s + "_2_angry")
+		await _wait(0.8)
+		await _shot(dir, prefix + s + "_2_angry")
+		_hud.set_voice_mode(true)
+		_hud.set_input_enabled(true, "")
+		await _wait(0.3)
+		await _shot(dir, prefix + s + "_3_voice")
+		_hud.set_voice_mode(false)
 		_hud.visible = false
-		display_anger = 20.0
-		await _wait(1.0)
-		await _shot(dir, s + "_3_scene")
 		_cam_override = true
 		_cam_override_pos = Vector3(3.9, 2.5, 1.6)
 		_cam_override_target = Vector3(-1.5, 0.9, -4.5)
 		await _wait(0.4)
-		await _shot(dir, s + "_4_wide")
-		_cam_override_pos = Vector3(-1.9, 1.5, -1.5)
-		_cam_override_target = Vector3(-1.9, 1.35, -3.7)
-		await _wait(0.4)
-		await _shot(dir, s + "_5_back")
-		_cam_override_pos = Vector3(0.45, 1.5, 0.75)
-		_cam_override_target = Vector3(0.0, 1.45, -0.35)
-		display_anger = 0.0
-		await _wait(1.5)
-		await _shot(dir, s + "_6_face_calm")
-		display_anger = 70.0
-		await _wait(1.5)
-		await _shot(dir, s + "_7_face_angry")
-		display_anger = 100.0
-		customer_react("explode")
-		await _wait(0.5)
-		await _shot(dir, s + "_8_face_explode")
-		_cam_override_pos = Vector3(2.6, 1.6, -3.6)
-		_cam_override_target = Vector3(3.55, 1.5, -6.15)
-		await _wait(0.4)
-		await _shot(dir, s + "_9_right")
+		await _shot(dir, prefix + s + "_4_wide")
 		_cam_override = false
 		_free_customer()
 	display_anger = 0.0
 	_hud.visible = true
+	var cs: Array = ScenariosScript.customers("arcade")
 	_on_solo_finished("arcade", [
-		{"title": "クレーン三千円男", "outcome": "resolved", "points": 1520, "turns": 3},
-		{"title": "メダル沼の主婦", "outcome": "explode", "points": -300, "turns": 2},
-		{"title": "割り込み親子", "outcome": "resolved", "points": 1430, "turns": 4},
-		{"title": "音ゲー判定おじさん", "outcome": "yield", "points": -600, "turns": 1},
+		{"title": cs[0]["title"], "outcome": "resolved", "points": 1520, "turns": 3},
+		{"title": cs[1]["title"], "outcome": "explode", "points": -300, "turns": 2},
+		{"title": cs[5]["title"], "outcome": "resolved", "points": 1430, "turns": 4},
+		{"title": cs[4]["title"], "outcome": "yield", "points": -600, "turns": 1},
 	], 2050)
 	await _wait(0.6)
-	await _shot(dir, "08_result")
-	_close_overlay()
+	await _shot(dir, prefix + "05_result")
+	_close_sheet()
 	_show_title()
 	_show_settings()
 	await _wait(0.6)
-	await _shot(dir, "09_settings")
-	_close_overlay()
+	await _shot(dir, prefix + "06_settings")
 	_show_howto()
 	await _wait(0.6)
-	await _shot(dir, "10_howto")
+	await _shot(dir, prefix + "07_howto")
+	_show_versus_lobby()
+	_on_lobby_event("room_created", {"code": "K7QX2M"})
+	await _wait(1.0)
+	await _shot(dir, prefix + "08_lobby")
+	_close_sheet()
+	_in_game = true
+	_hud.visible = true
+	_on_versus_finished({"result": "win", "reason": "completed", "kind": "ranked", "you_points": 312, "opponent_points": 184,
+		"rating_before": 1068, "rating_after": 1084, "rating_delta": 16, "rank": "バイトリーダー"})
+	await _wait(0.6)
+	await _shot(dir, prefix + "09_versus_result")
 	print("SHOTS OK")
 	get_tree().quit(0)

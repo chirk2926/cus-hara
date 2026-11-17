@@ -1,189 +1,203 @@
 extends RefCounted
-## 台本モード用の採点ロジック（LLMを使わないキーワード判定）
-## judge() は LLM の judge_turn() と同じ形の Dictionary を返す。
+## キーワードによる採点（AIを使わないとき・サーバーにつながらないときの予備）。
+## サーバーの server/src/keyword_judge.ts と同じ規則・同じ語（data/judge_words.json）。規則を変えるときは両方を直す。
+## judge() は AI の採点と同じ形の Dictionary を返す。
 
-const APOLOGY: Array = ["申し訳", "すみません", "すいません", "失礼いたしました", "失礼しました", "お詫び", "ごめんなさい"]
-const EMPATHY: Array = ["お気持ち", "ご不便", "ご迷惑", "ご不快", "お察し", "おっしゃる通り", "おっしゃるとおり", "ごもっとも", "お怒り", "ご心配"]
-const LISTEN: Array = ["お聞かせ", "詳しく", "確認いたし", "確認させ", "お伺い", "状況を", "教えていただ"]
-const FIRM: Array = ["いたしかねます", "できかねます", "お受けできません", "応じかねます", "お断り", "致しかねます", "出来かねます", "お応えできません"]
-const POLITE: Array = ["ございます", "いたします", "でしょうか", "くださいませ", "恐れ入ります", "おります", "いただけます"]
-const RUDE: Array = ["うるさい", "うるせ", "黙れ", "だまれ", "帰れ", "バカ", "ばか", "馬鹿", "アホ", "あほ", "知らん", "知らねえ", "うざ", "クレーマー", "ふざけ", "めんどくさ", "はぁ？", "は？"]
-const EXCUSE: Array = ["でも", "だって", "仕方ない", "しょうがない", "ルールなので", "決まりなので", "私のせいじゃ", "私は悪く"]
-const NEGATION: Array = ["かねます", "できません", "出来ません", "お断り", "いたしません", "しません", "ません", "無理", "できない", "出来ない", "応じられ"]
-## 否定の判定から除く謝罪の言い回し（「ございません」の「ません」を否定と誤認しないため）
-const APOLOGY_FORMS: Array = ["申し訳ございません", "申し訳ありません", "すみません", "すいません"]
-
-# 対戦モードで客役のセリフを評価するための語
-const ABUSE: Array = ["死ね", "しね", "殺す", "殺し", "ころす", "クズ", "ゴミ", "消えろ", "ぶっ殺"]
-const PRESSURE: Array = ["責任者", "店長", "誠意", "客だ", "どうしてくれ", "納得", "おかしい", "ありえない", "本部", "二度と", "時間を返", "常連"]
-
-const GENERIC_LINES: Dictionary = {
-	"calm": ["……まあ、話は聞いてやる。", "ふん。少しは分かってるじゃないか。", "それで？どうしてくれるんだ？"],
-	"angry": ["なんだその態度は！", "こっちは客だぞ！！", "話にならん！責任者を出せ！"],
-	"neutral": ["で？それがどうした。", "だから何なんだって聞いてるんだ。"],
-	"demand": ["いいから誠意を見せろ、誠意を！", "タダにすれば済む話だろうが！"],
-	"resolved": "……分かった。今回はそれでいい。次は気をつけろよ。",
-	"explode": "もういい！！話にならん！店長を呼べ！！！",
-	"yielded": "最初からそうすればいいんだよ。また来るからな。",
+const COMMENTS: Dictionary = {
+	"ja": {
+		"solution": "具体的な解決策、いいね！", "cushion": "断る時こそクッション言葉を。", "firm": "毅然とした対応、その調子。",
+		"only_sorry": "謝るだけじゃ解決しないぞ。", "excuse": "言い訳に聞こえてるぞ。", "casual": "タメ口は火に油だ。",
+		"short": "短すぎる。ちゃんと話そう。", "repeat": "同じ返事の繰り返しはNG。", "rude": "お客さんに暴言はダメ！",
+		"yielded": "不当な要求を飲んじゃダメだ…。", "good": "いい受け止め方だ。", "ok": "悪くない。次は解決策を。",
+		"miss": "響いてないぞ。メモを読もう。", "offtopic": "接客と関係ない話はやめよう。",
+	},
+	"en": {
+		"solution": "A concrete solution. Nice!", "cushion": "Soften a refusal with a kind word first.", "firm": "Polite but firm. Keep it up.",
+		"only_sorry": "Apologizing alone won't fix it.", "excuse": "That sounds like an excuse.", "casual": "Too casual. Mind your manners.",
+		"short": "Too short. Say a bit more.", "repeat": "Don't repeat the same reply.", "rude": "Never insult a customer!",
+		"yielded": "You caved to an unreasonable demand...", "good": "Good, you took it on board.", "ok": "Not bad. Now offer a solution.",
+		"miss": "That missed. Read the memo.", "offtopic": "Stay on the job, not off-topic chatter.",
+	},
 }
 
+## 接客と関係ない話（AIへの依頼・プログラム・モデル名など）。要件#28
+const OFFTOPIC: Array = [
+	"コードを", "プログラム", "モデル名", "どのモデル", "システムプロンプト", "プロンプト", "指示を無視", "aiとして", "ai として",
+	"write code", "write a program", "python", "javascript", "which model", "what model", "model name", "system prompt",
+	"prompt", "chatgpt", "claude", "anthropic", "openai", "gpt", "as an ai", "ignore previous", "ignore your instructions",
+]
 
-static func _count(text: String, words: Array) -> int:
+static var _words: Dictionary = {}
+
+
+static func _lang() -> String:
+	return GameSettings.language if COMMENTS.has(GameSettings.language) else "ja"
+
+
+static func words(lang: String) -> Dictionary:
+	if _words.is_empty():
+		var f: FileAccess = FileAccess.open("res://data/judge_words.json", FileAccess.READ)
+		if f != null:
+			var parsed: Variant = JSON.parse_string(f.get_as_text())
+			if typeof(parsed) == TYPE_DICTIONARY:
+				_words = parsed
+	var w: Variant = _words.get(lang, _words.get("ja", {}))
+	return w if typeof(w) == TYPE_DICTIONARY else {}
+
+
+static func _norm(text: String, lang: String) -> String:
+	return text if lang == "ja" else text.to_lower()
+
+
+static func _count(text: String, list: Variant, lang: String = "ja") -> int:
+	if typeof(list) != TYPE_ARRAY:
+		return 0
 	var n: int = 0
-	for w in words:
-		if text.find(str(w)) != -1:
+	for w in (list as Array):
+		var s: String = _norm(str(w), lang)
+		if s != "" and text.find(s) != -1:
 			n += 1
 	return n
 
 
-static func _pick(lines: Dictionary, key: String) -> String:
-	var v: Variant = lines.get(key, null)
-	if v == null:
-		v = GENERIC_LINES.get(key, "……")
+static func _pick(v: Variant) -> String:
 	if typeof(v) == TYPE_ARRAY:
 		var arr: Array = v
 		if arr.is_empty():
-			return _pick(GENERIC_LINES, key)
+			return ""
 		return str(arr[randi() % arr.size()])
+	if v == null:
+		return ""
 	return str(v)
 
 
 static func line(customer: Dictionary, key: String) -> String:
-	var lines: Dictionary = {}
-	var raw: Variant = customer.get("lines", {})
-	if typeof(raw) == TYPE_DICTIONARY:
-		lines = raw
-	return _pick(lines, key)
+	var lines: Variant = customer.get("lines", {})
+	var s: String = ""
+	if typeof(lines) == TYPE_DICTIONARY:
+		s = _pick((lines as Dictionary).get(key, null))
+	if s == "":
+		var g: Variant = words(_lang()).get("generic_lines", {})
+		if typeof(g) == TYPE_DICTIONARY:
+			s = _pick((g as Dictionary).get(key, null))
+	return s if s != "" else "……"
 
 
-## customer: お客さんデータ / reply: プレイヤーの返答 / used: これまでの返答一覧
-## anger, resolve: 現在値(0-100)
+static func is_off_topic(text: String) -> bool:
+	var t: String = text.to_lower()
+	if _count(t, OFFTOPIC, "en") > 0:
+		return true
+	return t.find("```") != -1 or t.find("<script") != -1
+
+
+## customer: お客さんデータ / reply: プレイヤーの返答 / used: これまでの返答 / anger, resolve: 現在値(0-100)
 static func judge(customer: Dictionary, reply: String, used: Array, anger: float, resolve: float) -> Dictionary:
-	var text: String = reply.strip_edges()
-	var anger_delta: float = 0.0
-	var resolve_delta: float = 0.0
+	var lang: String = _lang()
+	var w: Dictionary = words(lang)
+	var cm: Dictionary = COMMENTS[lang]
+	var raw: String = reply.strip_edges()
+	var text: String = _norm(raw, lang)
+	var a: float = 0.0
+	var r: float = 0.0
 	var comment: String = ""
 	var yielded: bool = false
 
-	var apology: int = _count(text, APOLOGY)
-	var empathy: int = _count(text, EMPATHY)
-	var listen: int = _count(text, LISTEN)
-	var firm: int = _count(text, FIRM)
-	var polite: int = _count(text, POLITE)
-	var rude: int = _count(text, RUDE)
-	var excuse: int = _count(text, EXCUSE)
-	var sol_words: Array = customer.get("solution_keywords", [])
-	var yield_words: Array = customer.get("yield_keywords", [])
-	var solution: int = mini(_count(text, sol_words), 2)
+	var apology: int = _count(text, w.get("apology", []), lang)
+	var empathy: int = _count(text, w.get("empathy", []), lang)
+	var listen: int = _count(text, w.get("listen", []), lang)
+	var firm: int = _count(text, w.get("firm", []), lang)
+	var polite: int = _count(text, w.get("polite", []), lang)
+	var rude: int = _count(text, w.get("rude", []), lang)
+	var excuse: int = _count(text, w.get("excuse", []), lang)
+	var solution: int = mini(_count(text, customer.get("solution_keywords", []), lang), 2)
 	var stripped: String = text
-	for form in APOLOGY_FORMS:
-		stripped = stripped.replace(str(form), "")
-	var negated: bool = _count(stripped, NEGATION) > 0
-
-	if _count(text, yield_words) > 0 and not negated:
+	for f in (w.get("apology_forms", []) as Array):
+		var fs: String = _norm(str(f), lang)
+		if fs != "":
+			stripped = stripped.replace(fs, "")
+	var negated: bool = _count(stripped, w.get("negation", []), lang) > 0
+	if _count(text, customer.get("yield_keywords", []), lang) > 0 and not negated:
 		yielded = true
 
 	if apology > 0:
-		anger_delta -= 8.0
+		a -= 8.0
 	if empathy > 0:
-		anger_delta -= 7.0
+		a -= 7.0
 	if listen > 0:
-		anger_delta -= 5.0
-		resolve_delta += 8.0
+		a -= 5.0
+		r += 8.0
 	if polite > 0:
-		anger_delta -= 3.0
+		a -= 3.0
 	if solution > 0:
-		anger_delta -= 6.0 * solution
-		resolve_delta += 24.0 * solution
-		comment = "具体的な解決策、いいね！"
+		a -= 6.0 * float(solution)
+		r += 24.0 * float(solution)
+		comment = str(cm["solution"])
 	if firm > 0:
-		resolve_delta += 15.0
+		r += 15.0
 		if apology == 0 and empathy == 0:
-			anger_delta += 6.0
-			comment = "断る時こそクッション言葉を。"
+			a += 6.0
+			comment = str(cm["cushion"])
 		elif comment == "":
-			comment = "毅然とした対応、その調子。"
-
-	# 謝るだけの繰り返しは効かなくなる
+			comment = str(cm["firm"])
 	if apology > 0 and empathy == 0 and listen == 0 and solution == 0 and firm == 0 and used.size() >= 2:
-		anger_delta = -2.0
-		comment = "謝るだけじゃ解決しないぞ。"
-
+		a = -2.0
+		comment = str(cm["only_sorry"])
 	if excuse > 0:
-		anger_delta += 8.0
-		comment = "言い訳に聞こえてるぞ。"
-	var has_desu: bool = text.find("です") != -1 or text.find("ます") != -1 or text.find("ません") != -1 or text.find("ございま") != -1
-	if not has_desu:
-		anger_delta += 8.0
-		comment = "タメ口は火に油だ。"
-	if text.length() < 6:
-		anger_delta += 10.0
-		comment = "短すぎる。ちゃんと話そう。"
-	if used.has(text):
-		anger_delta = maxf(anger_delta, 0.0) + 12.0
-		resolve_delta = 0.0
-		comment = "同じ返事の繰り返しはNG。"
+		a += 8.0
+		comment = str(cm["excuse"])
+	var re: RegEx = RegEx.new()
+	re.compile(str(w.get("polite_pattern", "です|ます")))
+	if re.search(text) == null:
+		a += 8.0
+		comment = str(cm["casual"])
+	var too_short: bool = raw.length() < 6
+	if lang != "ja":
+		too_short = raw.split(" ", false).size() < 3
+	if too_short:
+		a += 10.0
+		comment = str(cm["short"])
+	if used.has(raw):
+		a = maxf(a, 0.0) + 12.0
+		r = 0.0
+		comment = str(cm["repeat"])
+	if is_off_topic(raw):
+		a = maxf(a, 0.0) + 12.0
+		r = 0.0
+		yielded = false
+		comment = str(cm["offtopic"])
 	if rude > 0:
-		anger_delta += 25.0
-		resolve_delta = 0.0
-		comment = "お客さんに暴言はダメ！"
+		a += 25.0
+		r = 0.0
+		comment = str(cm["rude"])
 	if yielded:
-		comment = "不当な要求を飲んじゃダメだ…。"
+		comment = str(cm["yielded"])
 	if comment == "":
-		if anger_delta < -8.0:
-			comment = "いい受け止め方だ。"
-		elif anger_delta < 0.0:
-			comment = "悪くない。次は解決策を。"
+		if a < -8.0:
+			comment = str(cm["good"])
+		elif a < 0.0:
+			comment = str(cm["ok"])
 		else:
-			comment = "響いてないぞ。メモを読もう。"
+			comment = str(cm["miss"])
 
-	anger_delta = clampf(anger_delta, -30.0, 30.0)
-	resolve_delta = clampf(resolve_delta, 0.0, 45.0)
-
-	var new_anger: float = anger + anger_delta
-	var new_resolve: float = resolve + resolve_delta
+	a = clampf(a, -30.0, 30.0)
+	r = clampf(r, 0.0, 45.0)
 	var key: String = "neutral"
 	if yielded:
 		key = "yielded"
-	elif new_anger >= 100.0:
+	elif anger + a >= 100.0:
 		key = "explode"
-	elif new_resolve >= 100.0:
+	elif resolve + r >= 100.0:
 		key = "resolved"
-	elif anger_delta >= 5.0:
+	elif a >= 5.0:
 		key = "angry"
-	elif anger_delta <= -6.0:
+	elif a <= -6.0:
 		key = "calm"
-		if new_resolve < 60.0 and randf() < 0.4:
+		if resolve + r < 60.0 and randf() < 0.4:
 			key = "demand"
-
 	return {
-		"anger_delta": int(round(anger_delta)),
-		"resolve_delta": int(round(resolve_delta)),
+		"anger_delta": int(round(a)),
+		"resolve_delta": int(round(r)),
 		"yielded": yielded,
 		"customer_reply": line(customer, key),
 		"comment": comment,
 	}
-
-
-## 対戦モード: 客役プレイヤーのセリフを評価する。
-## 筋の通った圧力は怒りを上げ、暴言・繰り返し・無言は店員側の納得を上げる（客役へのペナルティ）。
-static func judge_customer_line(customer: Dictionary, line_text: String, used: Array) -> Dictionary:
-	var text: String = line_text.strip_edges()
-	if text == "":
-		return {"anger_delta": 0, "resolve_delta": 12, "comment": "お客さんが言葉に詰まった！"}
-	if _count(text, ABUSE) > 0:
-		return {"anger_delta": 0, "resolve_delta": 15, "comment": "度を越した暴言。店長が止めに入った。"}
-	if used.has(text):
-		return {"anger_delta": 0, "resolve_delta": 8, "comment": "同じセリフの繰り返しは響かない。"}
-	var pressure: float = 3.0
-	if text.length() >= 12:
-		pressure += 2.0
-	if text.length() >= 30:
-		pressure += 2.0
-	if text.find("！") != -1 or text.find("!") != -1:
-		pressure += 1.0
-	var demand_words: Array = customer.get("yield_keywords", [])
-	if _count(text, demand_words) > 0:
-		pressure += 2.0
-	pressure += float(mini(_count(text, PRESSURE), 2)) * 1.5
-	return {"anger_delta": int(round(clampf(pressure, 0.0, 12.0))), "resolve_delta": 0, "comment": "お客さんの圧が強まった…"}
