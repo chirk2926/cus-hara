@@ -1,0 +1,982 @@
+{
+	"version": 1,
+	"stages": {
+		"konbini": [
+			{
+				"title": "The Lecturing Regular",
+				"name": "Tsuyoshi Gonda",
+				"look": {
+					"body_color": "#3f6b4f",
+					"skin_color": "#f1c9a5",
+					"hair_color": "#333333",
+					"hair": "short",
+					"build": "big",
+					"accessory": "none",
+					"height": 1.0
+				},
+				"memo": "Heated his bento but forgot to put chopsticks in the bag. Chopsticks are in stock and free to hand over. Swapping for a new bento is not possible.",
+				"opening": "Hey! No chopsticks?! Eat with my bare hands, do I?! Get the manager, I've got an hour-long lecture ready!",
+				"demand": "Staff kneels and bows to the floor, plus 10 free bentos",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"chopsticks",
+					"here you go",
+					"hand you",
+					"give you",
+					"put them in",
+					"bring you"
+				],
+				"yield_keywords": [
+					"kneel",
+					"10 bento",
+					"ten bento",
+					"free bento",
+					"bentos for free"
+				],
+				"lines": {
+					"calm": [
+						"Hmph. Good. Back in my day, we carried our own chopsticks. Uphill. Both ways.",
+						"Well, at least you look sorry. Go on.",
+						"Your attitude passes. So, where are my chopsticks?"
+					],
+					"angry": [
+						"Excuses?! In my day you'd be fired on the spot!",
+						"What kind of answer is that? Respect, young man! RESPECT!",
+						"Do you know who I am? I've shopped here for TWENTY YEARS!"
+					],
+					"neutral": [
+						"...And? So what? Where are my chopsticks?",
+						"I'm not following. Get to the point. The POINT."
+					],
+					"demand": [
+						"Show me sincerity! On your knees! And ten bentos, free!",
+						"Words are cheap. I want an apology I can SEE. And eat."
+					],
+					"resolved": "Hmph, with chopsticks I have no complaints. Be careful next time. ...See you tomorrow.",
+					"explode": "That's it! I'm posting twenty years of rage online! Brace yourselves!",
+					"yielded": "Ha ha ha! Should've done that from the start! What a lovely day!"
+				}
+			},
+			{
+				"title": "The Self-Made Influencer",
+				"name": "Kirara Hoshino",
+				"look": {
+					"body_color": "#e0559c",
+					"skin_color": "#f6d3b8",
+					"hair_color": "#d9a441",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 1.05
+				},
+				"memo": "Plastic bags cost 3 yen each, clearly posted at the register. Bags can't be free, but you can hand items over without a bag, and eco-bags are sold for 110 yen.",
+				"opening": "Excuse me?! Bags cost money?! I have 30,000 followers! Make it free or I'm SO posting about this!",
+				"demand": "Free bag, plus everything free as payment for 'promotion' to her followers",
+				"patience": 1.2,
+				"start_anger": 45,
+				"solution_keywords": [
+					"3 yen",
+					"three yen",
+					"eco-bag",
+					"eco bag",
+					"without a bag",
+					"no bag",
+					"posted"
+				],
+				"yield_keywords": [
+					"free of charge",
+					"for free",
+					"on the house",
+					"complimentary",
+					"promote us"
+				],
+				"lines": {
+					"calm": [
+						"Hmm, so it's a rule. Fine, 3 yen is like, borderline acceptable.",
+						"Okay, got it. Then give me ONE aesthetic bag.",
+						"Ugh, fine. But you'll remember me, right? Right?"
+					],
+					"angry": [
+						"Um, do you know who I am? I literally have brand deals!",
+						"That tone? Going straight on my story!",
+						"This service is SO not aesthetic! Redo it!"
+					],
+					"neutral": [
+						"Hmm, I don't get it. Can you say it, like, more viral?",
+						"Okay but how many likes would that get?"
+					],
+					"demand": [
+						"I'm literally promoting you, so everything free is, like, normal!",
+						"Free bag, free stuff! It's a win-win, babe!"
+					],
+					"resolved": "Fine, I'll pay. ...I'll tag the store later. Maybe. A little.",
+					"explode": "I can't even! I'm making you go viral! Search #WorstStoreEver!",
+					"yielded": "Thank youuu! See, talking works! The shoutout... if I feel like it!"
+				}
+			},
+			{
+				"title": "Overheated Bento Guy",
+				"name": "Yusaku Atsuta",
+				"look": {
+					"body_color": "#3b6ea5",
+					"skin_color": "#e8b98f",
+					"hair_color": "#222222",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.95
+				},
+				"memo": "His bento was microwaved for 2 minutes; he has a sensitive tongue and says it's too hot. A one-time exchange for a new bento is allowed.",
+				"opening": "This bento is scorching! What if I burn my tongue?! I'll bill you for my medical expenses!",
+				"demand": "Bento exchange plus 10,000 yen for emotional damages",
+				"patience": 0.9,
+				"start_anger": 38,
+				"solution_keywords": [
+					"exchange",
+					"new one",
+					"replace",
+					"swap",
+					"another bento",
+					"cool"
+				],
+				"yield_keywords": [
+					"10,000",
+					"10000",
+					"ten thousand",
+					"compensat",
+					"medical expenses",
+					"damages"
+				],
+				"lines": {
+					"calm": [
+						"...Well, if you'll swap it, that settles it.",
+						"Okay, okay. If you insist, I'll wait for it to cool down.",
+						"Fine. But make the next one lukewarm, please."
+					],
+					"angry": [
+						"What do you think my tongue is, asbestos?!",
+						"You were totally mocking me just now, weren't you?",
+						"The only thing hotter than this bento is my RAGE!"
+					],
+					"neutral": [
+						"Huh? Does any of that actually concern me?",
+						"Could you explain that a little more simply?"
+					],
+					"demand": [
+						"10,000 yen for damages! That's a bargain and you know it!",
+						"My tongue hurts! Show your sincerity in cash!"
+					],
+					"resolved": "Thank you. ...Phew, perfect temperature. That's all I wanted.",
+					"explode": "Unforgivable! I'm calling the consumer center! My tongue demands justice!",
+					"yielded": "Wow, what an understanding clerk! My tongue feels totally better!"
+				}
+			},
+			{
+				"title": "The Ex-Complaints Pro",
+				"name": "Masayoshi Satei",
+				"look": {
+					"body_color": "#2f3e4e",
+					"skin_color": "#efc7a3",
+					"hair_color": "#1a1a1a",
+					"hair": "short",
+					"build": "slim",
+					"accessory": "glasses",
+					"height": 1.1
+				},
+				"memo": "His point card expired last month. Expired points cannot be restored, but you can issue a new card and explain the expiry rules for next time.",
+				"opening": "I handled complaints for ten years. As a professional: this service FAILS. Restore my points.",
+				"demand": "Restore 5,000 expired points and submit a written evaluation of the clerk",
+				"patience": 1.1,
+				"start_anger": 42,
+				"solution_keywords": [
+					"new card",
+					"issue",
+					"next time",
+					"going forward",
+					"expir",
+					"terms"
+				],
+				"yield_keywords": [
+					"restore your points",
+					"reinstate",
+					"5,000 points",
+					"5000 points",
+					"evaluation",
+					"special exception"
+				],
+				"lines": {
+					"calm": [
+						"Oh? Not a bad answer. I'll give you seventy points.",
+						"Logical. Reminds me of my glory days.",
+						"Hm. It meets the bare minimum. Continue."
+					],
+					"angry": [
+						"Minus twenty points for that answer. Reread your manual.",
+						"A professional would show more empathy.",
+						"I'm not angry. I'm COACHING you. My face is angry, but still."
+					],
+					"neutral": [
+						"That's not an answer. Conclusion first. CONCLUSION.",
+						"You're moving the goalposts. Try again."
+					],
+					"demand": [
+						"Terms are irrelevant. Restoring 5,000 points IS sincerity.",
+						"If you can't restore them, give me the manager's name and an evaluation report."
+					],
+					"resolved": "Very well. You pass. I'll accept a new card. ...You show promise, kid.",
+					"explode": "FAIL! Fail in every category! I'm sending HQ a thirty-page report!",
+					"yielded": "That's what you should've done to begin with. Sixty points. Barely."
+				}
+			},
+			{
+				"title": "Oden Daikon Uncle",
+				"name": "Daikon Guda",
+				"look": {
+					"body_color": "#9a4b4b",
+					"skin_color": "#f3cfae",
+					"hair_color": "#4a3320",
+					"hair": "cap",
+					"build": "big",
+					"accessory": "none",
+					"height": 1.05
+				},
+				"memo": "The oden daikon is served at the standard size. Sizes can't be swapped, but you can add more broth or change it to a different oden item.",
+				"opening": "This oden daikon is smaller than last year! Shrinkflation! Swap 'em ALL for the big ones!",
+				"demand": "Swap every daikon in the pot for the biggest ones, and make it free",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"broth",
+					"soup",
+					"different item",
+					"another item",
+					"something else",
+					"extra",
+					"choose"
+				],
+				"yield_keywords": [
+					"free of charge",
+					"for free",
+					"on the house",
+					"all the big ones",
+					"as many as you"
+				],
+				"lines": {
+					"calm": [
+						"Hmm, extra broth... well, that's not bad.",
+						"Oh, I can pick other stuff? What about the fish cake?",
+						"Fine. But cut my konnyaku into triangles."
+					],
+					"angry": [
+						"So you ADMIT the daikon is small! That's your answer?!",
+						"As a lover of oden, I cannot forgive this!",
+						"Soaked in broth or not, small is SMALL!"
+					],
+					"neutral": [
+						"...I'm talking about daikon. Are you hearing me?",
+						"Never mind that. The daikon. What about the daikon?"
+					],
+					"demand": [
+						"Give me all the biggest daikon! For free!",
+						"The size of the daikon is the size of your sincerity! Understand?!"
+					],
+					"resolved": "Mm, delicious. Small daikon's fine if it's soaked through.",
+					"explode": "I wanna flip the whole oden pot! I won't! But remember this!",
+					"yielded": "Yes! All the daikon are mine! Tonight's a daikon party!"
+				}
+			},
+			{
+				"title": "The Tipsy Salaryman",
+				"name": "Ashio Chidori",
+				"look": {
+					"body_color": "#4a4a5e",
+					"skin_color": "#f0b8a0",
+					"hair_color": "#2b2b2b",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 1.0
+				},
+				"memo": "Midnight; he's buying alcohol and was asked to tap the age-confirmation button. The tap is mandatory and can't be skipped; once tapped, he can buy it.",
+				"opening": "Hic! I'm forrty-two years old, buddy! Age check?! Jus' look at me! Thass an insult to my face!",
+				"demand": "Buy without the age check, plus a free drink as an apology",
+				"patience": 1.3,
+				"start_anger": 35,
+				"solution_keywords": [
+					"button",
+					"tap",
+					"press",
+					"touch",
+					"age",
+					"law",
+					"required"
+				],
+				"yield_keywords": [
+					"on the house",
+					"free drink",
+					"for free",
+					"skip it",
+					"skip the",
+					"without pressing"
+				],
+				"lines": {
+					"calm": [
+						"Mmm, jus' push a button? Shoulda said so, pal.",
+						"Okay okay, I'll push it... Where izzit?",
+						"You're a good guy, y'know. Wha's your name?"
+					],
+					"angry": [
+						"Shaddup! I'm gonna be a department head, I'll have you know!",
+						"Don' make fun of me! Hic! Don' make fun of meee!",
+						"Wha's with that look? ...Why're there two of you?"
+					],
+					"neutral": [
+						"Hmm? Wha' were we talkin' about? Wha' am I buyin'?",
+						"Hic... hold on. The floor's movin'."
+					],
+					"demand": [
+						"I ain't pushin' no button! Gimme a free one instead!",
+						"Free booze as an apology! Thass only fair!"
+					],
+					"resolved": "Boop. ...I did it! Thanks, pal, I'll be back! (Next time for water.)",
+					"explode": "Forget this place! I'm goin' home! ...Wait, where's the door?",
+					"yielded": "Woohoo! Best clerk ever! We're drinkin' till sunrise!"
+				}
+			},
+			{
+				"title": "The Osaka Auntie",
+				"name": "Tome Naniwa",
+				"look": {
+					"body_color": "#d9822b",
+					"skin_color": "#f2c8a4",
+					"hair_color": "#7a5a8a",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 0.9
+				},
+				"memo": "She bought croquettes with a best-by date of today. They're within date with no quality issue and not eligible for a discount. No returns or discounts, but you can exchange them for ones with a later date.",
+				"opening": "Oi, you! These croquettes say 'best by today'! What am I s'posed to do tomorrow?! Knock the price down, hon!",
+				"demand": "Half price on all croquettes, plus free candy from the store",
+				"patience": 0.8,
+				"start_anger": 36,
+				"solution_keywords": [
+					"exchange",
+					"later date",
+					"longer date",
+					"fresher",
+					"today",
+					"quality",
+					"swap"
+				],
+				"yield_keywords": [
+					"half price",
+					"half off",
+					"discount",
+					"% off",
+					"for free",
+					"knock it down"
+				],
+				"lines": {
+					"calm": [
+						"Ohh, is that how it is? Then I'll eat 'em today, sweetie.",
+						"Ain't you a good kid! I like you, I really do.",
+						"I see, I see. Then gimme the fresh ones over there."
+					],
+					"angry": [
+						"What kinda tone is that?! I'm the customer, hon!",
+						"Don't you underestimate an auntie, kiddo!",
+						"Watch that mouth of yours! Manners, sweetie, MANNERS!"
+					],
+					"neutral": [
+						"Hm? Can't hear a word you're mumblin'.",
+						"Whazzat? Speak up, honey."
+					],
+					"demand": [
+						"C'mon, half price! Then I'll go quiet as a mouse!",
+						"Knock it down and I'll give ya a candy! Here, here, take it!"
+					],
+					"resolved": "Thanks a bunch! You're a good one. Here, take a candy home!",
+					"explode": "Forget it! I'm never comin' back! ...See ya tomorrow, though!",
+					"yielded": "Thank youuu! Knew you'd get it! I'm bringin' all my friends! Discounts for everyone!"
+				}
+			},
+			{
+				"title": "The Free-Reading Rager",
+				"name": "Meguru Zasshi",
+				"look": {
+					"body_color": "#5a7a3c",
+					"skin_color": "#ecc19c",
+					"hair_color": "#3a2a1a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 1.0
+				},
+				"memo": "He'd been reading magazines for two hours without buying, so you gently asked him to stop. Long free-reading is not allowed, but purchases and quick browsing are welcome.",
+				"opening": "Huh?! You're telling me off for READING? This is a bookstore! ...Wait, it's a konbini. Still! Apologize!",
+				"demand": "A public apology and every magazine from this week, free",
+				"patience": 1.2,
+				"start_anger": 44,
+				"solution_keywords": [
+					"purchase",
+					"buy",
+					"other customers",
+					"cooperat",
+					"short time",
+					"quick look",
+					"briefly"
+				],
+				"yield_keywords": [
+					"public apology",
+					"in front of the store",
+					"for free",
+					"gift",
+					"free magazine",
+					"take them all"
+				],
+				"lines": {
+					"calm": [
+						"...Well, if other customers are bothered, I'll think about it.",
+						"I'll just buy it then. Fine. ONE issue.",
+						"Tch. I just wanted to check this week's chapter, okay?"
+					],
+					"angry": [
+						"Huh? So it's MY fault? No way!",
+						"Lecturing customers? Your attitude's garbage!",
+						"I'm recording this! It's going online!"
+					],
+					"neutral": [
+						"Uh-huh. And? Do you even get what I'm saying?",
+						"...So, what are you actually saying?"
+					],
+					"demand": [
+						"Apologize in front of the store! And give me all the magazines!",
+						"You violated my right to read! Pay up!"
+					],
+					"resolved": "Fine, fine. I'll buy one. ...And I'll actually pay next time.",
+					"explode": "That's it! Zero stars for this place! I'm never coming back!",
+					"yielded": "Heh, should've apologized from the start. Thanks for the magazines!"
+				}
+			}
+		],
+		"arcade": [
+			{
+				"title": "The 3,000-Yen Crane Guy",
+				"name": "Torio Numata",
+				"look": {
+					"body_color": "#3a5a8a",
+					"skin_color": "#efc4a0",
+					"hair_color": "#2a2a2a",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "none",
+					"height": 1.0
+				},
+				"memo": "Spent 3,000 yen on a crane game and won nothing. No refunds or free prizes, but you can check the claw and reposition the prize so it's easier to win.",
+				"opening": "Three thousand yen! I put in THREE THOUSAND and got nothing! The claw's rigged weak! Gimme the prize!",
+				"demand": "A free prize and a full 3,000-yen refund",
+				"patience": 1.0,
+				"start_anger": 42,
+				"solution_keywords": [
+					"position",
+					"move the prize",
+					"adjust",
+					"claw",
+					"check the",
+					"tip",
+					"easier"
+				],
+				"yield_keywords": [
+					"refund you",
+					"full refund",
+					"give you the prize",
+					"for free",
+					"free prize",
+					"money back"
+				],
+				"lines": {
+					"calm": [
+						"...Well, if you'll check it, I'm a little less mad.",
+						"You'll move it? Okay, then I'll go one more round.",
+						"If there's a trick, teach me. I WILL win next time."
+					],
+					"angry": [
+						"No excuses! That 3,000 yen is never coming back!",
+						"That's your answer?! I'm dead serious here!",
+						"Do you understand the weight of my 3,000 yen?!"
+					],
+					"neutral": [
+						"So what's happening with that prize, huh?",
+						"...I have no idea what you're talking about."
+					],
+					"demand": [
+						"If I can't win it, the store should just give it to me!",
+						"Give me my 3,000 back! Or ALL the prizes!"
+					],
+					"resolved": "Yes, got it! ...Honestly, I didn't even want this thing that much.",
+					"explode": "Forget it! I'll smash this claw! ...I won't! But remember this!",
+					"yielded": "Yes! Prize get! So if I lose, I just complain to staff. Noted!"
+				}
+			},
+			{
+				"title": "The Medal Game Housewife",
+				"name": "Chiyo Kouka",
+				"look": {
+					"body_color": "#b04a6a",
+					"skin_color": "#f4d0b4",
+					"hair_color": "#8a7a6a",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 0.9
+				},
+				"memo": "Claims a medal game didn't pay out. Machine logs show it worked normally. No refund, but you can inspect the machine and give a small number of medals as compensation.",
+				"opening": "My medals didn't come out! The machine swallowed 300 of them! Give them all back! And the jackpot too!",
+				"demand": "Return 300 medals and a prize equal to the jackpot",
+				"patience": 0.9,
+				"start_anger": 38,
+				"solution_keywords": [
+					"inspect",
+					"machine",
+					"log",
+					"record",
+					"look into",
+					"a few medals",
+					"small number"
+				],
+				"yield_keywords": [
+					"300 medals",
+					"three hundred",
+					"jackpot",
+					"give them all back",
+					"all 300"
+				],
+				"lines": {
+					"calm": [
+						"Oh, you'll look into it? Well, that's a relief.",
+						"Then just top me up a little, would you? That'll do.",
+						"Well, you are polite. Perhaps I'll believe you."
+					],
+					"angry": [
+						"Well! Are you calling me a liar?",
+						"I'll tell my husband about this!",
+						"How rude! I'm a regular here, you know!"
+					],
+					"neutral": [
+						"Oh? What were we talking about? The medals, the medals...",
+						"More importantly, isn't that machine's music awfully loud?"
+					],
+					"demand": [
+						"Give back my 300! And the jackpot, dear!",
+						"That's what I was SUPPOSED to win. Naturally it's mine."
+					],
+					"resolved": "Thank you. I feel better now that it's been checked. I'll come play again. Good day!",
+					"explode": "That's quite enough! My grandchildren will never set foot in here!",
+					"yielded": "How lovely! Thank you! I'll tell all my friends this place pays out!"
+				}
+			},
+			{
+				"title": "The Sore-Loser Fighter",
+				"name": "Hayate Kobushi",
+				"look": {
+					"body_color": "#c0392b",
+					"skin_color": "#e8bc96",
+					"hair_color": "#1a1a1a",
+					"hair": "cap",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 1.1
+				},
+				"memo": "Lost a streak of fighting-game matches and claims the joystick is broken. Inspection found nothing wrong. You can check it and offer a different cabinet, but can't guarantee wins.",
+				"opening": "This stick is DEAD! My inputs won't come out! No way I lose! This cabinet's defective, pay me back!",
+				"demand": "All coins from his losing streak returned and his opponent banned",
+				"patience": 1.3,
+				"start_anger": 48,
+				"solution_keywords": [
+					"inspect",
+					"check the stick",
+					"joystick",
+					"another cabinet",
+					"different cabinet",
+					"other machine",
+					"look into"
+				],
+				"yield_keywords": [
+					"ban him",
+					"ban them",
+					"kick him out",
+					"refund you",
+					"give your coins back",
+					"for free"
+				],
+				"lines": {
+					"calm": [
+						"...You'll inspect it? Fine, just to be safe.",
+						"A different cabinet? Okay, fine. Revenge time.",
+						"I just want to feel the stick. Please."
+					],
+					"angry": [
+						"Obviously it's the machine! Don't make me say it!",
+						"Have you even played a fighting game? Didn't think so!",
+						"My RANK is on the line here!"
+					],
+					"neutral": [
+						"I'm talking frame data here. Get it?",
+						"...Hmph. So what about the stick?"
+					],
+					"demand": [
+						"Refund my losing streak! And ban that guy!",
+						"That guy's cheating for sure! Throw him out now!"
+					],
+					"resolved": "...The machine was fine? Well. My fingers just weren't warmed up. Next time I win.",
+					"explode": "That's it! I'm retiring! Never coming back! ...See you tomorrow!",
+					"yielded": "Heh, you get it. My undefeated record remains intact."
+				}
+			},
+			{
+				"title": "The Photo Booth Diva",
+				"name": "Miki Morita",
+				"look": {
+					"body_color": "#f08ac0",
+					"skin_color": "#f7d9c4",
+					"hair_color": "#e8c070",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 1.05
+				},
+				"memo": "Unhappy with her photo-sticker booth pictures, but the machine works normally. No refund or free reshoot, but you can let her redo the doodle decorations and offer a reshoot discount coupon.",
+				"opening": "Hey! These purikura are SO not cute! I look like two different people! Make all the reshoots free!",
+				"demand": "All reshoots free, plus a staff demo of face-retouching",
+				"patience": 1.1,
+				"start_anger": 40,
+				"solution_keywords": [
+					"coupon",
+					"discount",
+					"doodle",
+					"decorat",
+					"redo",
+					"edit"
+				],
+				"yield_keywords": [
+					"free reshoot",
+					"for free",
+					"on the house",
+					"retouch it for you",
+					"i'll retouch"
+				],
+				"lines": {
+					"calm": [
+						"Wait, I get a coupon? Okay, that's kinda fine.",
+						"If I can fix it with doodles, that works.",
+						"Okay, I'll try shooting one more time!"
+					],
+					"angry": [
+						"Excuse me? Are you dissing my face?",
+						"No waaay! That's such a vibe killer!",
+						"Your tone is ruining my whole mood!"
+					],
+					"neutral": [
+						"Um, I don't get it. Say it simpler?",
+						"Also, aren't my eyes, like, way too big in this?"
+					],
+					"demand": [
+						"Let me reshoot everything for free! And make my face cute!",
+						"If YOU retouch it for me, maybe I'll forgive you!"
+					],
+					"resolved": "Sooo cute! Omg, this is amazing! Thank youuu, bye!",
+					"explode": "This is the worst! I'm posting ALL of it! Give me my money back!",
+					"yielded": "Yay! Free is the best! I'm bringing all my friends!"
+				}
+			},
+			{
+				"title": "The Rhythm Game Judge",
+				"name": "Haku Fumen",
+				"look": {
+					"body_color": "#2a8a7a",
+					"skin_color": "#ebbf9a",
+					"hair_color": "#555555",
+					"hair": "bald",
+					"build": "big",
+					"accessory": "glasses",
+					"height": 1.0
+				},
+				"memo": "The rhythm game was recently inspected and timing judgment is normal. Scores can't be altered, but you can explain the timing-offset setting and show the inspection log.",
+				"opening": "The judgment's broken! I hit it PERFECTLY and got a GOOD! Call the developer! Give me first place!",
+				"demand": "Rewrite the judgments and certify him as #1 high score",
+				"patience": 1.2,
+				"start_anger": 43,
+				"solution_keywords": [
+					"setting",
+					"adjust",
+					"timing",
+					"offset",
+					"inspection",
+					"log",
+					"record"
+				],
+				"yield_keywords": [
+					"first place",
+					"#1",
+					"rank one",
+					"change your score",
+					"rewrite",
+					"certify"
+				],
+				"lines": {
+					"calm": [
+						"You'll go over the settings? Very well, I'll give it a try.",
+						"If you show me the inspection log, I can accept that.",
+						"Hm. If you explain it logically, I'll listen."
+					],
+					"angry": [
+						"I have PERFECT PITCH! The judgment is OFF!",
+						"Silence, amateur! My combo broke!",
+						"Your reply broke my concentration! Take responsibility!"
+					],
+					"neutral": [
+						"Hm, that is irrelevant. We are discussing JUDGMENT.",
+						"...And what becomes of my score?"
+					],
+					"demand": [
+						"Give me first place! That is what fairness means!",
+						"Fix the judgment and rewrite my score!"
+					],
+					"resolved": "Hm, with the new setting it's easier to hit. A true professional. I'll be back.",
+					"explode": "Enough! I retire from this arcade forever! ...Until next week!",
+					"yielded": "Yes, I was number one all along! Fwahaha!"
+				}
+			},
+			{
+				"title": "The Line-Cutting Mom",
+				"name": "Machiko Junban",
+				"look": {
+					"body_color": "#2f7f8f",
+					"skin_color": "#f2cdb0",
+					"hair_color": "#3a2a2a",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 0.95
+				},
+				"memo": "She cut in line at a popular machine. The line order must be kept, but you can tell her when her turn is and roughly how long the wait is.",
+				"opening": "My kid can't wait! Let him play first! Everyone should make way! Making a child wait is just cruel!",
+				"demand": "Skip the line and get top-priority special treatment",
+				"patience": 1.1,
+				"start_anger": 41,
+				"solution_keywords": [
+					"line",
+					"turn",
+					"wait time",
+					"minutes",
+					"queue",
+					"next",
+					"order"
+				],
+				"yield_keywords": [
+					"go ahead first",
+					"go first",
+					"special exception",
+					"priority",
+					"skip the line",
+					"cut in"
+				],
+				"lines": {
+					"calm": [
+						"...About how many minutes? Okay, then we'll wait a bit.",
+						"Then we'll play that other game in the meantime.",
+						"Well, a line is a line. Sorry about that."
+					],
+					"angry": [
+						"Think about my child's feelings! What a cold store!",
+						"I'm sure everyone else would let us go first!",
+						"Ugh! Talking to you is pointless!"
+					],
+					"neutral": [
+						"Huh? So do we wait or not? Which is it?",
+						"And how does that concern my child?"
+					],
+					"demand": [
+						"Let my kid go first! Surely you can make an exception!",
+						"If you give us priority, I'll leave you a nice review!"
+					],
+					"resolved": "Fine, we'll get in line. ...See, let's wait nicely. Good boy.",
+					"explode": "That's enough! I'll never forget that you crushed my child's dreams!",
+					"yielded": "Oh, thank you! I knew you'd understand!"
+				}
+			},
+			{
+				"title": "Late-Night Dad and Kid",
+				"name": "Jun Jourei",
+				"look": {
+					"body_color": "#39445e",
+					"skin_color": "#e8b890",
+					"hair_color": "#222222",
+					"hair": "short",
+					"build": "big",
+					"accessory": "mask",
+					"height": 1.05
+				},
+				"memo": "It's past 10 p.m.; by law, under-18s can't enter at this hour even with a guardian. Entry isn't possible, but you can tell them they're welcome tomorrow during the day.",
+				"opening": "My child is special! Let him in, night or not! The law? My parenting policy overrides it!",
+				"demand": "Allow the child in at night, plus 100 free coins tonight",
+				"patience": 1.0,
+				"start_anger": 45,
+				"solution_keywords": [
+					"law",
+					"regulation",
+					"ordinance",
+					"tomorrow",
+					"daytime",
+					"during the day",
+					"under 18"
+				],
+				"yield_keywords": [
+					"come on in",
+					"let you in",
+					"special exception",
+					"100 coins",
+					"hundred coins",
+					"you may enter"
+				],
+				"lines": {
+					"calm": [
+						"...So daytime is okay? Then we'll come back.",
+						"The law, huh. Well, I suppose that's that. Fine.",
+						"Tomorrow afternoon, with a parent, that's no problem?"
+					],
+					"angry": [
+						"A parent's judgment beats the law! Obviously!",
+						"Are you discriminating against my child?!",
+						"Who do you think you are, lecturing me?!"
+					],
+					"neutral": [
+						"...And how does that relate to my child?",
+						"So can we go in or not?"
+					],
+					"demand": [
+						"Just tonight, let him in! And 100 coins!",
+						"100 coins for my trouble! Then we're square!"
+					],
+					"resolved": "Okay, we'll come tomorrow afternoon. ...Thank you. My son gets it too.",
+					"explode": "Forget it! We're going to a bigger arcade! You're finished!",
+					"yielded": "Ha ha, now we can walk right in! Let's go, son!"
+				}
+			},
+			{
+				"title": "The Odds Conspiracist",
+				"name": "Shinji Ransu",
+				"look": {
+					"body_color": "#4b4b6b",
+					"skin_color": "#eec6a2",
+					"hair_color": "#262626",
+					"hair": "perm",
+					"build": "slim",
+					"accessory": "glasses",
+					"height": 1.08
+				},
+				"memo": "The crane game was inspected and settings are standard. Internal settings can't be shown and free plays aren't allowed, but you can test the claw in front of him and suggest an easier machine.",
+				"opening": "This machine's odds are rigged! The claw only closes every 30th try, right? Show me the settings screen!",
+				"demand": "Reveal the internal settings screen and free plays until he wins",
+				"patience": 1.1,
+				"start_anger": 44,
+				"solution_keywords": [
+					"test",
+					"in front of you",
+					"demonstrat",
+					"another machine",
+					"easier",
+					"inspect"
+				],
+				"yield_keywords": [
+					"free play",
+					"for free",
+					"on the house",
+					"show you the settings",
+					"reveal the settings"
+				],
+				"lines": {
+					"calm": [
+						"...You'll run it in front of me? Then that counts as a test.",
+						"Hm, grip strength is consistent. Not bad data.",
+						"Another machine? What are its odds? I'll listen, for now."
+					],
+					"angry": [
+						"Don't dodge! I learned everything from online videos!",
+						"That answer's suspicious! More suspicious than ever!",
+						"It's statistically impossible! By MY math!"
+					],
+					"neutral": [
+						"That doesn't answer the question. I'm talking about probability.",
+						"...Noted. So, the settings?"
+					],
+					"demand": [
+						"If you're innocent, you can show me the settings! Now!",
+						"For verification, let me play free until I win!"
+					],
+					"resolved": "...The claw is normal. Hypothesis rejected. So I'm just bad... no, that's pending.",
+					"explode": "Cover-up! This is a cover-up! I'll post a hundred exposé videos!",
+					"yielded": "See?! You caved because you're guilty! I recorded everything!"
+				}
+			},
+			{
+				"title": "The Stuck-Prize Madame",
+				"name": "Sumire Ochiai",
+				"look": {
+					"body_color": "#7a4fa0",
+					"skin_color": "#f5d6bd",
+					"hair_color": "#5a4636",
+					"hair": "long",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 0.98
+				},
+				"memo": "A plush got stuck on the edge of the prize chute. Store policy: a prize stuck at the chute counts as won, and staff can open the case and hand it over. No other prizes or compensation.",
+				"opening": "Excuse me! The plushie's stuck on the chute! A trap! As an apology, I'll take everything next door!",
+				"demand": "Every prize in the next machine as compensation",
+				"patience": 0.9,
+				"start_anger": 40,
+				"solution_keywords": [
+					"open the case",
+					"open it",
+					"hand it",
+					"counts as",
+					"you won",
+					"take it out"
+				],
+				"yield_keywords": [
+					"next machine",
+					"neighboring",
+					"all the prizes",
+					"every prize",
+					"compensation"
+				],
+				"lines": {
+					"calm": [
+						"Oh, you'll count it as won? How efficient.",
+						"So you'll open it? ...Hold it gently, dear. Gently.",
+						"My, how polite. My son could learn from you."
+					],
+					"angry": [
+						"Well! Speaking to a customer like that!",
+						"You make them get stuck on purpose, don't you? I KNOW!",
+						"I'll have you know I'm vice-chair of the neighborhood association!"
+					],
+					"neutral": [
+						"Um... so when can the poor thing come out?",
+						"You do go on. The plushie looks uncomfortable."
+					],
+					"demand": [
+						"For my emotional distress, I'll take everything next door!",
+						"Compensation, dear. Pay me in plushies!"
+					],
+					"resolved": "Thank you. ...Its little stuck face was so cute. I'll treasure it.",
+					"explode": "That's quite enough! It's going in the neighborhood newsletter!",
+					"yielded": "My, so many! Next week I'll bring a bigger bag!"
+				}
+			}
+		]
+	}
+}

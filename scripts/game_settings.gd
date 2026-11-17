@@ -21,6 +21,9 @@ const SOURCES: Array = [
 	["offline", "AIを使わない（台本）"],
 ]
 
+## 表示言語。"ja" | "en"。初回は OS の言語から決める
+const LANGS: Array = [["ja", "日本語"], ["en", "English"]]
+var language: String = ""
 var server_url: String = DEFAULT_SERVER_URL
 var token: String = ""
 var player_name: String = ""
@@ -45,9 +48,33 @@ func _ready() -> void:
 			# 同じPCで2つ起動して対戦を試すとき、ログイン情報を分ける
 			_profile = a.substr(10)
 			load_settings()
+	if language == "":
+		language = "ja" if OS.get_locale_language() == "ja" else "en"
+	apply_language()
 	apply_window()
 
 
+## 画面の文言を切り替える。日本語の文をキーにして data/i18n/<言語>.json の訳を引く（docs/MAINTENANCE.md「翻訳」）
+func apply_language() -> void:
+	for t in _translations:
+		TranslationServer.remove_translation(t)
+	_translations.clear()
+	if language != "ja":
+		var f: FileAccess = FileAccess.open("res://data/i18n/%s.json" % language, FileAccess.READ)
+		if f != null:
+			var parsed: Variant = JSON.parse_string(f.get_as_text())
+			if typeof(parsed) == TYPE_DICTIONARY:
+				var tr_res: Translation = Translation.new()
+				tr_res.locale = language
+				var dict: Dictionary = parsed
+				for k in dict:
+					tr_res.add_message(StringName(str(k)), StringName(str(dict[k])))
+				TranslationServer.add_translation(tr_res)
+				_translations.append(tr_res)
+	TranslationServer.set_locale(language)
+
+
+var _translations: Array = []
 var _profile: String = ""
 
 
@@ -61,6 +88,9 @@ func load_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
 	if cfg.load(_path()) != OK:
 		return
+	language = str(cfg.get_value("ui", "language", language))
+	if not ["ja", "en"].has(language):
+		language = ""
 	server_url = str(cfg.get_value("server", "url", server_url))
 	token = str(cfg.get_value("server", "token", ""))
 	player_name = str(cfg.get_value("server", "name", ""))
@@ -82,6 +112,7 @@ func load_settings() -> void:
 
 func save_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
+	cfg.set_value("ui", "language", language)
 	cfg.set_value("server", "url", server_url)
 	cfg.set_value("server", "token", token)
 	cfg.set_value("server", "name", player_name)

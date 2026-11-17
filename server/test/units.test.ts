@@ -78,3 +78,19 @@ test("ゲーム外の依頼（要件#28）: キーワード判定は的外れ扱
     assert.ok(!leaksMeta(ok), ok);
   }
 });
+
+test("英語の判定: 正しい対応・屈服・丁寧な断り", () => {
+  const c = allCustomers("konbini", "en")[0];
+  assert.ok(c.title.length > 0 && /[a-z]/i.test(c.opening), "英語の台本が読める");
+  const good = judgeStaff(c, "I'm so sorry about that. I'll bring you a pair of chopsticks right away, sir.", [], 40, 0, "en");
+  assert.ok(good.anger_delta < 0, JSON.stringify(good));
+  assert.ok(good.resolve_delta > 0, JSON.stringify(good));
+  assert.equal(good.yielded, false);
+  assert.ok(/[a-z]/i.test(good.comment) && /[a-z]/i.test(good.customer_reply), "英語で返ってくる");
+  const caved = judgeStaff(c, `Okay sir, please take ${c.yield_keywords![0]}.`, [], 40, 0, "en");
+  assert.equal(caved.yielded, true, JSON.stringify(caved));
+  const refuse = judgeStaff(c, `I'm sorry, but I'm afraid we cannot offer ${c.yield_keywords![0]}.`, [], 40, 0, "en");
+  assert.equal(refuse.yielded, false);
+  const rude = judgeStaff(c, "Shut up and go away", [], 40, 0, "en");
+  assert.ok(rude.anger_delta >= 25);
+});
