@@ -1,0 +1,151 @@
+import { test, after, before } from "node:test";
+import assert from "node:assert/strict";
+import { startServer, api, guest, autoplay, Client } from "./helpers.ts";
+
+let srv: Awaited<ReturnType<typeof startServer>>;
+before(async () => { srv = await startServer(); });
+after(async () => { await srv.close(); });
+
+test("info と ゲスト作成と /me", async () => {
+  const info = await api(srv.base, "GET", "/api/v1/info");
+  assert.equal(info.status, 200);
+  assert.equal(info.body.ai, false);
+  assert.equal(info.body.voice, true);
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "  テスト<店員>  " });
+  assert.equal(g.status, 200);
+  assert.equal(g.body.player.name, "テスト店員");
+  assert.equal(g.body.player.rating, 1000);
+  const me = await api(srv.base, "GET", "/api/v1/me", undefined, g.body.token);
+  assert.equal(me.body.player.id, g.body.player.id);
+  const bad = await api(srv.base, "GET", "/api/v1/me", undefined, "nope");
+  assert.equal(bad.status, 401);
+  assert.match(bad.body.error.message, /ログイン/);
+});
+
+test("1人用: お客さん → 返事の判定", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "ソロ" });
+  const t = g.body.token;
+  const start = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "arcade", avoid: [] }, t);
+  assert.equal(start.status, 200);
+  assert.equal(start.body.source, "script");
+  assert.ok(start.body.customer.opening.length > 0);
+  assert.equal(start.body.customer.solution_keywords, undefined, "採点用キーワードはクライアントに渡さない");
+  const turn = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, reply: "うるさい、帰れ", anger: 40, resolve: 0 }, t);
+  assert.equal(turn.status, 200);
+  assert.ok(turn.body.anger_delta >= 20, "暴言で怒りが大きく上がる");
+  assert.equal(turn.body.judged_by, "keyword");
+  const other = await api(srv.base, "POST", "/api/v1/guest", { name: "他人" });
+  const stolen = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, reply: "x", anger: 0, resolve: 0 }, other.body.token);
+  assert.equal(stolen.status, 404, "他人のセッションは使えない");
+  const badStage = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "moon" }, t);
+  assert.equal(badStage.status, 400);
+});
+
+test("ランクマッチ（文字）: 2ラウンド戦ってレーティングが動く", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "Aさん");
+  const b = await guest(srv.base, srv.wsUrl, "Bさん");
+  autoplay(a.c);
+  autoplay(b.c, { staffText: "うるさい" });
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  const fa = await a.c.wait((m) => m.t === "match_found");
+  assert.equal(fa.kind, "ranked");
+  assert.equal(fa.opponent.name, "Bさん");
+  const ea = await a.c.wait((m) => m.t === "match_end", 60000);
+  const eb = await b.c.wait((m) => m.t === "match_end", 60000);
+  assert.equal(ea.reason, "completed");
+  assert.equal(ea.result, "win", "よい返事をしたAが勝つ");
+  assert.equal(eb.result, "lose");
+  assert.ok(ea.rating_delta > 0 && eb.rating_delta < 0);
+  assert.equal(ea.rating_after, 1000 + ea.rating_delta);
+  const me = await api(srv.base, "GET", "/api/v1/me", undefined, a.token);
+  assert.equal(me.body.player.rating, ea.rating_after, "レーティングはサーバーに保存される");
+  assert.equal(me.body.player.wins, 1);
+  // 判定と台詞のやりとりが両者に届いている
+  assert.ok(a.c.inbox.some((m) => m.t === "judged"));
+  assert.ok(b.c.inbox.some((m) => m.t === "line" && m.by === "opponent"));
+  const board = await api(srv.base, "GET", "/api/v1/leaderboard");
+  assert.equal(board.body.players[0].name, "Aさん");
+  a.c.close(); b.c.close();
+});
+
+test("フレンド対戦（部屋コード）: レーティングは変わらない", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "ホスト");
+  const b = await guest(srv.base, srv.wsUrl, "フレンド");
+  autoplay(a.c); autoplay(b.c);
+  a.c.send({ t: "room_create", format: "text" });
+  const room = await a.c.wait((m) => m.t === "room_created");
+  assert.match(room.code, /^[A-Z2-9]{6}$/);
+  b.c.send({ t: "room_join", code: "zzzzzz" });
+  const err = await b.c.wait((m) => m.t === "error");
+  assert.equal(err.code, "room_not_found");
+  b.c.send({ t: "room_join", code: room.code.toLowerCase() });
+  const f = await b.c.wait((m) => m.t === "match_found");
+  assert.equal(f.kind, "friend");
+  const e = await a.c.wait((m) => m.t === "match_end", 60000);
+  assert.equal(e.rating_delta, 0);
+  assert.equal(e.rating_after, 1000);
+  a.c.close(); b.c.close();
+});
+
+test("音声対戦: 声が相手に届き、文字起こしされて判定される", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "声A");
+  const b = await guest(srv.base, srv.wsUrl, "声B");
+  autoplay(a.c, { voice: true }); autoplay(b.c, { voice: true });
+  a.c.send({ t: "room_create", format: "voice" });
+  const room = await a.c.wait((m) => m.t === "room_created");
+  b.c.send({ t: "room_join", code: room.code });
+  await a.c.wait((m) => m.t === "match_end", 60000);
+  assert.ok(b.c.inbox.some((m) => m.t === "voice" && m.by === "opponent" && typeof m.audio === "string"), "相手の声が届く");
+  assert.ok(a.c.inbox.some((m) => m.t === "line" && m.via === "voice"), "文字起こしがセリフになる");
+  a.c.close(); b.c.close();
+});
+
+test("途中で抜けると相手の勝ち（ランク）", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "残る人");
+  const b = await guest(srv.base, srv.wsUrl, "抜ける人");
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  await b.c.wait((m) => m.t === "match_found");
+  b.c.send({ t: "leave" });
+  const e = await a.c.wait((m) => m.t === "match_end");
+  assert.equal(e.result, "win");
+  assert.equal(e.reason, "left");
+  a.c.close(); b.c.close();
+});
+
+test("切断しても猶予時間内につなぎ直せば試合に戻れる", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "再接続A");
+  const b = await guest(srv.base, srv.wsUrl, "再接続B");
+  a.c.send({ t: "room_create", format: "text" });
+  const room = await a.c.wait((m) => m.t === "room_created");
+  b.c.send({ t: "room_join", code: room.code });
+  await b.c.wait((m) => m.t === "match_found");
+  b.c.ws.terminate();
+  await a.c.wait((m) => m.t === "opponent_status" && m.connected === false);
+  const c2 = new Client(srv.wsUrl);
+  await c2.open();
+  c2.send({ t: "auth", token: b.token });
+  const hello = await c2.wait((m) => m.t === "hello");
+  assert.equal(hello.resumed, true);
+  await c2.wait((m) => m.t === "match_found");
+  await a.c.wait((m) => m.t === "opponent_status" && m.connected === true);
+  c2.send({ t: "leave" });
+  await a.c.wait((m) => m.t === "match_end");
+  a.c.close(); c2.close();
+});
+
+test("同じ人は二重に並べない／音声の形式チェック", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "二重");
+  a.c.send({ t: "queue", format: "text" });
+  await a.c.wait((m) => m.t === "queued");
+  a.c.send({ t: "room_create", format: "text" });
+  const err = await a.c.wait((m) => m.t === "error");
+  assert.equal(err.code, "busy");
+  a.c.send({ t: "cancel" });
+  await a.c.wait((m) => m.t === "cancelled");
+  a.c.send({ t: "queue", format: "video" });
+  const err2 = await a.c.wait((m) => m.t === "error" && m.code === "bad_format");
+  assert.ok(err2);
+  a.c.close();
+});

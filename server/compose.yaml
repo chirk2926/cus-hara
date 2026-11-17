@@ -1,0 +1,20 @@
+# ゲームサーバーを動かす例。リポジトリのルートで:
+#   ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
+# 音声対戦を使う場合は、下の stt の例を参考に文字起こしサーバーを用意し、STT_PROVIDER と STT_URL を設定する。
+services:
+  game:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-opus-5-5}
+      STT_PROVIDER: ${STT_PROVIDER:-none}
+      STT_URL: ${STT_URL:-http://stt:8080}
+    volumes:
+      - game-data:/var/lib/cushara
+    restart: unless-stopped
+volumes:
+  game-data:

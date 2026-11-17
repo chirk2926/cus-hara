@@ -4,3 +4,5 @@ build/
 packaging/steam/content/
 packaging/steam/output/
 shots.log
+server/node_modules/
+server/var/

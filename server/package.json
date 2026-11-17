@@ -1,0 +1,26 @@
+{
+  "name": "cushara-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "カスハラ防衛線のゲームサーバー（AI判定・マッチング・対戦進行・レーティング）",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/main.ts",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/main.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.9.0",
+    "ws": "8.18.3",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.13",
+    "@types/ws": "8.18.1",
+    "typescript": "5.9.3"
+  }
+}
