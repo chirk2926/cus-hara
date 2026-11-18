@@ -15,6 +15,8 @@ export interface Player {
   draws: number;
   /** つけている称号の ID（要件#79。"t001" など。無ければ ""） */
   title?: string;
+  /** 名札の飾り（要件#82）。"枠:名前の色:スタンプ"（ショップで買ったものの ID。無ければ ""） */
+  tag?: string;
 }
 
 let db: DatabaseSync | null = null;
@@ -56,6 +58,8 @@ export function openDb(): DatabaseSync {
   // 称号の列（要件#79）。古いDBには後から足す
   const cols = db.prepare("PRAGMA table_info(players)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "title")) db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''");
+  // 名札の飾りの列（要件#82）
+  if (!cols.some((c) => c.name === "tag")) db.exec("ALTER TABLE players ADD COLUMN tag TEXT NOT NULL DEFAULT ''");
   return db;
 }
 
@@ -81,7 +85,7 @@ export function createPlayer(name: string): { player: Player; token: string } {
 
 export function playerByToken(token: string): Player | null {
   const row = openDb()
-    .prepare("SELECT id, name, rating, wins, losses, draws, title FROM players WHERE token_hash = ?")
+    .prepare("SELECT id, name, rating, wins, losses, draws, title, tag FROM players WHERE token_hash = ?")
     .get(hashToken(token)) as Player | undefined;
   if (!row) return null;
   openDb().prepare("UPDATE players SET last_seen = ? WHERE id = ?").run(Date.now(), row.id);
@@ -89,7 +93,7 @@ export function playerByToken(token: string): Player | null {
 }
 
 export function playerById(id: string): Player | null {
-  const row = openDb().prepare("SELECT id, name, rating, wins, losses, draws, title FROM players WHERE id = ?").get(id) as Player | undefined;
+  const row = openDb().prepare("SELECT id, name, rating, wins, losses, draws, title, tag FROM players WHERE id = ?").get(id) as Player | undefined;
   return row ? { ...row } : null;
 }
 
@@ -100,6 +104,19 @@ export function cleanTitle(raw: unknown): string {
 
 export function setPlayerTitle(id: string, title: string): void {
   openDb().prepare("UPDATE players SET title = ? WHERE id = ?").run(title, id);
+}
+
+/** 名札の飾り: {frame, color, stamp}（それぞれ英小文字・数字・_ の16文字まで）を "frame:color:stamp" にする。形の違う値は "" */
+export function cleanTag(raw: unknown): string {
+  if (typeof raw !== "object" || raw === null) return "";
+  const r = raw as Record<string, unknown>;
+  const part = (v: unknown): string => (typeof v === "string" && /^[a-z0-9_]{1,16}$/.test(v) ? v : "");
+  const parts = [part(r.frame), part(r.color), part(r.stamp)];
+  return parts.every((x) => x === "") ? "" : parts.join(":");
+}
+
+export function setPlayerTag(id: string, tag: string): void {
+  openDb().prepare("UPDATE players SET tag = ? WHERE id = ?").run(tag, id);
 }
 
 export function renamePlayer(id: string, name: string): void {

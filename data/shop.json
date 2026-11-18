@@ -1,0 +1,66 @@
+{
+	"_comment": "ショップ（要件#82）。hp / kas は値段（0 はその通貨では買えない）。default は最初から持っているもの。HP=ハラスメントポイント（オフラインのシフトの給与）、KAS=カスポイント（オンラインのシフト・対戦の給与。価値が高く、KAS でしか買えないものもある）",
+	"pay": {
+		"hp_per_sales": 0.01,
+		"kas_per_sales": 0.005,
+		"kas_versus_win": 30,
+		"kas_versus_lose": 10
+	},
+	"categories": [
+		{"id": "bg", "name": {"ja": "背景", "en": "Backdrop", "zh": "背景"}},
+		{"id": "frame", "name": {"ja": "名札の枠", "en": "Tag frame", "zh": "名牌边框"}},
+		{"id": "color", "name": {"ja": "名前の色", "en": "Name color", "zh": "名字颜色"}},
+		{"id": "stamp", "name": {"ja": "スタンプ", "en": "Stamp", "zh": "印章"}}
+	],
+	"items": [
+		{"id": "arcade_day", "cat": "bg", "default": true, "hp": 0, "kas": 0, "stage": "arcade", "variant": "day",
+			"name": {"ja": "ゲームセンター（営業中）", "en": "Arcade (open)", "zh": "游戏厅（营业中）"}},
+		{"id": "konbini_day", "cat": "bg", "hp": 300, "kas": 150, "stage": "konbini", "variant": "day",
+			"name": {"ja": "コンビニ（昼）", "en": "Konbini (day)", "zh": "便利店（白天）"}},
+		{"id": "arcade_night", "cat": "bg", "hp": 800, "kas": 400, "stage": "arcade", "variant": "night",
+			"name": {"ja": "ゲームセンター（閉店後）", "en": "Arcade (after hours)", "zh": "游戏厅（打烊后）"}},
+		{"id": "konbini_night", "cat": "bg", "hp": 0, "kas": 600, "stage": "konbini", "variant": "night",
+			"name": {"ja": "コンビニ（深夜）", "en": "Konbini (late night)", "zh": "便利店（深夜）"}},
+
+		{"id": "paper", "cat": "frame", "default": true, "hp": 0, "kas": 0, "bg": "#f3eee3", "border": "#6b6574", "width": 2, "text": "#24212b",
+			"name": {"ja": "紙の名札", "en": "Paper", "zh": "纸名牌"}},
+		{"id": "wood", "cat": "frame", "hp": 200, "kas": 100, "bg": "#c08a52", "border": "#6b4423", "width": 4, "text": "#2b1a0c",
+			"name": {"ja": "木札", "en": "Wooden", "zh": "木牌"}},
+		{"id": "lcd", "cat": "frame", "hp": 400, "kas": 200, "bg": "#1d2b1d", "border": "#4a5d3a", "width": 4, "text": "#b8f28a",
+			"name": {"ja": "液晶", "en": "LCD", "zh": "液晶"}},
+		{"id": "neon", "cat": "frame", "hp": 700, "kas": 350, "bg": "#160f2b", "border": "#ff4fd8", "width": 3, "text": "#ffe9fb", "glow": "#ff4fd8",
+			"name": {"ja": "ネオン", "en": "Neon", "zh": "霓虹"}},
+		{"id": "gold", "cat": "frame", "hp": 1500, "kas": 700, "bg": "#f0cf62", "border": "#9c7a1e", "width": 5, "text": "#3a2a00",
+			"name": {"ja": "金の名札", "en": "Gold", "zh": "金名牌"}},
+		{"id": "platinum", "cat": "frame", "hp": 0, "kas": 1200, "bg": "#e4ebf2", "border": "#7f95ad", "width": 6, "text": "#1f2a36", "glow": "#bfe3ff",
+			"name": {"ja": "プラチナ", "en": "Platinum", "zh": "白金"}},
+
+		{"id": "ink", "cat": "color", "default": true, "hp": 0, "kas": 0, "value": "",
+			"name": {"ja": "ふつう", "en": "Default", "zh": "默认"}},
+		{"id": "red", "cat": "color", "hp": 150, "kas": 80, "value": "#d23f2f",
+			"name": {"ja": "朱色", "en": "Vermilion", "zh": "朱红"}},
+		{"id": "blue", "cat": "color", "hp": 150, "kas": 80, "value": "#2f6fd2",
+			"name": {"ja": "青", "en": "Blue", "zh": "蓝"}},
+		{"id": "green", "cat": "color", "hp": 150, "kas": 80, "value": "#2f8f5b",
+			"name": {"ja": "緑", "en": "Green", "zh": "绿"}},
+		{"id": "purple", "cat": "color", "hp": 300, "kas": 150, "value": "#8a3fd2",
+			"name": {"ja": "紫", "en": "Purple", "zh": "紫"}},
+		{"id": "gold", "cat": "color", "hp": 0, "kas": 500, "value": "#c9971c",
+			"name": {"ja": "金色", "en": "Gold", "zh": "金色"}},
+
+		{"id": "none", "cat": "stamp", "default": true, "hp": 0, "kas": 0, "char": "",
+			"name": {"ja": "なし", "en": "None", "zh": "无"}},
+		{"id": "sumi", "cat": "stamp", "hp": 100, "kas": 50, "char": "済",
+			"name": {"ja": "「済」の判子", "en": "\"Done\" stamp", "zh": "“済”印章"}},
+		{"id": "iwai", "cat": "stamp", "hp": 250, "kas": 120, "char": "祝",
+			"name": {"ja": "「祝」の判子", "en": "\"Celebrate\" stamp", "zh": "“祝”印章"}},
+		{"id": "fuku", "cat": "stamp", "hp": 250, "kas": 120, "char": "福",
+			"name": {"ja": "「福」の判子", "en": "\"Fortune\" stamp", "zh": "“福”印章"}},
+		{"id": "oni", "cat": "stamp", "hp": 600, "kas": 300, "char": "鬼",
+			"name": {"ja": "「鬼」の判子", "en": "\"Demon\" stamp", "zh": "“鬼”印章"}},
+		{"id": "kami", "cat": "stamp", "hp": 0, "kas": 800, "char": "神",
+			"name": {"ja": "「神」の判子", "en": "\"God\" stamp", "zh": "“神”印章"}},
+		{"id": "kiwami", "cat": "stamp", "hp": 0, "kas": 1500, "char": "極",
+			"name": {"ja": "「極」の判子", "en": "\"Ultimate\" stamp", "zh": "“極”印章"}}
+	]
+}

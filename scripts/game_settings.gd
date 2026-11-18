@@ -80,6 +80,12 @@ var mental_xp: int = 0
 var stats: Dictionary = {}
 var unlocked_titles: Array = []
 var equipped_title: String = ""
+## ショップ（要件#82）: HP（ハラスメントポイント・オフラインの給与）と KAS（カスポイント・オンラインの給与）、
+## 持っているもの（"カテゴリ:ID"）、使っているもの（カテゴリ → ID）
+var hp_points: int = 0
+var kas_points: int = 0
+var owned_items: Array = []
+var equipped_items: Dictionary = {}
 ## チュートリアル（要件#53）を一度でも終えた／断ったか
 var tutorial_seen: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
@@ -189,6 +195,12 @@ func load_settings() -> void:
 	var ut: Variant = cfg.get_value("play", "titles", [])
 	unlocked_titles = ut if typeof(ut) == TYPE_ARRAY else []
 	equipped_title = str(cfg.get_value("play", "title", ""))
+	hp_points = maxi(0, int(cfg.get_value("shop", "hp", 0)))
+	kas_points = maxi(0, int(cfg.get_value("shop", "kas", 0)))
+	var oi: Variant = cfg.get_value("shop", "owned", [])
+	owned_items = oi if typeof(oi) == TYPE_ARRAY else []
+	var ei: Variant = cfg.get_value("shop", "equipped", {})
+	equipped_items = ei if typeof(ei) == TYPE_DICTIONARY else {}
 	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
 		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -218,6 +230,10 @@ func save_settings() -> void:
 	cfg.set_value("play", "stats", stats)
 	cfg.set_value("play", "titles", unlocked_titles)
 	cfg.set_value("play", "title", equipped_title)
+	cfg.set_value("shop", "hp", hp_points)
+	cfg.set_value("shop", "kas", kas_points)
+	cfg.set_value("shop", "owned", owned_items)
+	cfg.set_value("shop", "equipped", equipped_items)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 

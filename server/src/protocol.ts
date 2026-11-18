@@ -19,5 +19,11 @@ export interface Conn {
 
 export function publicPlayer(p: Player, rating?: number) {
   const r = rating ?? p.rating;
-  return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws, title: p.title ?? "" };
+  return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws, title: p.title ?? "", tag: tagObject(p.tag ?? "") };
+}
+
+/** 名札の飾り（要件#82）を {frame, color, stamp} にして渡す */
+export function tagObject(tag: string): { frame: string; color: string; stamp: string } {
+  const [frame = "", color = "", stamp = ""] = tag.split(":");
+  return { frame, color, stamp };
 }

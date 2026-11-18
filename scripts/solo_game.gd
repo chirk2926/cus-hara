@@ -12,6 +12,7 @@ const UI = preload("res://scripts/ui_kit.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
 const AgeCheck = preload("res://scripts/age_check.gd")
 const Titles = preload("res://scripts/titles.gd")
+const Shop = preload("res://scripts/shop.gd")
 
 signal finished(stage_id: String, results: Array, total: int)
 signal _reply(text: String)
@@ -195,6 +196,8 @@ func _finish_summary() -> void:
 		"suspended": _suspended, "reviews": _make_reviews(), "offline": _offline_used or GameSettings.solo_source == "offline",
 		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 	_track_shift(review)
+	# 給与（要件#82）: オフラインは HP、オンラインは KAS。売上がマイナスでも減らない
+	summary["pay"] = Shop.pay_shift(_sales, not bool(summary["offline"]))
 	summary["new_titles"] = Titles.check()
 	GameSettings.save_settings()
 

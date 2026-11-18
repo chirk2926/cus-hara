@@ -34,7 +34,8 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # ---------------------------------------------------------------- public API
 
-func build(stage_id: String) -> void:
+## variant: "day"（ふつう）か "night"（コンビニは深夜、ゲームセンターは閉店後。タイトルの背景用。要件#82）
+func build(stage_id: String, variant: String = "day") -> void:
 	_clear()
 	_rng.seed = 7741
 	if stage_id == "arcade":
@@ -43,8 +44,47 @@ func build(stage_id: String) -> void:
 	else:
 		_stage_id = "konbini"
 		_build_konbini()
+	if variant == "night":
+		_apply_night()
+	if _stage_id == "konbini":
 		_apply_lighting()
 	_built = true
+
+
+## 夜にする: 外を暗くし、日の光を消す。ゲームセンターは閉店後なので照明もほとんど落とす
+func _apply_night() -> void:
+	var closed: bool = _stage_id == "arcade"
+	var stack: Array = [self]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		if n is WorldEnvironment and (n as WorldEnvironment).environment != null:
+			var env: Environment = (n as WorldEnvironment).environment
+			env.background_color = Color(0.02, 0.03, 0.07)
+			env.ambient_light_energy *= 0.25 if closed else 0.45
+			env.ambient_light_color = env.ambient_light_color.lerp(Color(0.35, 0.4, 0.75), 0.5)
+			env.tonemap_exposure *= 0.8 if closed else 0.92
+			if n == _find_env_owner():
+				_base_ambient = env.ambient_light_color
+		elif n is Light3D:
+			var l: Light3D = n
+			var k: float = 0.08 if l is DirectionalLight3D else (0.3 if closed else 1.0)
+			l.light_energy *= k
+			if not closed and l is OmniLight3D:
+				l.light_color = l.light_color.lerp(Color(0.85, 0.92, 1.0), 0.3)
+	# コンビニの明るさは毎フレーム _light_energy から戻すので、元の値も変える
+	for i in range(_lights.size()):
+		if is_instance_valid(_lights[i]):
+			_light_energy[i] = _lights[i].light_energy
+			_light_colors[i] = _lights[i].light_color
+
+
+func _find_env_owner() -> Node:
+	for c in get_children():
+		if c is WorldEnvironment:
+			return c
+	return null
 
 
 func get_customer_stand() -> Vector3:

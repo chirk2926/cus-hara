@@ -2,7 +2,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { config } from "./config.ts";
-import { type Player, cleanName, cleanTitle, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
+import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
@@ -145,6 +145,10 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     if (body.title !== undefined) {
       next = { ...next, title: cleanTitle(body.title) };
       setPlayerTitle(player.id, next.title ?? "");
+    }
+    if (body.tag !== undefined) {
+      next = { ...next, tag: cleanTag(body.tag) };
+      setPlayerTag(player.id, next.tag ?? "");
     }
     return { player: publicPlayer(next) };
   }

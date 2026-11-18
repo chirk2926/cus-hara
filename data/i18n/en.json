@@ -473,5 +473,20 @@
 	"称号をはずす": "Remove title",
 	"称号 →": "Titles →",
 	"［ネタ］": "[Joke]",
-	"？？？": "???"
+	"？？？": "???",
+	"未登録": "Unregistered",
+	"対戦メンタル": "Versus mental",
+	"次まで %d EXP": "%d EXP to next",
+	"ショップ": "Shop",
+	"ショップ →": "Shop →",
+	"HP（ハラスメントポイント）はオフラインのシフト、KAS（カスポイント）はオンラインのシフトと対戦の給与。KAS でしか買えないものもあります。": "HP (Harassment Points) are wages from offline shifts; KAS (Kas Points) are wages from online shifts and versus. Some items can only be bought with KAS.",
+	"いまの名札:": "Your tag:",
+	"KAS限定": "KAS only",
+	"ゲームセンター": "Arcade",
+	"コンビニ": "Konbini",
+	"使用中": "In use",
+	"使う": "Use",
+	"%s %s で買う": "Buy: %s %s",
+	"給与": "Wages",
+	"レート %d（%s）": "Rating %d (%s)"
 }

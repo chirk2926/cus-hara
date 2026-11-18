@@ -335,3 +335,13 @@ test("称号（要件#79）: つけた称号は名前を変えずに保存され
   const bad = await api(srv.base, "POST", "/api/v1/me", { title: "<script>" }, g.body.token);
   assert.equal(bad.body.player.title, "");
 });
+
+test("名札の飾り（要件#82）: 枠・名前の色・スタンプを保存して返し、形の違う値は空にする", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "飾りの人" });
+  const set = await api(srv.base, "POST", "/api/v1/me", { tag: { frame: "neon", color: "gold", stamp: "kami" } }, g.body.token);
+  assert.deepEqual(set.body.player.tag, { frame: "neon", color: "gold", stamp: "kami" });
+  const me = await api(srv.base, "GET", "/api/v1/me", undefined, g.body.token);
+  assert.equal(me.body.player.tag.frame, "neon");
+  const bad = await api(srv.base, "POST", "/api/v1/me", { tag: { frame: "<b>", color: "x".repeat(40) } }, g.body.token);
+  assert.deepEqual(bad.body.player.tag, { frame: "", color: "", stamp: "" });
+});

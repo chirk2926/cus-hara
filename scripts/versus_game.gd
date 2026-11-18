@@ -13,6 +13,7 @@ const Scenarios = preload("res://scripts/scenarios.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
 const EosScript = preload("res://scripts/eos_matchmaker.gd")
 const Titles = preload("res://scripts/titles.gd")
+const Shop = preload("res://scripts/shop.gd")
 
 ## サーバーのエラーコード → 画面の言葉（サーバーの文は日本語だけなので、ここで訳す）
 const ERROR_TEXT: Dictionary = {
@@ -307,6 +308,7 @@ func _on_match_found(msg: Dictionary) -> void:
 		if not op_title.is_empty():
 			op_name = tr("「%s」") % Titles.title_name(op_title) + op_name
 		hud.set_comment(tr("対戦相手: %s（%s・%d）") % [op_name, str(op.get("rank", "")), int(op.get("rating", 0))])
+		main.show_opponent_tag(op)
 		hud.show_banner(tr("対戦開始！"), UI.POP)
 		main.sfx.play("door")
 	var voice_format: bool = str(msg.get("format", "text")) == "voice"
@@ -504,6 +506,8 @@ func _on_match_end(msg: Dictionary) -> void:
 	var pl: Variant = msg.get("player", null)
 	if typeof(pl) == TYPE_DICTIONARY:
 		GameSettings.last_profile = pl
+	# 給与（要件#82）: 対戦は KAS
+	msg["pay_kas"] = Shop.pay_versus(str(msg.get("result", "")) == "win")
 	msg["new_titles"] = Titles.check()
 	GameSettings.save_settings()
 	state = "idle"
