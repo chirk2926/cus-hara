@@ -60,6 +60,21 @@ var resolution: String = "auto"
 ## クレーンゲームの店の設定（要件#55）。"power"（パワー設定。既定）| "prob"（確率設定）と、ペイアウト率 10〜80%
 var crane_mode: String = "power"
 var crane_payout: int = 30
+## メンタルランク（要件#72）。1〜20。
+## A（通常モード）: シフトをこなすと経験値がたまって上がる。B（素材型・対戦）: レーティングから決まる（最初の 1000 で 10）
+const MENTAL_A: Array = ["崩壊寸前", "限界ギリギリ", "ボロボロ", "絶不調", "ぐらつき", "ビクビク", "動揺", "ざわつき", "ぎこちない", "まずまず",
+	"平常心", "落ち着き", "安定", "しなやか", "堅実", "動じない", "不屈", "鋼の心", "明鏡止水", "悟り"]
+const MENTAL_B: Array = ["豆腐", "綿あめ", "プリン", "薄氷", "ガラス", "紙", "粘土", "ゴム", "竹", "木",
+	"石", "レンガ", "銅", "鉄", "鋼鉄", "チタン", "ミスリル", "オリハルコン", "ダイヤモンド", "アダマンタイト"]
+## 【仮の値】A の各ランクに必要な経験値の合計（ランク n になるのに MENTAL_XP[n-1] 以上）。後で調整する
+const MENTAL_XP: Array = [0, 800, 1800, 3000, 4400, 6000, 7800, 9800, 12000, 14400,
+	17000, 19800, 22800, 26000, 29400, 33000, 36800, 40800, 45000, 49400]
+## 【仮の値】1シフトでもらえる経験値 = 最後まで出た分 + 合計点（マイナスは 0）
+const MENTAL_XP_SHIFT: int = 200
+## 【仮の値】B: レート 1000 で 10、レート 60 ごとに 1 つ上下
+const MENTAL_B_BASE_RATING: int = 1000
+const MENTAL_B_STEP: int = 60
+var mental_xp: int = 0
 ## チュートリアル（要件#53）を一度でも終えた／断ったか
 var tutorial_seen: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
@@ -149,6 +164,7 @@ func load_settings() -> void:
 		crane_mode = "power"
 	crane_payout = clampi(int(cfg.get_value("play", "crane_payout", 30)), 10, 80)
 	tutorial_seen = bool(cfg.get_value("play", "tutorial_seen", false))
+	mental_xp = maxi(0, int(cfg.get_value("play", "mental_xp", 0)))
 	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
 		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -174,6 +190,7 @@ func save_settings() -> void:
 	cfg.set_value("play", "crane_mode", crane_mode)
 	cfg.set_value("play", "crane_payout", crane_payout)
 	cfg.set_value("play", "tutorial_seen", tutorial_seen)
+	cfg.set_value("play", "mental_xp", mental_xp)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 
@@ -241,6 +258,49 @@ func own_key_ready() -> bool:
 
 
 ## 怒りの上がる速さにかける倍率（1人用とフレンド対戦）
+## メンタルランク A（通常モード）。1〜20
+func mental_rank() -> int:
+	return mental_rank_for_xp(mental_xp)
+
+
+static func mental_rank_for_xp(xp: int) -> int:
+	var r: int = 1
+	for i in range(MENTAL_XP.size()):
+		if xp >= int(MENTAL_XP[i]):
+			r = i + 1
+	return r
+
+
+## シフトの結果で経験値を足す。戻り値 {"before", "after", "gain"}
+func add_mental_xp(total: int) -> Dictionary:
+	var before: int = mental_rank()
+	var gain: int = MENTAL_XP_SHIFT + maxi(0, total)
+	mental_xp += gain
+	save_settings()
+	return {"before": before, "after": mental_rank(), "gain": gain}
+
+
+## 次のランクまでの経験値（MAX なら -1）
+func mental_xp_to_next() -> int:
+	var r: int = mental_rank()
+	if r >= MENTAL_XP.size():
+		return -1
+	return int(MENTAL_XP[r]) - mental_xp
+
+
+## メンタルランク B（対戦。素材型）: レーティングから決まる
+static func mental_rank_b(rating: int) -> int:
+	return clampi(10 + int(floor(float(rating - MENTAL_B_BASE_RATING) / float(MENTAL_B_STEP))), 1, 20)
+
+
+func mental_name_a(rank: int) -> String:
+	return tr(str(MENTAL_A[clampi(rank, 1, 20) - 1]))
+
+
+func mental_name_b(rank: int) -> String:
+	return tr(str(MENTAL_B[clampi(rank, 1, 20) - 1]))
+
+
 ## 店の売上・レビュー・「取れない」クレームの出やすさに効くペイアウト率。確率設定でないときは既定の 30%
 func effective_payout() -> int:
 	return crane_payout if crane_mode == "prob" else 30

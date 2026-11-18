@@ -61,6 +61,7 @@ var _ui: CanvasLayer = null
 var _title: Control = null
 var _sheet: Control = null
 var _profile_label: Label = null
+var _mental_label: Label = null
 var _server_label: Label = null
 var _lobby_status: Label = null
 var _lobby_code: Label = null
@@ -710,6 +711,12 @@ func _refresh_title() -> void:
 		_profile_label.text = tr("名札: まだ登録されていません")
 	else:
 		_profile_label.text = tr("名札: %s　レート %d（%s）") % [str(p.get("name", "")), int(p.get("rating", 1000)), tr(str(p.get("rank", "")))]
+	if _mental_label != null:
+		var ra: int = GameSettings.mental_rank()
+		var rb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
+		var nxt: int = GameSettings.mental_xp_to_next()
+		var next_text: String = (tr("（次まで %d）") % nxt) if nxt >= 0 else tr("（MAX）")
+		_mental_label.text = tr("メンタル %d「%s」%s ／ 対戦 %d「%s」") % [ra, GameSettings.mental_name_a(ra), next_text, rb, GameSettings.mental_name_b(rb)]
 	if _server_info.has("error"):
 		_server_label.text = tr("サーバーにつながりません（1人用は台本で遊べます）")
 		_server_label.add_theme_color_override("font_color", UI.SHU)
@@ -785,6 +792,9 @@ func _build_title() -> void:
 	b.add_child(UI.gap(8))
 	_profile_label = UI.text("", UI.S_SMALL, UI.INK, UI.F_DOT)
 	b.add_child(_profile_label)
+	# メンタルランク（要件#72）: A（通常）と B（対戦・素材型）
+	_mental_label = UI.text("", UI.S_SMALL, UI.INK, UI.F_DOT)
+	b.add_child(_mental_label)
 	_server_label = UI.text("", UI.S_SMALL, UI.INK_SOFT)
 	b.add_child(_server_label)
 
@@ -1217,6 +1227,8 @@ func _card_row(col: VBoxContainer, clock: String, title: String, mark: String, p
 func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var is_best: bool = GameSettings.submit_score(stage_id, total)
 	var rank: Array = rank_for(total)
+	# メンタルランク A の経験値（要件#72）
+	var mr: Dictionary = GameSettings.add_mental_xp(total)
 	sfx.play("win" if total >= 2400 else "lose")
 	var col: VBoxContainer = _open_sheet(580, "center", false, true)
 	col.add_theme_constant_override("separation", 6)
@@ -1268,6 +1280,15 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	rk.add_child(UI.spacer())
 	if is_best:
 		rk.add_child(UI.text(tr("★ ハイスコア更新"), UI.S_BODY, UI.SHU, UI.F_BOLD))
+	var mrow: HBoxContainer = UI.hbox(12)
+	col.add_child(mrow)
+	var ra: int = int(mr["after"])
+	var rb0: int = int(mr["before"])
+	mrow.add_child(UI.text(tr("メンタル %d「%s」") % [ra, GameSettings.mental_name_a(ra)], UI.S_BODY, STAMP_INK, UI.F_DOT))
+	mrow.add_child(UI.text("+%d EXP" % int(mr["gain"]), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+	mrow.add_child(UI.spacer())
+	if ra > rb0:
+		mrow.add_child(UI.text(tr("メンタルランクアップ！"), UI.S_BODY, UI.SHU, UI.F_BOLD))
 	col.add_child(UI.gap(6))
 	var btns: HBoxContainer = UI.hbox(20)
 	col.add_child(btns)
@@ -1333,6 +1354,9 @@ func _show_versus_lobby() -> void:
 	head.add_child(UI.spacer())
 	var p: Dictionary = GameSettings.last_profile
 	head.add_child(UI.text(tr("あなた: %s　レート %d（%s）") % [str(p.get("name", GameSettings.player_name)), int(p.get("rating", 1000)), tr(str(p.get("rank", "")))], UI.S_BODY, UI.POP, UI.F_DOT))
+	# メンタルランク B（素材型。要件#72）
+	var mb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
+	head.add_child(UI.text(tr("メンタル %d「%s」") % [mb, GameSettings.mental_name_b(mb)], UI.S_BODY, UI.PAPER, UI.F_DOT))
 
 	# 形式（文字・音声）
 	var fmt_row: HBoxContainer = UI.hbox(8)
@@ -1518,6 +1542,9 @@ func _on_versus_finished(summary: Dictionary) -> void:
 	_receipt_rule(col)
 	if str(summary.get("kind", "")) == "ranked":
 		_receipt_line(col, tr("レート"), "%d → %d" % [int(summary.get("rating_before", 0)), int(summary.get("rating_after", 0))], UI.S_LEAD)
+		var b0: int = GameSettings.mental_rank_b(int(summary.get("rating_before", 1000)))
+		var b1: int = GameSettings.mental_rank_b(int(summary.get("rating_after", 1000)))
+		_receipt_line(col, tr("メンタル"), "%s → %s" % [GameSettings.mental_name_b(b0), GameSettings.mental_name_b(b1)], UI.S_BODY, UI.SHU if b1 > b0 else UI.INK)
 		_receipt_line(col, "", "%+d" % int(summary.get("rating_delta", 0)), UI.S_LEAD, UI.SHU if int(summary.get("rating_delta", 0)) >= 0 else UI.INK)
 		_receipt_line(col, tr("ランク"), tr(str(summary.get("rank", ""))))
 		match str(summary.get("rating_note", "")):
