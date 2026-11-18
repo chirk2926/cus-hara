@@ -271,10 +271,11 @@ func _build_medal() -> void:
 	_label(self, "MEDAL GAME", Vector3(0.0, 2.75, -7.85), 180, Color(1.0, 0.85, 0.3))
 	_label(self, "メダルコーナー", Vector3(0.0, 2.25, -7.85), 90, Color(1.0, 1.0, 1.0))
 	# 注意書きは天井から手前に下げて、タイトルからも読めるように（要件#90）
-	_box(self, Vector3(2.2, 0.62, 0.03), Vector3(1.9, 2.45, -2.6), _mat(Color(1.0, 1.0, 1.0)))
-	_label(self, "メダルの払い戻し・\n景品との交換はできません", Vector3(1.9, 2.45, -2.57), 64, Color(0.85, 0.1, 0.1), 0.004)
-	_cyl(self, 0.006, 0.006, 0.45, Vector3(1.2, 2.98, -2.6), _mat(Color(0.2, 0.2, 0.2)))
-	_cyl(self, 0.006, 0.006, 0.45, Vector3(2.6, 2.98, -2.6), _mat(Color(0.2, 0.2, 0.2)))
+	# 右の手前に立て看板（奥の看板と重ならない高さ）
+	var stand: Node3D = _node(self, Vector3(2.2, 0.0, -1.0), -25.0)
+	_box(stand, Vector3(0.05, 1.3, 0.05), Vector3(0.0, 0.65, 0.0), _mat(Color(0.3, 0.3, 0.32)))
+	_box(stand, Vector3(1.5, 0.75, 0.03), Vector3(0.0, 1.45, 0.0), _mat(Color(1.0, 1.0, 1.0)))
+	_label(stand, "メダルの払い戻し・\n景品との交換は\nできません", Vector3(0.0, 1.45, 0.025), 56, Color(0.85, 0.1, 0.1), 0.004)
 	_label(self, "メダルはお店の中で遊ぶためだけのものです", Vector3(0.0, 1.85, -7.85), 64, Color(1.0, 1.0, 1.0), 0.004)
 	for k3 in range(22):
 		var x: float = -2.6 + 5.2 * float(k3) / 21.0
@@ -757,7 +758,7 @@ func _build_parents_home() -> void:
 		"build": "normal", "accessory": "glasses", "height": 0.92}, Vector3(-0.35, -0.48, -2.35), 0.0, "sit")
 	_person({"body_color": "#8a6a4a", "skin_color": "#ecc9a8", "hair_color": "#b8b4ae", "hair": "perm",
 		"build": "normal", "accessory": "none", "height": 0.86, "gender": "f"}, Vector3(0.6, -0.48, -2.1), -0.35, "sit")
-	_label(self, "ちゃんと食べてる？", Vector3(0.75, 1.15, -1.5), 60, Color(0.4, 0.25, 0.1), 0.004)
+	_label(self, "ちゃんと食べてる？", Vector3(1.6, 1.2, -1.4), 60, Color(0.4, 0.25, 0.1), 0.004)
 	# 掛け軸・ちゃぶ台の上の写真・古いテレビ
 	_box(self, Vector3(0.5, 1.1, 0.02), Vector3(2.3, 1.45, -2.9), _mat(Color(0.95, 0.93, 0.85)))
 	_label(self, "忍耐", Vector3(2.3, 1.55, -2.87), 110, Color(0.1, 0.1, 0.1), 0.004)
