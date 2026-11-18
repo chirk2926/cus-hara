@@ -1,11 +1,16 @@
 extends RefCounted
-## 店の行動ボタン（割引・土下座・メダル返還・補填）と、台の調整の結果。要件#34, #37
+## 店の行動ボタンと、台の調整の結果。要件#34, #37, #54
+## ゲームセンターは、お客さんの台の種類（machine: crane / medal / rhythm / video / none）でボタンが変わる。
 ## 表は data/actions.json（サーバーの server/src/actions.ts と共通）。お客さんごとの効果は台本の actions。
 
 const Judge = preload("res://scripts/offline_judge.gd")
+const Scenarios = preload("res://scripts/scenarios.gd")
 
 ## 台の調整（ボタンの id。押すとミニゲームを開く）
-const CRANE_ADJUST: String = "crane_adjust"
+const CRANE_ADJUST: String = "crane_adjust"   # 難易度を調整（パワー・確率設定・テストプレイ・景品の移動）
+const CRANE_MOVE: String = "crane_move"       # 景品を取りやすい位置へ（景品の移動だけ）
+## 判定しないボタン: 筐体のデータを見る（要件#57）
+const MACHINE_DATA: String = "machine_data"
 
 static var _table: Dictionary = {}
 
@@ -24,16 +29,28 @@ static func _lang() -> String:
 	return "en" if GameSettings.language == "en" else "ja"
 
 
-## そのお客さんに出すボタン: [[id, 表示名], ...]。with_crane: 台の調整を出すか（1人用のみ）
+## そのお客さんに出すボタン: [[id, 表示名], ...]。with_crane: ミニゲームのボタン（難易度の調整・景品の移動）を出すか（1人用のみ）
 static func buttons(stage_id: String, customer: Dictionary, with_crane: bool) -> Array:
 	var out: Array = []
-	var ids: Array = (table().get("stages", {}) as Dictionary).get(stage_id, [])
-	var labels: Dictionary = (table().get("labels", {}) as Dictionary).get(_lang(), {})
+	var t: Dictionary = table()
+	var ids: Array = []
+	if stage_id == "arcade":
+		ids = (t.get("machines", {}) as Dictionary).get(Scenarios.machine_of(customer), [])
+	else:
+		ids = (t.get("stages", {}) as Dictionary).get(stage_id, [])
+	var minigame: Array = t.get("minigame", [])
 	for id in ids:
-		out.append([str(id), str(labels.get(str(id), str(id)))])
-	if with_crane and stage_id == "arcade" and bool(customer.get("crane", false)):
-		out.append([CRANE_ADJUST, "台を調整する"])
+		if minigame.has(str(id)) and not with_crane:
+			continue
+		out.append([str(id), label(str(id))])
+	# 「〇〇円使っても取れない」のお客さんには、筐体のデータを見るボタン
+	if stage_id == "arcade" and typeof(customer.get("spend", null)) == TYPE_DICTIONARY:
+		out.append([MACHINE_DATA, label(MACHINE_DATA)])
 	return out
+
+
+static func is_minigame(id: String) -> bool:
+	return (table().get("minigame", []) as Array).has(id)
 
 
 static func effect_kind(customer: Dictionary, id: String) -> String:

@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { config } from "./config.ts";
-import type { Customer, StageId } from "./scenarios.ts";
+import { type Customer, type StageId, spendFacts } from "./scenarios.ts";
 import { type Judgement, type CustomerLineJudgement, scriptedLine } from "./keyword_judge.ts";
 import type { Lang } from "./lang.ts";
 
@@ -36,8 +36,8 @@ const GEN_SYSTEM = `あなたはコミカルな接客ゲーム「カスハラ防
 - start_anger: 最初の怒り。30〜55の整数。
 - solution_keywords: 正しい解決策を述べた返答に含まれそうな短い語を4〜6個（例:「交換」「新しい」）。
 - yield_keywords: 不当な要求を受け入れた返答に含まれそうな短い語を3〜5個（例:「土下座」「無料」）。
-- actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを返す）・compensate（補填する）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
-- crane: クレーンゲームについてのクレームなら true。
+- machine: ゲームセンターのとき、クレームの対象の台の種類。crane（クレーンゲーム）/ medal（メダルゲーム）/ rhythm（音楽ゲーム）/ video（ビデオゲーム・プリントシール機など）/ none（台と関係ない）。コンビニは none。
+- actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを補填）・maintenance（台のメンテナンス）・credit（クレジットを補填）・crane_stuck（引っかかった景品をとる）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
 
 # 守ること
 - クレームには小さな「一理」があり、正当な解決策（交換・規定内の対応・説明・確認など）が存在すること。
@@ -125,9 +125,11 @@ const CustomerSchema = z.object({
     discount: z.enum(["good", "neutral", "bad", "yield"]),
     dogeza: z.enum(["good", "neutral", "bad", "yield"]),
     medal_return: z.enum(["good", "neutral", "bad", "yield"]),
-    compensate: z.enum(["good", "neutral", "bad", "yield"]),
+    maintenance: z.enum(["good", "neutral", "bad", "yield"]),
+    credit: z.enum(["good", "neutral", "bad", "yield"]),
+    crane_stuck: z.enum(["good", "neutral", "bad", "yield"]),
   }),
-  crane: z.boolean(),
+  machine: z.enum(["crane", "medal", "rhythm", "video", "none"]),
 });
 
 const TurnSchema = z.object({
@@ -218,13 +220,17 @@ export function leaksMeta(text: string): boolean {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const strip = (s: string, n: number) => s.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
 
-export async function generateCustomer(stage: StageId, avoidTitles: string[], lang: Lang = "ja", wild = false): Promise<Customer> {
+export async function generateCustomer(stage: StageId, avoidTitles: string[], lang: Lang = "ja", wild = false, spend = false): Promise<Customer> {
   // 1割ほどはネタ枠（要件#41）。「要注意人物」イベント（要件#52）では、もっと突飛な人にする
   const persona = wild
     ? "ネタ枠・要注意人物（言動が突拍子もなく、理屈が独特すぎて会話がかみ合わない、完全にコメディの人物。病気や障害を連想させる描写はしない）"
     : Math.random() < 0.1 ? "ネタ枠（突飛でばかばかしいクレームをする人）" : PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)];
   let user = `舞台: ${STAGE_TEXT[stage]}\n人物の方向性: ${persona}\n`;
   if (avoidTitles.length > 0) user += `すでに登場した人物（似た人物・似たクレームは避ける）: ${avoidTitles.join(", ")}\n`;
+  if (spend && stage === "arcade") {
+    // 「〇〇円使っても取れない」クレーム（要件#55, #57）。金額はサーバーが後で入れる
+    user += "クレームの内容: クレーンゲームにお金をたくさん使ったのに景品が取れないと怒っている（machine は crane）。使った金額は必ず「{spent}」という文字のまま書く（opening と memo に1回ずつ入れる。例:「{spent}も入れたのに取れない！」）。memo には「本当かどうかは筐体のデータで確かめられる」と書く。\n";
+  }
   user += "この条件でお客さんを1人作ってください。" + LANG_LINE[lang];
   const c = await callJson(GEN_SYSTEM, user, CustomerSchema);
   if ([c.title, c.name, c.memo, c.opening, c.demand].some(leaksMeta)) throw new LlmError("AIの出力に不適切な内容が混ざりました");
@@ -240,7 +246,9 @@ export async function generateCustomer(stage: StageId, avoidTitles: string[], la
     solution_keywords: c.solution_keywords.slice(0, 8).map((s) => strip(s, 12)).filter(Boolean),
     yield_keywords: c.yield_keywords.slice(0, 6).map((s) => strip(s, 12)).filter(Boolean),
     actions: c.actions,
-    crane: stage === "arcade" && c.crane,
+    machine: stage === "arcade" ? (spend ? "crane" : c.machine) : "none",
+    crane: stage === "arcade" && (spend || c.machine === "crane"),
+    spend: spend && stage === "arcade",
   };
 }
 
@@ -254,7 +262,7 @@ function historyText(history: HistoryEntry[]): string {
 }
 
 export async function judgeStaffTurn(stage: StageId, c: Customer, history: HistoryEntry[], anger: number, resolve: number, voice: boolean, lang: Lang = "ja"): Promise<Judgement> {
-  const user = `# 舞台\n${STAGE_TEXT[stage]}\n\n# お客さん\n呼び名: ${c.title}（${c.name}）\n状況メモ（事実と店の規定）: ${c.memo}\n不当な要求: ${c.demand}\n\n# 現在の状態\n怒り: ${Math.round(anger)} / 100\n納得度: ${Math.round(resolve)} / 100\n\n# ここまでの会話（最後の行が採点対象のスタッフの返答${voice ? "。音声の文字起こし" : ""}）\n${historyText(history)}\n\n最後のスタッフの返答を採点し、お客さんの次のセリフを作ってください。${LANG_LINE[lang]}`;
+  const user = `# 舞台\n${STAGE_TEXT[stage]}\n\n# お客さん\n呼び名: ${c.title}（${c.name}）\n状況メモ（事実と店の規定）: ${c.memo}\n不当な要求: ${c.demand}\n${spendFacts(c, "ja")}\n\n# 現在の状態\n怒り: ${Math.round(anger)} / 100\n納得度: ${Math.round(resolve)} / 100\n\n# ここまでの会話（最後の行が採点対象のスタッフの返答${voice ? "。音声の文字起こし" : ""}）\n${historyText(history)}\n\n最後のスタッフの返答を採点し、お客さんの次のセリフを作ってください。${LANG_LINE[lang]}`;
   const r = await callJson(GM_SYSTEM, user, TurnSchema);
   if (leaksMeta(r.customer_reply) || leaksMeta(r.comment)) {
     // 役を外れた出力は捨て、台本のセリフにする（判定値は的外れの扱いに寄せる）

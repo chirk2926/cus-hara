@@ -616,7 +616,7 @@
 		],
 		"arcade": [
 			{
-				"title": "The 3,000-Yen Crane Guy",
+				"title": "The Big-Loss Crane Guy",
 				"name": "Torio Numata",
 				"look": {
 					"body_color": "#3a5a8a",
@@ -627,9 +627,9 @@
 					"accessory": "none",
 					"height": 1.0
 				},
-				"memo": "Spent 3,000 yen on a crane game and won nothing. No refunds or free prizes, but you can check the claw and reposition the prize so it's easier to win.",
-				"opening": "Three thousand yen! I put in THREE THOUSAND and got nothing! The claw's rigged weak! Gimme the prize!",
-				"demand": "A free prize and a full 3,000-yen refund",
+				"memo": "Says he spent {spent} on a crane game (check it with \"Check machine data\"). No refunds or free prizes, but you can check the claw and reposition the prize so it's easier to win.",
+				"opening": "{spent}! I put in {spent} and got NOTHING! The claw's rigged weak! Gimme the prize!",
+				"demand": "A free prize and a full refund of {spent}",
 				"patience": 1.0,
 				"start_anger": 42,
 				"solution_keywords": [
@@ -656,9 +656,9 @@
 						"If there's a trick, teach me. I WILL win next time."
 					],
 					"angry": [
-						"No excuses! That 3,000 yen is never coming back!",
+						"No excuses! That {spent} is never coming back!",
 						"That's your answer?! I'm dead serious here!",
-						"Do you understand the weight of my 3,000 yen?!"
+						"Do you understand the weight of my {spent}?!"
 					],
 					"neutral": [
 						"So what's happening with that prize, huh?",
@@ -666,17 +666,18 @@
 					],
 					"demand": [
 						"If I can't win it, the store should just give it to me!",
-						"Give me my 3,000 back! Or ALL the prizes!"
+						"Give me my {spent} back! Or ALL the prizes!"
 					],
 					"resolved": "Yes, got it! ...Honestly, I didn't even want this thing that much.",
 					"explode": "Forget it! I'll smash this claw! ...I won't! But remember this!",
 					"yielded": "Yes! Prize get! So if I lose, I just complain to staff. Noted!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
+					"crane_stuck": "neutral",
+					"credit": "bad"
 				},
-				"crane": true
+				"machine": "crane",
+				"spend": true
 			},
 			{
 				"title": "The Medal Game Housewife",
@@ -735,9 +736,10 @@
 					"yielded": "How lovely! Thank you! I'll tell all my friends this place pays out!"
 				},
 				"actions": {
-					"medal_return": "yield",
-					"compensate": "good"
-				}
+					"medal_return": "good",
+					"maintenance": "good"
+				},
+				"machine": "medal"
 			},
 			{
 				"title": "The Sore-Loser Fighter",
@@ -797,9 +799,10 @@
 					"yielded": "Heh, you get it. My undefeated record remains intact."
 				},
 				"actions": {
-					"medal_return": "yield",
-					"compensate": "bad"
-				}
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "video"
 			},
 			{
 				"title": "The Photo Booth Diva",
@@ -857,9 +860,10 @@
 					"yielded": "Yay! Free is the best! I'm bringing all my friends!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
-				}
+					"maintenance": "neutral",
+					"credit": "yield"
+				},
+				"machine": "video"
 			},
 			{
 				"title": "The Rhythm Game Judge",
@@ -919,9 +923,10 @@
 					"yielded": "Yes, I was number one all along! Fwahaha!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
-				}
+					"maintenance": "good",
+					"credit": "bad"
+				},
+				"machine": "rhythm"
 			},
 			{
 				"title": "The Line-Cutting Mom",
@@ -981,9 +986,9 @@
 					"yielded": "Oh, thank you! I knew you'd understand!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
-				}
+					"dogeza": "bad"
+				},
+				"machine": "none"
 			},
 			{
 				"title": "Late-Night Dad and Kid",
@@ -1043,9 +1048,9 @@
 					"yielded": "Ha ha, now we can walk right in! Let's go, son!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
-				}
+					"dogeza": "bad"
+				},
+				"machine": "none"
 			},
 			{
 				"title": "The Odds Conspiracist",
@@ -1059,8 +1064,8 @@
 					"accessory": "glasses",
 					"height": 1.08
 				},
-				"memo": "The crane game was inspected and settings are standard. Internal settings can't be shown and free plays aren't allowed, but you can test the claw in front of him and suggest an easier machine.",
-				"opening": "This machine's odds are rigged! The claw only closes every 30th try, right? Show me the settings screen!",
+				"memo": "Says he put {spent} into the crane (check it with \"Check machine data\"). It's inspected and set to spec. You can't reveal settings or give free plays, but you can test the claw in front of him and suggest an easier machine.",
+				"opening": "I've put in {spent} already! This machine's odds are rigged, I KNOW it! Show me the settings screen!",
 				"demand": "Reveal the internal settings screen and free plays until he wins",
 				"patience": 1.1,
 				"start_anger": 44,
@@ -1103,10 +1108,11 @@
 					"yielded": "See?! You caved because you're guilty! I recorded everything!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
+					"crane_stuck": "neutral",
+					"credit": "yield"
 				},
-				"crane": true
+				"machine": "crane",
+				"spend": true
 			},
 			{
 				"title": "The Stuck-Prize Madame",
@@ -1164,10 +1170,10 @@
 					"yielded": "My, so many! Next week I'll bring a bigger bag!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
+					"crane_stuck": "good",
+					"credit": "neutral"
 				},
-				"crane": true
+				"machine": "crane"
 			},
 			{
 				"title": "Stared Down by a Plushie",
@@ -1225,11 +1231,11 @@
 					"yielded": "Yes! ...See that, bear? I WIN! Now YOU get to look up at ME!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
+					"crane_stuck": "neutral",
+					"credit": "yield"
 				},
-				"crane": true,
-				"rare": true
+				"rare": true,
+				"machine": "crane"
 			},
 			{
 				"title": "Victim of Too Much Fun",
@@ -1287,10 +1293,72 @@
 					"yielded": "Sweet, free taxi! ...Okay then, three more songs and I'm out!"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
+					"maintenance": "neutral",
+					"credit": "yield"
 				},
-				"rare": true
+				"rare": true,
+				"machine": "rhythm"
+			},
+			{
+				"title": "The Broke Student",
+				"name": "Shota Kinketsu",
+				"look": {
+					"body_color": "#5a8a3a",
+					"skin_color": "#f0c8a4",
+					"hair_color": "#1e1e1e",
+					"hair": "cap",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.95
+				},
+				"memo": "Says he put {spent} into the crane and won nothing (check it with \"Check machine data\"). No refunds, but you can move the prize somewhere easier or teach him a trick.",
+				"opening": "I put in {spent} and won NOTHING! That was my whole allowance! Isn't this basically a scam?!",
+				"demand": "A {spent} refund and the prize right now",
+				"patience": 1.1,
+				"start_anger": 40,
+				"solution_keywords": [
+					"position",
+					"easier",
+					"tip",
+					"claw",
+					"check"
+				],
+				"yield_keywords": [
+					"refund",
+					"give you",
+					"free",
+					"money back",
+					"on the house"
+				],
+				"lines": {
+					"calm": [
+						"Wait, you'll move it for me? You're a legend.",
+						"A trick... oh, so you push it in. Got it.",
+						"Okay, if you'll look at it, fine."
+					],
+					"angry": [
+						"Skip that, I just want my {spent} back!",
+						"Nah, that's not okay!",
+						"Do you know how many cafeteria lunches {spent} is?!"
+					],
+					"neutral": [
+						"...So what about the prize?",
+						"I don't get it."
+					],
+					"demand": [
+						"If I can't win it, just give it to me!",
+						"Give back my {spent} and I'll go quiet!"
+					],
+					"resolved": "GOT IT!! Thank you! This gets me through the month!",
+					"explode": "Forget it! I'm posting all of this! ...to my 12 followers!",
+					"yielded": "Seriously?! Worth asking! I'm coming back next week!"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane",
+				"spend": true
 			}
 		]
 	}

@@ -105,7 +105,9 @@ test("店の行動ボタン（要件#34）: 台本の効果どおり・ステー
   assert.ok(isAllowed("konbini", lecturer, "discount"));
   assert.ok(!isAllowed("konbini", lecturer, "medal_return"), "コンビニにメダルは無い");
   const medal = allCustomers("arcade").find((c) => c.title === "メダル沼の主婦")!;
-  const good = judgeAction(medal, "compensate", 40, 0, "ja");
+  const good = judgeAction(medal, "medal_return", 40, 0, "ja");
+  assert.ok(isAllowed("arcade", medal, "maintenance"), "メダルの台はメンテナンスできる");
+  assert.ok(!isAllowed("arcade", medal, "crane_stuck"), "メダルの客にクレーンのボタンは無い");
   assert.ok(good.anger_delta < 0 && good.resolve_delta > 0 && !good.yielded);
   const crane = allCustomers("arcade")[0];
   assert.ok(isAllowed("arcade", crane, "crane_won"), "クレーンの客は台の調整ができる");
@@ -113,6 +115,37 @@ test("店の行動ボタン（要件#34）: 台本の効果どおり・ステー
   const won = judgeAction(crane, "crane_won", 40, 0, "en");
   assert.ok(won.resolve_delta >= 50);
   assert.ok(/[a-z]/i.test(won.comment));
+});
+
+test("台の種類ごとのボタンと、ペイアウト率・筐体のデータ（要件#54, #55, #57）", async () => {
+  const { isAllowed } = await import("../src/actions.ts");
+  const { randomCustomer, materializeSpend, costPerPrize, clampPayout, publicCustomer } = await import("../src/scenarios.ts");
+  assert.equal(costPerPrize(30), 3666, "1100円 / 30% = 3,666円");
+  assert.equal(clampPayout(5), 10);
+  assert.equal(clampPayout(95), 80);
+  assert.equal(clampPayout("x"), 30);
+  const arcade = allCustomers("arcade");
+  const crane = arcade.find((c) => c.machine === "crane" && c.spend)!;
+  assert.ok(isAllowed("arcade", crane, "crane_stuck") && isAllowed("arcade", crane, "credit"));
+  assert.ok(!isAllowed("arcade", crane, "crane_adjust"), "ミニゲームは結果（crane_won/lost）で送る");
+  assert.ok(!isAllowed("arcade", crane, "machine_data"), "筐体のデータは判定しない");
+  const none = arcade.find((c) => c.machine === "none")!;
+  assert.ok(isAllowed("arcade", none, "dogeza") && !isAllowed("arcade", none, "credit"));
+  // 金額: ペイアウト率 20% なら目安 5,500円。言う額は {spent} に入る
+  const lieRnd = [0.5, 0.1, 0.5]; // 嘘
+  const c1 = materializeSpend(structuredClone(crane), 20, "ja", () => lieRnd.shift() ?? 0.5);
+  assert.equal(c1.spend_data!.expected, 5500);
+  assert.ok(!c1.opening.includes("{spent}") && c1.opening.includes(c1.spend_data!.claimed.toLocaleString("en-US") + "円"));
+  assert.ok(c1.spend_data!.lie && c1.spend_data!.actual < c1.spend_data!.claimed * 0.5);
+  assert.equal(c1.actions!.credit, "yield", "嘘の客にクレジット補填は屈服");
+  const truthRnd = [0.5, 0.9, 0.5];
+  const c2 = materializeSpend(structuredClone(crane), 20, "en", () => truthRnd.shift() ?? 0.5);
+  assert.ok(!c2.spend_data!.lie && c2.spend_data!.actual >= c2.spend_data!.claimed * 0.9);
+  assert.ok(c2.opening.includes("yen"));
+  assert.equal(publicCustomer(c2).spend!.actual, c2.spend_data!.actual);
+  // ペイアウト率が低いほど「取れない」クレームが増える
+  const count = (p: number) => { let n = 0; for (let i = 0; i < 3000; i++) if (randomCustomer("arcade", [], "ja", false, p).spend) n++; return n; };
+  assert.ok(count(10) > count(30) * 1.5 && count(30) > count(80) * 1.5, `${count(10)} ${count(30)} ${count(80)}`);
 });
 
 test("ネタ枠（rare）は出にくい", async () => {

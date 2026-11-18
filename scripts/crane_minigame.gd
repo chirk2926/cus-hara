@@ -8,8 +8,15 @@ extends Node
 ##   3. 「この台で遊んでもらう」→ お客さんが遊ぶ。アームが動いて景品をつかみ、取れるか落とすか
 ##   4. 結果 {"result": "won" | "lost" | "cancelled", "cheat": bool, "moved": bool} を返し、カメラを戻す
 ##
-## 取れる確率: 取り出し口からの距離と、アームの強さで決まる（_win_chance）。
+## 取れる確率: 取り出し口からの距離と、アームの強さ（パワー設定）またはペイアウト率（確率設定）で決まる（_win_chance）。
 ## main.smoke（自動テスト）のときは、自動で景品を寄せて遊ぶ。
+##
+## 要件#55, #57 で足したこと:
+##   - mode "adjust"（難易度を調整）: パワー設定 / 確率設定 を切り替えられる。確率設定のときはパワーは触れない。
+##     確率設定: 景品原価 1,100円 / ペイアウト率 [10〜80]% = 1個あたりの目安。店全体の設定として保存され、
+##     「取れない」クレームの出やすさ・お客さんが言う金額・売上・店舗レビューに効く（docs/SPEC.md 14節）。
+##     テストプレイ（2回まで）: 今の設定で自分で遊んでみる。取れても景品はすぐ補充される。
+##   - mode "move"（景品を取りやすい位置へ）: 景品を動かすだけ。設定は今の店の設定のまま。
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Arcade = preload("res://scripts/arcade_stage.gd")
@@ -18,7 +25,13 @@ signal _done(result: Dictionary)
 
 const POWER_LIMIT: int = 6       # 店の規定
 const POWER_DEFAULT: int = 4
-const TIME_LIMIT: float = 30.0   # 調整にかけられる時間（秒）
+const TIME_LIMIT: float = 40.0   # 調整にかけられる時間（秒。テストプレイの間は止まる）
+const TEST_PLAYS: int = 2        # テストプレイの回数
+## 確率設定（要件#55）。サーバーの server/src/scenarios.ts と同じ値
+const PRIZE_COST: int = 1100
+const PAYOUT_MIN: int = 10
+const PAYOUT_MAX: int = 80
+const PAYOUT_DEFAULT: int = 30
 
 var main = null
 var arcade = null
@@ -31,7 +44,19 @@ var _hover: Node3D = null
 var _target: Node3D = null       # お客さんが狙う景品（最後に動かした景品。なければ取り出し口に一番近い景品）
 var _power: int = POWER_DEFAULT
 var _moved: bool = false
-var _phase: String = ""          # "adjust" | "play" | ""
+var _phase: String = ""          # "adjust" | "test" | "play" | ""
+var _mode: String = "adjust"     # "adjust"（難易度を調整）| "move"（景品を取りやすい位置へ）
+var _customer: Dictionary = {}
+var _prob: bool = false          # 確率設定が有効
+var _payout: int = PAYOUT_DEFAULT
+var _tests_left: int = TEST_PLAYS
+var _tested: bool = false
+var _power_box: Control = null
+var _prob_box: Control = null
+var _slider: HSlider = null
+var _cost_label: Label = null
+var _test_btn: Button = null
+var _test_label: Label = null
 var _time_left: float = 0.0
 var _ui: Control = null
 var _time_label: Label = null
@@ -43,9 +68,28 @@ var _marker: MeshInstance3D = null
 var _bob: float = 0.0
 
 
-func setup(main_node, arcade_node) -> void:
+## opts: {"mode": "adjust" | "move", "customer": お客さんのデータ}
+func setup(main_node, arcade_node, opts: Dictionary = {}) -> void:
 	main = main_node
 	arcade = arcade_node
+	_mode = str(opts.get("mode", "adjust"))
+	_customer = opts.get("customer", {}) if typeof(opts.get("customer", null)) == TYPE_DICTIONARY else {}
+	_prob = GameSettings.crane_mode == "prob"
+	_payout = GameSettings.crane_payout
+
+
+## 1個あたりの目安（円）= 景品原価 / ペイアウト率
+static func cost_per_prize(payout: int) -> int:
+	return int(floor(float(PRIZE_COST) / (float(clampi(payout, PAYOUT_MIN, PAYOUT_MAX)) / 100.0)))
+
+
+static func yen(n: int) -> String:
+	var s: String = str(absi(n))
+	var out: String = ""
+	while s.length() > 3:
+		out = "," + s.right(3) + out
+		s = s.left(s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
 
 
 func is_running() -> bool:
@@ -94,7 +138,7 @@ func run() -> Dictionary:
 
 	# 2. 調整
 	_phase = "adjust"
-	_time_left = TIME_LIMIT
+	_time_left = TIME_LIMIT if _mode == "adjust" else TIME_LIMIT * 0.75
 	_build_ui()
 	_refresh_ui()
 	if main.smoke:
@@ -112,55 +156,137 @@ func _build_ui() -> void:
 	main.add_overlay(_ui)
 	var memo: PanelContainer = UI.paper(UI.PAPER, 16, 4)
 	memo.position = Vector2(24, 24)
-	memo.custom_minimum_size = Vector2(330, 0)
+	memo.custom_minimum_size = Vector2(380, 0)
 	memo.rotation_degrees = -0.8
 	_ui.add_child(memo)
 	var col: VBoxContainer = UI.vbox(8)
 	memo.add_child(col)
-	col.add_child(UI.text(tr("台の調整"), UI.S_HEAD, UI.INK, UI.F_SIGN))
+	var adjust: bool = _mode == "adjust"
+	col.add_child(UI.text(tr("難易度の調整") if adjust else tr("景品を取りやすい位置へ"), UI.S_HEAD, UI.INK, UI.F_SIGN))
 	_hint = UI.para(tr("景品をクリックしてつかみ、動かしたい場所まで引っぱって離す。取り出し口（左手前の穴）に近いほど取りやすい。"), UI.S_SMALL, UI.INK, UI.F_HAND)
 	col.add_child(_hint)
-	col.add_child(UI.rule(UI.PAPER_DIM, 1))
-	_power_label = UI.text("", UI.S_BODY, UI.INK, UI.F_BOLD)
-	col.add_child(_power_label)
-	var slider: HSlider = HSlider.new()
-	slider.min_value = 1
-	slider.max_value = 10
-	slider.step = 1
-	slider.value = _power
-	slider.custom_minimum_size = Vector2(280, 24)
-	slider.focus_mode = Control.FOCUS_NONE
-	slider.value_changed.connect(func(v: float) -> void:
-		_power = int(v)
-		main.sfx.play("click", 0.8 + 0.05 * v)
-		_refresh_ui())
-	col.add_child(slider)
-	col.add_child(UI.text(tr("店の規定: 6 まで"), UI.S_SMALL, UI.INK_SOFT))
+	if adjust:
+		col.add_child(UI.rule(UI.PAPER_DIM, 1))
+		# パワー設定 / 確率設定（要件#55）
+		var mode_row: HBoxContainer = UI.hbox(6)
+		col.add_child(mode_row)
+		var group: ButtonGroup = ButtonGroup.new()
+		for m in [["power", "パワー設定"], ["prob", "確率設定"]]:
+			var t: Button = UI.tag(tr(str(m[1])), UI.S_SMALL)
+			t.toggle_mode = true
+			t.button_group = group
+			t.focus_mode = Control.FOCUS_NONE
+			t.button_pressed = (str(m[0]) == "prob") == _prob
+			var mid: String = str(m[0])
+			t.toggled.connect(func(on: bool) -> void:
+				if on:
+					_prob = mid == "prob"
+					main.sfx.play("click")
+					_refresh_ui())
+			mode_row.add_child(t)
+		# パワー設定
+		var pb: VBoxContainer = UI.vbox(4)
+		_power_box = pb
+		col.add_child(pb)
+		_power_label = UI.text("", UI.S_BODY, UI.INK, UI.F_BOLD)
+		pb.add_child(_power_label)
+		_slider = HSlider.new()
+		_slider.min_value = 1
+		_slider.max_value = 10
+		_slider.step = 1
+		_slider.value = _power
+		_slider.custom_minimum_size = Vector2(300, 24)
+		_slider.focus_mode = Control.FOCUS_NONE
+		_slider.value_changed.connect(func(v: float) -> void:
+			_power = int(v)
+			main.sfx.play("click", 0.8 + 0.05 * v)
+			_refresh_ui())
+		pb.add_child(_slider)
+		pb.add_child(UI.text(tr("店の規定: 6 まで"), UI.S_SMALL, UI.INK_SOFT))
+		# 確率設定: 景品原価 1,100円 / ペイアウト率 [30]% = 1個あたり 3,666円
+		var qb: VBoxContainer = UI.vbox(4)
+		_prob_box = qb
+		col.add_child(qb)
+		var row: HBoxContainer = UI.hbox(4)
+		qb.add_child(row)
+		row.add_child(UI.text(tr("景品原価 %s円 / ペイアウト率") % yen(PRIZE_COST), UI.S_SMALL, UI.INK, UI.F_DOT))
+		var spin: SpinBox = SpinBox.new()
+		spin.min_value = PAYOUT_MIN
+		spin.max_value = PAYOUT_MAX
+		spin.step = 1
+		spin.value = _payout
+		spin.custom_minimum_size = Vector2(72, 0)
+		spin.get_line_edit().add_theme_font_size_override("font_size", UI.S_BODY)
+		spin.value_changed.connect(func(v: float) -> void:
+			_payout = clampi(int(v), PAYOUT_MIN, PAYOUT_MAX)
+			_refresh_ui())
+		row.add_child(spin)
+		row.add_child(UI.text("%", UI.S_SMALL, UI.INK, UI.F_DOT))
+		_cost_label = UI.text("", UI.S_BODY, UI.INK, UI.F_DOT)
+		qb.add_child(_cost_label)
+		qb.add_child(UI.para(tr("上げると「取れない」クレームが減り、店舗レビューが少し上がりやすい。下げると「取れない」クレームが増えるが、売上は上がる。（%d〜%d%%）") % [PAYOUT_MIN, PAYOUT_MAX], UI.S_SMALL, UI.INK_SOFT))
 	_chance_label = UI.text("", UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
 	col.add_child(_chance_label)
 	_time_label = UI.text("", UI.S_BODY, UI.SHU, UI.F_DOT)
 	col.add_child(_time_label)
+	if adjust:
+		# テストプレイ（要件#55）
+		var trow: HBoxContainer = UI.hbox(10)
+		col.add_child(trow)
+		_test_btn = UI.link(tr("テストプレイ"), UI.S_BODY)
+		_test_btn.focus_mode = Control.FOCUS_NONE
+		_test_btn.pressed.connect(_test_play)
+		trow.add_child(_test_btn)
+		_test_label = UI.text("", UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
+		trow.add_child(_test_label)
 	_play_btn = UI.primary(tr("この台で遊んでもらう"), UI.S_BODY)
 	_play_btn.focus_mode = Control.FOCUS_NONE
 	_play_btn.pressed.connect(_start_play)
 	col.add_child(_play_btn)
 	var cancel: Button = UI.link(tr("やめてカウンターに戻る"), UI.S_SMALL, UI.INK_SOFT)
 	cancel.focus_mode = Control.FOCUS_NONE
-	cancel.pressed.connect(func() -> void: _finish({"result": "cancelled", "cheat": false, "moved": _moved}))
+	cancel.pressed.connect(func() -> void: _finish(_result("cancelled")))
 	col.add_child(cancel)
 
 
 func _refresh_ui() -> void:
-	if _power_label == null:
+	if _chance_label == null:
 		return
-	var over: bool = _power > POWER_LIMIT
-	_power_label.text = tr("アームの強さ: %d") % _power + ("  " + tr("（規定外…）") if over else "")
-	_power_label.add_theme_color_override("font_color", UI.SHU if over else UI.INK)
+	if _power_box != null:
+		# 確率設定が有効なときは、パワーは触れない（要件#55）
+		_slider.editable = not _prob
+		_power_box.modulate = Color(1, 1, 1, 0.35 if _prob else 1.0)
+		_prob_box.modulate = Color(1, 1, 1, 1.0 if _prob else 0.35)
+		var over: bool = _power > POWER_LIMIT and not _prob
+		_power_label.text = tr("アームの強さ: %d") % _power + ("  " + tr("（規定外…）") if over else "")
+		_power_label.add_theme_color_override("font_color", UI.SHU if over else UI.INK)
+		_cost_label.text = tr("＝ 1個あたり %s円") % yen(cost_per_prize(_payout))
+	if _test_btn != null:
+		_test_btn.disabled = _tests_left <= 0 or _phase != "adjust"
+		if _test_label.text == "" or _tests_left == TEST_PLAYS:
+			_test_label.text = tr("あと %d 回") % _tests_left
 	var t: Node3D = _pick_target()
 	var pct: int = int(round(_win_chance(t) * 100.0)) if t != null else 0
 	# 正確な確率は見せず、目安だけ
 	var guess: String = tr("まず無理") if pct < 20 else (tr("五分五分") if pct < 55 else (tr("いけそう") if pct < 80 else tr("ほぼ確実")))
 	_chance_label.text = tr("取れそうか: %s") % guess
+
+
+func _result(kind: String) -> Dictionary:
+	return {"result": kind, "cheat": _is_cheat(), "moved": _moved, "mode": "prob" if _prob else "power",
+		"payout": _payout, "tested": _tested}
+
+
+func _is_cheat() -> bool:
+	return not _prob and _power > POWER_LIMIT
+
+
+## そろそろ払い出してもいい台か（筐体の記録の投入額が、1個あたりの目安の 8 割を超えている）。要件#57
+func _near_payout() -> bool:
+	var sp: Variant = _customer.get("spend", null)
+	if typeof(sp) != TYPE_DICTIONARY:
+		return false
+	return float((sp as Dictionary).get("actual", 0)) >= 0.8 * float(cost_per_prize(_payout))
 
 
 func _process(delta: float) -> void:
@@ -301,6 +427,11 @@ func _win_chance(prize: Node3D) -> float:
 		return 0.0
 	var dist: float = Vector2(prize.position.x, prize.position.z).distance_to(Arcade.CHUTE)
 	var base: float = clampf(1.05 - dist / 0.65, 0.05, 0.95)
+	if _prob:
+		# 確率設定: ペイアウト率 30% → 1.0 倍、10% → 0.6、80% → 2.0。そろそろ払い出す台なら +0.25（要件#55, #57）
+		var pf: float = 0.4 + float(_payout) / 50.0
+		var bonus: float = 0.25 if _near_payout() else 0.0
+		return clampf(base * pf + 0.04 + bonus, 0.03, 0.96)
 	var factor: float = 0.3 + 0.1 * float(_power)          # 強さ 4 → 0.7、6 → 0.9、10 → 1.3
 	return clampf(base * factor + 0.04, 0.03, 0.96)
 
@@ -345,15 +476,60 @@ func _start_play() -> void:
 		_ui.queue_free()
 		_ui = null
 	_marker.visible = false
+	_save_settings()
 	var prize: Node3D = _pick_target()
 	if prize == null:
-		_finish({"result": "lost", "cheat": _power > POWER_LIMIT, "moved": _moved})
+		_finish(_result("lost"))
 		return
 	var won: bool = randf() < _win_chance(prize)
 	if main.smoke:
 		won = true
 	await _play_claw(prize, won)
-	_finish({"result": "won" if won else "lost", "cheat": _power > POWER_LIMIT, "moved": _moved})
+	_finish(_result("won" if won else "lost"))
+
+
+## 確率設定とペイアウト率は店全体の設定として保存する（パワーはこのお客さんだけ）
+func _save_settings() -> void:
+	if _mode != "adjust":
+		return
+	GameSettings.crane_mode = "prob" if _prob else "power"
+	GameSettings.crane_payout = _payout
+	GameSettings.save_settings()
+
+
+## テストプレイ（要件#55）: 今の設定で自分で1回遊ぶ。取れても景品はすぐ補充される。調整の時間は止まる
+func _test_play() -> void:
+	if _phase != "adjust" or _tests_left <= 0:
+		return
+	if _held != null:
+		_drop_held()
+	var prize: Node3D = _pick_target()
+	if prize == null:
+		return
+	_tests_left -= 1
+	_tested = true
+	_phase = "test"
+	_marker.visible = false
+	_play_btn.disabled = true
+	_test_btn.disabled = true
+	_test_label.text = tr("テスト中…")
+	var keep_pos: Vector3 = prize.position
+	var won: bool = randf() < _win_chance(prize)
+	await _play_claw(prize, won)
+	if _phase != "test":
+		return   # 途中でやめた
+	if won:
+		# 取れた景品は元の場所に戻しておく（補充した体）
+		prize.reparent(_root, true)
+		prize.position = keep_pos
+		prize.rotation = Vector3.ZERO
+		prize.visible = true
+		if not _prizes.has(prize):
+			_prizes.append(prize)
+	_test_label.text = (tr("テスト: 取れた") if won else tr("テスト: 取れなかった")) + "  " + tr("あと %d 回") % _tests_left
+	_phase = "adjust"
+	_play_btn.disabled = false
+	_refresh_ui()
 
 
 func _tween_claw(from: Dictionary, to: Dictionary, dur: float) -> void:
@@ -386,7 +562,7 @@ func _play_claw(prize: Node3D, won: bool) -> void:
 	# 下りる → つかむ
 	var c: Dictionary = {"x": px, "z": pz, "d": grab_drop, "o": 34.0}
 	await _tween_claw(b, c, 0.9)
-	var grip: float = 8.0 if (won or _power >= 8) else 16.0   # 弱いと爪が閉じきらない
+	var grip: float = 8.0 if (won or (_power >= 8 and not _prob)) else 16.0   # 弱いと爪が閉じきらない
 	var d: Dictionary = {"x": px, "z": pz, "d": grab_drop, "o": grip}
 	await _tween_claw(c, d, 0.35)
 	# 景品を爪にくっつける

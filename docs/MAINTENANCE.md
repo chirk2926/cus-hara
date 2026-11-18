@@ -65,6 +65,11 @@ exe にデータ（pck）を埋め込む設定なので、配るのは exe 1つ�
 |---|---|
 | 台本のお客さんを増やす・直す | `data/scenarios.json` と `data/scenarios.en.json`（同じ順番で両方。形は SPEC 4節） |
 | 1人用の難易度（怒りの上がる速さ） | `solo_game.gd` の `BASE_ANGER_RATE` / `RATE_STEP`、各お客さんの `patience` |
+| ゲームセンターの台ごとのボタン | `data/actions.json` の `machines`（ボタン）・`labels`（表示名）・`default`（効果）。お客さんの `machine` と `actions` |
+| ペイアウト率の効き方（クレームの出やすさ・言う金額） | `server/src/scenarios.ts` の `spendWeight` / `materializeSpend` と、同じ決まりの `scripts/scenarios.gd`（両方そろえて直す） |
+| 確率設定の取れやすさ・テストプレイの回数 | `scripts/crane_minigame.gd` の `_win_chance` / `TEST_PLAYS` |
+| 売上・店舗レビューと点数のボーナス | `scripts/solo_game.gd` の `SALES_*` / `REVIEW_*` / `_finish_summary` |
+| チュートリアルの説明文・順番 | `scripts/tutorial.gd` の `_go`（文は `data/i18n/en.json` にも英訳を足す） |
 | 1人用の得点・ランクの境目 | `solo_game.gd` の `SCORE_*`、`main.gd` の `RANKS` |
 | キーワード判定の語 | `data/judge_words.json`（サーバーとクライアント共通） |
 | キーワード判定の点数 | `server/src/keyword_judge.ts` と `scripts/offline_judge.gd`（両方を同じに） |

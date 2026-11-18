@@ -606,7 +606,7 @@
 		],
 		"arcade": [
 			{
-				"title": "クレーン三千円男",
+				"title": "クレーン大損男",
 				"name": "沼田 取夫",
 				"look": {
 					"body_color": "#3a5a8a",
@@ -617,9 +617,9 @@
 					"accessory": "none",
 					"height": 1.0
 				},
-				"memo": "クレーンゲームに三千円使ったが景品が取れなかった。返金や景品の無料提供はできないが、アームの動作確認と、景品を取りやすい位置に直すことはできる。",
-				"opening": "三千円だぞ！三千円も入れて一個も取れないってどういうことだ！絶対アームが弱いだろ！景品よこせ！",
-				"demand": "景品の無料提供と三千円の全額返金",
+				"memo": "クレーンゲームに{spent}使ったと言っている（本当かどうかは「筐体のデータを見る」で確かめられる）。返金や景品の無料提供はできないが、アームの動作確認と、景品を取りやすい位置に直すことはできる。",
+				"opening": "{spent}だぞ！{spent}も入れて一個も取れないってどういうことだ！絶対アームが弱いだろ！景品よこせ！",
+				"demand": "景品の無料提供と{spent}の全額返金",
 				"patience": 1.0,
 				"start_anger": 42,
 				"solution_keywords": [
@@ -644,9 +644,9 @@
 						"コツがあるなら教えてくれよ。次は絶対取る。"
 					],
 					"angry": [
-						"言い訳すんな！三千円はもう帰ってこないんだぞ！",
+						"言い訳すんな！{spent}はもう帰ってこないんだぞ！",
 						"その返答はないだろ！こっちは本気なんだ！",
-						"俺の三千円の重みがわかってるのか！"
+						"俺の{spent}の重みがわかってるのか！"
 					],
 					"neutral": [
 						"で、結局あの景品はどうなるんだよ。",
@@ -654,17 +654,18 @@
 					],
 					"demand": [
 						"取れないなら店が景品をくれるのが筋だ！",
-						"三千円返せ！それか景品全部だ！"
+						"{spent}返せ！それか景品全部だ！"
 					],
 					"resolved": "よし、取れた！……この景品、実はそんなに欲しくなかったんだけどな。",
 					"explode": "もういい！アームごとぶっ壊してやる！……やらないけど！覚えてろ！",
 					"yielded": "やった！景品ゲット！今度から取れなかったら店員に言えばいいんだな！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
+					"crane_stuck": "neutral",
+					"credit": "bad"
 				},
-				"crane": true
+				"machine": "crane",
+				"spend": true
 			},
 			{
 				"title": "メダル沼の主婦",
@@ -721,9 +722,10 @@
 					"yielded": "まあ素敵！ありがとう！お友達にも言っておくわね、ここは出る店だって！"
 				},
 				"actions": {
-					"medal_return": "yield",
-					"compensate": "good"
-				}
+					"medal_return": "good",
+					"maintenance": "good"
+				},
+				"machine": "medal"
 			},
 			{
 				"title": "格ゲー負け惜しみ男",
@@ -781,9 +783,10 @@
 					"yielded": "ふっ、わかってるじゃないか。これで俺の無敗記録は守られたな。"
 				},
 				"actions": {
-					"medal_return": "yield",
-					"compensate": "bad"
-				}
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "video"
 			},
 			{
 				"title": "プリ写り不満ギャル",
@@ -839,9 +842,10 @@
 					"yielded": "やったー！タダ最高！友達全員呼んでくるね！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
-				}
+					"maintenance": "neutral",
+					"credit": "yield"
+				},
+				"machine": "video"
 			},
 			{
 				"title": "音ゲー判定おじさん",
@@ -898,9 +902,10 @@
 					"yielded": "うむ、やはりわしの実力は一位だったのだ！ふはは！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
-				}
+					"maintenance": "good",
+					"credit": "bad"
+				},
+				"machine": "rhythm"
 			},
 			{
 				"title": "割り込み親子",
@@ -957,9 +962,9 @@
 					"yielded": "あら、ありがとう！やっぱり話せばわかるのね！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
-				}
+					"dogeza": "bad"
+				},
+				"machine": "none"
 			},
 			{
 				"title": "深夜の親子連れ",
@@ -1018,9 +1023,9 @@
 					"yielded": "わはは、これで堂々と入れるな！さあ、いくぞ息子よ！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
-				}
+					"dogeza": "bad"
+				},
+				"machine": "none"
 			},
 			{
 				"title": "確率うたがい男",
@@ -1034,8 +1039,8 @@
 					"accessory": "glasses",
 					"height": 1.08
 				},
-				"memo": "クレーンゲームは定期点検済みで、設定も規定どおり。内部設定の開示や無料プレイはできないが、目の前でアームの動作確認をすることと、取りやすい別の台の案内はできる。",
-				"opening": "この台、絶対に確率いじってるだろ！三十回目でしかアームが閉まらない設定だな？設定画面を見せろ！",
+				"memo": "クレーンゲームに{spent}入れたと言っている（「筐体のデータを見る」で確かめられる）。定期点検済みで設定も規定どおり。内部設定の開示や無料プレイはできないが、目の前でアームの動作確認をすることと、取りやすい別の台の案内はできる。",
+				"opening": "もう{spent}も入れたんだぞ！この台、絶対に確率いじってるだろ！設定画面を見せろ！",
 				"demand": "内部設定画面の開示と、取れるまでの無料プレイ",
 				"patience": 1.1,
 				"start_anger": 44,
@@ -1078,10 +1083,11 @@
 					"yielded": "ほら見ろ、やましいから折れたんだ！全部記録したからな！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
+					"crane_stuck": "neutral",
+					"credit": "yield"
 				},
-				"crane": true
+				"machine": "crane",
+				"spend": true
 			},
 			{
 				"title": "引っかかり景品マダム",
@@ -1136,10 +1142,10 @@
 					"yielded": "まあ、こんなにたくさん！来週は大きい袋を持ってくるわね！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
+					"crane_stuck": "good",
+					"credit": "neutral"
 				},
-				"crane": true
+				"machine": "crane"
 			},
 			{
 				"title": "ぬいぐるみに見下され男",
@@ -1197,11 +1203,11 @@
 					"yielded": "やった！……ほら見ろクマ、俺の勝ちだ！今度はお前がこっちを見上げる番だ！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "yield"
+					"crane_stuck": "neutral",
+					"credit": "yield"
 				},
-				"crane": true,
-				"rare": true
+				"rare": true,
+				"machine": "crane"
 			},
 			{
 				"title": "楽しすぎ被害者",
@@ -1259,10 +1265,72 @@
 					"yielded": "やった！タクシー代浮いた！……じゃあ、あと三曲だけやってから帰ります！"
 				},
 				"actions": {
-					"medal_return": "neutral",
-					"compensate": "bad"
+					"maintenance": "neutral",
+					"credit": "yield"
 				},
-				"rare": true
+				"rare": true,
+				"machine": "rhythm"
+			},
+			{
+				"title": "全然取れない学生",
+				"name": "金欠 翔太",
+				"look": {
+					"body_color": "#5a8a3a",
+					"skin_color": "#f0c8a4",
+					"hair_color": "#1e1e1e",
+					"hair": "cap",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.95
+				},
+				"memo": "クレーンゲームに{spent}入れたのに全然取れないと言っている（「筐体のデータを見る」で確かめられる）。返金はできないが、景品を取りやすい位置に直すことや、取り方のコツを教えることはできる。",
+				"opening": "{spent}入れても全然取れないんすけど！仕送り全部消えたんすよ！これ詐欺じゃないっすか！？",
+				"demand": "{spent}の返金と、景品を今すぐもらうこと",
+				"patience": 1.1,
+				"start_anger": 40,
+				"solution_keywords": [
+					"位置",
+					"取りやすく",
+					"コツ",
+					"アーム",
+					"動作確認"
+				],
+				"yield_keywords": [
+					"返金",
+					"差し上げ",
+					"無料",
+					"タダ",
+					"お返し"
+				],
+				"lines": {
+					"calm": [
+						"え、位置直してくれるんすか？神っす。",
+						"コツ…なるほど、押し込む感じっすね。",
+						"まあ、見てくれるならいいっす。"
+					],
+					"angry": [
+						"そういうのいいんで、{spent}返してほしいっす！",
+						"いや、それはないっすよ！",
+						"{spent}あったら学食何回行けたと思ってるんすか！"
+					],
+					"neutral": [
+						"……で、景品はどうなるんすか？",
+						"よくわかんないっす。"
+					],
+					"demand": [
+						"取れないなら景品くださいよ！",
+						"{spent}返してくれたら黙るっす！"
+					],
+					"resolved": "取れたーー！！ありがとうございます！今月これで生きていけます！",
+					"explode": "もういいっす！SNSに全部書くっす！……フォロワー12人っすけど！",
+					"yielded": "マジっすか！言ってみるもんっすね！来週もまた来るっす！"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane",
+				"spend": true
 			}
 		]
 	}

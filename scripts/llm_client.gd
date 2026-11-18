@@ -64,8 +64,8 @@ const GEN_SYSTEM: String = """あなたはコミカルな接客ゲーム「カ�
 - demand: お客さんの不当な要求の要約（例:「店員の土下座と弁当10個の無料提供」）。明らかに度を越していること。
 - patience: 気の長さ。0.7（気長）〜1.4（短気）。
 - start_anger: 最初の怒り。30〜55の整数。
-- actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを返す）・compensate（補填する）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
-- crane: クレーンゲームについてのクレームなら true。
+- machine: ゲームセンターのとき、クレームの対象の台の種類。crane（クレーンゲーム）/ medal（メダルゲーム）/ rhythm（音楽ゲーム）/ video（ビデオゲーム・プリントシール機など）/ none（台と関係ない）。コンビニは none。
+- actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを補填）・maintenance（台のメンテナンス）・credit（クレジットを補填）・crane_stuck（引っかかった景品をとる）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
 
 # 守ること
 - クレームには小さな「一理」があり、正当な解決策（交換・規定内の返金・説明・確認など）が存在すること。
@@ -126,14 +126,16 @@ func _customer_schema() -> Dictionary:
 					"discount": {"type": "string", "enum": ACTION_EFFECTS},
 					"dogeza": {"type": "string", "enum": ACTION_EFFECTS},
 					"medal_return": {"type": "string", "enum": ACTION_EFFECTS},
-					"compensate": {"type": "string", "enum": ACTION_EFFECTS},
+					"maintenance": {"type": "string", "enum": ACTION_EFFECTS},
+					"credit": {"type": "string", "enum": ACTION_EFFECTS},
+					"crane_stuck": {"type": "string", "enum": ACTION_EFFECTS},
 				},
-				"required": ["discount", "dogeza", "medal_return", "compensate"],
+				"required": ["discount", "dogeza", "medal_return", "maintenance", "credit", "crane_stuck"],
 				"additionalProperties": false,
 			},
-			"crane": {"type": "boolean"},
+			"machine": {"type": "string", "enum": ["crane", "medal", "rhythm", "video", "none"]},
 		},
-		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "actions", "crane"],
+		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "actions", "machine"],
 		"additionalProperties": false,
 	}
 
@@ -159,7 +161,7 @@ func _supports_fallback(model: String) -> bool:
 
 
 ## お客さんを1人生成する。avoid_titles: 直近に出た人物（重複回避）
-func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false) -> Dictionary:
+func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false, spend: bool = false) -> Dictionary:
 	var persona: String = str(PERSONALITIES[randi() % PERSONALITIES.size()])
 	if wild:
 		# 要注意人物のイベント（要件#52）。病気や障害を連想させる描写はさせない
@@ -167,6 +169,9 @@ func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false
 	var user_text: String = "舞台: %s\n人物の方向性: %s\n" % [str(STAGE_TEXT.get(stage_id, STAGE_TEXT["konbini"])), persona]
 	if not avoid_titles.is_empty():
 		user_text += "すでに登場した人物（似た人物・似たクレームは避ける）: %s\n" % ", ".join(PackedStringArray(avoid_titles))
+	if spend and stage_id == "arcade":
+		# 「〇〇円使っても取れない」クレーム（要件#55, #57）。金額は後でゲームが入れる
+		user_text += "クレームの内容: クレーンゲームにお金をたくさん使ったのに景品が取れないと怒っている（machine は crane）。使った金額は必ず「{spent}」という文字のまま書く（opening と memo に1回ずつ入れる）。memo には「本当かどうかは筐体のデータで確かめられる」と書く。\n"
 	user_text += "この条件でお客さんを1人作ってください。" + _lang_line()
 	var res: Dictionary = await _post(GEN_SYSTEM, user_text, _customer_schema())
 	if res.has("error"):
@@ -174,7 +179,12 @@ func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false
 	for k in ["title", "name", "memo", "opening", "demand"]:
 		if leaks_meta(str(res.get(k, ""))):
 			return {"error": tr("AIの出力に不適切な内容が混ざりました")}
-	return _sanitize_customer(res, stage_id)
+	var out: Dictionary = _sanitize_customer(res, stage_id)
+	if spend and stage_id == "arcade":
+		out["machine"] = "crane"
+		out["crane"] = true
+		out["spend"] = true
+	return out
 
 
 ## 1ターン分の採点。history: [{"role": "customer"|"staff", "text": String}]（最新のスタッフ返答を含む）
@@ -222,7 +232,7 @@ func _sanitize_customer(d: Dictionary, stage_id: String = "konbini") -> Dictiona
 	var actions: Dictionary = {}
 	var raw_actions: Variant = d.get("actions", {})
 	if typeof(raw_actions) == TYPE_DICTIONARY:
-		for k in ["discount", "dogeza", "medal_return", "compensate"]:
+		for k in ["discount", "dogeza", "medal_return", "maintenance", "credit", "crane_stuck"]:
 			var v: String = str((raw_actions as Dictionary).get(k, ""))
 			if v in ACTION_EFFECTS:
 				actions[k] = v
@@ -241,7 +251,8 @@ func _sanitize_customer(d: Dictionary, stage_id: String = "konbini") -> Dictiona
 		"patience": clampf(float(d.get("patience", 1.0)), 0.7, 1.4),
 		"start_anger": clampi(int(d.get("start_anger", 40)), 30, 55),
 		"actions": actions,
-		"crane": stage_id == "arcade" and bool(d.get("crane", false)),
+		"machine": str(d.get("machine", "none")) if stage_id == "arcade" else "none",
+		"crane": stage_id == "arcade" and str(d.get("machine", "")) == "crane",
 	}
 
 

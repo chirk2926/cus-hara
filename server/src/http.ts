@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { config } from "./config.ts";
 import { type Player, cleanName, createPlayer, playerByToken, renamePlayer, leaderboard } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
-import { type Customer, isStage, randomCustomer, publicCustomer, type StageId } from "./scenarios.ts";
+import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
 import { llmEnabled, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
@@ -144,13 +144,17 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     const lang = toLang(body.lang);
     const avoid = Array.isArray(body.avoid) ? body.avoid.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
     const wild = body.event === "wild";
+    // クレーンのペイアウト率（要件#55）。ゲームセンターの「取れない」クレームの出やすさと、言う金額が変わる
+    const payout = clampPayout(body.payout);
+    // AIのお客さんを「〇〇円使っても取れない」にする確率: 30% で 0.3。低いほど多い
+    const spendAi = body.stage === "arcade" && !wild && Math.random() < Math.min(0.8, 0.3 * spendWeight(payout));
     let customer: Customer | null = null;
     let source: "ai" | "script" = "script";
     let notice = "";
     if (llmEnabled()) {
       if (allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
         try {
-          customer = await generateCustomer(body.stage, avoid, lang, wild);
+          customer = materializeSpend(await generateCustomer(body.stage, avoid, lang, wild, spendAi), payout, lang);
           source = "ai";
         } catch (e) {
           notice = e instanceof LlmError ? `${e.message}。台本のお客さんで続けます` : "AIでお客さんを作れなかったので、台本のお客さんで続けます";
@@ -160,7 +164,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
         notice = "AIの利用回数の上限に達したので、しばらく台本のお客さんになります";
       }
     }
-    if (customer === null) customer = randomCustomer(body.stage, avoid, lang, wild);
+    if (customer === null) customer = randomCustomer(body.stage, avoid, lang, wild, payout);
     if (wild) customer.rare = true;
     // 1人のプレイヤーが同時に持てるセッションは3つまで
     const mine = [...soloSessions.values()].filter((s) => s.playerId === player.id).sort((a, b) => a.updated - b.updated);

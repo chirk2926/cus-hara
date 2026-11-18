@@ -22,7 +22,14 @@ const SCORE_EXPLODED: int = -300
 const SCORE_YIELDED: int = -600
 const SCORE_BREAKDOWN: int = -500
 ## 行動ボタンの店の負担（点数から引く）。台の調整で規定外の強さにしたら CHEAT
-const ACTION_COST: Dictionary = {"discount": 100, "dogeza": 0, "medal_return": 100, "compensate": 50}
+const ACTION_COST: Dictionary = {"discount": 100, "dogeza": 0, "medal_return": 100, "credit": 50, "maintenance": 0, "crane_stuck": 0}
+## 売上と店舗レビュー（要件#56）。売上は1人を接客するごとに入る（円）
+const SALES_PER_CUSTOMER: Dictionary = {"konbini": 2500, "arcade": 2000}
+const CRANE_SALES: float = 3000.0      # ゲームセンターのクレーンの売上（ペイアウト率 30% のとき、1人あたり）
+const SALES_COST: Dictionary = {"discount": 300, "medal_return": 200, "credit": 300}   # 行動で減る売上（円）
+const SALES_YIELD: int = 1000          # 要求に屈したとき減る売上（円）
+const REVIEW_START: float = 3.0
+const REVIEW_DELTA: Dictionary = {"resolved": 0.3, "explode": -0.4, "yield": -0.2, "breakdown": -0.3}
 const CHEAT_COST: int = 150
 ## 店員のメンタル（要件#38）
 const MENTAL_MAX: float = 100.0
@@ -62,7 +69,14 @@ var _used: Array = []
 var _player_turn: bool = false
 var _mental: float = MENTAL_MAX
 var _cost: int = 0            # このお客さんでの行動の負担
+var _sales_cost: int = 0      # このお客さんでの行動で減った売上（円）
 var _crane_used: bool = false
+var _data_seen: bool = false
+var _sales: int = 0              # このシフトの売上（円）
+var _review: float = REVIEW_START # このシフトの店舗レビュー（★1〜5）
+var _payout: int = 30            # このシフトのペイアウト率（ゲームセンター）
+## シフトの終わりにまとめた売上・レビュー（main のレシートが読む）
+var summary: Dictionary = {}
 var _wild: bool = false          # このお客さんは要注意人物
 var _wild_used: bool = false     # このシフトで要注意人物が来たか
 var _manager_used: bool = false  # このシフトで店長が来たか
@@ -103,6 +117,10 @@ func start(stage_id: String, stage_name: String) -> void:
 	_pool = []
 	_wild_used = false
 	_manager_used = false
+	_sales = 0
+	_review = REVIEW_START
+	_payout = GameSettings.effective_payout()
+	summary = {}
 	_mental = MENTAL_MAX
 	hud.set_mental(_mental)
 	hud.set_voice_mode(false)
@@ -120,7 +138,35 @@ func start(stage_id: String, stage_name: String) -> void:
 				return
 			break
 	_active = false
+	_finish_summary()
 	finished.emit(_stage_id, _results, _total)
+
+
+## 売上と店舗レビューをまとめ、ボーナスを点数に足す（要件#56）
+func _finish_summary() -> void:
+	# ペイアウト率はゲームセンターだけ。高いほどレビューが少し上がりやすい
+	if _stage_id == "arcade":
+		_review += float(_payout - 30) * 0.01
+	var review: float = clampf(snappedf(_review, 0.1), 1.0, 5.0)
+	var baseline: int = SALES_PER_CUSTOMER.get(_stage_id, 2500) * CUSTOMERS_PER_SHIFT + (int(CRANE_SALES) * CUSTOMERS_PER_SHIFT if _stage_id == "arcade" else 0)
+	var sales_bonus: int = int(float(_sales - baseline) / 20.0)
+	var review_bonus: int = int((review - REVIEW_START) * 400.0)
+	_total += sales_bonus + review_bonus
+	summary = {"sales": _sales, "review": review, "sales_bonus": sales_bonus, "review_bonus": review_bonus,
+		"payout": _payout if (_stage_id == "arcade" and GameSettings.crane_mode == "prob") else -1}
+
+
+## このお客さんの分の売上（接客した分だけ入る）
+func _add_sales(outcome: String) -> void:
+	var s: float = float(SALES_PER_CUSTOMER.get(_stage_id, 2500))
+	if _stage_id == "arcade":
+		# ペイアウト率が低いほどクレーンの売上が上がる（30% で 1 倍、10% で 1.29 倍、80% で 0.29 倍）
+		s += CRANE_SALES * (1.0 - float(_payout) / 100.0) / 0.7
+	s -= float(_sales_cost)
+	if outcome == "yield":
+		s -= float(SALES_YIELD)
+	_sales += int(s)
+	_review += float(REVIEW_DELTA.get(outcome, 0.0))
 
 
 func _process(delta: float) -> void:
@@ -136,6 +182,14 @@ func _process(delta: float) -> void:
 
 ## 店の行動ボタン
 func _on_action(id: String) -> void:
+	# 筐体のデータは見るだけ（番は終わらない。要件#57）
+	if id == ShopActions.MACHINE_DATA:
+		if _active and not paused and main.mode == "solo":
+			main.show_machine_data(_cust)
+			if not _data_seen:
+				_data_seen = true
+				_history.append({"role": "staff", "text": tr("（筐体のデータを確認した）")})
+		return
 	if _active and _player_turn and not paused and main.mode == "solo":
 		_player_turn = false
 		_reply.emit(ACTION_PREFIX + id)
@@ -251,11 +305,27 @@ func _next_offline() -> Dictionary:
 		var rares: Array = Scenarios.customers(_stage_id).filter(func(c: Variant) -> bool:
 			return bool((c as Dictionary).get("rare", false)) and not _titles.has(str((c as Dictionary).get("title", ""))))
 		if not rares.is_empty():
-			return (rares[randi() % rares.size()] as Dictionary).duplicate(true)
+			return Scenarios.materialize_spend((rares[randi() % rares.size()] as Dictionary).duplicate(true), _payout)
 	if _pool.is_empty():
 		_pool = Scenarios.customers(_stage_id).duplicate()
 		_pool.shuffle()
-	return (_pool.pop_back() as Dictionary).duplicate(true)
+	# 「取れない」クレームはペイアウト率で出やすさが変わる（要件#55）: 重みつきで1人選ぶ
+	var weights: Array = []
+	var sum: float = 0.0
+	for c in _pool:
+		var w: float = Scenarios.spend_weight(_payout) if (_stage_id == "arcade" and bool((c as Dictionary).get("spend", false))) else 1.0
+		weights.append(w)
+		sum += w
+	var r: float = randf() * sum
+	var idx: int = _pool.size() - 1
+	for i in range(_pool.size()):
+		r -= float(weights[i])
+		if r <= 0.0:
+			idx = i
+			break
+	var picked: Dictionary = (_pool[idx] as Dictionary).duplicate(true)
+	_pool.remove_at(idx)
+	return Scenarios.materialize_spend(picked, _payout)
 
 
 ## お客さんを用意する。戻り値: お客さんデータ（_source と _session_id も決まる）
@@ -264,7 +334,7 @@ func _prepare_customer() -> Dictionary:
 	var src: String = GameSettings.solo_source
 	if src == "server":
 		hud.set_status(tr("お客さんが来ます…"))
-		var req: Dictionary = {"stage": _stage_id, "avoid": _titles, "lang": GameSettings.language}
+		var req: Dictionary = {"stage": _stage_id, "avoid": _titles, "lang": GameSettings.language, "payout": _payout}
 		if _wild:
 			req["event"] = "wild"
 		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/start", req)
@@ -279,10 +349,12 @@ func _prepare_customer() -> Dictionary:
 		hud.set_comment(tr("サーバーにつながりません。台本のお客さんで続けます。") + "\n" + str(res.get("message", "")))
 	elif src == "own_key" and GameSettings.own_key_ready():
 		hud.set_status(tr("AIが次のお客さんを考えています…"))
-		var data: Dictionary = await main.llm.generate_customer(_stage_id, _titles, _wild)
+		# 「〇〇円使っても取れない」のお客さんにするか（ペイアウト率が低いほど多い。要件#55）
+		var spend: bool = _stage_id == "arcade" and not _wild and randf() < minf(0.8, 0.3 * Scenarios.spend_weight(_payout))
+		var data: Dictionary = await main.llm.generate_customer(_stage_id, _titles, _wild, spend)
 		if not data.has("error"):
 			_source = "own_key"
-			return data
+			return Scenarios.materialize_spend(data, _payout)
 		hud.set_comment(tr("AI接続エラー: %s\n台本のお客さんで続けます。") % str(data["error"]))
 	_source = "offline"
 	return _next_offline()
@@ -313,7 +385,9 @@ func _play_customer(my_run: int) -> void:
 	_used = []
 	_rate = BASE_ANGER_RATE * float(_cust.get("patience", 1.0)) * (1.0 + RATE_STEP * float(_index)) * GameSettings.answer_rate()
 	_cost = 0
+	_sales_cost = 0
 	_crane_used = false
+	_data_seen = false
 	_refresh(false)
 
 	# ---- 来店
@@ -369,9 +443,9 @@ func _play_customer(my_run: int) -> void:
 			# ---- 店の行動ボタン（要件#34）・台の調整（要件#37）
 			var id: String = reply.substr(ACTION_PREFIX.length())
 			var crane_cheat: bool = false
-			if id == ShopActions.CRANE_ADJUST:
+			if ShopActions.is_minigame(id):
 				hud.set_status(tr("台を調整しています…"))
-				var cr: Dictionary = await main.run_crane_minigame()
+				var cr: Dictionary = await main.run_crane_minigame({"mode": "adjust" if id == ShopActions.CRANE_ADJUST else "move", "customer": _cust})
 				if my_run != _run:
 					return
 				if str(cr.get("result", "cancelled")) == "cancelled":
@@ -391,6 +465,7 @@ func _play_customer(my_run: int) -> void:
 			if my_run != _run:
 				return
 			_cost += int(ACTION_COST.get(id, 0))
+			_sales_cost += int(SALES_COST.get(id, 0))
 			if id == "dogeza":
 				_change_mental(-20.0)
 			if crane_cheat:
@@ -485,6 +560,7 @@ func _play_customer(my_run: int) -> void:
 		hud.set_comment(tr("行動の負担: -%d 点") % _cost)
 	_total += points
 	_results.append({"title": str(_cust.get("title", "")), "outcome": outcome, "points": points, "turns": _turns})
+	_add_sales(outcome)
 	hud.set_actions([])
 	_update_top()
 	hud.set_status("")
@@ -553,6 +629,13 @@ func _smoke_autoplay(my_run: int) -> void:
 	var text: String = ""
 	var en: bool = GameSettings.language == "en"
 	# 台の調整（クレーンの客のとき、最初のターン）と、店の行動ボタン（3人目の最初のターン）も自動で試す
+	# 筐体のデータ（要件#57）を開いて閉じる（番は終わらない）
+	if typeof(_cust.get("spend", null)) == TYPE_DICTIONARY and not _data_seen:
+		_on_action(ShopActions.MACHINE_DATA)
+		await _wait(0.8)
+		if my_run != _run or not _player_turn:
+			return
+		main.close_machine_data()
 	if bool(_cust.get("crane", false)) and not _crane_used and _turns == 0:
 		_on_action(ShopActions.CRANE_ADJUST)
 		return

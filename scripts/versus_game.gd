@@ -493,6 +493,11 @@ func _on_match_end(msg: Dictionary) -> void:
 
 ## 店員役が店の行動ボタンを押した（効果はサーバーが表どおりに決める）
 func _on_action(id: String) -> void:
+	# 筐体のデータは見るだけ（要件#57）
+	if id == ShopActions.MACHINE_DATA:
+		if state == "match" and main.mode == "versus":
+			main.show_machine_data(_card)
+		return
 	if state != "match" or not _my_turn or _phase != "staff_turn" or main.mode != "versus":
 		return
 	_my_turn = false

@@ -58,6 +58,7 @@ var _voice_row: HBoxContainer
 var _voice_mode: bool = false
 var _input_on: bool = false
 var _blocked: bool = false   # 紙の画面（休憩・設定など）が上に開いている間は入力を受けない
+var _parts: Dictionary = {}   # チュートリアルで指し示す部品（get_part）
 var _say_tween: Tween = null
 var _banner_tween: Tween = null
 var _delta_tween: Tween = null
@@ -205,6 +206,7 @@ func _build() -> void:
 	memo_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(memo_box)
 	var memo = Paper.Memo.new()
+	_parts["memo"] = memo_box
 	memo.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	memo_box.add_child(memo)
 	var mb: VBoxContainer = UI.vbox(4)
@@ -220,6 +222,7 @@ func _build() -> void:
 	mb.add_child(_memo_demand)
 
 	var note: PanelContainer = UI.paper(UI.POP, 12, 3)
+	_parts["note"] = note
 	note.custom_minimum_size = Vector2(240, 0)
 	note.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.add_child(note)
@@ -327,6 +330,26 @@ func _focus_field() -> void:
 
 
 ## 記入欄の外で文字キーを押しても、記入欄に入るようにする（要件#40）
+## チュートリアル（要件#53）で指し示す部品: memo / note / lcd / bubble / mental / phrases / actions / input / desk
+func get_part(part_name: String) -> Control:
+	match part_name:
+		"lcd":
+			return _lcd
+		"bubble":
+			return _bubble
+		"mental":
+			return _mental_row
+		"phrases":
+			return _tags
+		"actions":
+			return _actions
+		"input":
+			return _text_row
+		"desk":
+			return _desk
+	return _parts.get(part_name, null)
+
+
 ## 上に紙の画面が開いている間は true（休憩中に返事が送れてしまわないように）
 func set_blocked(on: bool) -> void:
 	_blocked = on

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { test, after, before } from "node:test";
 import assert from "node:assert/strict";
 import { startServer, api, guest, autoplay, Client } from "./helpers.ts";
@@ -181,11 +182,14 @@ test("1人用の行動ボタンと、対戦の行動・フレンド部屋の返�
   custClient.send({ t: "say", text: "責任者を出せ！" });
   await staffClient.wait((m) => m.t === "phase" && m.phase === "staff_turn" && m.turn === "you");
   const found = await a.c.wait((m) => m.t === "match_found");
-  const id = found.stage === "konbini" ? "discount" : "compensate";
+  // ゲームセンターは台の種類でボタンが変わる（要件#54）。ミニゲームのボタン（結果で送る）は除く
+  const table = JSON.parse(fs.readFileSync(new URL("../../data/actions.json", import.meta.url), "utf-8"));
+  const ids: string[] = found.stage === "konbini" ? table.stages.konbini : table.machines[rs.card.machine ?? "none"];
+  const id = ids.find((x) => !table.minigame.includes(x))!;
   staffClient.send({ t: "act", id: "medal_return_x" }); // 存在しない行動は無視される
   staffClient.send({ t: "act", id });
   const line = await custClient.wait((m) => m.t === "line" && m.via === "action");
-  assert.match(line.text, found.stage === "konbini" ? /割引/ : /補填/);
+  assert.ok(line.text.includes(table.labels.ja[id]), `${line.text} に ${table.labels.ja[id]}`);
   a.c.send({ t: "leave" });
   await b.c.wait((m) => m.t === "match_end");
   a.c.close(); b.c.close();

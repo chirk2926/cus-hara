@@ -22,6 +22,7 @@ const UI = preload("res://scripts/ui_kit.gd")
 const Paper = preload("res://scripts/ui_paper.gd")
 const ScenariosScript = preload("res://scripts/scenarios.gd")
 const CraneScript = preload("res://scripts/crane_minigame.gd")
+const TutorialScript = preload("res://scripts/tutorial.gd")
 const ShopActionsScript = preload("res://scripts/shop_actions.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
@@ -55,6 +56,7 @@ var _customer = null
 var _hud = null
 var _solo = null
 var _versus = null
+var _tutorial = null
 var _ui: CanvasLayer = null
 var _title: Control = null
 var _sheet: Control = null
@@ -118,6 +120,10 @@ func _ready() -> void:
 	_versus.setup(self, _hud, api)
 	_versus.finished.connect(_on_versus_finished)
 	_versus.lobby_event.connect(_on_lobby_event)
+	_tutorial = TutorialScript.new()
+	add_child(_tutorial)
+	_tutorial.setup(self, _hud)
+	_tutorial.finished.connect(_quit_to_title)
 
 	_build_title()
 	_show_title()
@@ -130,6 +136,9 @@ func _ready() -> void:
 		_run_shots()
 	else:
 		_check_server()
+		# 初めて起動したときは研修（チュートリアル）を勧める（要件#53）
+		if not GameSettings.tutorial_seen:
+			_offer_tutorial()
 
 
 func _arg(prefix: String) -> String:
@@ -334,20 +343,82 @@ func add_overlay(c: Control) -> void:
 
 
 ## 台の調整のミニゲーム（要件#37）。ゲームセンターでないときは {"result": "cancelled"}
-func run_crane_minigame() -> Dictionary:
+func run_crane_minigame(opts: Dictionary = {}) -> Dictionary:
 	var arcade = _world.call("get_arcade")
 	if arcade == null:
 		return {"result": "cancelled", "cheat": false, "moved": false}
+	close_machine_data()
 	var mg = CraneScript.new()
 	_crane_mg = mg
 	add_child(mg)
-	mg.setup(self, arcade)
+	mg.setup(self, arcade, opts)
 	_hud.visible = false
 	var res: Dictionary = await mg.run()
 	mg.queue_free()
 	if _in_game:
 		_hud.visible = true
 	return res
+
+
+## 筐体のデータ（要件#57）。「〇〇円使っても取れない」と言うお客さんの、本当の投入額を見せる。
+## 嘘なら記録を示して話せばよく、本当で目安に近いなら景品を取りやすい位置に直すとよい。
+var _machine_panel: Control = null
+
+
+func show_machine_data(cust: Dictionary) -> void:
+	close_machine_data()
+	var sp: Variant = cust.get("spend", null)
+	if typeof(sp) != TYPE_DICTIONARY:
+		return
+	var d: Dictionary = sp
+	sfx.play("click", 1.2)
+	var claimed: int = int(d.get("claimed", 0))
+	var actual: int = int(d.get("actual", 0))
+	var expected: int = int(d.get("expected", 0))
+	var panel: PanelContainer = PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UI.flat_style(UI.LCD_BG, 14, 2))
+	panel.custom_minimum_size = Vector2(400, 0)
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.offset_left = -200
+	panel.offset_right = 200
+	panel.offset_top = 96
+	_machine_panel = panel
+	_ui.add_child(panel)
+	var col: VBoxContainer = UI.vbox(6)
+	panel.add_child(col)
+	col.add_child(UI.text(tr("筐体のデータ  サービス台 #5"), UI.S_SMALL, UI.LCD_ON, UI.F_DOT))
+	col.add_child(UI.rule(Color(UI.LCD_ON.r, UI.LCD_ON.g, UI.LCD_ON.b, 0.4), 1))
+	var rows: Array = [
+		[tr("お客さんの話"), tr("%s円") % CraneScript.yen(claimed)],
+		[tr("記録された投入額"), tr("%s円（%d プレイ）") % [CraneScript.yen(actual), actual / 100]],
+		[tr("1個あたりの目安"), tr("%s円（ペイアウト率 %d%%）") % [CraneScript.yen(expected), int(d.get("payout", 30))]],
+	]
+	for r in rows:
+		var row: HBoxContainer = UI.hbox(12)
+		col.add_child(row)
+		var l: Label = UI.text(str(r[0]), UI.S_BODY, UI.LCD_ON, UI.F_DOT)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		row.add_child(UI.text(str(r[1]), UI.S_BODY, UI.LCD_ON, UI.F_DOT))
+	var verdict: String = ""
+	if actual < int(float(claimed) * 0.6):
+		verdict = tr("→ 話の金額より、記録がかなり少ない。記録をもとに落ち着いて伝えよう。")
+	elif actual >= int(float(expected) * 0.8):
+		verdict = tr("→ 記録どおり。目安に近いので、景品を取りやすい位置に直してもいい頃。")
+	else:
+		verdict = tr("→ 記録どおり。ただ、まだ目安には届いていない。")
+	col.add_child(UI.para(verdict, UI.S_SMALL, UI.POP, UI.F_DOT))
+	var close: Button = UI.link(tr("閉じる"), UI.S_SMALL, UI.LCD_ON)
+	close.focus_mode = Control.FOCUS_NONE
+	close.pressed.connect(close_machine_data)
+	col.add_child(close)
+
+
+func close_machine_data() -> void:
+	if _machine_panel != null and is_instance_valid(_machine_panel):
+		_machine_panel.queue_free()
+	_machine_panel = null
 
 
 func _on_talk_started(duration: float) -> void:
@@ -360,6 +431,7 @@ func _free_customer() -> void:
 		_customer.queue_free()
 	_customer = null
 	manager_leave_now()
+	close_machine_data()
 
 
 # ---------------------------------------------------------------- 画面遷移
@@ -382,7 +454,42 @@ func _abort_crane() -> void:
 		_crane_mg.abort()
 
 
+## チュートリアル（新人研修。要件#53）
+func start_tutorial() -> void:
+	sfx.play("click")
+	_abort_crane()
+	_solo.abort()
+	_close_sheet()
+	_title.visible = false
+	_hud.visible = true
+	_in_game = true
+	mode = "tutorial"
+	display_anger = 0.0
+	_free_customer()
+	set_stage("konbini")
+	bgm.play("konbini")
+	_tutorial.start()
+
+
+func _offer_tutorial() -> void:
+	var col: VBoxContainer = _open_sheet(520, "center")
+	_sheet_title(col, tr("新人研修"))
+	col.add_child(UI.para(tr("はじめまして！まずは店長の研修（チュートリアル）を受けますか？画面の見かたと、返事のコツを3分ほどで説明します。あとからタイトルの「新人研修」でも受けられます。"), UI.S_BODY, UI.INK))
+	var row: HBoxContainer = UI.hbox(24)
+	col.add_child(row)
+	var yes: Button = UI.primary(tr("研修を受ける"), UI.S_LEAD)
+	yes.pressed.connect(start_tutorial)
+	row.add_child(yes)
+	var later: Button = UI.link(tr("あとで"), UI.S_BODY, UI.INK_SOFT)
+	later.pressed.connect(func() -> void:
+		GameSettings.tutorial_seen = true
+		GameSettings.save_settings()
+		_close_sheet())
+	row.add_child(later)
+
+
 func _quit_to_title() -> void:
+	_tutorial.abort()
 	_abort_crane()
 	_solo.abort()
 	if _versus.is_active():
@@ -493,6 +600,9 @@ func _build_title() -> void:
 	var versus: Button = UI.primary(tr("対戦する（客 vs 店員）"), UI.S_LEAD)
 	versus.pressed.connect(_show_versus_lobby)
 	b.add_child(versus)
+	var tut: Button = UI.link(tr("新人研修（チュートリアル） →"), UI.S_BODY)
+	tut.pressed.connect(start_tutorial)
+	b.add_child(tut)
 	b.add_child(UI.gap(8))
 	_profile_label = UI.text("", UI.S_SMALL, UI.INK, UI.F_DOT)
 	b.add_child(_profile_label)
@@ -831,6 +941,7 @@ func _rebuild_ui() -> void:
 	_make_hud()
 	_solo.attach_hud(_hud)
 	_versus.attach_hud(_hud)
+	_tutorial.hud = _hud
 	old_hud.queue_free()
 	_build_title()
 	_show_title()
@@ -885,6 +996,17 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		elif outcome == "breakdown":
 			mark = tr("早退")
 		_receipt_line(col, "%s  %s" % [str(res.get("title", "")), mark], "%+d" % int(res.get("points", 0)))
+	# 売上と店舗レビュー（要件#56）
+	var sm: Dictionary = _solo.summary
+	if not sm.is_empty():
+		_receipt_rule(col)
+		if int(sm.get("payout", -1)) > 0:
+			_receipt_line(col, tr("クレーンのペイアウト率"), "%d%%" % int(sm["payout"]), UI.S_SMALL, UI.INK_SOFT)
+		_receipt_line(col, tr("売上"), tr("%s円") % CraneScript.yen(int(sm.get("sales", 0))))
+		_receipt_line(col, "  " + tr("売上ボーナス"), "%+d" % int(sm.get("sales_bonus", 0)), UI.S_SMALL)
+		var stars: float = float(sm.get("review", 3.0))
+		_receipt_line(col, tr("店舗レビュー"), "%s %.1f" % ["★".repeat(int(round(stars))) + "☆".repeat(5 - int(round(stars))), stars])
+		_receipt_line(col, "  " + tr("レビューボーナス"), "%+d" % int(sm.get("review_bonus", 0)), UI.S_SMALL)
 	_receipt_rule(col)
 	_receipt_line(col, tr("合計"), tr("%d 点") % total, UI.S_HEAD)
 	_receipt_line(col, tr("ランク"), "%s  %s" % [str(rank[1]), tr(str(rank[2]))], UI.S_BODY)
@@ -1162,6 +1284,13 @@ func _run_smoke() -> void:
 		if me.has("error"):
 			get_tree().quit(1)
 			return
+	# チュートリアル（要件#53）を自動で最後まで
+	print("SMOKE tutorial")
+	_tutorial.auto = true
+	start_tutorial()
+	await _tutorial.finished
+	_tutorial.auto = false
+	print("SMOKE tutorial done")
 	for sid in STAGE_ORDER:
 		print("SMOKE stage: ", sid)
 		_start_solo(str(sid))
@@ -1205,6 +1334,17 @@ func _run_shots() -> void:
 	_refresh_title()
 	await _wait(1.5)
 	await _shot(dir, prefix + "01_title")
+	# チュートリアル（要件#53）: 引き継ぎメモを指しているところ
+	_tutorial.auto = true
+	_tutorial.hold_step = 3
+	start_tutorial()
+	await _tutorial.held
+	await _shot(dir, prefix + "02_tutorial")
+	_tutorial.hold_step = -1
+	_tutorial.resume()
+	await _tutorial.finished
+	_tutorial.auto = false
+	_free_customer()
 	for sid in STAGE_ORDER:
 		var s: String = str(sid)
 		# ゲームセンターは、メモが一番長いお客さん（重なりのバグの再現用。要件#44）
@@ -1214,6 +1354,12 @@ func _run_shots() -> void:
 			for c in list:
 				if str((c as Dictionary).get("memo", "")).length() + str((c as Dictionary).get("demand", "")).length() > str(cust.get("memo", "")).length() + str(cust.get("demand", "")).length():
 					cust = c
+			# 「〇〇円使っても取れない」のお客さん（要件#57）で撮る
+			for c in list:
+				if bool((c as Dictionary).get("spend", false)):
+					cust = c
+					break
+		cust = ScenariosScript.materialize_spend(cust.duplicate(true), 20)
 		_title.visible = false
 		_hud.visible = true
 		_in_game = true
@@ -1265,9 +1411,19 @@ func _run_shots() -> void:
 		if s == "arcade":
 			# 台の調整のミニゲーム（要件#37）
 			_hud.visible = true
-			run_crane_minigame()
+			# 筐体のデータ（要件#57）
+			show_machine_data(cust)
+			await _wait(0.4)
+			await _shot(dir, prefix + "arcade_4b_machine_data")
+			close_machine_data()
+			# 確率設定で開く（要件#55）
+			GameSettings.crane_mode = "prob"
+			GameSettings.crane_payout = 20
+			run_crane_minigame({"mode": "adjust", "customer": cust})
 			await _wait(1.8)
 			await _shot(dir, prefix + "arcade_5_crane_adjust")
+			GameSettings.crane_mode = "power"
+			GameSettings.crane_payout = 30
 			_crane_mg._auto_adjust()
 			await _wait(4.2)
 			await _shot(dir, prefix + "arcade_6_crane_play")
@@ -1277,6 +1433,7 @@ func _run_shots() -> void:
 	display_anger = 0.0
 	_hud.visible = true
 	var cs: Array = ScenariosScript.customers("arcade")
+	_solo.summary = {"sales": 21400, "review": 3.6, "sales_bonus": 70, "review_bonus": 240, "payout": 25}
 	_on_solo_finished("arcade", [
 		{"title": cs[0]["title"], "outcome": "resolved", "points": 1520, "turns": 3},
 		{"title": cs[1]["title"], "outcome": "explode", "points": -300, "turns": 2},

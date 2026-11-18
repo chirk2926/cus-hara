@@ -3,12 +3,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.ts";
-import type { Customer, StageId } from "./scenarios.ts";
+import { type Customer, type StageId, machineOf } from "./scenarios.ts";
 import type { Lang } from "./lang.ts";
 import { scriptedLine, type Judgement } from "./keyword_judge.ts";
 
 interface ActionTable {
   stages: Record<string, string[]>;
+  /** ゲームセンターの台の種類ごとのボタン（要件#54） */
+  machines: Record<string, string[]>;
+  /** ミニゲームを開くボタン（結果は crane_won / crane_lost として送られる） */
+  minigame: string[];
+  /** 判定しないボタン（筐体のデータを見る） */
+  info: string[];
   labels: Record<string, Record<string, string>>;
   effects: Record<string, { anger: number; resolve: number; yielded?: boolean; reply: string }>;
   comments: Record<string, Record<string, string>>;
@@ -29,8 +35,11 @@ export const CRANE_RESULTS = ["crane_won", "crane_lost"] as const;
 
 /** そのステージ・そのお客さんで使える行動か */
 export function isAllowed(stage: StageId, c: Customer, id: string): boolean {
-  if ((CRANE_RESULTS as readonly string[]).includes(id)) return stage === "arcade" && c.crane === true;
-  return (actions().stages[stage] ?? []).includes(id);
+  const t = actions();
+  if ((CRANE_RESULTS as readonly string[]).includes(id)) return stage === "arcade" && machineOf(c) === "crane";
+  if (t.minigame.includes(id) || t.info.includes(id)) return false;
+  if (stage === "arcade") return (t.machines[machineOf(c)] ?? []).includes(id);
+  return (t.stages[stage] ?? []).includes(id);
 }
 
 export function actionLabel(id: string, lang: Lang): string {

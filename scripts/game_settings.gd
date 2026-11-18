@@ -51,6 +51,11 @@ const RESOLUTIONS: Array = [
 ## これより小さいウィンドウにはしない（画面の部品が入りきらなくなるため）
 const MIN_WINDOW: Vector2i = Vector2i(960, 540)
 var resolution: String = "auto"
+## クレーンゲームの店の設定（要件#55）。"power"（パワー設定。既定）| "prob"（確率設定）と、ペイアウト率 10〜80%
+var crane_mode: String = "power"
+var crane_payout: int = 30
+## チュートリアル（要件#53）を一度でも終えた／断ったか
+var tutorial_seen: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
 var _resolution_from_cmdline: bool = false
 var push_to_talk_key: int = KEY_SPACE
@@ -132,6 +137,11 @@ func load_settings() -> void:
 	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
 	fullscreen = bool(cfg.get_value("video", "fullscreen", false))
 	resolution = str(cfg.get_value("video", "resolution", "auto"))
+	crane_mode = str(cfg.get_value("play", "crane_mode", "power"))
+	if crane_mode != "prob":
+		crane_mode = "power"
+	crane_payout = clampi(int(cfg.get_value("play", "crane_payout", 30)), 10, 80)
+	tutorial_seen = bool(cfg.get_value("play", "tutorial_seen", false))
 	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
 		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -154,6 +164,9 @@ func save_settings() -> void:
 	cfg.set_value("audio", "push_to_talk_key", push_to_talk_key)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("video", "resolution", resolution)
+	cfg.set_value("play", "crane_mode", crane_mode)
+	cfg.set_value("play", "crane_payout", crane_payout)
+	cfg.set_value("play", "tutorial_seen", tutorial_seen)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 
@@ -217,6 +230,11 @@ func own_key_ready() -> bool:
 
 
 ## 怒りの上がる速さにかける倍率（1人用とフレンド対戦）
+## 店の売上・レビュー・「取れない」クレームの出やすさに効くペイアウト率。確率設定でないときは既定の 30%
+func effective_payout() -> int:
+	return crane_payout if crane_mode == "prob" else 30
+
+
 func answer_rate() -> float:
 	return float(ANSWER_RATE.get(answer_time, 1.0))
 
