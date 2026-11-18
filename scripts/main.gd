@@ -1264,7 +1264,13 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		_card_row(col, clock, str(res.get("title", "")), _outcome_mark(outcome), "%+d" % int(res.get("points", 0)), color)
 	var suspended: bool = bool(sm.get("suspended", false))
 	_card_row(col, AgeCheck.clock_text(clock_out), tr("退勤"), tr("営業停止") if suspended else "", "", Paper.TimeCard.RED)
-	col.add_child(UI.rule(Paper.TimeCard.EDGE, 1))
+	var rows_end: Control = UI.rule(Paper.TimeCard.EDGE, 1)
+	col.add_child(rows_end)
+	# 赤い縦線は打刻の行の下まで
+	var card_panel: Node = col.get_parent()
+	rows_end.resized.connect(func() -> void:
+		if is_instance_valid(card_panel) and is_instance_valid(rows_end) and "line_end" in card_panel:
+			card_panel.set("line_end", rows_end.position.y + col.position.y))
 	# 売上・店舗レビュー（要件#56）
 	if not sm.is_empty():
 		if int(sm.get("payout", -1)) > 0:
@@ -1313,7 +1319,7 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		side.anchor_right = 1.0
 		side.offset_left = -300
 		side.offset_right = -28
-		side.offset_top = 120
+		side.offset_top = 240
 		_sheet.add_child(side)
 		side.add_child(UI.text(tr("お客様の声"), UI.S_LEAD, UI.PAPER, UI.F_SIGN))
 		var i: int = 0

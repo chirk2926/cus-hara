@@ -282,6 +282,10 @@ class TimeCard extends PanelContainer:
 	const CARD: Color = Color("#f1e8cf")
 	const EDGE: Color = Color("#b9ab86")
 	const RED: Color = Color("#c8463c")
+	var line_end: float = 0.0:
+		set(v):
+			line_end = v
+			queue_redraw()
 
 	func _init() -> void:
 		var st: StyleBoxFlat = StyleBoxFlat.new()
@@ -301,6 +305,7 @@ class TimeCard extends PanelContainer:
 		# 打刻機に差し込むためのパンチ穴と、上の切り欠き
 		draw_circle(Vector2(size.x * 0.5, 20), 8.0, Color(0, 0, 0, 0.55))
 		draw_rect(Rect2(size.x * 0.5 - 30, 0, 60, 6), Color(0, 0, 0, 0.25))
-		# 時刻の欄の赤い縦線
-		draw_line(Vector2(30 + 78, 120), Vector2(30 + 78, size.y - 150), Color(RED.r, RED.g, RED.b, 0.55), 1.5)
+		# 時刻の欄の赤い縦線（打刻の行の範囲だけ。line_end は main が行を並べた後に入れる）
+		if line_end > 0.0:
+			draw_line(Vector2(30 + 78, 120), Vector2(30 + 78, line_end), Color(RED.r, RED.g, RED.b, 0.55), 1.5)
 
