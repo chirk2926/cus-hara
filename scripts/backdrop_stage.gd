@@ -217,7 +217,7 @@ func _build_medal() -> void:
 			_stool(m.position + Vector3(-sx * 0.95, 0.0, 0.0), Color(0.2, 0.3, 0.75))
 	# メダルのカップ
 	_cyl(self, 0.09, 0.07, 0.14, Vector3(-1.1, 0.73, -2.9), _mat(Color(1.0, 0.55, 0.15, 0.85), 0.2))
-	_label(self, "メダルコーナー", Vector3(0.0, 2.85, -3.0), 110, Color(1.0, 0.85, 0.3))
+	_label(self, "メダルコーナー", Vector3(2.9, 2.55, -7.85), 120, Color(1.0, 0.85, 0.3))
 	_label(self, "メダル貸機 →", Vector3(-3.6, 2.4, -6.0), 70, Color(1.0, 1.0, 1.0), 0.004, 30.0)
 	_omni(Vector3(0.0, 2.8, -2.5), Color(1.0, 0.8, 0.55), 1.6, 7.0)
 	_omni(Vector3(-3.0, 2.6, -2.0), Color(1.0, 0.4, 0.5), 1.0, 5.0)
@@ -302,7 +302,7 @@ func _build_rhythm() -> void:
 			_box(face, Vector3(0.16, 0.16, 0.03), Vector3(-0.27 + 0.18 * float(gx), -0.27 + 0.18 * float(gy), 0.03), _blink_mat(Color.from_hsv(float(gx + gy) / 8.0, 0.7, 1.0), 2.2, 4.0 + float(gx), float(gy) * 0.7))
 	_box(b, Vector3(0.8, 0.5, 0.02), Vector3(0.0, 2.05, 0.01), _mat(Color(1.0, 0.5, 0.8), 1.3))
 	_label(self, "音ゲーコーナー", Vector3(0.0, 2.9, -3.0), 110, Color(1.0, 0.5, 0.9))
-	_label(self, "♪", Vector3(-1.2, 2.6, -2.8), 160, Color(0.4, 0.9, 1.0))
+	_label(self, "♪", Vector3(-3.4, 2.3, -4.5), 200, Color(0.4, 0.9, 1.0))
 	_omni(Vector3(0.0, 2.8, -3.0), Color(0.9, 0.5, 1.0), 1.5, 7.0)
 	_omni(Vector3(-2.0, 2.5, -2.0), Color(1.0, 0.6, 0.3), 0.9, 4.0)
 	_omni(Vector3(2.0, 2.5, -2.0), Color(0.3, 0.8, 1.0), 0.9, 4.0)
@@ -325,7 +325,7 @@ func _build_office() -> void:
 	var paper: StandardMaterial3D = _mat(Color(0.95, 0.95, 0.92))
 	for i in range(3):
 		var h: float = 0.12 + 0.1 * float(i)
-		var pile: MeshInstance3D = _box(desk, Vector3(0.3, h, 0.22), Vector3(-0.7 + 0.32 * float(i), 0.77 + h * 0.5, 0.15), paper)
+		var pile: MeshInstance3D = _box(desk, Vector3(0.2, h, 0.22), Vector3(-0.85 + 0.22 * float(i), 0.77 + h * 0.5, 0.15), paper)
 		pile.rotation.y = 0.1 * float(i - 1)
 	# 冷めたコーヒー
 	_cyl(desk, 0.045, 0.04, 0.1, Vector3(-0.15, 0.82, 0.25), _mat(Color(0.95, 0.95, 0.95)))
@@ -381,10 +381,11 @@ func _build_purikura() -> void:
 	_booth(Vector3(2.9, 0.0, -3.3), Color(0.6, 0.9, 0.95), Color(0.2, 0.7, 0.85), "デカ目")
 	_label(self, "プリクラ", Vector3(0.0, 2.9, -2.6), 130, Color(1.0, 0.4, 0.7))
 	# よくある注意書き
-	_box(self, Vector3(1.4, 0.5, 0.03), Vector3(-0.9, 1.9, -5.9), _mat(Color(1.0, 1.0, 1.0)))
-	_label(self, "男性のみのご入場は\nご遠慮ください", Vector3(-0.9, 1.9, -5.86), 46, Color(0.85, 0.1, 0.3), 0.004)
-	_box(self, Vector3(1.0, 0.5, 0.03), Vector3(1.6, 1.6, -5.9), _mat(Color(1.0, 0.95, 0.3)))
-	_label(self, "盗撮は犯罪です", Vector3(1.6, 1.6, -5.86), 50, Color(0.1, 0.1, 0.1), 0.004)
+	# 天井から下がった注意書き（カメラに見える位置）
+	_box(self, Vector3(1.5, 0.5, 0.03), Vector3(-0.9, 2.55, -2.2), _mat(Color(1.0, 1.0, 1.0)))
+	_label(self, "男性のみのご入場は\nご遠慮ください", Vector3(-0.9, 2.55, -2.17), 46, Color(0.85, 0.1, 0.3), 0.004)
+	_box(self, Vector3(1.3, 0.45, 0.03), Vector3(1.55, 2.0, -2.35), _mat(Color(1.0, 0.95, 0.3)))
+	_label(self, "盗撮は犯罪です", Vector3(1.55, 2.0, -2.32), 64, Color(0.1, 0.1, 0.1), 0.004)
 	# あやしいおじさん: 左のプリクラ機のカーテンのすき間をスマホでのぞいている
 	var uncle: Node3D = _person({"body_color": "#a89a78", "skin_color": "#e9c19b", "hair_color": "#3d3a36", "hair": "bald",
 		"build": "big", "accessory": "glasses", "height": 0.98}, Vector3(-0.85, 0.0, -2.9), -PI * 0.5, "peek")
@@ -394,7 +395,7 @@ func _build_purikura() -> void:
 		phone.rotation.x = PI * 0.5
 		_box(phone, Vector3(0.07, 0.13, 0.005), Vector3(0.0, 0.0, -0.012), _mat(Color(0.6, 0.85, 1.0), 1.2))
 	# 頭の上の「！？」
-	_label(self, "！？", Vector3(-0.85, 2.05, -2.9), 110, Color(1.0, 0.25, 0.2), 0.004)
+	_label(self, "！？", Vector3(-0.6, 1.95, -2.6), 110, Color(1.0, 0.25, 0.2), 0.004)
 	_omni(Vector3(0.0, 2.8, -2.0), Color(1.0, 0.85, 0.95), 1.6, 8.0)
 	_omni(Vector3(-2.5, 2.5, -1.6), Color(1.0, 0.6, 0.85), 0.9, 5.0)
 	_omni(Vector3(2.8, 2.5, -1.6), Color(0.6, 0.85, 1.0), 0.9, 5.0)

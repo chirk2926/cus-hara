@@ -32,8 +32,8 @@ const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
 const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
 ## 対戦の店員役のキャラクターの位置と、客役のときのカメラ（要件#84）
 const STAFF_POS: Vector3 = Vector3(0.0, 0.0, 1.2)
-const CUSTOMER_VIEW_POS: Vector3 = Vector3(0.75, 1.75, -1.85)
-const CUSTOMER_VIEW_TARGET: Vector3 = Vector3(-0.1, 1.35, 1.2)
+const CUSTOMER_VIEW_POS: Vector3 = Vector3(1.15, 1.8, -1.75)
+const CUSTOMER_VIEW_TARGET: Vector3 = Vector3(-0.3, 1.35, 1.2)
 const STAGE_ORDER: Array = ["arcade", "konbini"]   # 勤務先はゲームセンターが上（要件#82）
 ## 名前・説明は日本語の文をキーにして tr() で訳す
 const STAGES: Dictionary = {
@@ -1475,7 +1475,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	bs.shadow_color = Color(0, 0, 0, 0.4)
 	bs.shadow_size = 8
 	body.add_theme_stylebox_override("panel", bs)
-	body.position = Vector2(150, 0)
+	body.position = Vector2(185, 0)
 	body.size = Vector2(420, 400)
 	wrap.add_child(body)
 	var mc: VBoxContainer = UI.vbox(10)
@@ -1548,7 +1548,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 		bills.add_child(bill)
 	# POP（貼り紙）
 	var pop1: PanelContainer = UI.paper(UI.POP, 10, 3)
-	pop1.position = Vector2(0, 30)
+	pop1.position = Vector2(-6, 30)
 	pop1.rotation_degrees = -6.0
 	wrap.add_child(pop1)
 	var p1: VBoxContainer = UI.vbox(2)
@@ -1558,7 +1558,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	p1t.custom_minimum_size = Vector2(130, 0)
 	p1.add_child(p1t)
 	var pop2: PanelContainer = UI.paper(Color("#ffd1e3"), 10, 3)
-	pop2.position = Vector2(592, 120)
+	pop2.position = Vector2(625, 120)
 	pop2.rotation_degrees = 5.0
 	wrap.add_child(pop2)
 	var p2: VBoxContainer = UI.vbox(2)
@@ -2769,6 +2769,8 @@ func _run_shots() -> void:
 	_show_shop()
 	await _wait(0.5)
 	await _shot(dir, prefix + "06h_exchange")
+	GameSettings.owned_items.append_array(["hair:ponytail", "casual:red", "acc:ribbon"])
+	GameSettings.equipped_items.merge({"hair": "ponytail", "hair_color": "brown", "casual": "red", "uniform": "blue", "acc": "ribbon"}, true)
 	_shop_tab = "chara"
 	_show_shop()
 	await _wait(0.8)
@@ -2811,6 +2813,7 @@ func _run_shots() -> void:
 	spawn_staff(Shop.avatar_look({"gender": "m", "height": 1.05, "build": "big", "skin": "s3", "hair": "spiky", "hair_color": "black", "casual": "navy", "uniform": "green", "acc": "sunglasses"}, "uniform"))
 	set_customer_view(true)
 	_hud.clear_round()
+	_hud.visible = false
 	await _wait(1.2)
 	await _shot(dir, prefix + "10_versus_customer_view")
 	set_customer_view(false)
