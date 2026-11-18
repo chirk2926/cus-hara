@@ -6,6 +6,7 @@ import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
+import { moderate } from "./moderation.ts";
 import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
@@ -16,6 +17,12 @@ import { log } from "./log.ts";
 
 export const VERSION = "0.2.0";
 const MAX_BODY = 64 * 1024;
+
+/** 名前に不適切な言葉がないか（キーワード → AI が使えるときは AI も。要件#94） */
+async function nameAllowed(name: string, key: string): Promise<boolean> {
+  if (name === cleanName("")) return true;
+  return !(await moderate(name, `name:${key}`)).flagged;
+}
 
 class HttpError extends Error {
   readonly status: number;
@@ -120,7 +127,8 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       throw new HttpError(429, "rate_limited", "短い時間にアカウントを作りすぎています。1時間ほど待ってください");
     }
     const body = await readJson(req);
-    const { player, token } = createPlayer(cleanName(body.name));
+    // 不適切な名前は既定の名前にする（要件#94。作るときは止めずに進める）
+    const { player, token } = createPlayer(await nameAllowed(cleanName(body.name), clientIp(req)) ? cleanName(body.name) : cleanName(""));
     log("new guest", player.name);
     return { token, player: publicPlayer(player) };
   }
@@ -140,6 +148,8 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     let next: Player = { ...player };
     if (body.name !== undefined) {
       next.name = cleanName(body.name);
+      // 名前は対戦の相手やランキングに出るので、不適切な名前は断る（要件#94）
+      if (!(await nameAllowed(next.name, player.id))) throw new HttpError(400, "name_not_allowed", "その名前は使えません");
       renamePlayer(player.id, next.name);
     }
     if (body.title !== undefined) {

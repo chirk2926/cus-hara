@@ -9,6 +9,7 @@ extends Control
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Paper = preload("res://scripts/ui_paper.gd")
+const Moderation = preload("res://scripts/moderation.gd")
 
 signal reply_submitted(text: String)
 signal pause_pressed
@@ -666,6 +667,14 @@ func _submit() -> void:
 		return
 	var t: String = _field.text.strip_edges()
 	if t == "":
+		return
+	# 不適切な言葉（性的な内容・差別・命を脅かす言葉・個人情報）は送らせない（要件#94）。ある程度の暴言は通す
+	var bad: String = Moderation.check(t)
+	if bad != "":
+		set_status(Moderation.message(bad))
+		if sfx != null:
+			sfx.play("warn", 0.8)
+		_focus_field()
 		return
 	set_input_enabled(false, "")
 	_field.text = ""

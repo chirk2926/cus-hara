@@ -189,3 +189,14 @@ test("不適切な発言の検出（要件#88）: 性的な言葉・分け書き
   assert.equal(keywordModeration("ふざけるな！責任者を出せ！タダにしろ！").flagged, false);
   assert.equal(keywordModeration("The prize fell off, give me a refund!").flagged, false);
 });
+
+test("不適切な発言の検出（要件#94）: ある程度の暴言・英語の別の単語・金額は止めない、差別は止める", async () => {
+  const { keywordModeration } = await import("../src/moderation.ts");
+  for (const ok of ["バカじゃないの？クソ店員！", "アホか、ぶっ飛ばすぞ", "I'd like a cocktail", "I spent 1000000 yen on this", "こころすっきりしたい", "10000000円も使ったのに", "Sussex and Dickens", "そんなことしねえよ"]) {
+    assert.equal(keywordModeration(ok).flagged, false, ok);
+  }
+  assert.equal(keywordModeration("このガイジが").category, "hate");
+  assert.equal(keywordModeration("you retard").category, "hate");
+  assert.equal(keywordModeration("ＳＥＸ").category, "sexual");
+  assert.equal(keywordModeration("09012345678に電話して").category, "personal_info");
+});

@@ -27,6 +27,7 @@ const Titles = preload("res://scripts/titles.gd")
 const Shop = preload("res://scripts/shop.gd")
 const DebugPanelScript = preload("res://scripts/debug_panel.gd")
 const ShopActionsScript = preload("res://scripts/shop_actions.gd")
+const Moderation = preload("res://scripts/moderation.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
 const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
@@ -2762,7 +2763,13 @@ func _show_settings() -> void:
 	var name_edit: LineEdit = UI.field(tr("フロアネーム（16文字まで）"), UI.S_BODY)
 	name_edit.text = GameSettings.player_name
 	name_edit.max_length = 16
-	_form_row(grid, tr("フロアネーム"), name_edit)
+	# 名前の下に、使えない名前のときの注意を出す（表の並びを崩さないよう、欄と同じ列に入れる）
+	var name_box: VBoxContainer = UI.vbox(2)
+	name_box.add_child(name_edit)
+	var name_err: Label = UI.text("", UI.S_SMALL, UI.SHU)
+	name_err.visible = false
+	name_box.add_child(name_err)
+	_form_row(grid, tr("フロアネーム"), name_box)
 
 	var lang_opt: OptionButton = _option(GameSettings.LANGS, GameSettings.language)
 	_form_row(grid, tr("言語 / Language"), lang_opt)
@@ -2816,6 +2823,23 @@ func _show_settings() -> void:
 	_form_row(grid, tr("解像度"), res_opt)
 	full.toggled.connect(func(on: bool) -> void: res_opt.disabled = on)
 	res_opt.disabled = GameSettings.fullscreen
+	# 描画の解像度・垂直同期・フレームレート・可変リフレッシュレート（要件#95）
+	var scale_opt: OptionButton = _option(_translated(GameSettings.RENDER_SCALES), GameSettings.render_scale)
+	_form_row(grid, tr("描画の解像度"), scale_opt)
+	var vrr_chk: CheckBox = UI.check(tr("可変リフレッシュレート（G-SYNC / FreeSync）"), GameSettings.vrr)
+	_form_row(grid, tr("リフレッシュレート"), vrr_chk)
+	var vsync_opt: OptionButton = _option(_translated(GameSettings.VSYNC_MODES), GameSettings.vsync)
+	_form_row(grid, tr("垂直同期"), vsync_opt)
+	var fps_opt: OptionButton = _option(_translated(GameSettings.FPS_LIMITS), GameSettings.max_fps)
+	_form_row(grid, tr("フレームレートの上限"), fps_opt)
+	# 可変リフレッシュレートのときは、フルスクリーン・垂直同期オンに決まる
+	var sync_vrr: Callable = func(on: bool) -> void:
+		vsync_opt.disabled = on
+		full.disabled = on
+		if on:
+			full.button_pressed = true
+	vrr_chk.toggled.connect(sync_vrr)
+	sync_vrr.call(GameSettings.vrr)
 
 	col.add_child(UI.para(tr("「ゲームサーバー」では、AIの判定はサーバーで行います（APIキーは不要）。「自分のAPIキー」はサーバーが使えないときの予備で、料金はキーの持ち主にかかります。キーはこのPCの設定ファイルにだけ保存されます。「返事の時間」は1人用と、自分が作ったフレンド対戦の部屋に効きます（ランクマッチは全員同じ）。"), UI.S_SMALL, UI.INK_SOFT))
 	var test_label: Label = UI.para("", UI.S_SMALL, UI.INK_SOFT)
@@ -2846,6 +2870,10 @@ func _show_settings() -> void:
 		GameSettings.bgm_volume = bgm_vol.value
 		GameSettings.fullscreen = full.button_pressed
 		GameSettings.resolution = str(GameSettings.RESOLUTIONS[maxi(res_opt.selected, 0)][0])
+		GameSettings.render_scale = str(GameSettings.RENDER_SCALES[maxi(scale_opt.selected, 0)][0])
+		GameSettings.vsync = str(GameSettings.VSYNC_MODES[maxi(vsync_opt.selected, 0)][0])
+		GameSettings.max_fps = str(GameSettings.FPS_LIMITS[maxi(fps_opt.selected, 0)][0])
+		GameSettings.vrr = vrr_chk.button_pressed
 		GameSettings.save_settings()
 		GameSettings.apply_window()
 		return lang_before != GameSettings.language
@@ -2871,8 +2899,19 @@ func _show_settings() -> void:
 	save.pressed.connect(func() -> void:
 		var lang_changed: bool = apply.call()
 		var new_name: String = name_edit.text.strip_edges()
+		# 不適切な名前は使えない（要件#94。サーバーでも同じように確かめる）
+		if new_name != "" and Moderation.check(new_name) != "":
+			sfx.play("warn", 0.8)
+			name_err.text = tr("その名前は使えません")
+			name_err.visible = true
+			return
 		if new_name != "" and new_name != GameSettings.player_name and GameSettings.token != "":
-			await api.rename(new_name)
+			var rn: Dictionary = await api.rename(new_name)
+			if rn.has("error"):
+				sfx.play("warn", 0.8)
+				name_err.text = tr("その名前は使えません") if str(rn.get("code", "")) == "name_not_allowed" else str(rn["error"])
+				name_err.visible = true
+				return
 		elif new_name != "":
 			GameSettings.player_name = new_name
 			GameSettings.save_settings()

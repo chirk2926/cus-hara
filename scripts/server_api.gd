@@ -90,7 +90,7 @@ func rename(new_name: String) -> Dictionary:
 		var p: Dictionary = (res["body"] as Dictionary).get("player", {})
 		_remember(p)
 		return p
-	return {"error": str(res.get("message", ""))}
+	return {"error": str(res.get("message", "")), "code": str(res.get("code", ""))}
 
 
 func _remember(player: Dictionary) -> void:

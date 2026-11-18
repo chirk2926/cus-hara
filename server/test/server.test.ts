@@ -393,3 +393,13 @@ test("不適切な発言（要件#88, #93）: 店員の不適切なセリフは�
   assert.ok(["moderation", "completed"].includes(ea.reason) && eb.reason === ea.reason);
   a.c.close(); b.c.close();
 });
+
+test("不適切な名前（要件#94）: 名前の変更は断り、ゲストを作るときは既定の名前にする", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "おっぱい星人" });
+  assert.equal(g.body.player.name, "名無しのスタッフ");
+  const r = await api(srv.base, "POST", "/api/v1/me", { name: "支那人店員" }, g.body.token);
+  assert.equal(r.status, 400);
+  assert.equal(r.body.error.code, "name_not_allowed");
+  const ok = await api(srv.base, "POST", "/api/v1/me", { name: "バカ店長" }, g.body.token);
+  assert.equal(ok.body.player.name, "バカ店長");
+});

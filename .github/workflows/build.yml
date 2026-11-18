@@ -37,11 +37,61 @@ jobs:
       - name: Translations (no missing English text)
         run: python3 tools/i18n.py check
 
+  # コードを読まれにくくする（要件#94）: スクリプトと素材を AES-256 で暗号化して exe に入れる。
+  # 暗号化した中身を読めるのは、同じ鍵を組み込んだ書き出し用のひな形（Godot の template）だけなので、ひな形をここで作る。
+  # 鍵: リポジトリの Secrets に GODOT_SCRIPT_ENCRYPTION_KEY（64けたの16進数）があればそれを使う。無ければ初回に作って
+  # Actions のキャッシュに入れて使い回す。ひな形の作成は30分ほどかかるが、鍵が同じなら2回目からはキャッシュで数秒。
+  enc_template:
+    name: Build encrypted export template
+    runs-on: ubuntu-latest
+    outputs:
+      cache_key: ${{ steps.kid.outputs.cache_key }}
+    steps:
+      - name: Key id
+        id: kid
+        env:
+          KEY: ${{ secrets.GODOT_SCRIPT_ENCRYPTION_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then id=$(printf %s "$KEY" | sha256sum | cut -c1-16); else id=auto-v1; fi
+          echo "cache_key=godot-enc-tpl-${GODOT_RELEASE}-win64-${id}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ~/enc-tpl
+          key: ${{ steps.kid.outputs.cache_key }}
+      - name: Build the Windows template with the key
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          KEY: ${{ secrets.GODOT_SCRIPT_ENCRYPTION_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/enc-tpl
+          if [ -z "$KEY" ]; then
+            KEY=$(openssl rand -hex 32)
+            printf %s "$KEY" > ~/enc-tpl/key.txt
+          fi
+          echo "::add-mask::$KEY"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mingw-w64 > /dev/null
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          pip install -q scons
+          git clone -q --depth 1 --branch "${GODOT_RELEASE}" https://github.com/godotengine/godot.git "$RUNNER_TEMP/godot-src"
+          cd "$RUNNER_TEMP/godot-src"
+          SCRIPT_AES256_ENCRYPTION_KEY="$KEY" scons -j"$(nproc)" platform=windows target=template_release arch=x86_64 \
+            use_mingw=yes d3d12=no accesskit=no debug_symbols=no
+          cp bin/godot.windows.template_release.x86_64.exe ~/enc-tpl/windows_release_x86_64.exe
+      - uses: actions/cache/save@v4
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/enc-tpl
+          key: ${{ steps.kid.outputs.cache_key }}
+
   windows:
     name: Check client, play against the server, build Windows exe
     permissions:
       contents: write   # スクリーンショットを書き戻すため
-    needs: server
+    needs: [server, enc_template]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,11 +179,35 @@ jobs:
             exit 1
           fi
 
+      - uses: actions/cache/restore@v4
+        id: enc
+        with:
+          path: ~/enc-tpl
+          key: ${{ needs.enc_template.outputs.cache_key }}
+      # 暗号化の設定を書き出しの設定に足す（要件#94）。鍵はログに出さない
+      - name: Turn on script encryption
+        env:
+          KEY: ${{ secrets.GODOT_SCRIPT_ENCRYPTION_KEY }}
+        run: |
+          if [ ! -f ~/enc-tpl/windows_release_x86_64.exe ]; then
+            echo "::error::暗号化用のひな形がありません（enc_template のジョブを確かめてください）"
+            exit 1
+          fi
+          if [ -z "$KEY" ]; then KEY=$(cat ~/enc-tpl/key.txt); fi
+          echo "::add-mask::$KEY"
+          echo "GODOT_SCRIPT_ENCRYPTION_KEY=$KEY" >> "$GITHUB_ENV"
+          python3 tools/enable_encryption.py export_presets.cfg ~/enc-tpl/windows_release_x86_64.exe
+
       - name: Export Windows build
         run: |
           mkdir -p build/windows
           godot --headless --export-release "Windows Desktop" build/windows/CusHara.exe 2>&1 | tee export.log
           test -s build/windows/CusHara.exe
+          # 暗号化できているか: スクリプトの中の名前が exe の中にそのまま見えないこと（要件#94）
+          if grep -a -q -e "_offer_difficulty" -e "res://scripts/main.gd" build/windows/CusHara.exe; then
+            echo "::error::スクリプトが暗号化されていません"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -182,6 +256,27 @@ jobs:
             git pull --rebase -X theirs -q origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break
             sleep 10
           done
+
+  # 暗号化した exe が本物の Windows で起動して遊べるか（鍵とひな形が合っていないと起動しない。要件#94）
+  windows_run:
+    name: Run the encrypted exe on Windows
+    needs: windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CusHara-windows
+          path: game
+      - name: Solo smoke test with the exported exe
+        shell: pwsh
+        run: |
+          $log = "$PWD\smoke.log"
+          $p = Start-Process -FilePath "game\CusHara.exe" -ArgumentList @("--headless", "--log-file", $log, "--", "--smoke", "--source=offline", "--lang=ja", "--profile=win_smoke") -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(600000)) { $p.Kill(); Get-Content $log -ErrorAction SilentlyContinue | Select-Object -Last 40; throw "timeout" }
+          Get-Content $log | Select-Object -Last 40
+          if (-not (Select-String -Path $log -Pattern "SMOKE OK" -Quiet)) { throw "SMOKE OK not found" }
+          if (Select-String -Path $log -Pattern "SCRIPT ERROR|Parse Error" -Quiet) { throw "script errors" }
 
   msix:
     name: Build Microsoft Store package (MSIX)

@@ -53,8 +53,25 @@ const RESOLUTIONS: Array = [
 	["1366x768", "1366 × 768"],
 	["1600x900", "1600 × 900"],
 	["1920x1080", "1920 × 1080"],
+	["1440x900", "1440 × 900（16:10）"],
+	["1920x1200", "1920 × 1200（16:10）"],
+	["2560x1080", "2560 × 1080（21:9）"],
 	["2560x1440", "2560 × 1440"],
+	["3440x1440", "3440 × 1440（21:9）"],
+	["3840x2160", "3840 × 2160（4K）"],
 ]
+## 描画の解像度（3D の部分を何割の大きさで描くか。文字や UI はいつもくっきり。要件#95）。下げると軽くなる
+const RENDER_SCALES: Array = [["1.0", "100%（きれい）"], ["0.85", "85%"], ["0.75", "75%"], ["0.5", "50%（軽い）"]]
+var render_scale: String = "1.0"
+## 垂直同期（要件#95）。on = ずれ（ティアリング）なし / adaptive = フレームが落ちたときだけ同期を外す / off = 遅れが最小
+const VSYNC_MODES: Array = [["on", "オン"], ["adaptive", "アダプティブ"], ["off", "オフ"]]
+var vsync: String = "on"
+## フレームレートの上限（0 = 上限なし）
+const FPS_LIMITS: Array = [["0", "上限なし"], ["30", "30"], ["60", "60"], ["120", "120"], ["144", "144"], ["165", "165"], ["240", "240"]]
+var max_fps: String = "0"
+## 可変リフレッシュレート（G-SYNC / FreeSync。要件#95）。オンにすると、フルスクリーン（排他）・垂直同期オン・
+## 上限をリフレッシュレートより少し下にする（可変リフレッシュレートの範囲から外れないようにする、よくあるやり方）
+var vrr: bool = false
 ## これより小さいウィンドウにはしない（画面の部品が入りきらなくなるため）
 const MIN_WINDOW: Vector2i = Vector2i(960, 540)
 var resolution: String = "auto"
@@ -200,6 +217,10 @@ func load_settings() -> void:
 	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
 	fullscreen = bool(cfg.get_value("video", "fullscreen", true))
 	resolution = str(cfg.get_value("video", "resolution", "auto"))
+	render_scale = _pick(RENDER_SCALES, str(cfg.get_value("video", "render_scale", "1.0")), "1.0")
+	vsync = _pick(VSYNC_MODES, str(cfg.get_value("video", "vsync", "on")), "on")
+	max_fps = _pick(FPS_LIMITS, str(cfg.get_value("video", "max_fps", "0")), "0")
+	vrr = bool(cfg.get_value("video", "vrr", false))
 	crane_mode = str(cfg.get_value("play", "crane_mode", "power"))
 	if crane_mode != "prob":
 		crane_mode = "power"
@@ -243,6 +264,10 @@ func save_settings() -> void:
 	cfg.set_value("play", "answer_time", answer_time)
 	cfg.set_value("audio", "push_to_talk_key", push_to_talk_key)
 	cfg.set_value("video", "fullscreen", fullscreen)
+	cfg.set_value("video", "render_scale", render_scale)
+	cfg.set_value("video", "vsync", vsync)
+	cfg.set_value("video", "max_fps", max_fps)
+	cfg.set_value("video", "vrr", vrr)
 	cfg.set_value("video", "resolution", resolution)
 	cfg.set_value("play", "crane_mode", crane_mode)
 	cfg.set_value("play", "crane_payout", crane_payout)
@@ -271,10 +296,14 @@ func apply_window() -> void:
 	# テスト・スクリーンショットで大きさを指定したときは、ウィンドウのまま
 	if _resolution_from_cmdline:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		apply_video()
 		return
-	if fullscreen:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	if fullscreen or vrr:
+		# 可変リフレッシュレートは、Windows では排他のフルスクリーンがいちばん確実に効く
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN if vrr else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		apply_video()
 		return
+	apply_video()
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	if _resolution_from_cmdline:
 		return
@@ -288,6 +317,61 @@ func apply_window() -> void:
 
 
 ## 解像度の設定から、実際のウィンドウの大きさを決める。room = 使える画面の大きさ
+## 描画の解像度・垂直同期・フレームレートの上限を反映する（要件#95）
+func apply_video() -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var sc: float = clampf(float(render_scale), 0.5, 1.0)
+		tree.root.scaling_3d_scale = sc
+		# 下げたときは FSR で拡大する（Forward+ のとき。ぼやけにくい）
+		tree.root.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
+	if DisplayServer.get_name() == "headless":
+		return
+	var mode: int = DisplayServer.VSYNC_ENABLED
+	if not vrr:
+		mode = {"on": DisplayServer.VSYNC_ENABLED, "adaptive": DisplayServer.VSYNC_ADAPTIVE, "off": DisplayServer.VSYNC_DISABLED}.get(vsync, DisplayServer.VSYNC_ENABLED)
+	DisplayServer.window_set_vsync_mode(mode)
+	Engine.max_fps = fps_cap()
+
+
+## 実際のフレームレートの上限（0 = 上限なし）。可変リフレッシュレートのときはリフレッシュレート − 3
+func fps_cap() -> int:
+	var cap: int = int(max_fps)
+	if vrr:
+		var hz: float = DisplayServer.screen_get_refresh_rate(DisplayServer.window_get_current_screen()) if DisplayServer.get_name() != "headless" else -1.0
+		if hz > 0.0:
+			var v: int = int(floor(hz)) - 3
+			cap = v if cap <= 0 else mini(cap, v)
+	return maxi(cap, 0)
+
+
+var _screen_seen: int = -1
+var _screen_timer: float = 0.0
+
+
+## 可変リフレッシュレートのとき、ウィンドウが別のモニターに移ったら上限をそのモニターに合わせ直す
+func _process(delta: float) -> void:
+	if not vrr:
+		return
+	_screen_timer += delta
+	if _screen_timer < 1.0:
+		return
+	_screen_timer = 0.0
+	if DisplayServer.get_name() == "headless":
+		return
+	var sc: int = DisplayServer.window_get_current_screen()
+	if sc != _screen_seen:
+		_screen_seen = sc
+		Engine.max_fps = fps_cap()
+
+
+static func _pick(list: Array, v: String, fallback: String) -> String:
+	for r in list:
+		if str(r[0]) == v:
+			return v
+	return fallback
+
+
 static func window_size_for(res: String, room: Vector2i) -> Vector2i:
 	var want: Vector2i = Vector2i(1280, 720)
 	if res == "auto":

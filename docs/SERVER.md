@@ -245,5 +245,7 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
   sqlite3 server/var/cushara.db "SELECT datetime(created_at/1000,'unixepoch'), reporter_id, target_id, reason, note FROM reports ORDER BY id DESC LIMIT 50;"
   ```
 - 不適切な発言の検出は、キーワード（`server/src/moderation.ts`）と、AI が使えるときは AI。AI は採点と同じ呼び出しで `flag` を返す（要件#93）。採点のない客役の最初のクレームだけ `moderateWithLlm` を別に呼ぶ（1人1分に30回まで）。
+- 語の一覧は `data/moderation_words.json`（ゲームの `scripts/moderation.gd` と共通。要件#94）。ある程度の暴言（バカ・クソ店員 など）は止めず、性的な内容・差別・命を脅かす言葉・個人情報だけを止める。
+- 名前（要件#94）: `POST /api/v1/me` の名前に不適切な言葉があれば 400 `name_not_allowed`。`POST /api/v1/guest` は既定の名前（名無しのスタッフ）にして作る。
 - テスト: `server/test/anthropic_cache.test.ts`（偽の API サーバーで、キャッシュの印の位置と `flag` を確かめる）。
 

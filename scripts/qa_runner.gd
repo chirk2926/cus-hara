@@ -7,6 +7,7 @@ const Shop = preload("res://scripts/shop.gd")
 const AgeCheck = preload("res://scripts/age_check.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
 const Titles = preload("res://scripts/titles.gd")
+const Moderation = preload("res://scripts/moderation.gd")
 
 var main = null
 var _fails: int = 0
@@ -38,6 +39,7 @@ func run(m) -> void:
 		get_tree().quit(1))
 	await _wait(1.0)
 	await _economy()
+	await _round5()
 	await _screens()
 	await _age_and_items()
 	await _solo_shift()
@@ -95,6 +97,46 @@ func _economy() -> void:
 
 
 # ---------------------------------------------------------------- 画面
+
+## 要件#94, #95: 不適切な言葉を送らせない・画面の設定
+func _round5() -> void:
+	for t in ["おっぱい見せて", "このガイジ", "you retard", "ＳＥＸ", "090-1234-5678 に電話", "mail me a@b.jp"]:
+		check("moderation blocks: " + t, Moderation.check(t) != "")
+	for t in ["バカじゃないの？クソ店員！", "ふざけるな、責任者を出せ", "I'd like a cocktail", "10000000円も使ったのに", "こころすっきりしたい", "Sussex"]:
+		check("moderation allows: " + t, Moderation.check(t) == "")
+	# 入力欄から送ろうとしても、止まって送られない
+	var hud = main.get("_hud")
+	var sent: Array = []
+	var cb: Callable = func(t: String) -> void: sent.append(t)
+	hud.reply_submitted.connect(cb)
+	hud.set_input_enabled(true, "")
+	hud.get("_field").text = "おっぱい見せて"
+	hud.call("_submit")
+	check("hud does not send a blocked line", sent.is_empty() and bool(hud.get("_input_on")))
+	hud.get("_field").text = "申し訳ございません"
+	hud.call("_submit")
+	check("hud sends a normal line", sent.size() == 1)
+	hud.reply_submitted.disconnect(cb)
+	hud.set_input_enabled(false, "")
+	# 画面の設定（描画の解像度・可変リフレッシュレートの上限）
+	var keep: Array = [GameSettings.render_scale, GameSettings.vrr, GameSettings.max_fps]
+	GameSettings.render_scale = "0.75"
+	GameSettings.apply_video()
+	check("render scale applies", is_equal_approx(get_tree().root.scaling_3d_scale, 0.75))
+	GameSettings.max_fps = "144"
+	GameSettings.vrr = false
+	check("fps cap without vrr", GameSettings.fps_cap() == 144)
+	GameSettings.render_scale = str(keep[0])
+	GameSettings.vrr = bool(keep[1])
+	GameSettings.max_fps = str(keep[2])
+	GameSettings.apply_video()
+	main.call("_show_settings")
+	await _wait(0.3)
+	check("settings sheet opens", main.get("_sheet") != null)
+	await _snap("settings")
+	main.call("_close_sheet")
+	await _wait(0.2)
+
 
 func _screens() -> void:
 	main.set("_records_tab", "reviews")
