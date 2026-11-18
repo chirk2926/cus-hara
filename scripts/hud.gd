@@ -221,7 +221,7 @@ func _build() -> void:
 	_tools.add_theme_constant_override("h_separation", 6)
 	_tools.add_theme_constant_override("v_separation", 6)
 	_tools.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	left.add_child(_tools)
+	_tools.alignment = FlowContainer.ALIGNMENT_END
 	_menu_btn = menu
 	_tools.add_child(menu)
 
@@ -318,6 +318,8 @@ func _build() -> void:
 	_lcd = Paper.Lcd.new()
 	_lcd.caption = tr("お客様表示")
 	right.add_child(_lcd)
+	# ボタンの段は右の列（お客様表示の下）。左に置くと引き継ぎメモが狭くなった（要件#90）
+	right.add_child(_tools)
 	_delta = UI.text("", UI.S_HEAD, UI.PAPER, UI.F_SIGN)
 	_delta.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_delta.add_theme_color_override("font_outline_color", UI.INK)

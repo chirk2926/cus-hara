@@ -2267,7 +2267,7 @@ func _show_hardcore() -> void:
 	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui.add_child(_sheet)
 	var shade: ColorRect = ColorRect.new()
-	shade.color = Color(0.05, 0.0, 0.0, 0.55)
+	shade.color = Color(0.05, 0.0, 0.0, 0.82)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_sheet.add_child(shade)
 	var margin: MarginContainer = MarginContainer.new()

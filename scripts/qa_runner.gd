@@ -26,6 +26,12 @@ func run(m) -> void:
 		if a.begins_with("--qa-shots="):
 			_snap_dir = a.substr(11)
 			DirAccess.make_dir_recursive_absolute(_snap_dir)
+	# `--bg-shots=<フォルダ>`: タイトルの背景を全部撮るだけ（見た目の確認用）
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--bg-shots="):
+			await _bg_shots(a.substr(11))
+			get_tree().quit(0)
+			return
 	Engine.time_scale = 3.0
 	get_tree().create_timer(400.0, true, false, true).timeout.connect(func() -> void:
 		print("QA TIMEOUT")
@@ -278,3 +284,19 @@ func _violation_shift() -> void:
 	main.debug["anger_stop"] = false
 	main.debug["no_age"] = false
 	main.call("_quit_to_title")
+
+
+func _bg_shots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	await _wait(1.0)
+	for it in Shop.items("bg"):
+		var id: String = str((it as Dictionary).get("id", ""))
+		if not GameSettings.owned_items.has("bg:" + id):
+			GameSettings.owned_items.append("bg:" + id)
+		Shop.equip("bg", id)
+		main.call("_show_title")
+		main.get("_title").visible = false
+		await _wait(1.2)
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_jpg(dir.path_join(id + ".jpg"), 0.85)
+		print("BG ", id)
