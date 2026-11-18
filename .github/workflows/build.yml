@@ -114,11 +114,17 @@ jobs:
           grep -q "VERSUS OK" vv_a.log
           grep -q "VERSUS OK" vv_b.log
 
+      - name: QA run (presses the new buttons and checks the results)
+        run: |
+          set -o pipefail
+          timeout 420 godot --headless -- --qa --source=offline --lang=ja --profile=qa_ja 2>&1 | tee qa_ja.log
+          grep -q "QA OK" qa_ja.log
+
       - name: Fail on script errors
         if: always()
         run: |
           echo "---- server log"; tail -n 60 "$RUNNER_TEMP/server.log" || true
-          if grep -E "SCRIPT ERROR|Parse Error|SMOKE TIMEOUT|VERSUS TIMEOUT" *.log; then
+          if grep -E "SCRIPT ERROR|Parse Error|SMOKE TIMEOUT|VERSUS TIMEOUT|Node not inside tree|Invalid call|Invalid access|Invalid assignment" *.log; then
             echo "::error::Script errors found"
             exit 1
           fi

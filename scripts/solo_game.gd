@@ -800,7 +800,7 @@ func _play_customer(my_run: int) -> void:
 	var data: Dictionary = {}
 	var age_ok_here: bool = (_stage_id == "arcade" and AgeCheck.limit_for(_clock()) > 0) or _stage_id == "konbini"
 	var age_chance: float = AGE_CHANCE_KONBINI if _stage_id == "konbini" else AGE_CHANCE
-	if age_ok_here and (main.debug_flag("age") or (not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)))):
+	if age_ok_here and not main.debug_flag("no_age") and (main.debug_flag("age") or (not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)))):
 		_age_count += 1
 		_source = "offline"
 		_session_id = ""

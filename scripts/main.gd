@@ -157,6 +157,11 @@ func _ready() -> void:
 		_run_versus_smoke(_arg("--vs-smoke="))
 	elif args.has("--shots"):
 		_run_shots()
+	elif args.has("--qa"):
+		# 自動の動作確認（ボタンを実際に押す。scripts/qa_runner.gd）
+		var qa: Node = (load("res://scripts/qa_runner.gd") as GDScript).new()
+		add_child(qa)
+		qa.call("run", self)
 	else:
 		_check_server()
 		# 初めて起動したときは研修（チュートリアル）を勧める（要件#53）
@@ -1967,9 +1972,9 @@ func avatar_preview(look: Dictionary, size: Vector2, id_photo: bool = false) -> 
 	svc.add_child(vp)
 	var cam: Camera3D = Camera3D.new()
 	cam.fov = 32.0
-	cam.position = Vector3(0.0, 1.15, 3.9)
 	vp.add_child(cam)
-	cam.look_at(Vector3(0.0, 0.95, 0.0), Vector3.UP)
+	# まだ画面に置かれていないので look_at は使えない（"Node not inside tree"）。向きは計算で決める
+	cam.transform = Transform3D.IDENTITY.translated(Vector3(0.0, 1.15, 3.9)).looking_at(Vector3(0.0, 0.95, 0.0), Vector3.UP)
 	var sun: DirectionalLight3D = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-40.0, 30.0, 0.0)
 	sun.light_energy = 1.2
@@ -1988,8 +1993,8 @@ func avatar_preview(look: Dictionary, size: Vector2, id_photo: bool = false) -> 
 	if id_photo:
 		# 証明写真: 正面の胸から上
 		cam.fov = 22.0
-		cam.position = Vector3(0.0, 1.42 * float(look.get("height", 1.0)), 3.2)
-		cam.look_at(Vector3(0.0, 1.38 * float(look.get("height", 1.0)), 0.0), Vector3.UP)
+		var hh: float = float(look.get("height", 1.0))
+		cam.transform = Transform3D.IDENTITY.translated(Vector3(0.0, 1.42 * hh, 3.2)).looking_at(Vector3(0.0, 1.38 * hh, 0.0), Vector3.UP)
 		return svc
 	ch.rotation.y = -0.5
 	var tw: Tween = ch.create_tween().set_loops()
