@@ -7,6 +7,7 @@ extends RefCounted
 ##     使える: 運転免許証・マイナンバーカード・パスポート（顔が本人と違えば不可）
 ##     使えない: 定期券・学生証（公的でない）、健康保険証（顔写真がない）
 ##   確かめられない・入店できない年齢なら、退店してもらう。
+## コンビニ（要件#63）: お酒・たばこは時間に関係なく 20 歳未満には売れない。身分証の決まりは同じ。
 ## お客さんのデータは make() が作る（台本・AIは使わない。サーバーも通さない）。
 ## 店員の判断が正しいかは must_leave で決まる: 使える身分証で、顔が同じで、見せた生年月日の年齢が条件を満たすときだけ OK。
 
@@ -92,10 +93,12 @@ static func _pick(weights: Dictionary) -> String:
 
 
 ## お客さんを1人作る。clock_min: 来店した時刻（0:00 からの分）
-static func make(clock_min: int, lang: String) -> Dictionary:
+## mode: "arcade"（夜の入店制限）| "konbini"（お酒・たばこの販売。20歳未満は不可）
+static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dictionary:
 	var en: bool = lang == "en"
+	var konbini: bool = mode == "konbini"
 	var today: Dictionary = Time.get_date_dict_from_system()
-	var limit: int = maxi(limit_for(clock_min), 16)
+	var limit: int = 20 if konbini else maxi(limit_for(clock_min), 16)
 	var under: bool = randf() < 0.6
 	var age: int = randi_range(limit - 4, limit - 1) if under else randi_range(limit, limit + 6)
 	var id_type: String = ""
@@ -149,9 +152,26 @@ static func make(clock_min: int, lang: String) -> Dictionary:
 		rule = "現在 %s。%d歳未満は入店できない（18:00以降は16歳未満、22:00以降は18歳未満）。年齢は、顔写真と生年月日のある公的な身分証（運転免許証・マイナンバーカード・パスポート）で確かめる。定期券・学生証は公的でなく、健康保険証は顔写真がないので使えない。顔が本人と違う身分証も不可。" % [clock, limit]
 	var openings_ja: Array = ["え、まだ遊べますよね？あと1回だけ！", "なんで出なきゃいけないの？オレもう大人だし！", "年齢確認？ほら、これ見せればいいんでしょ？", "友だち待ってるんで、あと10分だけお願いします！"]
 	var openings_en: Array = ["I can still play, right? Just one more round!", "Why do I have to leave? I'm basically an adult!", "Age check? Here, this should do, right?", "My friends are waiting, just ten more minutes, please!"]
-	var opening: String = str((openings_en if en else openings_ja)[randi() % 4])
 	var titles_ja: Array = ["年齢があやしい常連", "大人っぽい学生", "自称ハタチ", "あと1回だけの客"]
 	var titles_en: Array = ["The Suspiciously Young Regular", "The Grown-Up-Looking Student", "The \"Totally 20\" Kid", "The Just-One-More Kid"]
+	var demand: String = "Keep playing without showing a proper ID" if en else "身分証をきちんと見せずに遊び続けること"
+	var item: String = ""
+	if konbini:
+		# お酒・たばこ（実在の銘柄は出さない）
+		var items_ja: Array = ["缶ビール", "缶チューハイ", "たばこ", "ワンカップの日本酒"]
+		var items_en: Array = ["a can of beer", "a can of chu-hi", "a pack of cigarettes", "a cup of sake"]
+		var k: int = randi() % 4
+		item = str(items_en[k] if en else items_ja[k])
+		if en:
+			rule = "Wants to buy %s. Alcohol and tobacco can't be sold to anyone under 20, at any hour. Check age only with a public ID showing a face photo and date of birth (driver's license, My Number card, passport). Commuter passes and student IDs aren't public; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either. Pressing \"I'm 20 or older\" on the register screen alone isn't proof." % item
+		else:
+			rule = "%sを買おうとしている。お酒・たばこは、時間に関係なく20歳未満には売れない。年齢は、顔写真と生年月日のある公的な身分証（運転免許証・マイナンバーカード・パスポート）で確かめる。定期券・学生証は公的でなく、健康保険証は顔写真がないので使えない。顔が本人と違う身分証も不可。レジの画面の「20歳以上」を押しただけでは確認にならない。" % item
+		openings_ja = ["%sください。……え、年齢確認？見ればわかるでしょ。" % item, "画面の「20歳以上です」押したんだから、それでいいでしょ？", "%sと、あと袋もお願いします。急いでるんで。" % item, "年齢確認とか、いつもされないんだけど？"]
+		openings_en = ["%s, please. ...Huh, an age check? Isn't it obvious?" % (item.left(1).to_upper() + item.substr(1)), "I pressed \"I'm 20 or older\" on the screen, so we're good, right?", "%s, and a bag too. I'm in a hurry." % (item.left(1).to_upper() + item.substr(1)), "Age check? Nobody ever asks me that."]
+		titles_ja = ["若く見えるお客さん", "急いでいる若者", "自称社会人", "年齢確認されたことがない客"]
+		titles_en = ["The Young-Looking Customer", "The Kid in a Hurry", "The \"Totally Employed\" Guy", "The Never-Been-Carded Customer"]
+		demand = ("Buy %s without showing a proper ID" % item) if en else ("身分証をきちんと見せずに%sを買うこと" % item)
+	var opening: String = str((openings_en if en else openings_ja)[randi() % 4])
 	return {
 		"kind": "age_check",
 		"title": str((titles_en if en else titles_ja)[randi() % 4]),
@@ -159,7 +179,7 @@ static func make(clock_min: int, lang: String) -> Dictionary:
 		"look": look,
 		"memo": rule,
 		"opening": opening,
-		"demand": "Keep playing without showing a proper ID" if en else "身分証をきちんと見せずに遊び続けること",
+		"demand": demand,
 		"patience": 1.0,
 		"start_anger": 30,
 		"machine": "none",
@@ -169,12 +189,12 @@ static func make(clock_min: int, lang: String) -> Dictionary:
 			"calm": (["...Okay, okay. I get it.", "Fine, I'll show you.", "Rules are rules, huh."] if en else ["……わかったよ。", "はいはい、見せればいいんでしょ。", "決まりなら、しょうがないか。"]),
 			"angry": (["Come on, just let it slide!", "Everyone else lets me in!", "You're so strict!"] if en else ["ちょっとくらいいいじゃん！", "ほかの店はいけたのに！", "厳しすぎでしょ！"]),
 			"neutral": (["...So can I play or not?", "Huh?"] if en else ["……で、遊んでいいの？", "え？"]),
-			"demand": (["Just let me play!", "I'm not leaving!"] if en else ["遊ばせてよ！", "帰らないからね！"]),
+			"demand": ((["Just sell it to me!", "I'm not leaving without it!"] if en else ["いいから売ってよ！", "買うまで帰らないからね！"]) if konbini else (["Just let me play!", "I'm not leaving!"] if en else ["遊ばせてよ！", "帰らないからね！"])),
 			"resolved": "Okay... I'll go home. Sorry." if en else "……わかった、帰るよ。ごめんなさい。",
 			"explode": "Ugh, fine! I'm out!" if en else "もういい！帰る！",
 			"yielded": "Yes! Lucky!" if en else "やった、ラッキー！",
 		},
-		"age": {"limit": limit, "clock": clock_min, "type": id_type, "public": bool(t["public"]), "has_photo": bool(t["photo"]),
+		"age": {"mode": mode, "item": item, "limit": limit, "clock": clock_min, "type": id_type, "public": bool(t["public"]), "has_photo": bool(t["photo"]),
 			"has_dob": bool(t["dob"]), "face_match": face_match, "dob": shown_dob, "shown_age": shown_age,
 			"name": shown_name, "photo": photo, "must_leave": must_leave, "real_age": age, "today": today},
 	}

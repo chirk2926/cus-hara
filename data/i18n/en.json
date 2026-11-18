@@ -392,5 +392,15 @@
 	"パスポート": "Passport",
 	"学生証": "Student ID",
 	"通学定期券": "Commuter Pass",
-	"健康保険証": "Health Insurance Card"
+	"健康保険証": "Health Insurance Card",
+	"20歳未満、または確かめられない客だった。売らなくて正解だ。": "They were under 20, or we couldn't verify it. Right call not to sell.",
+	"20歳未満かもしれない客に売ってしまった。警察に見つかったら営業停止だぞ…": "You sold to someone who may be under 20. If the police find out, we get shut down...",
+	"お断り": "Declined",
+	"お酒・たばこは20歳から。身分証で年齢を確かめよう。": "Alcohol and tobacco are 20+. Check their age with an ID.",
+	"こちらの店で、20歳未満にお酒・たばこを売っていましたね。営業停止です。": "This store sold alcohol or tobacco to someone under 20. Your business is suspended.",
+	"確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（お酒・たばこは20歳未満に販売不可）": "Check: Is it a public ID? Does it have a face photo and date of birth? Is the photo really them? How old are they? (No alcohol or tobacco sales under 20.)",
+	"販売をお断りした": "Declined the sale",
+	"顔写真つきの公的な身分証で、20歳以上だった。売ってよかった。": "Public photo ID and 20 or older. Fine to sell.",
+	"お酒の年齢確認がきちんとしていて、安心できるコンビニ。": "They check ages properly for alcohol. A konbini you can trust.",
+	"免許証を見せたのに、お酒を売ってもらえなかった。": "I showed my driver's license and they still wouldn't sell me a beer."
 }

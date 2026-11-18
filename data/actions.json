@@ -22,7 +22,9 @@
 			"crane_lost": "台を調整した（取れなかった）",
 			"id_check": "身分証を見せてもらう",
 			"age_allow": "入店OK",
-			"age_refuse": "退店をお願いする"
+			"age_refuse": "退店をお願いする",
+			"sell_ok": "販売する",
+			"sell_refuse": "販売をお断りする"
 		},
 		"en": {
 			"discount": "Offer a discount",
@@ -38,7 +40,9 @@
 			"crane_lost": "Adjusted the machine (no luck)",
 			"id_check": "Ask for ID",
 			"age_allow": "OK to stay",
-			"age_refuse": "Ask them to leave"
+			"age_refuse": "Ask them to leave",
+			"sell_ok": "Sell it",
+			"sell_refuse": "Decline the sale"
 		}
 	},
 	"effects": {

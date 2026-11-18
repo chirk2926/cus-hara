@@ -487,7 +487,10 @@ func show_id_card(cust: Dictionary) -> void:
 			info.add_child(UI.text(tr("私立パラダイス学園 高等部"), UI.S_SMALL, UI.INK_SOFT))
 		"insurance":
 			info.add_child(UI.text(tr("被保険者証"), UI.S_SMALL, UI.INK_SOFT))
-	col.add_child(UI.para(tr("確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（%d歳未満は入店不可）") % int(a.get("limit", 18)), UI.S_SMALL, UI.INK_SOFT))
+	if str(a.get("mode", "arcade")) == "konbini":
+		col.add_child(UI.para(tr("確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（お酒・たばこは20歳未満に販売不可）"), UI.S_SMALL, UI.INK_SOFT))
+	else:
+		col.add_child(UI.para(tr("確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（%d歳未満は入店不可）") % int(a.get("limit", 18)), UI.S_SMALL, UI.INK_SOFT))
 	var close: Button = UI.link(tr("閉じる"), UI.S_SMALL)
 	close.focus_mode = Control.FOCUS_NONE
 	close.pressed.connect(close_machine_data)
@@ -1096,7 +1099,7 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		elif outcome == "age_ok":
 			mark = tr("年齢OK")
 		elif outcome == "age_refused" or outcome == "age_left":
-			mark = tr("退店")
+			mark = tr("お断り")
 		elif outcome == "age_wrong":
 			mark = tr("確認ミス")
 		elif outcome == "age_lax":
@@ -1512,6 +1515,12 @@ func _run_shots() -> void:
 		await _wait(0.3)
 		await _shot(dir, prefix + s + "_3_voice")
 		_hud.set_voice_mode(false)
+		if s == "konbini":
+			# お酒・たばこの年齢確認（要件#63）
+			show_id_card(AgeCheck.make(20 * 60, GameSettings.language, "konbini"))
+			await _wait(0.4)
+			await _shot(dir, prefix + "konbini_3c_id_card")
+			close_machine_data()
 		# 店長がアドバイスに来るイベント（要件#52）
 		_hud.set_input_enabled(false, "")
 		_hud.show_banner(tr("店長が来た！"), UI.POP)

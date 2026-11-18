@@ -36,6 +36,8 @@ const REVIEW_DELTA: Dictionary = {"resolved": 0.3, "explode": -0.4, "yield": -0.
 const CLOCK: Dictionary = {"konbini": [1080, 1200, 1320, 1410], "arcade": [1050, 1155, 1260, 1350]}
 ## 年齢確認（要件#61）。18:00 以降のゲームセンターで、この確率で年齢の怪しいお客さんが来る（1シフト2人まで）
 const AGE_CHANCE: float = 0.3
+## コンビニのお酒・たばこの年齢確認（要件#63）。時間に関係なく、この確率
+const AGE_CHANCE_KONBINI: float = 0.25
 const AGE_MAX: int = 2
 ## 年齢確認の点数（減りは少なめ）
 const SCORE_AGE: Dictionary = {"age_ok": 700, "age_refused": 600, "age_wrong": -150, "age_lax": -200, "age_left_ok": 300, "age_left_ng": -150}
@@ -199,7 +201,7 @@ func _make_reviews() -> Array:
 	if prob and _payout >= 45:
 		highs.append(tr("このゲーセン、ちゃんと取れる。良心的！"))
 	if int(count.get("age_ok", 0)) + int(count.get("age_refused", 0)) > 0:
-		highs.append(tr("夜でも年齢確認がしっかりしていて、安心して遊べる。"))
+		highs.append(tr("夜でも年齢確認がしっかりしていて、安心して遊べる。") if arcade else tr("お酒の年齢確認がきちんとしていて、安心できるコンビニ。"))
 	if not arcade and int(count.get("resolved", 0)) > 0:
 		highs.append(tr("深夜でも感じのいいコンビニ。おでんもおいしい。"))
 	if int(count.get("explode", 0)) > 0:
@@ -212,7 +214,7 @@ func _make_reviews() -> Array:
 	if prob and _payout <= 20:
 		lows.append(tr("クレーン、全然取れない。お金が溶けただけ。"))
 	if int(count.get("age_wrong", 0)) > 0:
-		lows.append(tr("ちゃんと免許証を見せたのに追い出された。"))
+		lows.append(tr("ちゃんと免許証を見せたのに追い出された。") if arcade else tr("免許証を見せたのに、お酒を売ってもらえなかった。"))
 	if _suspended:
 		lows.append(tr("行ったら営業停止になってた。何があったの？"))
 	var out: Array = []
@@ -238,20 +240,24 @@ func _age_result(outcome: String) -> Dictionary:
 		"age_refused":
 			points = SCORE_AGE["age_refused"]
 			mood = "angry"
-			hud.show_banner(tr("退店してもらった") + "  +%d" % points, UI.LCD_ON)
-			hud.set_comment(tr("入店できない客だった。きちんと帰ってもらえたな。"))
+			if _age_mode() == "konbini":
+				hud.show_banner(tr("販売をお断りした") + "  +%d" % points, UI.LCD_ON)
+				hud.set_comment(tr("20歳未満、または確かめられない客だった。売らなくて正解だ。"))
+			else:
+				hud.show_banner(tr("退店してもらった") + "  +%d" % points, UI.LCD_ON)
+				hud.set_comment(tr("入店できない客だった。きちんと帰ってもらえたな。"))
 			main.sfx.play("win")
 		"age_wrong":
 			points = SCORE_AGE["age_wrong"]
 			mood = "angry"
 			hud.show_banner(tr("大人だったのに…") + "  %d" % points, Color("#ff8a6a"))
-			hud.set_comment(tr("顔写真つきの公的な身分証で、年齢も足りていた。帰す必要はなかった。"))
+			hud.set_comment(tr("顔写真つきの公的な身分証で、年齢も足りていた。帰す必要はなかった。") if _age_mode() != "konbini" else tr("顔写真つきの公的な身分証で、20歳以上だった。売ってよかった。"))
 			_change_mental(-5.0)
 			main.sfx.play("lose")
 		"age_lax":
 			points = SCORE_AGE["age_lax"]
 			hud.show_banner(tr("年齢確認があまい…") + "  %d" % points, UI.POP)
-			hud.set_comment(tr("その身分証では入店させられない。警察に見つかったら営業停止だぞ…"))
+			hud.set_comment(tr("その身分証では入店させられない。警察に見つかったら営業停止だぞ…") if _age_mode() != "konbini" else tr("20歳未満かもしれない客に売ってしまった。警察に見つかったら営業停止だぞ…"))
 			main.sfx.play("lose")
 		"age_left":
 			points = SCORE_AGE["age_left_ok"] if must else SCORE_AGE["age_left_ng"]
@@ -273,7 +279,10 @@ func _police(my_run: int) -> void:
 	await main.police_visit()
 	if my_run != _run:
 		return
-	await main.customer_say(tr("警察官"), tr("こちらの店で、入店できない時間に未成年を遊ばせていましたね。営業停止です。"), true)
+	var police_line: String = tr("こちらの店で、入店できない時間に未成年を遊ばせていましたね。営業停止です。")
+	if _age_mode() == "konbini":
+		police_line = tr("こちらの店で、20歳未満にお酒・たばこを売っていましたね。営業停止です。")
+	await main.customer_say(tr("警察官"), police_line, true)
 	if my_run != _run:
 		return
 	main.shake(0.3)
@@ -377,7 +386,14 @@ func _is_age_check() -> bool:
 
 
 func _age_buttons() -> Array:
+	if _age_mode() == "konbini":
+		return [["id_check", ShopActions.label("id_check")], ["age_allow", ShopActions.label("sell_ok")], ["age_refuse", ShopActions.label("sell_refuse")]]
 	return [["id_check", ShopActions.label("id_check")], ["age_allow", ShopActions.label("age_allow")], ["age_refuse", ShopActions.label("age_refuse")]]
+
+
+## 年齢確認の種類: "arcade"（夜の入店）| "konbini"（お酒・たばこ。要件#63）
+func _age_mode() -> String:
+	return str((_cust.get("age", {}) as Dictionary).get("mode", "arcade"))
 
 
 ## 年齢確認の判断（要件#61）: 入店OK か 退店をお願いするか。正しいかは must_leave で決まる
@@ -543,12 +559,13 @@ func _play_customer(my_run: int) -> void:
 		_wild_used = true
 	# 年齢確認のお客さん（要件#61）: 18:00 以降のゲームセンター。自動テストでは4人目で必ず
 	var data: Dictionary = {}
-	if _stage_id == "arcade" and not _wild and _age_count < AGE_MAX and AgeCheck.limit_for(_clock()) > 0 \
-			and (randf() < AGE_CHANCE or (main.smoke and _index == 3)):
+	var age_ok_here: bool = (_stage_id == "arcade" and AgeCheck.limit_for(_clock()) > 0) or _stage_id == "konbini"
+	var age_chance: float = AGE_CHANCE_KONBINI if _stage_id == "konbini" else AGE_CHANCE
+	if age_ok_here and not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)):
 		_age_count += 1
 		_source = "offline"
 		_session_id = ""
-		data = AgeCheck.make(_clock(), GameSettings.language)
+		data = AgeCheck.make(_clock(), GameSettings.language, _stage_id)
 	else:
 		data = await _prepare_customer()
 	if my_run != _run:
@@ -587,7 +604,10 @@ func _play_customer(my_run: int) -> void:
 	if _is_age_check():
 		hud.set_actions(_age_buttons())
 		hud.show_banner(tr("年齢確認！"), UI.POP)
-		hud.set_comment(tr("今は %s。身分証で年齢を確かめよう。") % AgeCheck.clock_text(_clock()))
+		if _age_mode() == "konbini":
+			hud.set_comment(tr("お酒・たばこは20歳から。身分証で年齢を確かめよう。"))
+		else:
+			hud.set_comment(tr("今は %s。身分証で年齢を確かめよう。") % AgeCheck.clock_text(_clock()))
 	else:
 		hud.set_actions(ShopActions.buttons(_stage_id, _cust, true))
 	var speaker: String = tr("%s（%s）") % [str(_cust.get("title", tr("お客さん"))), str(_cust.get("name", ""))]
@@ -630,7 +650,10 @@ func _play_customer(my_run: int) -> void:
 			if id == "age_allow" or id == "age_refuse":
 				main.close_machine_data()
 				outcome = _age_outcome(id == "age_allow")
-				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
+				var shown_id: String = id
+				if _age_mode() == "konbini":
+					shown_id = "sell_ok" if id == "age_allow" else "sell_refuse"
+				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(shown_id))
 				var key: String = "yielded" if id == "age_allow" else "calm"
 				await _customer_line(speaker, Judge.line(_cust, key), "happy" if id == "age_allow" else "angry")
 				if my_run != _run:
