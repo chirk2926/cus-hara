@@ -131,7 +131,7 @@
 			"angry": [
 				"なんだその態度は！",
 				"こっちは客だぞ！！",
-				"話にならん！責任者を出せ！"
+				"話にならん！ちゃんと聞いてるのか！"
 			],
 			"neutral": [
 				"で？それがどうした。",
@@ -142,7 +142,16 @@
 				"タダにすれば済む話だろうが！"
 			],
 			"resolved": "……分かった。今回はそれでいい。次は気をつけろよ。",
-			"explode": "もういい！！話にならん！店長を呼べ！！！",
+			"explode": [
+				"もういい！！話にならん！！",
+				"二度と来るか、こんな店！！",
+				"時間の無駄だった！！帰る！！",
+				"口コミに全部書いてやるからな！！",
+				"もう知らん！！勝手にしろ！！",
+				"信じられない！！最悪の店だ！！",
+				"黙って聞いてりゃ…もういい！！",
+				"もういい！！店長を呼べ！！！"
+			],
 			"yielded": "最初からそうすればいいんだよ。また来るからな。"
 		},
 		"polite_pattern": "です|ます|ません|ございま",
@@ -350,7 +359,7 @@
 			"angry": [
 				"What kind of attitude is that?!",
 				"I'm the CUSTOMER here!!",
-				"This is pointless! Get me your manager!"
+				"This is pointless! Are you even listening?!"
 			],
 			"neutral": [
 				"And? So what?",
@@ -361,7 +370,16 @@
 				"Make it free and we're done here!"
 			],
 			"resolved": "...Alright. That'll do this time. Be more careful.",
-			"explode": "That's IT! This is hopeless! MANAGER!!!",
+			"explode": [
+				"That's IT! This is hopeless!!",
+				"I'm never coming back to this place!!",
+				"What a waste of my time! I'm leaving!!",
+				"I'm putting ALL of this in a review!!",
+				"Forget it! Do whatever you want!!",
+				"Unbelievable! Worst shop ever!!",
+				"I've heard enough! I'm done!!",
+				"That's IT! MANAGER!!!"
+			],
 			"yielded": "Should've done that from the start. I'll be back, you know."
 		},
 		"polite_pattern": "please|sorry|thank|certainly|would|could|may i|apolog|sir|ma'am|of course|appreciate|kindly",
@@ -539,7 +557,7 @@
 			"angry": [
 				"你这是什么态度！",
 				"我可是顾客！！",
-				"说不通！叫你们负责人来！"
+				"说不通！你到底有没有在听！"
 			],
 			"neutral": [
 				"所以呢？那又怎样。",
@@ -550,7 +568,16 @@
 				"免费不就完事了吗！"
 			],
 			"resolved": "……知道了。这次就这样吧。下次注意点。",
-			"explode": "够了！！根本说不通！叫店长来！！！",
+			"explode": [
+				"够了！！根本说不通！！",
+				"这种店我再也不来了！！",
+				"浪费我的时间！走了！！",
+				"我要把这些全写进差评里！！",
+				"算了！！你们爱怎样怎样！！",
+				"难以置信！！最差的店！！",
+				"我听够了……算了！！",
+				"够了！！叫店长来！！！"
+			],
 			"yielded": "一开始这样不就好了。我还会再来的。"
 		},
 		"polite_pattern": "您|请|抱歉|对不起|谢谢|不好意思|麻烦|感谢",

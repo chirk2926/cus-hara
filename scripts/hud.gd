@@ -16,6 +16,8 @@ signal talk_started(duration: float)
 signal voice_start
 signal voice_stop
 signal action_pressed(id: String)
+## 画面の上のボタン（会話ログ・ペイアウト・店長を呼ぶ。要件#86）
+signal tool_pressed(id: String)
 
 ## 定型文（日本語の文がキー。英語は翻訳ファイルで差し替わる）
 const DEFAULT_PHRASES: Array = [
@@ -58,6 +60,9 @@ var _text_row: HBoxContainer
 var _voice_row: HBoxContainer
 var _voice_mode: bool = false
 var _input_on: bool = false
+var _tools: HBoxContainer = null
+var _note_scroll: ScrollContainer = null
+var _say_token: int = 0
 var _blocked: bool = false   # 紙の画面（休憩・設定など）が上に開いている間は入力を受けない
 var _parts: Dictionary = {}
 var _memo_scroll: ScrollContainer = null   # チュートリアルで指し示す部品（get_part）
@@ -119,6 +124,12 @@ func _build() -> void:
 	_field.max_length = 200
 	_field.custom_minimum_size.x = 280   # 行動ボタンに押されて書けなくならないように
 	_field.text_submitted.connect(func(_t: String) -> void: _submit())
+	# 長い文も、打っている所が見えるように右へずらしていく（要件#86）
+	_field.clip_contents = true
+	_field.expand_to_text_length = false
+	_field.text_changed.connect(func(t: String) -> void:
+		if _field.caret_column >= t.length() - 1:
+			_field.caret_column = t.length())
 	_text_row.add_child(_field)
 	_send = UI.primary(tr("返事をする"), UI.S_LEAD)
 	_send.focus_mode = Control.FOCUS_NONE
@@ -205,6 +216,8 @@ func _build() -> void:
 	menu.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	menu.pressed.connect(func() -> void: pause_pressed.emit())
 	tag_row.add_child(menu)
+	_tools = UI.hbox(6)
+	tag_row.add_child(_tools)
 
 	# メモは残りの高さに収め、入りきらない分は切る（下の付箋は必ず見える。要件#44）
 	# 入りきらないときは切らずにスクロールできる（要件#67: 長いメモが見切れて読めなかった）
@@ -237,10 +250,15 @@ func _build() -> void:
 	var nb: VBoxContainer = UI.vbox(2)
 	note.add_child(nb)
 	nb.add_child(UI.text(tr("店長より"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+	# 長いアドバイスでも枠からはみ出さない（要件#86）: 長さで字を小さくし、それでも入らなければスクロール
+	_note_scroll = ScrollContainer.new()
+	_note_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_note_scroll.custom_minimum_size = Vector2(216, 0)
+	nb.add_child(_note_scroll)
 	_note = UI.para(tr("落ち着いて、まずは話を聞こう。"), UI.S_BODY, UI.INK, UI.F_HAND)
 	_note.custom_minimum_size = Vector2(210, 0)
-	_note.max_lines_visible = 3
-	nb.add_child(_note)
+	_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_note_scroll.add_child(_note)
 
 	# ---- 中央: 顔は空ける → フキダシ（文字の量に合わせて高さが変わる。要件#30）
 	var center: VBoxContainer = UI.vbox(8)
@@ -450,6 +468,36 @@ func set_actions(items: Array) -> void:
 
 func set_comment(t: String) -> void:
 	_note.text = t
+	var n: int = t.length()
+	var long_at: int = 40 if TranslationServer.get_locale().begins_with("ja") or TranslationServer.get_locale().begins_with("zh") else 90
+	_note.add_theme_font_size_override("font_size", UI.S_BODY if n <= long_at else (UI.S_SMALL if n <= long_at * 2 else UI.S_SMALL - 2))
+	# 高さ: 5行ぶんまで伸ばし、それ以上はスクロール
+	var line_h: float = float(_note.get_theme_font_size("font_size")) * 1.45
+	_note_scroll.custom_minimum_size.y = clampf(line_h * ceilf(float(n) / float(maxi(8, int(long_at * 0.5)))), line_h, line_h * 5.0)
+	_note_scroll.scroll_vertical = 0
+
+
+## 画面の上のボタン（要件#86）。items は [[id, 文字], ...]、enabled は id → 押せるか（書いていなければ押せる）
+func set_tools(items: Array, enabled: Dictionary = {}) -> void:
+	if _tools == null:
+		return
+	for c in _tools.get_children():
+		c.queue_free()
+	for it in items:
+		var id: String = str(it[0])
+		var b: Button = UI.link(str(it[1]), UI.S_SMALL, UI.INK)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_stylebox_override("normal", UI.paper_style(UI.PAPER, 8, 0, 3))
+		b.add_theme_stylebox_override("hover", UI.paper_style(UI.POP, 8, 0, 3))
+		b.add_theme_stylebox_override("pressed", UI.paper_style(UI.POP, 8, 0, 1))
+		b.add_theme_stylebox_override("disabled", UI.paper_style(UI.PAPER_DIM, 8, 0, 1))
+		b.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		b.disabled = not bool(enabled.get(id, true))
+		b.pressed.connect(func() -> void:
+			if sfx != null:
+				sfx.play("click")
+			tool_pressed.emit(id))
+		_tools.add_child(b)
 
 
 func set_status(t: String) -> void:
@@ -506,8 +554,13 @@ func say(speaker: String, t: String, angry: bool = false) -> void:
 	talk_started.emit(dur)
 	_say_tween = create_tween()
 	_say_tween.tween_property(_bubble_text, "visible_ratio", 1.0, dur)
-	await _say_tween.finished
-	_typing = false
+	# 次のセリフが割り込んで前の動きが止められても、待っている側が止まったままにならないよう、時間で待つ（要件#86）
+	_say_token += 1
+	var my_token: int = _say_token
+	await get_tree().create_timer(dur + 0.05).timeout
+	if my_token == _say_token:
+		_bubble_text.visible_ratio = 1.0
+		_typing = false
 
 
 func hide_bubble() -> void:

@@ -318,3 +318,46 @@ static func rule(color: Color = PAPER_DIM, thickness: int = 2) -> ColorRect:
 	r.custom_minimum_size = Vector2(0, thickness)
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return r
+
+
+## 数を入れる箱（要件#86）: [◀][数][▶]。全角の数字でも入り、矢印のボタン・キーボードの↑↓でも変えられる
+static func number_box(min_v: int, max_v: int, value: int, step_big: int, on_change: Callable) -> HBoxContainer:
+	var row: HBoxContainer = hbox(4)
+	var spin: SpinBox = SpinBox.new()
+	spin.min_value = min_v
+	spin.max_value = max_v
+	spin.step = 1
+	spin.value = value
+	spin.custom_minimum_size = Vector2(84, 0)
+	var le: LineEdit = spin.get_line_edit()
+	le.add_theme_font_size_override("font_size", S_BODY)
+	# 全角の数字・記号を半角に直す（IME で「３０」と打っても入る）
+	le.text_changed.connect(func(t: String) -> void:
+		var h: String = to_halfwidth(t)
+		if h != t:
+			var c: int = le.caret_column
+			le.text = h
+			le.caret_column = mini(c, h.length()))
+	spin.value_changed.connect(func(v: float) -> void: on_change.call(int(v)))
+	var down: Button = stamp("◀", S_SMALL)
+	down.focus_mode = Control.FOCUS_NONE
+	down.pressed.connect(func() -> void: spin.value -= step_big)
+	var up: Button = stamp("▶", S_SMALL)
+	up.focus_mode = Control.FOCUS_NONE
+	up.pressed.connect(func() -> void: spin.value += step_big)
+	row.add_child(down)
+	row.add_child(spin)
+	row.add_child(up)
+	return row
+
+
+static func to_halfwidth(t: String) -> String:
+	var out: String = ""
+	for i in range(t.length()):
+		var c: int = t.unicode_at(i)
+		if c >= 0xFF01 and c <= 0xFF5E:
+			c -= 0xFEE0
+		elif c == 0x3000:
+			c = 0x20
+		out += String.chr(c)
+	return out

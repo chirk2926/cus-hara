@@ -2,7 +2,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { config } from "./config.ts";
-import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar, setPlayerAvatar, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
+import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar, setPlayerAvatar, addReport, playerById, REPORT_REASONS, type ReportReason, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
@@ -155,6 +155,21 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       setPlayerAvatar(player.id, next.avatar ?? "");
     }
     return { player: publicPlayer(next) };
+  }
+
+  // プレイヤーの通報（要件#87）。ブロックの機能はない。運営が reports テーブルで確かめる
+  if (method === "POST" && p === "/api/v1/report") {
+    const body = await readJson(req);
+    const target = typeof body.player_id === "string" ? body.player_id : "";
+    const reason = typeof body.reason === "string" && (REPORT_REASONS as readonly string[]).includes(body.reason) ? (body.reason as ReportReason) : null;
+    if (reason === null) throw new HttpError(400, "bad_reason", "通報の理由を選んでください");
+    if (target === "" || target === player.id || playerById(target) === null) throw new HttpError(400, "bad_target", "通報する相手が見つかりません");
+    if (!allow(`report:${player.id}`, 10, 3_600_000)) throw new HttpError(429, "too_many_reports", "通報が多すぎます。しばらくしてからにしてください");
+    const matchId = typeof body.match_id === "string" ? body.match_id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) : "";
+    const note = typeof body.note === "string" ? body.note.replace(/[\u0000-\u001f\u007f<>]/g, " ").trim().slice(0, 200) : "";
+    const saved = addReport(player.id, target, matchId, reason, note);
+    log("report", player.id, "->", target, reason, saved ? "saved" : "duplicate");
+    return { ok: true, saved };
   }
 
   if (method === "POST" && p === "/api/v1/solo/start") {

@@ -87,6 +87,42 @@
 				"en": "Accessory",
 				"zh": "配饰"
 			}
+		},
+		{
+			"id": "head",
+			"group": "chara",
+			"name": {
+				"ja": "かぶりもの（ネタ）",
+				"en": "Headgear (joke)",
+				"zh": "头饰（搞笑）"
+			}
+		},
+		{
+			"id": "face",
+			"group": "chara",
+			"name": {
+				"ja": "顔（ネタ）",
+				"en": "Face (joke)",
+				"zh": "脸部（搞笑）"
+			}
+		},
+		{
+			"id": "hand",
+			"group": "chara",
+			"name": {
+				"ja": "手に持つもの（ネタ）",
+				"en": "Held item (joke)",
+				"zh": "手持物（搞笑）"
+			}
+		},
+		{
+			"id": "body",
+			"group": "chara",
+			"name": {
+				"ja": "体につけるもの（ネタ）",
+				"en": "Body (joke)",
+				"zh": "身体装饰（搞笑）"
+			}
 		}
 	],
 	"items": [
@@ -224,6 +260,96 @@
 				"ja": "プリクラコーナー（あやしいおじさん）",
 				"en": "Photo booth corner (a suspicious man)",
 				"zh": "大头贴区（可疑大叔）"
+			}
+		},
+		{
+			"id": "bg_video_rage",
+			"cat": "bg",
+			"hp": 0,
+			"kas": 0,
+			"stage": "bg_video_rage",
+			"variant": "day",
+			"rarity": 3,
+			"gacha": true,
+			"name": {
+				"ja": "ビデオゲームコーナー（台パンしている人）",
+				"en": "Video corner (someone banging the cabinet)",
+				"zh": "电子游戏区（拍机台的人）"
+			}
+		},
+		{
+			"id": "bg_locker",
+			"cat": "bg",
+			"hp": 0,
+			"kas": 0,
+			"stage": "bg_locker",
+			"variant": "day",
+			"rarity": 1,
+			"gacha": true,
+			"name": {
+				"ja": "スタッフ更衣室",
+				"en": "Staff locker room",
+				"zh": "员工更衣室"
+			}
+		},
+		{
+			"id": "bg_toilet",
+			"cat": "bg",
+			"hp": 0,
+			"kas": 0,
+			"stage": "bg_toilet",
+			"variant": "day",
+			"rarity": 1,
+			"gacha": true,
+			"name": {
+				"ja": "トイレ",
+				"en": "Restroom",
+				"zh": "洗手间"
+			}
+		},
+		{
+			"id": "bg_warehouse",
+			"cat": "bg",
+			"hp": 0,
+			"kas": 0,
+			"stage": "bg_warehouse",
+			"variant": "day",
+			"rarity": 2,
+			"gacha": true,
+			"name": {
+				"ja": "景品倉庫",
+				"en": "Prize warehouse",
+				"zh": "奖品仓库"
+			}
+		},
+		{
+			"id": "bg_manager_home",
+			"cat": "bg",
+			"hp": 0,
+			"kas": 0,
+			"stage": "bg_manager_home",
+			"variant": "day",
+			"rarity": 3,
+			"gacha": true,
+			"name": {
+				"ja": "店長の家",
+				"en": "The manager's apartment",
+				"zh": "店长的家"
+			}
+		},
+		{
+			"id": "bg_parents_home",
+			"cat": "bg",
+			"hp": 0,
+			"kas": 0,
+			"stage": "bg_parents_home",
+			"variant": "day",
+			"rarity": 3,
+			"gacha": true,
+			"name": {
+				"ja": "店長の実家",
+				"en": "The manager's parents' home",
+				"zh": "店长的老家"
 			}
 		},
 		{
@@ -958,6 +1084,263 @@
 				"ja": "レジ袋",
 				"en": "Plastic bag",
 				"zh": "塑料袋"
+			}
+		},
+		{
+			"id": "none",
+			"cat": "head",
+			"hp": 0,
+			"kas": 0,
+			"name": {
+				"ja": "なし",
+				"en": "None",
+				"zh": "无"
+			},
+			"default": true
+		},
+		{
+			"id": "none",
+			"cat": "face",
+			"hp": 0,
+			"kas": 0,
+			"name": {
+				"ja": "なし",
+				"en": "None",
+				"zh": "无"
+			},
+			"default": true
+		},
+		{
+			"id": "none",
+			"cat": "hand",
+			"hp": 0,
+			"kas": 0,
+			"name": {
+				"ja": "なし",
+				"en": "None",
+				"zh": "无"
+			},
+			"default": true
+		},
+		{
+			"id": "none",
+			"cat": "body",
+			"hp": 0,
+			"kas": 0,
+			"name": {
+				"ja": "なし",
+				"en": "None",
+				"zh": "无"
+			},
+			"default": true
+		},
+		{
+			"id": "cardboard",
+			"cat": "head",
+			"hp": 200,
+			"kas": 100,
+			"name": {
+				"ja": "段ボール箱",
+				"en": "Cardboard box",
+				"zh": "纸箱"
+			}
+		},
+		{
+			"id": "bucket",
+			"cat": "head",
+			"hp": 250,
+			"kas": 120,
+			"name": {
+				"ja": "バケツ",
+				"en": "Bucket",
+				"zh": "水桶"
+			}
+		},
+		{
+			"id": "chonmage",
+			"cat": "head",
+			"hp": 400,
+			"kas": 200,
+			"name": {
+				"ja": "ちょんまげ",
+				"en": "Topknot",
+				"zh": "武士发髻"
+			}
+		},
+		{
+			"id": "afro",
+			"cat": "head",
+			"hp": 400,
+			"kas": 200,
+			"name": {
+				"ja": "アフロ",
+				"en": "Afro",
+				"zh": "爆炸头"
+			}
+		},
+		{
+			"id": "crown",
+			"cat": "head",
+			"hp": 0,
+			"kas": 800,
+			"name": {
+				"ja": "王冠",
+				"en": "Crown",
+				"zh": "王冠"
+			}
+		},
+		{
+			"id": "nose_glasses",
+			"cat": "face",
+			"hp": 200,
+			"kas": 100,
+			"name": {
+				"ja": "鼻メガネ",
+				"en": "Nose glasses",
+				"zh": "鼻子眼镜"
+			}
+		},
+		{
+			"id": "mustache",
+			"cat": "face",
+			"hp": 150,
+			"kas": 80,
+			"name": {
+				"ja": "ちょびひげ",
+				"en": "Toothbrush mustache",
+				"zh": "小胡子"
+			}
+		},
+		{
+			"id": "party_glasses",
+			"cat": "face",
+			"hp": 300,
+			"kas": 150,
+			"name": {
+				"ja": "パーティーメガネ",
+				"en": "Party glasses",
+				"zh": "派对眼镜"
+			}
+		},
+		{
+			"id": "lips",
+			"cat": "face",
+			"hp": 300,
+			"kas": 150,
+			"name": {
+				"ja": "タラコ唇",
+				"en": "Big lips",
+				"zh": "香肠嘴"
+			}
+		},
+		{
+			"id": "swirl_glasses",
+			"cat": "face",
+			"hp": 0,
+			"kas": 400,
+			"name": {
+				"ja": "ぐるぐるメガネ",
+				"en": "Swirl glasses",
+				"zh": "圈圈眼镜"
+			}
+		},
+		{
+			"id": "harisen",
+			"cat": "hand",
+			"hp": 250,
+			"kas": 120,
+			"name": {
+				"ja": "ハリセン",
+				"en": "Paper fan (harisen)",
+				"zh": "纸扇"
+			}
+		},
+		{
+			"id": "megaphone",
+			"cat": "hand",
+			"hp": 300,
+			"kas": 150,
+			"name": {
+				"ja": "メガホン",
+				"en": "Megaphone",
+				"zh": "扩音器"
+			}
+		},
+		{
+			"id": "complaint_file",
+			"cat": "hand",
+			"hp": 200,
+			"kas": 100,
+			"name": {
+				"ja": "分厚いクレームファイル",
+				"en": "Thick complaint file",
+				"zh": "厚厚的投诉档案"
+			}
+		},
+		{
+			"id": "big_plush",
+			"cat": "hand",
+			"hp": 0,
+			"kas": 600,
+			"name": {
+				"ja": "景品のめちゃでかいぬいぐるみ",
+				"en": "Giant prize plushie",
+				"zh": "超大的奖品玩偶"
+			}
+		},
+		{
+			"id": "ecobag_leek",
+			"cat": "hand",
+			"hp": 150,
+			"kas": 80,
+			"name": {
+				"ja": "ネギの刺さったエコバッグ",
+				"en": "Eco bag with a leek",
+				"zh": "插着大葱的环保袋"
+			}
+		},
+		{
+			"id": "sash",
+			"cat": "body",
+			"hp": 200,
+			"kas": 100,
+			"name": {
+				"ja": "「本日の主役」のたすき",
+				"en": "\"Star of the Day\" sash",
+				"zh": "“今日主角”绶带"
+			}
+		},
+		{
+			"id": "angel_wings",
+			"cat": "body",
+			"hp": 400,
+			"kas": 200,
+			"name": {
+				"ja": "天使の羽",
+				"en": "Angel wings",
+				"zh": "天使翅膀"
+			}
+		},
+		{
+			"id": "cape",
+			"cat": "body",
+			"hp": 300,
+			"kas": 150,
+			"name": {
+				"ja": "マント",
+				"en": "Cape",
+				"zh": "斗篷"
+			}
+		},
+		{
+			"id": "kigurumi",
+			"cat": "body",
+			"hp": 0,
+			"kas": 1000,
+			"name": {
+				"ja": "着ぐるみ",
+				"en": "Mascot suit",
+				"zh": "玩偶装"
 			}
 		}
 	],

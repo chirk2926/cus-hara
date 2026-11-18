@@ -231,8 +231,11 @@ class IdPhoto extends Control:
 		var hair: Color = _col("hair_color", Color("#333333"))
 		var body: Color = _col("body_color", Color("#3a5a8a"))
 		var cx: float = w * 0.5
-		# 肩
-		draw_circle(Vector2(cx, h + h * 0.18), w * 0.5, body)
+		# 肩（写真の枠の中に収める。要件#86: 円が枠の外にはみ出していた）
+		draw_rect(Rect2(cx - w * 0.36, h * 0.8, w * 0.72, h * 0.2), body)
+		draw_circle(Vector2(cx - w * 0.26, h * 0.86), w * 0.12, body)
+		draw_circle(Vector2(cx + w * 0.26, h * 0.86), w * 0.12, body)
+		draw_rect(Rect2(cx - w * 0.38, h * 0.86, w * 0.76, h * 0.14), body)
 		# 首と顔
 		draw_rect(Rect2(cx - w * 0.08, h * 0.55, w * 0.16, h * 0.16), skin)
 		var face_c: Vector2 = Vector2(cx, h * 0.45)

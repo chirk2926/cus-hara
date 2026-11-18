@@ -178,3 +178,14 @@ test("キーワード判定の精度（要件#73）", async () => {
   const specific = judgeStaff({ ...c, solution_keywords: ["存在しない語"] }, "大変申し訳ございません。お弁当の交換はいたしかねますが、在庫がございますのでご用意いたします。", [], 40, 0, "ja");
   assert.ok(specific.resolve_delta > 0, `メモに触れた返事で納得が上がる: ${specific.resolve_delta}`);
 });
+
+test("不適切な発言の検出（要件#88）: 性的な言葉・分け書き・電話番号は見つけ、ふつうのクレームは見逃す", async () => {
+  const { keywordModeration } = await import("../src/moderation.ts");
+  assert.equal(keywordModeration("おっぱい見せろ").category, "sexual");
+  assert.equal(keywordModeration("え ろ い 店員").category, "sexual");
+  assert.equal(keywordModeration("Show me your boobs").category, "sexual");
+  assert.equal(keywordModeration("電話して 090-1234-5678").category, "personal_info");
+  assert.equal(keywordModeration("死ね").category, "hate");
+  assert.equal(keywordModeration("ふざけるな！責任者を出せ！タダにしろ！").flagged, false);
+  assert.equal(keywordModeration("The prize fell off, give me a refund!").flagged, false);
+});

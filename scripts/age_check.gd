@@ -193,6 +193,12 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		titles_zh = ["看着很年轻的顾客", "赶时间的年轻人", "自称上班族", "从没被查过年龄的客人"]
 		demand = str(_tr(lang, "身分証をきちんと見せずに%sを買うこと" % item, "Buy %s without showing a proper ID" % item, "不出示正规证件就买%s" % item))
 	var opening: String = str((_tr(lang, openings_ja, openings_en, openings_zh) as Array)[randi() % 4])
+	# 「別の身分証を見せて」と言われたとき（要件#86）: 使えない身分証を出したお客さんは、半分の確率で本人の公的な身分証も持っている
+	var alt: Dictionary = {}
+	if not verifiable and randf() < 0.5:
+		var alt_type: String = "license" if (age >= 18 and randf() < 0.5) else ("mynumber" if randf() < 0.75 else "passport")
+		alt = {"type": alt_type, "public": true, "has_photo": true, "has_dob": true, "face_match": true, "dob": real_dob,
+			"shown_age": age_on(real_dob, today), "name": who, "photo": look.duplicate()}
 	return {
 		"kind": "age_check",
 		"title": str((_tr(lang, titles_ja, titles_en, titles_zh) as Array)[randi() % 4]),
@@ -217,5 +223,5 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		},
 		"age": {"mode": mode, "item": item, "limit": limit, "clock": clock_min, "type": id_type, "public": bool(t["public"]), "has_photo": bool(t["photo"]),
 			"has_dob": bool(t["dob"]), "face_match": face_match, "dob": shown_dob, "shown_age": shown_age,
-			"name": shown_name, "photo": photo, "must_leave": must_leave, "real_age": age, "today": today},
+			"name": shown_name, "photo": photo, "must_leave": must_leave, "real_age": age, "today": today, "alt": alt},
 	}

@@ -362,3 +362,17 @@ test("対戦のキャラクター（要件#84）: 決まった項目だけ保存
   assert.equal(bad.body.player.avatar, null);
 });
 
+
+test("プレイヤーの通報（要件#87）: 理由つきで保存し、同じ試合の2回目・自分・おかしな理由は受け付けない", async () => {
+  const a = await api(srv.base, "POST", "/api/v1/guest", { name: "通報する人" });
+  const b = await api(srv.base, "POST", "/api/v1/guest", { name: "通報される人" });
+  const ok = await api(srv.base, "POST", "/api/v1/report", { player_id: b.body.player.id, match_id: "m1", reason: "abuse", note: "ひどい言葉" }, a.body.token);
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.saved, true);
+  const dup = await api(srv.base, "POST", "/api/v1/report", { player_id: b.body.player.id, match_id: "m1", reason: "abuse" }, a.body.token);
+  assert.equal(dup.body.saved, false, "同じ試合への2回目は保存しない");
+  const self = await api(srv.base, "POST", "/api/v1/report", { player_id: a.body.player.id, reason: "abuse" }, a.body.token);
+  assert.equal(self.status, 400);
+  const bad = await api(srv.base, "POST", "/api/v1/report", { player_id: b.body.player.id, reason: "nope" }, a.body.token);
+  assert.equal(bad.status, 400);
+});

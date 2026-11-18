@@ -2550,6 +2550,91 @@
 			"joke": false,
 			"stat": "titles_all",
 			"min": 1
+		},
+		{
+			"id": "t151",
+			"name": {
+				"ja": "ハードコア入門",
+				"en": "Hardcore Rookie",
+				"zh": "硬核入门"
+			},
+			"desc": {
+				"ja": "ハードコアでシフトを最後まで勤めた",
+				"en": "Finished a shift in Hardcore",
+				"zh": "在硬核模式下完成了一个班次"
+			},
+			"rarity": 3,
+			"joke": false,
+			"stat": "hard_shifts",
+			"min": 1
+		},
+		{
+			"id": "t152",
+			"name": {
+				"ja": "修羅場の常連",
+				"en": "Regular of Carnage",
+				"zh": "修罗场常客"
+			},
+			"desc": {
+				"ja": "ハードコアでシフトを 30回 勤めた",
+				"en": "Finished 30 shifts in Hardcore",
+				"zh": "在硬核模式下完成30个班次"
+			},
+			"rarity": 4,
+			"joke": false,
+			"stat": "hard_shifts",
+			"min": 30
+		},
+		{
+			"id": "t153",
+			"name": {
+				"ja": "地獄のパーフェクト",
+				"en": "Perfect in Hell",
+				"zh": "地狱完美"
+			},
+			"desc": {
+				"ja": "ハードコアでパーフェクトシフト",
+				"en": "A perfect shift in Hardcore",
+				"zh": "在硬核模式下完成完美班次"
+			},
+			"rarity": 5,
+			"joke": false,
+			"stat": "hard_perfect",
+			"min": 1
+		},
+		{
+			"id": "t154",
+			"name": {
+				"ja": "鋼の背骨",
+				"en": "Spine of Steel",
+				"zh": "钢铁脊梁"
+			},
+			"desc": {
+				"ja": "ハードコアで屈服なしのシフトを 10回",
+				"en": "10 Hardcore shifts without giving in",
+				"zh": "硬核模式下10个班次从未屈服"
+			},
+			"rarity": 4,
+			"joke": false,
+			"stat": "hard_no_yield",
+			"min": 10
+		},
+		{
+			"id": "t155",
+			"name": {
+				"ja": "ハードコアの頂点",
+				"en": "Hardcore Summit",
+				"zh": "硬核之巅"
+			},
+			"desc": {
+				"ja": "ハードコアの1シフトで 9,000点 以上",
+				"en": "9,000+ points in one Hardcore shift",
+				"zh": "硬核模式单个班次9,000分以上"
+			},
+			"rarity": 5,
+			"joke": false,
+			"stat": "hard_best",
+			"min": 9000
 		}
 	]
 }

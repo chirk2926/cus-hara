@@ -88,6 +88,9 @@ var owned_items: Array = []
 var equipped_items: Dictionary = {}
 ## 対戦のキャラクター（要件#84）: 性別・身長・体型・肌の色（髪型などはショップの equipped_items）。created は作ったか
 var avatar: Dictionary = {}
+## レビューログ（要件#86）: シフトごとの記録。新しい順に最大 200 件。このPCに保存
+var review_log: Array = []
+const REVIEW_LOG_MAX: int = 200
 ## チュートリアル（要件#53）を一度でも終えた／断ったか
 var tutorial_seen: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
@@ -212,6 +215,8 @@ func load_settings() -> void:
 	equipped_items = ei if typeof(ei) == TYPE_DICTIONARY else {}
 	var av: Variant = cfg.get_value("shop", "avatar", {})
 	avatar = av if typeof(av) == TYPE_DICTIONARY else {}
+	var rl: Variant = cfg.get_value("play", "review_log", [])
+	review_log = rl if typeof(rl) == TYPE_ARRAY else []
 	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
 		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -246,6 +251,7 @@ func save_settings() -> void:
 	cfg.set_value("shop", "owned", owned_items)
 	cfg.set_value("shop", "equipped", equipped_items)
 	cfg.set_value("shop", "avatar", avatar)
+	cfg.set_value("play", "review_log", review_log)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 
@@ -446,3 +452,11 @@ func submit_score(stage_id: String, value: int) -> bool:
 		save_settings()
 		return true
 	return false
+
+
+## シフトの記録をレビューログに足す（新しいものが先頭）
+func add_review_log(entry: Dictionary) -> void:
+	review_log.push_front(entry)
+	while review_log.size() > REVIEW_LOG_MAX:
+		review_log.pop_back()
+

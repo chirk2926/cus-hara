@@ -8,7 +8,8 @@ import { llmEnabled, generateCustomer, judgeStaffTurn, judgeCustomerTurn, type H
 import { sttEnabled, transcribe } from "./stt.ts";
 import { MAX_BYTES, mulawToPcm16, isNearlySilent } from "./audio.ts";
 import { eloDelta, rankName } from "./rating.ts";
-import { type Player, playerById, recordMatch, recentPairCount } from "./db.ts";
+import { type Player, playerById, recordMatch, recentPairCount, addReport } from "./db.ts";
+import { moderate, type ModerationCategory } from "./moderation.ts";
 import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
@@ -48,6 +49,8 @@ export class Match {
   onEnd: ((m: Match) => void) | null = null;
 
   private totals: [number, number] = [0, 0];
+  /** 不適切な発言の回数（要件#88）。MOD_MAX 回で負け */
+  private strikes: [number, number] = [0, 0];
   private waiting: Waiting | null = null;
   private usedTitles: string[] = [];
   // 表示中の状態（再接続したときに送り直す）
@@ -216,6 +219,14 @@ export class Match {
     let openingText = await this.inputToText(customer, opening, "customer");
     if (this.finished) return null;
     if (openingText === "") openingText = card.opening;
+    else {
+      const sc = await this.screen(customer, openingText);
+      if (this.finished) return null;
+      if (sc.flagged) {
+        openingText = sc.text;
+        this.resolveVal = clamp(this.resolveVal + 15, 0, 100);
+      }
+    }
     usedCustomer.push(openingText);
     history.push({ role: "customer", text: openingText });
     this.broadcastLine("customer", customer, openingText, opening.via);
@@ -266,6 +277,19 @@ export class Match {
         if (this.anger >= 100) { outcome = "explode"; break; }
         continue;
       }
+      // 不適切な発言（要件#88）: 相手には伏せ字で見せ、採点はせずに怒りを大きく上げる
+      const sc = await this.screen(staff, reply);
+      if (this.finished) return null;
+      if (sc.flagged) {
+        history.push({ role: "staff", text: sc.text });
+        this.broadcastLine("staff", staff, sc.text, input.via);
+        this.anger = clamp(this.anger + 25, 0, 100);
+        this.broadcastJudged(25, 0, pick(this.lang, { ja: "不適切な発言。お客さんが激怒した。", en: "Inappropriate remark. The customer is furious.", zh: "不当发言。顾客暴怒了。" }), "staff");
+        if (this.anger >= 100) { outcome = "explode"; break; }
+        await sleep(config.versus.pauseAfterLineMs);
+        if (this.finished) return null;
+        continue;
+      }
       history.push({ role: "staff", text: reply });
       this.broadcastLine("staff", staff, reply, input.via);
       const j = await this.judgeStaff(card, reply, usedStaff, history, input.via === "voice", staff);
@@ -292,10 +316,15 @@ export class Match {
       this.setPhase("judging", -1, 0);
       const line = await this.inputToText(customer, cin, "customer");
       if (this.finished) return null;
-      const shown = line !== "" ? line : pick(this.lang, { ja: "……（言葉に詰まっている）", en: "... (lost for words)", zh: "……（说不出话来）" });
+      let shown = line !== "" ? line : pick(this.lang, { ja: "……（言葉に詰まっている）", en: "... (lost for words)", zh: "……（说不出话来）" });
+      const csc = line !== "" ? await this.screen(customer, line) : { text: line, flagged: false };
+      if (this.finished) return null;
+      if (csc.flagged) shown = csc.text;
       history.push({ role: "customer", text: shown });
       this.broadcastLine("customer", customer, shown, cin.via);
-      const cj = await this.judgeCustomer(card, line, usedCustomer, history, cin.via === "voice", customer);
+      const cj = csc.flagged
+        ? { anger_delta: 0, resolve_delta: 15, comment: pick(this.lang, { ja: "不適切な発言。店員側に有利になった。", en: "Inappropriate remark. Advantage to the clerk.", zh: "不当发言。对店员有利。" }) }
+        : await this.judgeCustomer(card, line, usedCustomer, history, cin.via === "voice", customer);
       if (this.finished) return null;
       if (line !== "") usedCustomer.push(line);
       this.anger = clamp(this.anger + cj.anger_delta, 0, 100);
@@ -481,6 +510,30 @@ export class Match {
     this.send(1 - seat, { t: "opponent_status", connected: true });
   }
 
+  /** 不適切な発言を確かめる（要件#88）。見つけたら伏せ字の文を返し、言った人に警告する。MOD_MAX 回で負け */
+  private async screen(seat: number, text: string): Promise<{ text: string; flagged: boolean }> {
+    const m = await moderate(text, this.seats[seat].player.id);
+    if (!m.flagged) return { text, flagged: false };
+    this.strikes[seat]++;
+    const masked = pick(this.lang, { ja: "（不適切な発言のため表示しません）", en: "(Hidden: inappropriate remark)", zh: "（不当发言，已隐藏）" });
+    const reason = REPORT_OF[m.category];
+    addReport("system:moderation", this.seats[seat].player.id, this.id, reason, `auto(${m.by}) ${text.slice(0, 120)}`);
+    log("moderation", this.id, "seat", seat, m.category, m.by, "strike", this.strikes[seat]);
+    const left = MOD_MAX - this.strikes[seat];
+    this.send(seat, {
+      t: "warning",
+      category: m.category,
+      strikes: this.strikes[seat],
+      max: MOD_MAX,
+      text: left > 0
+        ? pick(this.lang, { ja: `警告: 不適切な発言です（${CATEGORY_JA[m.category]}）。あと${left}回で負けになります。`, en: `Warning: inappropriate remark (${m.category}). ${left} more and you lose.`, zh: `警告：不当发言（${m.category}）。再有${left}次将判负。` })
+        : pick(this.lang, { ja: "不適切な発言が続いたため、負けになりました。", en: "Too many inappropriate remarks. You lose.", zh: "不当发言过多，判负。" }),
+    });
+    this.send(1 - seat, { t: "notice", text: pick(this.lang, { ja: "相手の不適切な発言を伏せました。", en: "An inappropriate remark from your opponent was hidden.", zh: "已隐藏对手的不当发言。" }) });
+    if (this.strikes[seat] >= MOD_MAX) this.forfeit(seat, "moderation");
+    return { text: masked, flagged: true };
+  }
+
   forfeit(seat: number, reason: string): void {
     if (this.finished) return;
     this.finish(reason, seat);
@@ -565,3 +618,13 @@ export class Match {
     this.onEnd?.(this);
   }
 }
+
+/** 不適切な発言で負けになる回数（要件#88） */
+const MOD_MAX = 3;
+const REPORT_OF: Record<ModerationCategory, "sexual" | "abuse" | "personal_info" | "other"> = {
+  sexual: "sexual", hate: "abuse", threat: "abuse", personal_info: "personal_info", none: "other",
+};
+const CATEGORY_JA: Record<ModerationCategory, string> = {
+  sexual: "性的な内容", hate: "差別・ひどい暴言", threat: "脅し", personal_info: "個人情報", none: "その他",
+};
+

@@ -41,6 +41,12 @@ const OFFTOPIC: Array = [
 static var _words: Dictionary = {}
 
 
+## 今の言語の配列から1つ選ぶ
+static func pick_lang(ja: Array, en: Array, zh: Array) -> String:
+	var l: String = _lang()
+	return _pick(en if l == "en" else (zh if l == "zh" else ja))
+
+
 static func _lang() -> String:
 	return GameSettings.language if COMMENTS.has(GameSettings.language) else "ja"
 

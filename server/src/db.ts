@@ -40,6 +40,16 @@ export function openDb(): DatabaseSync {
       created_at INTEGER NOT NULL,
       last_seen INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      match_id TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      UNIQUE (reporter_id, target_id, match_id)
+    );
     CREATE TABLE IF NOT EXISTS matches (
       id TEXT PRIMARY KEY,
       kind TEXT NOT NULL,
@@ -142,6 +152,11 @@ export function cleanAvatar(raw: unknown): string {
     casual: id(r.casual),
     uniform: id(r.uniform),
     acc: id(r.acc),
+    // ネタのアイテム（要件#86）
+    head: id(r.head),
+    face: id(r.face),
+    hand: id(r.hand),
+    body: id(r.body),
   };
   return JSON.stringify(out);
 }
@@ -205,3 +220,22 @@ export function leaderboard(limit: number): Array<{ rank: number; name: string; 
     .all(limit) as Array<{ name: string; rating: number; wins: number; losses: number }>;
   return rows.map((r, i) => ({ rank: i + 1, ...r }));
 }
+
+/** プレイヤーの通報（要件#87）。理由は決まった中から。メモは 200 文字まで */
+export const REPORT_REASONS = ["abuse", "sexual", "personal_info", "cheating", "afk", "other"] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** 通報を保存する。同じ相手・同じ試合への2回目は保存しない（false） */
+export function addReport(reporterId: string, targetId: string, matchId: string, reason: ReportReason, note: string): boolean {
+  const r = openDb()
+    .prepare("INSERT OR IGNORE INTO reports (reporter_id, target_id, match_id, reason, note, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(reporterId, targetId, matchId, reason, note, Date.now());
+  return Number(r.changes) > 0;
+}
+
+/** 運営が見る用: そのプレイヤーへの通報の数 */
+export function reportCount(targetId: string): number {
+  const row = openDb().prepare("SELECT COUNT(*) AS n FROM reports WHERE target_id = ?").get(targetId) as { n: number };
+  return Number(row.n);
+}
+

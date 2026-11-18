@@ -65,6 +65,12 @@ var _rounds: int = 2
 var _smoke_n: int = 0
 
 
+## 通報する相手と試合（要件#87）
+func report_target() -> Dictionary:
+	var op: Dictionary = _match.get("opponent", {}) if typeof(_match.get("opponent", null)) == TYPE_DICTIONARY else {}
+	return {"player_id": str(op.get("id", "")), "name": str(op.get("name", "")), "match_id": str(_match.get("match_id", ""))}
+
+
 func setup(main_node, hud_node, api_node) -> void:
 	main = main_node
 	hud = hud_node
@@ -280,6 +286,12 @@ func _on_message(msg: Dictionary) -> void:
 				hud.set_comment(tr("相手の接続が切れました。%d 秒待って戻らなければ、あなたの勝ちです。") % int(msg.get("grace_seconds", 20)))
 		"notice":
 			hud.set_comment(str(msg.get("text", "")))
+		"warning":
+			# 不適切な発言の警告（要件#88）
+			hud.show_banner(tr("警告"), UI.SHU)
+			hud.set_comment(str(msg.get("text", "")))
+			main.sfx.play("warn", 0.8)
+			main.shake(0.15)
 		_:
 			pass
 
@@ -309,6 +321,8 @@ func _on_match_found(msg: Dictionary) -> void:
 			op_name = tr("「%s」") % Titles.title_name(op_title) + op_name
 		hud.set_comment(tr("対戦相手: %s（%s・%d）") % [op_name, str(op.get("rank", "")), int(op.get("rating", 0))])
 		main.show_opponent_tag(op)
+		# 通報ボタン（要件#87。ブロックはない）
+		hud.set_tools([["report", tr("通報")]])
 		hud.show_banner(tr("対戦開始！"), UI.POP)
 		main.sfx.play("door")
 	var voice_format: bool = str(msg.get("format", "text")) == "voice"

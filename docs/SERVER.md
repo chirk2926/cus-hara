@@ -227,3 +227,11 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | レーティング・ランキング | サーバー（SQLite） | EOS の統計はゲームから書き込むので、改造で書き換えられる | 不正対策のためサーバーのまま。ランキングを出すのは小さな問い合わせ1つで、サーバー代はほぼかからない |
 | 対戦の声 | サーバーが相手に中継し、文字起こしもする | EOS のボイスチャット（RTC）で相手に直接届けられる | 判定のための文字起こしにサーバーへの送信は残るので、減るのは中継の通信量だけ（1回 最大約0.4MB）。実機で確かめられる環境ができてから検討 |
 
+## 10. 通報と不適切な発言（要件#87, #88）
+- プレイヤーの通報と、自動で見つけた不適切な発言は `reports` テーブルに入る（reporter_id が `system:moderation` のものが自動）。
+- 確かめ方の例（サーバーの中で）:
+  ```bash
+  sqlite3 server/var/cushara.db "SELECT datetime(created_at/1000,'unixepoch'), reporter_id, target_id, reason, note FROM reports ORDER BY id DESC LIMIT 50;"
+  ```
+- 不適切な発言の検出は、キーワード（`server/src/moderation.ts`）と、AI が使えるときは AI（`moderateWithLlm`）。AI の呼び出しは1人1分に30回まで。
+

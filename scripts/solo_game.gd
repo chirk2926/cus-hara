@@ -18,7 +18,16 @@ signal finished(stage_id: String, results: Array, total: int)
 signal _reply(text: String)
 
 const CUSTOMERS_PER_SHIFT: int = 4
-const BASE_ANGER_RATE: float = 0.8      # 返事を考えている間、1秒あたりに上がる怒り（要件#49で 1.25 から下げた）
+const BASE_ANGER_RATE: float = 0.56     # 返事を考えている間、1秒あたりに上がる怒り（要件#49で 1.25→0.8、要件#86で 0.7倍）
+## 納得の上がり方の倍率（要件#86: 全体をやさしく）。ハードコアはここからさらに厳しく
+const RESOLVE_MUL: float = 1.3
+## ハードコアモード（要件#86）: 怒り 1.6倍・納得 0.7倍・店長なし・定型文なし・ヒントなし・点数と給与 1.5倍。メンタルランク 10 で解放
+const HARD_ANGER_MUL: float = 1.6
+const HARD_RESOLVE_MUL: float = 0.7
+const HARD_REWARD_MUL: float = 1.5
+const HARD_UNLOCK_RANK: int = 10
+## 店長を呼ぶ（要件#86）: 1シフト1回。呼んだお客さんの点数は半分
+const CALL_MANAGER_POINTS: float = 0.5
 const RATE_STEP: float = 0.08           # お客さん1人ごとの上昇率（要件#49で 0.15 から下げた）
 const SCORE_RESOLVED: int = 1000
 const SCORE_EXPLODED: int = -300
@@ -56,13 +65,22 @@ const ACTION_PREFIX: String = "\u0001action:"
 const WILD_CHANCE: float = 0.18
 const WILD_BONUS: float = 1.5
 ## 店長のアドバイス: 返事の番が来るとき、怒りが高い（または話が長引いている）と、この確率で店長が来る（1シフト1回まで）
-const MANAGER_CHANCE: float = 0.4
+const MANAGER_CHANCE: float = 0.15    # 要件#86: 怒りが 80 以上のときだけ、この確率
+const MANAGER_ANGER: float = 80.0
 const MANAGER_CALM: float = 10.0    # 店長の顔を見てお客さんが落ち着く分
 const MANAGER_MENTAL: float = 10.0  # 店員のメンタルの回復
 
 var main = null
 var hud = null
 var paused: bool = false
+## ハードコアで遊んでいる（要件#86）
+var hardcore: bool = false
+var _manager_called: bool = false     # このシフトで店長を呼んだ
+var _called_here: bool = false        # このお客さんで店長を呼んだ（点数が半分）
+## 会話ログ（今のお客さんだけ。要件#86）: {"role": "customer"|"staff"|"manager", "text"}
+var log_lines: Array = []
+var log_open: bool = false
+var _alt_id_asked: bool = false
 
 var _run: int = 0
 var _active: bool = false
@@ -123,6 +141,7 @@ func attach_hud(hud_node) -> void:
 	hud = hud_node
 	hud.reply_submitted.connect(_on_reply)
 	hud.action_pressed.connect(_on_action)
+	hud.tool_pressed.connect(_on_tool)
 
 
 func is_active() -> bool:
@@ -155,13 +174,16 @@ func start(stage_id: String, stage_name: String) -> void:
 	_suspended = false
 	_crane_wins = 0
 	_payout = GameSettings.effective_payout()
+	_manager_called = false
+	log_lines = []
+	_update_tools()
 	summary = {}
 	_t_shift = {"impolite": false, "discount": 0, "age_total": 0, "age_ok": 0, "manager": false, "mental_min": MENTAL_MAX,
 		"freebies": 0, "wild": false, "spend": false, "mental_lost": false, "calm_n": 0, "oneturn_n": 0, "age_refused": 0}
 	_mental = MENTAL_MAX
 	hud.set_mental(_mental)
 	hud.set_voice_mode(false)
-	hud.set_quick_phrases(hud.DEFAULT_PHRASES)
+	hud.set_quick_phrases([] if hardcore else hud.DEFAULT_PHRASES)
 	for i in range(CUSTOMERS_PER_SHIFT):
 		_index = i
 		await _play_customer(my_run)
@@ -197,7 +219,15 @@ func _finish_summary() -> void:
 		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 	_track_shift(review)
 	# 給与（要件#82）: オフラインは HP、オンラインは KAS。売上がマイナスでも減らない
-	summary["pay"] = Shop.pay_shift(_sales, not bool(summary["offline"]))
+	summary["pay"] = Shop.pay_shift(int(float(_sales) * (HARD_REWARD_MUL if hardcore else 1.0)), not bool(summary["offline"]))
+	summary["hardcore"] = hardcore
+	if hardcore:
+		_track_hardcore()
+	# レビューログ（要件#86）
+	var d: Dictionary = Time.get_datetime_dict_from_system()
+	GameSettings.add_review_log({"date": "%04d-%02d-%02d %02d:%02d" % [int(d["year"]), int(d["month"]), int(d["day"]), int(d["hour"]), int(d["minute"])],
+		"stage": _stage_id, "review": review, "reviews": summary["reviews"], "sales": _sales, "total": _total, "hard": hardcore,
+		"results": _results.map(func(r: Dictionary) -> Dictionary: return {"title": str(r.get("title", "")), "outcome": str(r.get("outcome", ""))})})
 	summary["new_titles"] = Titles.check()
 	GameSettings.save_settings()
 
@@ -342,7 +372,7 @@ func _add_sales(outcome: String) -> void:
 
 func _process(delta: float) -> void:
 	# 台の前に筐体のデータを見に行っている間は、怒りは止まる（要件#66）
-	if not _active or not _player_turn or paused or main.machine_view_open or main.debug_flag("anger_stop"):
+	if not _active or not _player_turn or paused or main.machine_view_open or main.debug_flag("anger_stop") or log_open:
 		return
 	_anger = minf(100.0, _anger + _rate * delta)
 	_refresh(true)
@@ -377,6 +407,74 @@ func _on_action(id: String) -> void:
 	if _active and _player_turn and not paused and main.mode == "solo":
 		_player_turn = false
 		_reply.emit(ACTION_PREFIX + id)
+
+
+## 画面の上のボタン（要件#86）: 会話ログ・ペイアウト（ゲームセンター）・店長を呼ぶ（1シフト1回）
+func _update_tools() -> void:
+	var tools: Array = [["log", tr("会話ログ")]]
+	if _stage_id == "arcade":
+		tools.append(["payout", tr("ペイアウト")])
+	if not hardcore:
+		tools.append(["call_manager", tr("店長を呼ぶ（1回）") if not _manager_called else tr("店長は呼んだ")])
+	hud.set_tools(tools, {"call_manager": not _manager_called})
+
+
+func _on_tool(id: String) -> void:
+	if not _active or main.mode != "solo":
+		return
+	match id:
+		"log":
+			main.show_talk_log(log_lines, str(_cust.get("title", "")))
+		"payout":
+			main.show_payout_panel()
+		"call_manager":
+			if _manager_called or hardcore or not _player_turn or paused or _manager_used:
+				if _manager_used and not _manager_called:
+					hud.set_comment(tr("店長はさっき来たばかりだ。このシフトはもう呼べない。"))
+				return
+			_manager_called = true
+			_called_here = true
+			GameSettings.stat_add("manager_called")
+			_player_turn = false
+			_update_tools()
+			var my_run: int = _run
+			await _manager_visit(my_run, true)
+			if my_run != _run or not _active:
+				return
+			_player_turn = true
+			hud.set_input_enabled(true, tr("ここに返事を書く…"))
+
+
+## ペイアウトを変えたら、ここからの売上・レビューに効かせる
+func refresh_payout() -> void:
+	_payout = GameSettings.effective_payout()
+
+
+## ハードコアの記録（称号用。要件#86）
+func _track_hardcore() -> void:
+	var count: Dictionary = {}
+	for r in _results:
+		var o: String = str((r as Dictionary).get("outcome", ""))
+		count[o] = int(count.get(o, 0)) + 1
+	var completed: bool = not _suspended and _results.size() >= CUSTOMERS_PER_SHIFT and int(count.get("breakdown", 0)) == 0
+	if not completed:
+		return
+	GameSettings.stat_add("hard_shifts")
+	var resolved: int = int(count.get("resolved", 0)) + int(count.get("age_ok", 0)) + int(count.get("age_refused", 0))
+	if resolved >= CUSTOMERS_PER_SHIFT:
+		GameSettings.stat_add("hard_perfect")
+	if int(count.get("yield", 0)) == 0:
+		GameSettings.stat_add("hard_no_yield")
+	GameSettings.stat_max("hard_best", _total)
+
+
+## 景品だけが目当てか（土下座・返金・タダなど、ほかのものも求めていない）
+func _prize_only() -> bool:
+	var d: String = str(_cust.get("demand", "")).to_lower()
+	for w in ["土下座", "返金", "返せ", "タダ", "無料", "謝罪", "補償", "お金", "金を", "もう1", "もう一", "kneel", "refund", "free", "money", "compens", "another", "apolog", "下跪", "退款", "免费", "钱", "赔", "再给", "道歉"]:
+		if d.find(w) >= 0:
+			return false
+	return true
 
 
 func _change_mental(delta: float) -> void:
@@ -418,9 +516,51 @@ func _is_age_check() -> bool:
 
 
 func _age_buttons() -> Array:
+	var out: Array = [["id_check", ShopActions.label("id_check")]]
+	if not _alt_id_asked:
+		out.append(["ask_other_id", ShopActions.label("ask_other_id")])
 	if _age_mode() == "konbini":
-		return [["id_check", ShopActions.label("id_check")], ["age_allow", ShopActions.label("sell_ok")], ["age_refuse", ShopActions.label("sell_refuse")]]
-	return [["id_check", ShopActions.label("id_check")], ["age_allow", ShopActions.label("age_allow")], ["age_refuse", ShopActions.label("age_refuse")]]
+		out.append_array([["age_allow", ShopActions.label("sell_ok")], ["age_refuse", ShopActions.label("sell_refuse")]])
+	else:
+		out.append_array([["age_allow", ShopActions.label("age_allow")], ["age_refuse", ShopActions.label("age_refuse")]])
+	return out
+
+
+## 「別の身分証を見せて」と言った・押した（要件#86）。持っていれば本人の公的な身分証を出し、なければ「持ってない」
+func _wants_other_id(reply: String) -> bool:
+	var words: Array = ["別の身分証", "他の身分証", "ほかの身分証", "別のもの", "免許証", "マイナンバー", "パスポート", "another id", "other id", "different id", "license", "passport", "其他证件", "别的证件", "驾照", "护照"]
+	var t: String = reply.to_lower()
+	for w in words:
+		if t.find(str(w)) >= 0:
+			return true
+	return false
+
+
+func _ask_other_id(speaker: String) -> void:
+	_alt_id_asked = true
+	_turns += 1
+	var ag: Dictionary = _cust.get("age", {})
+	var alt: Dictionary = ag.get("alt", {}) if typeof(ag.get("alt", null)) == TYPE_DICTIONARY else {}
+	var line: String = ""
+	if not alt.is_empty():
+		for k in alt:
+			ag[k] = alt[k]
+		ag["must_leave"] = int(ag.get("shown_age", 0)) < int(ag.get("limit", 18))
+		line = str(Judge.pick_lang(["……じゃあ、これでいい？", "……はい、これ。", "あ、こっちならあるけど。"], ["...Fine, will this do?", "...Here.", "Oh, I've got this one."], ["……那这个行吧？", "……给。", "啊，这个倒是有。"]))
+		main.show_id_card(_cust)
+		if not hardcore:
+			hud.set_comment(tr("別の身分証が出てきた。もう一度、種類・顔写真・生年月日を確かめよう。"))
+	else:
+		ag["must_leave"] = true
+		ag["no_id"] = true
+		line = str(Judge.pick_lang(["え、ほかのは持ってないけど……", "そんなの持ち歩いてないよ。", "……それしかない。"], ["Uh, I don't have anything else...", "I don't carry that around.", "...That's all I've got."], ["诶，我没带别的……", "谁随身带那个啊。", "……就只有这个。"]))
+		if not hardcore:
+			hud.set_comment(tr("公的な身分証がないなら、年齢は確かめられない。退店をお願いしよう。"))
+	_cust["age"] = ag
+	hud.set_actions(_age_buttons())
+	log_lines.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label("ask_other_id")})
+	log_lines.append({"role": "customer", "text": line})
+	await _customer_line(speaker, line, "")
 
 
 ## 年齢確認の種類: "arcade"（夜の入店）| "konbini"（お酒・たばこ。要件#63）
@@ -453,13 +593,19 @@ func _make_wild_look() -> void:
 
 ## 店長がアドバイスに来るイベント（要件#52）。来ている間は怒りが止まる（_player_turn が false のため）
 func _maybe_manager_visit(my_run: int) -> void:
-	if _manager_used or _turns < 1:
+	if _manager_used or _turns < 1 or (hardcore and not main.smoke):
 		return
-	var tense: bool = _anger >= 60.0 or _turns >= 3
+	# 困っているとき（怒り 80 以上）だけ、低い確率で来る（要件#86）
+	var tense: bool = _anger >= MANAGER_ANGER
 	if not tense and not main.smoke and not main.debug_flag("manager"):
 		return
 	if not (randf() < MANAGER_CHANCE or main.smoke or main.debug_flag("manager")):
 		return
+	await _manager_visit(my_run, false)
+
+
+## 店長が来てアドバイスする。called は「店長を呼ぶ」ボタンで呼んだとき
+func _manager_visit(my_run: int, called: bool) -> void:
 	_manager_used = true
 	GameSettings.stat_add("manager_visits")
 	_t_shift["manager"] = true
@@ -484,7 +630,10 @@ func _maybe_manager_visit(my_run: int) -> void:
 	if lines.is_empty():
 		lines.append(tr("メモの規定を確かめて、できることを具体的に伝えろ。"))
 	lines.append(tr("要求は飲むなよ。"))
+	if called:
+		lines.append(tr("（呼んだので、このお客さんの点数は半分になる）"))
 	hud.set_comment(tr("店長: ") + " ".join(lines))
+	log_lines.append({"role": "manager", "text": " ".join(lines)})
 	main.manager_talk(3.0)
 	_anger = maxf(0.0, _anger - MANAGER_CALM)
 	_change_mental(MANAGER_MENTAL)
@@ -630,12 +779,16 @@ func _play_customer(my_run: int) -> void:
 	_turns = 0
 	_history = []
 	_used = []
-	_rate = BASE_ANGER_RATE * float(_cust.get("patience", 1.0)) * (1.0 + RATE_STEP * float(_index)) * GameSettings.answer_rate()
+	_rate = BASE_ANGER_RATE * float(_cust.get("patience", 1.0)) * (1.0 + RATE_STEP * float(_index)) * GameSettings.answer_rate() * (HARD_ANGER_MUL if hardcore else 1.0)
 	_cost = 0
 	_sales_cost = 0
 	_crane_used = false
 	_data_seen = false
+	_called_here = false
+	log_lines = []
+	_alt_id_asked = false
 	_refresh(false)
+	_update_tools()
 
 	# ---- 来店
 	hud.set_status(tr("いらっしゃいませ…"))
@@ -664,6 +817,7 @@ func _play_customer(my_run: int) -> void:
 	hud.set_memo(str(_cust.get("title", "")), str(_cust.get("memo", "")), str(_cust.get("demand", "")))
 	var opening: String = str(_cust.get("opening", "……"))
 	_history.append({"role": "customer", "text": opening})
+	log_lines.append({"role": "customer", "text": opening})
 	await main.customer_say(speaker, opening, true)
 	if my_run != _run:
 		return
@@ -698,6 +852,13 @@ func _play_customer(my_run: int) -> void:
 		if reply.begins_with(ACTION_PREFIX):
 			# ---- 店の行動ボタン（要件#34）・台の調整（要件#37）
 			var id: String = reply.substr(ACTION_PREFIX.length())
+			if id == "ask_other_id":
+				if _is_age_check() and not _alt_id_asked:
+					hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
+					await _ask_other_id(speaker)
+					if my_run != _run:
+						return
+				continue
 			if id == "age_allow" or id == "age_refuse":
 				main.close_machine_data()
 				outcome = _age_outcome(id == "age_allow")
@@ -746,6 +907,7 @@ func _play_customer(my_run: int) -> void:
 			_turns += 1
 			hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
 			_history.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label(id)})
+			log_lines.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label(id)})
 			hud.set_status(tr("お客さんの反応を待っています…"))
 			_refresh(false)
 			res = await _judge_action(id)
@@ -766,10 +928,19 @@ func _play_customer(my_run: int) -> void:
 				_change_mental(-20.0)
 			if crane_cheat:
 				res["comment"] = str(res.get("comment", "")) + "\n" + tr("（アームは規定外の強さ…店長には内緒だ）")
+		elif _is_age_check() and not _alt_id_asked and _wants_other_id(reply):
+			# 話して別の身分証を頼んだ（要件#86）
+			hud.show_echo(tr("あなた: "), reply)
+			log_lines.append({"role": "staff", "text": reply})
+			await _ask_other_id(speaker)
+			if my_run != _run:
+				return
+			continue
 		else:
 			_turns += 1
 			hud.show_echo(tr("あなた: "), reply)
 			_history.append({"role": "staff", "text": reply})
+			log_lines.append({"role": "staff", "text": reply})
 			hud.set_status(tr("お客さんの反応を待っています…"))
 			_refresh(false)
 			res = await _judge(reply)
@@ -780,11 +951,26 @@ func _play_customer(my_run: int) -> void:
 
 		var a_delta: int = int(res.get("anger_delta", 0))
 		var r_delta: int = int(res.get("resolve_delta", 0))
+		# 納得の上がり方（要件#86: 全体をやさしく。ハードコアは厳しく）
+		if r_delta > 0:
+			r_delta = int(round(float(r_delta) * RESOLVE_MUL * (HARD_RESOLVE_MUL if hardcore else 1.0)))
+		# 景品を渡したら（引っかかった景品を取った・台の調整で取れた）、景品が目当てのお客さんはそれで納得。
+		# 景品のほかにも求めている（土下座・返金など）お客さんは、大きく納得して話は続く（要件#86）
+		var last_act: String = str(res.get("action", ""))
+		if last_act in ["crane_stuck", "crane_won"] and ShopActions.effect_kind(_cust, last_act) in ["good", "crane_won"]:
+			if _prize_only():
+				r_delta = maxi(r_delta, int(ceil(100.0 - _resolve)))
+				res["customer_reply"] = Judge.line(_cust, "resolved")
+			else:
+				r_delta = maxi(r_delta, 60)
 		_anger = clampf(_anger + float(a_delta), 0.0, 100.0)
 		_resolve = clampf(_resolve + float(r_delta), 0.0, 100.0)
 		_refresh(false)
 		hud.show_delta(a_delta, r_delta)
-		hud.set_comment(str(res.get("comment", "")))
+		var cm: String = str(res.get("comment", "")).strip_edges()
+		if hardcore:
+			cm = ""
+		hud.set_comment(cm if cm != "" else (tr("（ハードコア: ヒントはありません）") if hardcore else tr("落ち着いて、メモの規定どおりに。")))
 
 		# 店員のメンタル: 怒られるほど減り、落ち着かせると少し戻る
 		if a_delta > 0:
@@ -807,8 +993,12 @@ func _play_customer(my_run: int) -> void:
 			main.sfx.play("good", 1.2)
 		elif kind == "angry":
 			main.sfx.play("bad")
-		var line: String = str(res.get("customer_reply", "……"))
+		var line: String = str(res.get("customer_reply", "")).strip_edges()
+		# AIのセリフが空のときは台本のセリフ（要件#86: お客さんの言葉が出ないことがあった）
+		if line == "":
+			line = Judge.line(_cust, "resolved" if outcome == "resolved" else ("explode" if outcome == "explode" else ("yielded" if outcome == "yield" else ("calm" if a_delta < 0 else ("angry" if a_delta > 0 else "neutral")))))
 		_history.append({"role": "customer", "text": line})
+		log_lines.append({"role": "customer", "text": line})
 		await _customer_line(speaker, line, kind)
 		if my_run != _run:
 			return
@@ -857,11 +1047,18 @@ func _play_customer(my_run: int) -> void:
 		hud.set_comment(tr("あれを認めたら、次はもっと要求されるぞ。"))
 		main.sfx.play("lose")
 	else:
-		points = SCORE_EXPLODED
+		# 要注意人物はブチギレても減点なし（要件#86）
+		points = 0 if _wild else SCORE_EXPLODED
 		mood = "angry"
 		hud.show_banner(tr("ブチギレ！") + "  %d" % points, Color("#ff8a6a"))
 		main.sfx.play("explode")
 		main.shake(0.25)
+	# 店長を呼んだお客さんは点数半分（要件#86）。ハードコアは 1.5倍
+	if _called_here and points > 0:
+		points = int(float(points) * CALL_MANAGER_POINTS)
+		hud.set_comment(tr("店長を呼んだので、点数は半分。"))
+	if hardcore and points > 0:
+		points = int(float(points) * HARD_REWARD_MUL)
 	# 店員のメンタル（要件#38）
 	if outcome == "resolved":
 		_change_mental(8.0)

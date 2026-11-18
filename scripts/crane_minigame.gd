@@ -210,17 +210,10 @@ func _build_ui() -> void:
 		var row: HBoxContainer = UI.hbox(4)
 		qb.add_child(row)
 		row.add_child(UI.text(tr("景品原価 %s / ペイアウト率") % GameSettings.money(PRIZE_COST), UI.S_SMALL, UI.INK, UI.F_DOT))
-		var spin: SpinBox = SpinBox.new()
-		spin.min_value = PAYOUT_MIN
-		spin.max_value = PAYOUT_MAX
-		spin.step = 1
-		spin.value = _payout
-		spin.custom_minimum_size = Vector2(72, 0)
-		spin.get_line_edit().add_theme_font_size_override("font_size", UI.S_BODY)
-		spin.value_changed.connect(func(v: float) -> void:
-			_payout = clampi(int(v), PAYOUT_MIN, PAYOUT_MAX)
-			_refresh_ui())
-		row.add_child(spin)
+		# 全角の数字・◀▶・↑↓でも変えられる（要件#86）
+		row.add_child(UI.number_box(PAYOUT_MIN, PAYOUT_MAX, _payout, 5, func(v: int) -> void:
+			_payout = clampi(v, PAYOUT_MIN, PAYOUT_MAX)
+			_refresh_ui()))
 		row.add_child(UI.text("%", UI.S_SMALL, UI.INK, UI.F_DOT))
 		_cost_label = UI.text("", UI.S_BODY, UI.INK, UI.F_DOT)
 		qb.add_child(_cost_label)
@@ -428,10 +421,11 @@ func _win_chance(prize: Node3D) -> float:
 	var dist: float = Vector2(prize.position.x, prize.position.z).distance_to(Arcade.CHUTE)
 	var base: float = clampf(1.05 - dist / 0.65, 0.05, 0.95)
 	if _prob:
-		# 確率設定: ペイアウト率 30% → 1.0 倍、10% → 0.6、80% → 2.0。そろそろ払い出す台なら +0.25（要件#55, #57）
-		var pf: float = 0.4 + float(_payout) / 50.0
-		var bonus: float = 0.25 if _near_payout() else 0.0
-		return clampf(base * pf + 0.04 + bonus, 0.03, 0.96)
+		# 確率設定（要件#86）: 取れる確率はだいたいペイアウト率と同じ（10% なら 1割ほど）。
+		# 取り出し口に近い景品は少し取れやすく（0.7〜1.3倍）、たまに運よく取れる（+5%）。そろそろ払い出す台なら +15%
+		var pos_k: float = 0.7 + 0.6 * base
+		var bonus: float = 0.15 if _near_payout() else 0.0
+		return clampf(float(_payout) / 100.0 * pos_k + 0.05 + bonus, 0.03, 0.95)
 	var factor: float = 0.3 + 0.1 * float(_power)          # 強さ 4 → 0.7、6 → 0.9、10 → 1.3
 	return clampf(base * factor + 0.04, 0.03, 0.96)
 

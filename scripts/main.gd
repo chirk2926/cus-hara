@@ -70,9 +70,13 @@ var _sheet: Control = null
 var _server_label: Label = null
 var _player_card: Control = null
 var _version_label: Label = null
+var _bg_label: Label = null
 var _current_variant: String = "day"
 ## テスト版のデバッグパネルで切り替える1人用のイベント（要件#85）: wild / manager / age / police / anger_stop
 var debug: Dictionary = {}
+var _last_hard: bool = false
+var _hard_on: bool = false
+var _hard_toggle: Button = null   # 直前のシフトがハードコアだったか（「もう一度」用）
 var _lobby_status: Label = null
 var _lobby_code: Label = null
 var _current_stage: String = ""
@@ -174,6 +178,9 @@ func _make_hud() -> void:
 	_ui.move_child(_hud, 0)
 	_hud.visible = false
 	_hud.pause_pressed.connect(_show_pause)
+	_hud.tool_pressed.connect(func(id: String) -> void:
+		if id == "report" and mode == "versus":
+			show_report(_versus.report_target()))
 	_hud.talk_started.connect(_on_talk_started)
 
 
@@ -326,6 +333,7 @@ func enter_versus(stage_id: String) -> void:
 	display_anger = 0.0
 	_free_customer()
 	free_staff()
+	_hud.set_tools([])
 	set_stage(stage_id)
 	bgm.play("versus")
 
@@ -689,8 +697,10 @@ func _free_customer() -> void:
 
 # ---------------------------------------------------------------- 画面遷移
 
-func _start_solo(stage_id: String) -> void:
+func _start_solo(stage_id: String, hard: bool = false) -> void:
 	sfx.play("click")
+	_solo.hardcore = hard
+	_last_hard = hard
 	_close_sheet()
 	_title.visible = false
 	_hud.visible = true
@@ -709,6 +719,7 @@ func _abort_crane() -> void:
 
 ## チュートリアル（新人研修。要件#53）
 func start_tutorial() -> void:
+	_hud.set_tools([])
 	sfx.play("click")
 	_abort_crane()
 	_solo.abort()
@@ -791,10 +802,8 @@ func _show_titles() -> void:
 		var d: Dictionary = t
 		var id: String = str(d.get("id", ""))
 		var have: bool = GameSettings.unlocked_titles.has(id)
-		# レア度は★1〜5（要件#81）。ネタの称号には「ネタ」の印も
+		# レア度は★1〜5（要件#81）。ネタの印は出さない（要件#86）
 		var stars: String = "★".repeat(clampi(int(d.get("rarity", 1)), 1, 5))
-		if bool(d.get("joke", false)):
-			stars += " " + tr("［ネタ］")
 		var b: Button = UI.link("", UI.S_SMALL, UI.INK if have else UI.INK_SOFT)
 		b.text = "%s %s\n%s" % [stars, Titles.title_name(d) if have else tr("？？？"), Titles.title_desc(d)]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -848,6 +857,141 @@ func _offer_tutorial() -> void:
 		GameSettings.save_settings()
 		_close_sheet())
 	row.add_child(later)
+
+
+## 会話ログ（今のお客さんだけ。要件#86）。開いている間は怒りが止まる（紙の画面が開くと一時停止）
+func show_talk_log(lines: Array, title: String) -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(640, "center")
+	_sheet_title(col, tr("会話ログ") + ("  " + title if title != "" else ""))
+	col.add_child(UI.text(tr("見ている間、怒りは止まっています。"), UI.S_SMALL, UI.INK_SOFT))
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(600, 380)
+	col.add_child(scroll)
+	var list: VBoxContainer = UI.vbox(8)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	if lines.is_empty():
+		list.add_child(UI.text(tr("まだ会話がありません。"), UI.S_BODY, UI.INK_SOFT))
+	for l in lines:
+		var d: Dictionary = l
+		var role: String = str(d.get("role", ""))
+		var who: String = tr("お客さん") if role == "customer" else (tr("店長") if role == "manager" else tr("あなた"))
+		var color: Color = UI.SHU if role == "customer" else (Color("#8a6d00") if role == "manager" else UI.INK)
+		var row: VBoxContainer = UI.vbox(0)
+		row.add_child(UI.text(who, UI.S_SMALL, color, UI.F_BOLD))
+		var t: Label = UI.para(str(d.get("text", "")), UI.S_BODY, UI.INK, UI.F_HAND if role == "manager" else UI.F_BODY)
+		t.custom_minimum_size = Vector2(560, 0)
+		row.add_child(t)
+		list.add_child(row)
+	scroll.ready.connect(func() -> void: scroll.set_deferred("scroll_vertical", 100000))
+	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	close.pressed.connect(_close_sheet)
+	col.add_child(close)
+
+
+## ペイアウト率を変える（ゲームセンターのシフト中ならいつでも。要件#86）。開いている間は怒りが止まる
+func show_payout_panel() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(560, "center")
+	_sheet_title(col, tr("台の設定（ペイアウト率）"))
+	var mode_row: HBoxContainer = UI.hbox(8)
+	col.add_child(mode_row)
+	var group: ButtonGroup = ButtonGroup.new()
+	for m in [["power", "パワー設定"], ["prob", "確率設定"]]:
+		var mid: String = str(m[0])
+		var t: Button = UI.tag(tr(str(m[1])), UI.S_BODY)
+		t.toggle_mode = true
+		t.button_group = group
+		t.button_pressed = GameSettings.crane_mode == mid
+		t.pressed.connect(func() -> void:
+			GameSettings.crane_mode = mid
+			GameSettings.save_settings()
+			_solo.refresh_payout()
+			show_payout_panel())
+		mode_row.add_child(t)
+	var row: HBoxContainer = UI.hbox(8)
+	col.add_child(row)
+	row.add_child(UI.text(tr("ペイアウト率"), UI.S_BODY, UI.INK))
+	var cost: Label = UI.text("", UI.S_BODY, UI.INK, UI.F_DOT)
+	var upd: Callable = func(v: int) -> void:
+		GameSettings.crane_payout = clampi(v, 10, 80)
+		cost.text = "%d%%  " % GameSettings.crane_payout + tr("＝ 1個あたり %s") % GameSettings.money(CraneScript.cost_per_prize(GameSettings.crane_payout))
+	row.add_child(UI.number_box(10, 80, GameSettings.crane_payout, 5, upd))
+	upd.call(GameSettings.crane_payout)
+	col.add_child(cost)
+	if GameSettings.crane_mode != "prob":
+		col.add_child(UI.para(tr("いまはパワー設定です。ペイアウト率は「確率設定」にしたときに使われます。"), UI.S_SMALL, UI.SHU))
+	col.add_child(UI.para(tr("上げると「取れない」クレームが減り、店舗レビューが少し上がりやすい。下げると「取れない」クレームが増えるが、売上は上がる。（%d〜%d%%）") % [10, 80], UI.S_SMALL, UI.INK_SOFT))
+	var close: Button = UI.primary(tr("決める"), UI.S_BODY)
+	close.pressed.connect(func() -> void:
+		GameSettings.save_settings()
+		_solo.refresh_payout()
+		_close_sheet())
+	col.add_child(close)
+
+
+## プレイヤーの通報（要件#87）。理由を選んで送る。ブロックの機能はない。対戦中に開いても時間は止まらない
+const REPORT_REASONS: Array = [["abuse", "暴言・差別・脅し"], ["sexual", "性的な発言"], ["personal_info", "個人情報をさらした"], ["cheating", "ズル・不正"], ["afk", "放置・わざと負ける"], ["other", "その他"]]
+
+
+func show_report(target: Dictionary, back_to_result: Dictionary = {}) -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(560, "center")
+	_sheet_title(col, tr("通報する"))
+	col.add_child(UI.para(tr("相手: %s") % str(target.get("name", "")), UI.S_BODY, UI.INK))
+	col.add_child(UI.para(tr("運営が内容を確かめます。うその通報はしないでください。"), UI.S_SMALL, UI.INK_SOFT))
+	var group: ButtonGroup = ButtonGroup.new()
+	var chosen: Array = [""]
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	col.add_child(grid)
+	for r in REPORT_REASONS:
+		var rid: String = str(r[0])
+		var t: Button = UI.tag(tr(str(r[1])), UI.S_SMALL)
+		t.toggle_mode = true
+		t.button_group = group
+		t.pressed.connect(func() -> void: chosen[0] = rid)
+		grid.add_child(t)
+	var note: LineEdit = UI.field(tr("くわしく（なくてもよい・200文字まで）"), UI.S_BODY)
+	note.max_length = 200
+	col.add_child(note)
+	var status: Label = UI.text("", UI.S_SMALL, UI.SHU)
+	col.add_child(status)
+	var row: HBoxContainer = UI.hbox(20)
+	col.add_child(row)
+	var send: Button = UI.primary(tr("送る"), UI.S_BODY)
+	row.add_child(send)
+	var cancel: Button = UI.link(tr("やめる"), UI.S_BODY)
+	row.add_child(cancel)
+	var go_back: Callable = func() -> void:
+		if not back_to_result.is_empty():
+			var again: Dictionary = back_to_result.duplicate()
+			again["new_titles"] = []
+			_on_versus_finished(again)
+		else:
+			_close_sheet()
+	cancel.pressed.connect(go_back)
+	send.pressed.connect(func() -> void:
+		if str(chosen[0]) == "":
+			status.text = tr("理由を選んでください。")
+			return
+		send.disabled = true
+		var res: Dictionary = await api.request("POST", "/api/v1/report", {"player_id": str(target.get("player_id", "")), "match_id": str(target.get("match_id", "")), "reason": str(chosen[0]), "note": note.text})
+		if not is_instance_valid(status):
+			return
+		if bool(res.get("ok", false)):
+			GameSettings.stat_add("reports_sent")
+			status.add_theme_color_override("font_color", UI.OK)
+			status.text = tr("通報しました。ご協力ありがとうございます。")
+			await get_tree().create_timer(1.2).timeout
+			go_back.call()
+		else:
+			send.disabled = false
+			status.text = tr("送れませんでした: %s") % str(res.get("message", "")))
 
 
 func debug_flag(key: String) -> bool:
@@ -928,6 +1072,15 @@ func _refresh_title() -> void:
 	if _server_label == null:
 		return
 	_build_player_card()
+	if _bg_label != null:
+		_bg_label.text = tr("背景: %s") % Shop.item_name(Shop.equipped_item("bg"))
+	if _hard_toggle != null:
+		var unlocked: bool = GameSettings.mental_rank() >= SoloScript.HARD_UNLOCK_RANK or GameSettings.is_test
+		_hard_toggle.disabled = not unlocked
+		_hard_toggle.text = tr("ハードコア") if unlocked else tr("ハードコア（メンタル %d で解放）") % SoloScript.HARD_UNLOCK_RANK
+		if not unlocked:
+			_hard_toggle.button_pressed = false
+			_hard_on = false
 	if _server_info.has("error"):
 		_server_label.text = tr("サーバーにつながりません（1人用は台本で遊べます）")
 		_server_label.add_theme_color_override("font_color", UI.SHU)
@@ -985,12 +1138,23 @@ func _build_title() -> void:
 	b.add_child(UI.para(game_title, UI.S_HUGE if game_title.length() <= 12 else UI.S_HEAD, UI.INK, UI.F_SIGN))
 	b.add_child(UI.text(tr("時給：お客様の笑顔（たぶん）"), UI.S_BODY, UI.INK_SOFT, UI.F_HAND))
 	b.add_child(UI.gap(12))
-	b.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
+	var pick_row: HBoxContainer = UI.hbox(8)
+	b.add_child(pick_row)
+	pick_row.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
+	pick_row.add_child(UI.spacer())
+	# ハードコア（要件#86）: メンタルランク 10 で解放
+	_hard_toggle = UI.tag(tr("ハードコア"), UI.S_SMALL)
+	_hard_toggle.toggle_mode = true
+	_hard_toggle.toggled.connect(func(on: bool) -> void:
+		_hard_on = on
+		sfx.play("click"))
+	pick_row.add_child(_hard_toggle)
 	b.add_child(UI.rule(UI.INK, 2))
 	for sid in STAGE_ORDER:
 		var info: Dictionary = STAGES[sid]
 		var row: Button = UI.link(tr(str(info["name"])) + "　→", UI.S_LEAD)
-		row.pressed.connect(_start_solo.bind(str(sid)))
+		var sid_s: String = str(sid)
+		row.pressed.connect(func() -> void: _start_solo(sid_s, _hard_on))
 		b.add_child(row)
 		b.add_child(UI.para(tr(str(info["desc"])), UI.S_SMALL, UI.INK_SOFT))
 		b.add_child(UI.rule(UI.PAPER_DIM, 1))
@@ -1006,9 +1170,18 @@ func _build_title() -> void:
 	var ttl: Button = UI.link(tr("称号 →"), UI.S_BODY)
 	ttl.pressed.connect(_show_titles)
 	links.add_child(ttl)
-	var shop: Button = UI.link(tr("ショップ →"), UI.S_BODY)
+	var rec: Button = UI.link(tr("記録 →"), UI.S_BODY)
+	rec.pressed.connect(_show_records)
+	links.add_child(rec)
+	# ショップは大きなボタンで（要件#86: 開くボタンがわかりにくかった）
+	var shop: Button = UI.tag(tr("ショップ（背景ガチャ・名札・キャラクター・両替）"), UI.S_BODY)
+	shop.add_theme_stylebox_override("normal", UI.paper_style(UI.POP, 10, 2, 3))
+	shop.add_theme_stylebox_override("hover", UI.paper_style(UI.POP.lightened(0.2), 10, 2, 3))
+	shop.add_theme_stylebox_override("pressed", UI.paper_style(UI.POP.darkened(0.1), 10, 2, 1))
+	shop.add_theme_color_override("font_color", UI.INK)
+	shop.add_theme_color_override("font_hover_color", UI.INK)
 	shop.pressed.connect(_show_shop)
-	links.add_child(shop)
+	b.add_child(shop)
 	b.add_child(UI.gap(8))
 
 	# 下の「切り取りタブ」（求人ポスターの電話番号の短冊）
@@ -1043,6 +1216,20 @@ func _build_title() -> void:
 	_title.add_child(srv)
 	_server_label = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_DOT)
 	srv.add_child(_server_label)
+	# 下の真ん中: いまの背景の名前（要件#86）
+	_bg_label = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_BOLD)
+	_bg_label.anchor_left = 0.5
+	_bg_label.anchor_right = 0.5
+	_bg_label.anchor_top = 1.0
+	_bg_label.anchor_bottom = 1.0
+	_bg_label.offset_left = -260
+	_bg_label.offset_right = 260
+	_bg_label.offset_top = -38
+	_bg_label.offset_bottom = -12
+	_bg_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bg_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_bg_label.add_theme_constant_override("outline_size", 6)
+	_title.add_child(_bg_label)
 	# 右下: ゲームのバージョン
 	_version_label = UI.text("ver " + str(ProjectSettings.get_setting("application/config/version", "0.1.0")), UI.S_SMALL, Color(UI.PAPER, 0.85), UI.F_DOT)
 	_version_label.anchor_left = 1.0
@@ -1059,80 +1246,132 @@ func _build_title() -> void:
 	_title.add_child(_version_label)
 
 
-## 右上: 名前・レート・メンタルランク・HP/KAS をゲームの画面らしく（要件#82）
+## 右上: 首から下げる社員証（要件#82, #86）。名前・称号・レート・メンタルランク・HP/KAS を、印刷の文字とハンコと手書きで
 func _build_player_card() -> void:
 	if _player_card != null and is_instance_valid(_player_card):
 		_player_card.queue_free()
 	var p: Dictionary = GameSettings.last_profile
+	var root: Control = Control.new()
+	root.anchor_left = 1.0
+	root.anchor_right = 1.0
+	root.offset_left = -372
+	root.offset_right = -28
+	root.offset_top = 0
+	root.offset_bottom = 420
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title.add_child(root)
+	_player_card = root
+	# ストラップ（画面の上から下がっている）
+	for side in [-1.0, 1.0]:
+		var strap: ColorRect = ColorRect.new()
+		strap.color = Color("#c23b33")
+		strap.size = Vector2(14, 70)
+		strap.position = Vector2(172 + side * 46 - 7, -8)
+		strap.rotation_degrees = -side * 14.0
+		strap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(strap)
+	var clip: ColorRect = ColorRect.new()
+	clip.color = Color("#9aa0a8")
+	clip.size = Vector2(34, 14)
+	clip.position = Vector2(155, 52)
+	root.add_child(clip)
+	# カード本体（白いプラスチック）
 	var card: PanelContainer = PanelContainer.new()
-	var sb: StyleBoxFlat = UI.flat_style(Color(0.09, 0.07, 0.14, 0.9), 14, 10)
-	sb.border_color = UI.POP
-	sb.set_border_width_all(2)
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 8
+	var sb: StyleBoxFlat = UI.flat_style(Color("#fbfbf8"), 0, 12)
+	sb.border_color = Color("#d6d3cc")
+	sb.set_border_width_all(1)
+	sb.shadow_color = Color(0, 0, 0, 0.35)
+	sb.shadow_size = 6
+	sb.shadow_offset = Vector2(3, 5)
 	card.add_theme_stylebox_override("panel", sb)
-	card.anchor_left = 1.0
-	card.anchor_right = 1.0
-	card.offset_left = -384
-	card.offset_right = -20
-	card.offset_top = 20
-	card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	card.position = Vector2(0, 62)
+	card.custom_minimum_size = Vector2(344, 0)
+	card.rotation_degrees = 1.5
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title.add_child(card)
-	_player_card = card
-	var col: VBoxContainer = UI.vbox(10)
+	root.add_child(card)
+	var col: VBoxContainer = UI.vbox(0)
 	card.add_child(col)
-	var head: HBoxContainer = UI.hbox(8)
-	col.add_child(head)
-	head.add_child(UI.text("STAFF CARD", UI.S_SMALL, UI.POP, UI.F_SIGN))
-	head.add_child(UI.spacer())
-	head.add_child(UI.text(tr(str(p.get("rank", ""))) if not p.is_empty() else tr("未登録"), UI.S_SMALL, UI.PAPER_DIM, UI.F_DOT))
+	# 上の帯: 店の名前
+	var band: PanelContainer = PanelContainer.new()
+	var bsb: StyleBoxFlat = UI.flat_style(UI.SHU, 8, 0)
+	bsb.corner_radius_top_left = 12
+	bsb.corner_radius_top_right = 12
+	band.add_theme_stylebox_override("panel", bsb)
+	col.add_child(band)
+	var brow: HBoxContainer = UI.hbox(8)
+	band.add_child(brow)
+	brow.add_child(UI.text(tr("従業員証"), UI.S_BODY, UI.PAPER, UI.F_SIGN))
+	brow.add_child(UI.spacer())
+	brow.add_child(UI.text("No.%06d" % (absi(str(p.get("id", GameSettings.player_name)).hash()) % 1000000), UI.S_SMALL, Color(UI.PAPER, 0.85), UI.F_DOT))
+	var body: MarginContainer = MarginContainer.new()
+	for side2 in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		body.add_theme_constant_override(side2, 12)
+	col.add_child(body)
+	var bc: VBoxContainer = UI.vbox(8)
+	body.add_child(bc)
+	var top: HBoxContainer = UI.hbox(12)
+	bc.add_child(top)
+	# 顔写真（自分のキャラクター。作っていなければふつうの店員）
+	var photo_frame: PanelContainer = PanelContainer.new()
+	var pf: StyleBoxFlat = UI.flat_style(Color("#d8e4ee"), 0, 2)
+	pf.border_color = Color("#9aa7b4")
+	pf.set_border_width_all(1)
+	photo_frame.add_theme_stylebox_override("panel", pf)
+	top.add_child(photo_frame)
+	var look: Dictionary = Shop.avatar_look(Shop.avatar_dict(), "uniform")
+	photo_frame.add_child(avatar_preview(look, Vector2(92, 116), true))
+	var info: VBoxContainer = UI.vbox(2)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(info)
+	var tname: String = Titles.equipped_name()
+	if tname != "":
+		info.add_child(UI.text("「%s」" % tname, UI.S_SMALL, UI.INK_SOFT, UI.F_BOLD))
 	var pname: String = str(p.get("name", GameSettings.player_name)) if not p.is_empty() else (GameSettings.player_name if GameSettings.player_name != "" else tr("新人"))
-	col.add_child(Shop.name_tag(pname, Titles.equipped_name(), Shop.tag_dict(), UI.S_LEAD))
-	# レート
-	var rate_row: HBoxContainer = UI.hbox(10)
-	col.add_child(rate_row)
-	rate_row.add_child(_badge("RATE", str(int(p.get("rating", 1000))) if not p.is_empty() else "----", UI.POP))
-	var mb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
-	rate_row.add_child(_badge(tr("対戦メンタル"), "%d %s" % [mb, GameSettings.mental_name_b(mb)], Color("#7fd3ff")))
-	# メンタル A と次のランクまでのバー
+	# 名前（ショップの名札の飾りを使う）
+	info.add_child(Shop.name_tag(pname, "", Shop.tag_dict(), UI.S_BODY))
+	info.add_child(UI.gap(4))
+	info.add_child(UI.text(tr("役職") + "  " + (tr(str(p.get("rank", ""))) if not p.is_empty() else tr("見習い")), UI.S_SMALL, UI.INK, UI.F_DOT))
+	info.add_child(UI.text(tr("レート") + "  " + (str(int(p.get("rating", 1000))) if not p.is_empty() else "----"), UI.S_SMALL, UI.INK, UI.F_DOT))
+	bc.add_child(UI.rule(Color("#d6d3cc"), 1))
+	# メンタル（手書きの「正」の字で数える）と対戦メンタル（ハンコ）
 	var ra: int = GameSettings.mental_rank()
 	var mrow: HBoxContainer = UI.hbox(10)
-	col.add_child(mrow)
-	var circle: PanelContainer = PanelContainer.new()
-	var cs: StyleBoxFlat = UI.flat_style(UI.SHU, 0, 30)
-	cs.border_color = UI.POP
-	cs.set_border_width_all(2)
-	circle.add_theme_stylebox_override("panel", cs)
-	circle.custom_minimum_size = Vector2(52, 52)
-	var num: Label = UI.text(str(ra), UI.S_LEAD, UI.PAPER, UI.F_SIGN)
-	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	circle.add_child(num)
-	mrow.add_child(circle)
-	var mcol: VBoxContainer = UI.vbox(4)
+	bc.add_child(mrow)
+	var mcol: VBoxContainer = UI.vbox(0)
 	mcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mrow.add_child(mcol)
-	mcol.add_child(UI.text(tr("メンタル") + "  「%s」" % GameSettings.mental_name_a(ra), UI.S_BODY, UI.PAPER, UI.F_BOLD))
-	var bar: ProgressBar = ProgressBar.new()
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 10)
-	bar.add_theme_stylebox_override("background", UI.flat_style(Color(1, 1, 1, 0.12), 0, 5))
-	bar.add_theme_stylebox_override("fill", UI.flat_style(UI.LCD_ON, 0, 5))
+	mcol.add_child(UI.text(tr("メンタル") + "  %d「%s」" % [ra, GameSettings.mental_name_a(ra)], UI.S_SMALL, UI.INK, UI.F_BOLD))
+	mcol.add_child(UI.text(_tally(ra), UI.S_LEAD, Color("#2a4fa8"), UI.F_HAND))
 	var nxt: int = GameSettings.mental_xp_to_next()
-	if nxt < 0:
-		bar.value = 100.0
-	else:
-		var lo: int = int(GameSettings.MENTAL_XP[ra - 1])
-		var hi: int = int(GameSettings.MENTAL_XP[ra])
-		bar.value = 100.0 * float(GameSettings.mental_xp - lo) / float(maxi(1, hi - lo))
-	mcol.add_child(bar)
-	mcol.add_child(UI.text((tr("次まで %d EXP") % nxt) if nxt >= 0 else "MAX", UI.S_SMALL, UI.PAPER_DIM, UI.F_DOT))
-	# 手持ちのポイント
-	var wallet: HBoxContainer = UI.hbox(8)
-	col.add_child(wallet)
-	wallet.add_child(_badge("HP", _num(GameSettings.hp_points), Color("#ffb36b")))
-	wallet.add_child(_badge("KAS", _num(GameSettings.kas_points), Color("#ff6bd0")))
+	mcol.add_child(UI.text((tr("次まで %d EXP") % nxt) if nxt >= 0 else "MAX", UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+	var mb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
+	var bcol: VBoxContainer = UI.vbox(2)
+	mrow.add_child(bcol)
+	var stamp: Control = Shop.hanko(GameSettings.mental_name_b(mb).left(1), 46)
+	bcol.add_child(stamp)
+	bcol.add_child(UI.text(tr("対戦") + " %d %s" % [mb, GameSettings.mental_name_b(mb)], UI.S_SMALL - 2, UI.SHU, UI.F_BOLD))
+	bc.add_child(UI.rule(Color("#d6d3cc"), 1))
+	# 手持ちのポイントとバーコード
+	var wrow: HBoxContainer = UI.hbox(10)
+	bc.add_child(wrow)
+	wrow.add_child(UI.text("HP %s" % _num(GameSettings.hp_points), UI.S_BODY, Color("#b0611b"), UI.F_DOT))
+	wrow.add_child(UI.text("KAS %s" % _num(GameSettings.kas_points), UI.S_BODY, Color("#a0257e"), UI.F_DOT))
+	wrow.add_child(UI.spacer())
+	var bars: HBoxContainer = UI.hbox(1)
+	bars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var seed_v: int = absi(pname.hash())
+	for i in range(22):
+		var bar: ColorRect = ColorRect.new()
+		bar.color = UI.INK
+		bar.custom_minimum_size = Vector2(1 + ((seed_v >> (i % 16)) & 1) * 2, 22)
+		bars.add_child(bar)
+	wrow.add_child(bars)
+
+
+## 「正」の字で数える（5で1つ。端数は書きかけ）
+func _tally(n: int) -> String:
+	var parts: Array = ["", "一", "丅", "下", "止"]
+	return "正".repeat(int(n / 5.0)) + str(parts[n % 5])
 
 
 func _badge(label: String, value: String, accent: Color) -> Control:
@@ -1166,39 +1405,74 @@ var _shop_tab: String = "gacha"   # gacha / tag / chara / exchange
 
 func _show_shop() -> void:
 	sfx.play("click")
-	var col: VBoxContainer = _open_sheet(820, "center")
-	var head: HBoxContainer = UI.hbox(12)
+	var col: VBoxContainer = _open_sheet(980, "center")
+	# 見出しと手持ち（HP はコイン、KAS はお札。要件#86: お金の違いがわかるように）
+	var head: HBoxContainer = UI.hbox(14)
 	col.add_child(head)
 	head.add_child(UI.text(tr("ショップ"), UI.S_HEAD, UI.INK, UI.F_SIGN))
 	head.add_child(UI.spacer())
-	head.add_child(UI.text("HP %s" % _num(GameSettings.hp_points), UI.S_LEAD, Color("#c4661b"), UI.F_DOT))
-	head.add_child(UI.text("KAS %s" % _num(GameSettings.kas_points), UI.S_LEAD, Color("#b0258a"), UI.F_DOT))
-	col.add_child(UI.para(tr("HP（ハラスメントポイント）はオフラインのシフト、KAS（カスポイント）はオンラインのシフトと対戦の給与。KAS でしか買えないものもあります。"), UI.S_SMALL, UI.INK_SOFT))
-	var tabs: HBoxContainer = UI.hbox(8)
-	col.add_child(tabs)
-	var group: ButtonGroup = ButtonGroup.new()
-	for tb in [["gacha", "背景ガチャ"], ["tag", "名札"], ["chara", "キャラクター"], ["exchange", "両替"]]:
+	head.add_child(_money_chip("HP", GameSettings.hp_points, tr("オフラインの給与"), true))
+	head.add_child(_money_chip("KAS", GameSettings.kas_points, tr("オンラインの給与"), false))
+	var body: HBoxContainer = UI.hbox(16)
+	col.add_child(body)
+	# 左: 売り場の案内（大きなボタン）
+	var nav: VBoxContainer = UI.vbox(8)
+	nav.custom_minimum_size = Vector2(210, 0)
+	body.add_child(nav)
+	for tb in [["gacha", "背景ガチャ", "タイトルの背景が出る"], ["tag", "名札", "枠・名前の色・スタンプ"], ["chara", "キャラクター", "対戦で見える自分の姿"], ["exchange", "両替機", "KAS を HP に替える"]]:
 		var tid: String = str(tb[0])
-		var t: Button = UI.tag(tr(str(tb[1])), UI.S_BODY)
-		t.toggle_mode = true
-		t.button_group = group
-		t.button_pressed = tid == _shop_tab
-		t.pressed.connect(func() -> void:
+		var on: bool = tid == _shop_tab
+		var btn: Button = Button.new()
+		btn.text = tr(str(tb[1])) + "\n" + tr(str(tb[2]))
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(210, 64)
+		btn.add_theme_font_size_override("font_size", UI.S_BODY)
+		btn.add_theme_color_override("font_color", UI.INK)
+		btn.add_theme_color_override("font_hover_color", UI.INK)
+		btn.add_theme_stylebox_override("normal", UI.paper_style(UI.POP if on else UI.PAPER_DIM.lerp(UI.PAPER, 0.5), 12, 2, 3 if not on else 1))
+		btn.add_theme_stylebox_override("hover", UI.paper_style(UI.POP.lerp(UI.PAPER, 0.4), 12, 2, 3))
+		btn.add_theme_stylebox_override("pressed", UI.paper_style(UI.POP, 12, 2, 1))
+		btn.pressed.connect(func() -> void:
 			_shop_tab = tid
 			_show_shop())
-		tabs.add_child(t)
-	match _shop_tab:
-		"gacha":
-			_shop_gacha(col)
-		"exchange":
-			_shop_exchange(col)
-		_:
-			_shop_items(col, _shop_tab)
+		nav.add_child(btn)
+	nav.add_child(UI.spacer())
 	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
 	close.pressed.connect(func() -> void:
 		_close_sheet()
 		_refresh_title())
-	col.add_child(close)
+	nav.add_child(close)
+	# 右: 売り場
+	var area: VBoxContainer = UI.vbox(10)
+	area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	area.custom_minimum_size = Vector2(720, 520)
+	body.add_child(area)
+	match _shop_tab:
+		"gacha":
+			_shop_gacha(area)
+		"exchange":
+			_shop_exchange(area)
+		_:
+			_shop_items(area, _shop_tab)
+
+
+## 手持ちのお金（HP はコイン、KAS はお札の形）
+func _money_chip(label: String, value: int, note: String, coin: bool) -> Control:
+	var row: HBoxContainer = UI.hbox(6)
+	var icon: PanelContainer = PanelContainer.new()
+	var st: StyleBoxFlat = UI.flat_style(Color("#e9b949") if coin else Color("#bfe0b4"), 0, 14 if coin else 2)
+	st.border_color = Color("#a8791d") if coin else Color("#4f7a45")
+	st.set_border_width_all(2)
+	icon.add_theme_stylebox_override("panel", st)
+	icon.custom_minimum_size = Vector2(28, 28) if coin else Vector2(42, 24)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var c: VBoxContainer = UI.vbox(0)
+	row.add_child(c)
+	c.add_child(UI.text("%s %s" % [label, _num(value)], UI.S_LEAD, Color("#b0611b") if coin else Color("#a0257e"), UI.F_DOT))
+	c.add_child(UI.text(note, UI.S_SMALL - 2, UI.INK_SOFT))
+	return row
 
 
 ## 名札・キャラクターの品物（カテゴリごとに見出し）
@@ -1221,7 +1495,7 @@ func _shop_items(col: VBoxContainer, group_id: String) -> void:
 		side.add_child(edit)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(760, 300 if group_id == "chara" else 330)
+	scroll.custom_minimum_size = Vector2(710, 300 if group_id == "chara" else 400)
 	col.add_child(scroll)
 	var list: VBoxContainer = UI.vbox(10)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1250,7 +1524,7 @@ func _shop_item(it: Dictionary) -> Control:
 	var chara: bool = cat in Shop.AVATAR_CATS
 	var box: PanelContainer = UI.paper(UI.PAPER if not using else UI.POP.lerp(UI.PAPER, 0.6), 10, 2)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.custom_minimum_size = Vector2(232 if chara else 350, 0)
+	box.custom_minimum_size = Vector2(222 if chara else 340, 0)
 	var c: VBoxContainer = UI.vbox(6)
 	box.add_child(c)
 	var top: HBoxContainer = UI.hbox(8)
@@ -1278,6 +1552,7 @@ func _shop_item(it: Dictionary) -> Control:
 	if using:
 		row.add_child(UI.text(tr("使用中"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
 	elif have:
+		row.add_child(UI.text(tr("持っている"), UI.S_SMALL, UI.OK, UI.F_BOLD))
 		var use: Button = UI.stamp(tr("使う"), UI.S_SMALL)
 		use.pressed.connect(func() -> void:
 			sfx.play("click")
@@ -1335,7 +1610,7 @@ func _shop_gacha(col: VBoxContainer) -> void:
 	# 持っている背景（使うものを選ぶ）
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(760, 290)
+	scroll.custom_minimum_size = Vector2(710, 330)
 	col.add_child(scroll)
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 3
@@ -1352,7 +1627,7 @@ func _bg_card(it: Dictionary) -> Control:
 	var using: bool = Shop.equipped("bg") == id
 	var rar: int = int(it.get("rarity", 0))
 	var box: PanelContainer = UI.paper(UI.POP.lerp(UI.PAPER, 0.6) if using else UI.PAPER, 10, 2)
-	box.custom_minimum_size = Vector2(240, 0)
+	box.custom_minimum_size = Vector2(222, 0)
 	var c: VBoxContainer = UI.vbox(4)
 	box.add_child(c)
 	var sw: ColorRect = ColorRect.new()
@@ -1393,6 +1668,18 @@ func _bg_swatch(it: Dictionary) -> Color:
 			return Color("#8a8778")
 		"bg_purikura":
 			return Color("#f2b8d6")
+		"bg_video_rage":
+			return Color("#3a1a2a")
+		"bg_locker":
+			return Color("#9aa2aa")
+		"bg_toilet":
+			return Color("#cfe2ea")
+		"bg_warehouse":
+			return Color("#6b5a40")
+		"bg_manager_home":
+			return Color("#4a4a62")
+		"bg_parents_home":
+			return Color("#c9b98a")
 	return Color("#444444")
 
 
@@ -1465,7 +1752,7 @@ func _show_gacha_result(res: Array) -> void:
 func _shop_exchange(col: VBoxContainer) -> void:
 	var rate: int = Shop.hp_per_kas()
 	var wrap: Control = Control.new()
-	wrap.custom_minimum_size = Vector2(760, 400)
+	wrap.custom_minimum_size = Vector2(720, 400)
 	col.add_child(wrap)
 	# 機械の本体
 	var body: PanelContainer = PanelContainer.new()
@@ -1475,8 +1762,8 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	bs.shadow_color = Color(0, 0, 0, 0.4)
 	bs.shadow_size = 8
 	body.add_theme_stylebox_override("panel", bs)
-	body.position = Vector2(185, 0)
-	body.size = Vector2(420, 400)
+	body.position = Vector2(170, 0)
+	body.size = Vector2(380, 400)
 	wrap.add_child(body)
 	var mc: VBoxContainer = UI.vbox(10)
 	body.add_child(mc)
@@ -1558,7 +1845,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	p1t.custom_minimum_size = Vector2(130, 0)
 	p1.add_child(p1t)
 	var pop2: PanelContainer = UI.paper(Color("#ffd1e3"), 10, 3)
-	pop2.position = Vector2(625, 120)
+	pop2.position = Vector2(562, 120)
 	pop2.rotation_degrees = 5.0
 	wrap.add_child(pop2)
 	var p2: VBoxContainer = UI.vbox(2)
@@ -1606,7 +1893,7 @@ func _sync_look() -> void:
 # ---------------------------------------------------------------- 対戦のキャラクター（要件#84）
 
 ## キャラクターを小さな画面で回して見せる
-func avatar_preview(look: Dictionary, size: Vector2) -> Control:
+func avatar_preview(look: Dictionary, size: Vector2, id_photo: bool = false) -> Control:
 	var svc: SubViewportContainer = SubViewportContainer.new()
 	svc.stretch = true
 	svc.custom_minimum_size = size
@@ -1636,6 +1923,12 @@ func avatar_preview(look: Dictionary, size: Vector2) -> Control:
 	var ch: Node3D = CustomerScript.new()
 	vp.add_child(ch)
 	ch.call("setup", look)
+	if id_photo:
+		# 証明写真: 正面の胸から上
+		cam.fov = 22.0
+		cam.position = Vector3(0.0, 1.42 * float(look.get("height", 1.0)), 3.2)
+		cam.look_at(Vector3(0.0, 1.38 * float(look.get("height", 1.0)), 0.0), Vector3.UP)
+		return svc
 	ch.rotation.y = -0.5
 	var tw: Tween = ch.create_tween().set_loops()
 	tw.tween_property(ch, "rotation:y", 0.5, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -1756,6 +2049,115 @@ func show_avatar_maker(done: Callable) -> void:
 			_shop_tab = "chara"
 			_show_shop())
 	btns.add_child(ok)
+
+
+# ---------------------------------------------------------------- 記録: レビューログと統計（要件#86）
+
+var _records_tab: String = "reviews"
+
+
+func _show_records() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(820, "center")
+	_sheet_title(col, tr("記録"))
+	var tabs: HBoxContainer = UI.hbox(8)
+	col.add_child(tabs)
+	var group: ButtonGroup = ButtonGroup.new()
+	for tb in [["reviews", "レビューログ"], ["stats", "統計"]]:
+		var tid: String = str(tb[0])
+		var t: Button = UI.tag(tr(str(tb[1])), UI.S_BODY)
+		t.toggle_mode = true
+		t.button_group = group
+		t.button_pressed = tid == _records_tab
+		t.pressed.connect(func() -> void:
+			_records_tab = tid
+			_show_records())
+		tabs.add_child(t)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(780, 440)
+	col.add_child(scroll)
+	var list: VBoxContainer = UI.vbox(10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	if _records_tab == "reviews":
+		_fill_review_log(list)
+	else:
+		_fill_stats(list)
+	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	close.pressed.connect(_close_sheet)
+	col.add_child(close)
+
+
+func _fill_review_log(list: VBoxContainer) -> void:
+	if GameSettings.review_log.is_empty():
+		list.add_child(UI.text(tr("まだ記録がありません。シフトを最後まで勤めると、ここに残ります。"), UI.S_BODY, UI.INK_SOFT))
+		return
+	for e in GameSettings.review_log:
+		var d: Dictionary = e
+		var card: PanelContainer = UI.paper(UI.PAPER, 12, 2)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		list.add_child(card)
+		var c: VBoxContainer = UI.vbox(4)
+		card.add_child(c)
+		var head: HBoxContainer = UI.hbox(12)
+		c.add_child(head)
+		var st: String = str(d.get("stage", ""))
+		head.add_child(UI.text(str(d.get("date", "")), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+		head.add_child(UI.text(tr(str((STAGES.get(st, {}) as Dictionary).get("name", st))) + ("  " + tr("ハードコア") if bool(d.get("hard", false)) else ""), UI.S_BODY, UI.INK, UI.F_BOLD))
+		head.add_child(UI.spacer())
+		var rv: float = float(d.get("review", 3.0))
+		head.add_child(UI.text("★".repeat(int(round(rv))) + "☆".repeat(5 - int(round(rv))) + " %.1f" % rv, UI.S_BODY, UI.SHU, UI.F_DOT))
+		c.add_child(UI.text(tr("売上 %s　合計 %d 点") % [GameSettings.money(int(d.get("sales", 0))), int(d.get("total", 0))], UI.S_SMALL, UI.INK, UI.F_DOT))
+		for r in (d.get("reviews", []) as Array):
+			var rd: Dictionary = r
+			var n: int = int(rd.get("stars", 3))
+			var t: Label = UI.para("★".repeat(n) + "☆".repeat(5 - n) + "  " + tr("「%s」") % str(rd.get("text", "")), UI.S_SMALL, UI.INK, UI.F_HAND)
+			t.custom_minimum_size = Vector2(700, 0)
+			c.add_child(t)
+
+
+func _fill_stats(list: VBoxContainer) -> void:
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 40)
+	grid.add_theme_constant_override("v_separation", 6)
+	list.add_child(grid)
+	var rows: Array = [
+		["勤めたシフト", GameSettings.stat("shifts")],
+		["パーフェクトシフト", GameSettings.stat("perfect_shift")],
+		["納得させたお客さん", GameSettings.stat("resolved")],
+		["ブチギレさせた", GameSettings.stat("explode")],
+		["要求に屈した", GameSettings.stat("yield")],
+		["心が折れて早退", GameSettings.stat("breakdown")],
+		["時間切れ", GameSettings.stat("timeout")],
+		["1回目の返事で納得", GameSettings.stat("one_turn_resolve")],
+		["要注意人物を納得させた", GameSettings.stat("wild_resolved")],
+		["「〇〇円使った」の嘘を見破った", GameSettings.stat("lie_caught")],
+		["年齢確認の正しい判断", GameSettings.stat("age_correct")],
+		["営業停止", GameSettings.stat("suspended")],
+		["店長が来た", GameSettings.stat("manager_visits")],
+		["店長を呼んだ", GameSettings.stat("manager_called")],
+		["台の調整で取らせた", GameSettings.stat("crane_won")],
+		["土下座", GameSettings.stat("dogeza")],
+		["最高の売上（1シフト）", GameSettings.money(GameSettings.stat("max_sales"))],
+		["ハイスコア: ゲームセンター", GameSettings.get_high_score("arcade")],
+		["ハイスコア: コンビニ", GameSettings.get_high_score("konbini")],
+		["ハイスコア: ゲームセンター（ハードコア）", GameSettings.get_high_score("arcade_hard")],
+		["ハイスコア: コンビニ（ハードコア）", GameSettings.get_high_score("konbini_hard")],
+		["メンタルランク", "%d「%s」" % [GameSettings.mental_rank(), GameSettings.mental_name_a(GameSettings.mental_rank())]],
+		["対戦の回数", GameSettings.stat("vs_matches")],
+		["対戦の勝ち", GameSettings.stat("vs_wins")],
+		["対戦の最高連勝", GameSettings.stat("vs_streak_max")],
+		["称号", "%d / %d" % [GameSettings.unlocked_titles.size(), Titles.all().size()]],
+		["ガチャを回した回数", GameSettings.stat("gacha_pulls")],
+		["ショップで買った回数", GameSettings.stat("shop_buys")],
+		["休憩した回数", GameSettings.stat("pauses")],
+	]
+	for r in rows:
+		grid.add_child(UI.text(tr(str(r[0])), UI.S_BODY, UI.INK_SOFT))
+		var v: Variant = r[1]
+		grid.add_child(UI.text(_num(int(v)) if typeof(v) == TYPE_INT else str(v), UI.S_BODY, UI.INK, UI.F_DOT))
 
 
 func _quit_game() -> void:
@@ -2167,7 +2569,8 @@ func _card_row(col: VBoxContainer, clock: String, title: String, mark: String, p
 
 
 func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
-	var is_best: bool = GameSettings.submit_score(stage_id, total)
+	var hard: bool = bool(_solo.summary.get("hardcore", false))
+	var is_best: bool = GameSettings.submit_score(stage_id + ("_hard" if hard else ""), total)
 	var rank: Array = rank_for(total)
 	# メンタルランク A の経験値（要件#72）
 	# オフライン（台本・キーワード判定）で遊んだシフトは経験値なし（要件#74）
@@ -2251,7 +2654,7 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var btns: HBoxContainer = UI.hbox(20)
 	col.add_child(btns)
 	var again: Button = UI.primary(tr("もう一度シフトに入る"), UI.S_LEAD)
-	again.pressed.connect(_start_solo.bind(stage_id))
+	again.pressed.connect(_start_solo.bind(stage_id, hard))
 	btns.add_child(again)
 	var back: Button = UI.link(tr("タイトルへ戻る"), UI.S_BODY)
 	back.pressed.connect(_quit_to_title)
@@ -2506,6 +2909,8 @@ func _on_versus_finished(summary: Dictionary) -> void:
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(big)
 	var reason: String = str(summary.get("reason", ""))
+	if reason == "moderation":
+		col.add_child(UI.para(tr("不適切な発言が続いたため、決着しました。") , UI.S_SMALL, UI.SHU))
 	if reason == "disconnected" or reason == "left":
 		col.add_child(UI.para(tr("相手が途中で抜けたため、決着しました。") if result == "win" else tr("途中で抜けたため、負けになりました。"), UI.S_SMALL, UI.INK_SOFT))
 	_receipt_rule(col)
@@ -2542,6 +2947,13 @@ func _on_versus_finished(summary: Dictionary) -> void:
 	back.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	back.pressed.connect(_quit_to_title)
 	col.add_child(back)
+	# 相手を通報する（要件#87）
+	var target: Dictionary = _versus.report_target()
+	if str(target.get("player_id", "")) != "":
+		var rep: Button = UI.link(tr("相手を通報する"), UI.S_SMALL, UI.INK_SOFT)
+		rep.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rep.pressed.connect(func() -> void: show_report(target, summary))
+		col.add_child(rep)
 
 
 # ---------------------------------------------------------------- 自動テスト
@@ -2602,7 +3014,7 @@ func _shot(dir: String, id: String) -> void:
 func _run_shots() -> void:
 	var dir: String = ProjectSettings.globalize_path("res://docs/screenshots")
 	DirAccess.make_dir_recursive_absolute(dir)
-	get_tree().create_timer(500.0).timeout.connect(func() -> void:
+	get_tree().create_timer(900.0).timeout.connect(func() -> void:
 		print("SHOTS TIMEOUT")
 		get_tree().quit(1))
 	# --shot-tag=xxx で、画面サイズ違いの撮影を別の名前で保存する
@@ -2780,9 +3192,21 @@ func _run_shots() -> void:
 	await _wait(0.8)
 	await _shot(dir, prefix + "06g_avatar_maker")
 	_close_sheet()
+	# 記録: レビューログと統計（要件#86）
+	GameSettings.add_review_log({"date": "2026-11-18 21:30", "stage": "arcade", "review": 3.6, "sales": 21400, "total": 3250, "hard": false,
+		"reviews": [{"stars": 5, "text": tr("店員さんが景品を取りやすくしてくれた！神対応！")}, {"stars": 2, "text": tr("クレーン、全然取れない。お金が溶けただけ。")}]})
+	_records_tab = "reviews"
+	_show_records()
+	await _wait(0.5)
+	await _shot(dir, prefix + "06i_review_log")
+	_records_tab = "stats"
+	_show_records()
+	await _wait(0.5)
+	await _shot(dir, prefix + "06j_stats")
+	_close_sheet()
 	# 新しい背景（日本語のときだけ撮る）
 	if GameSettings.language == "ja" and tag == "":
-		for bgid in ["bg_medal", "bg_video", "bg_rhythm", "bg_office", "bg_purikura", "konbini_night", "arcade_night"]:
+		for bgid in ["bg_medal", "bg_video", "bg_video_rage", "bg_rhythm", "bg_office", "bg_purikura", "bg_locker", "bg_toilet", "bg_warehouse", "bg_manager_home", "bg_parents_home"]:
 			GameSettings.owned_items.append("bg:" + bgid)
 			Shop.equip("bg", bgid)
 			_show_title()

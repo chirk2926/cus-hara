@@ -11,7 +11,7 @@ signal left
 signal tripped   # 怒って帰る途中で転んだ（要件#42）
 
 ## 怒って帰るときに転ぶ確率
-const TRIP_CHANCE: float = 0.25
+const TRIP_CHANCE: float = 0.08   # 要件#86: 転びすぎたので 0.25 から下げた
 
 const WALK_SPEED: float = 1.35
 const ANGRY_SKIN: Color = Color(0.95, 0.28, 0.22)
@@ -25,6 +25,9 @@ var _hair: String = "short"
 var _accessory: String = "none"
 var _outfit: String = "casual"   # "uniform" は店員の制服（エプロンと名札。要件#84）
 var _gender: String = ""
+## ネタのアイテム（要件#86）: かぶりもの・顔・手に持つもの・体につけるもの。"none" か ""
+var _joke: Dictionary = {}
+var _tired: bool = false   # 疲れた顔（目の下のくま・無精ひげ）
 ## 背景の人物用の決まったポーズ（要件#84）: "slump"（うなだれる）・"peek"（スマホを構えてのぞく）。"" はふつう
 var hold_pose: String = ""         # "f" はまつげ（対戦のキャラクター。要件#84）
 var _skin: Color = Color(0.95, 0.79, 0.65)
@@ -107,6 +110,8 @@ func setup(look: Dictionary) -> void:
 	_hair = str(look.get("hair", "short"))
 	_accessory = str(look.get("accessory", "none"))
 	_outfit = str(look.get("outfit", "casual"))
+	_joke = {"head": str(look.get("head", "")), "face": str(look.get("face", "")), "hand": str(look.get("hand", "")), "body": str(look.get("body", ""))}
+	_tired = bool(look.get("tired", false))
 	_gender = str(look.get("gender", ""))
 	if _gender == "f":
 		_bw *= 0.92
@@ -385,6 +390,10 @@ func _process(delta: float) -> void:
 		"peek":
 			_body_pivot.rotation.x = 0.3
 			_head_pivot.rotation.x = -0.12
+		"slam":
+			_body_pivot.rotation.x = 0.12 + 0.1 * absf(sin(_time * 4.5))
+		"sit":
+			_head_pivot.rotation.x = 0.05
 
 	# --- legs
 	if _walking:
@@ -551,6 +560,10 @@ func _arm_target(pose: String, is_left: bool) -> Vector3:
 			if not is_left:
 				return Vector3(-1.4, 0.2, 0.0)
 			v = Vector3(0.0, 0.0, 0.1)
+		"slam":
+			# 台パン（要件#86）: 両腕を振り上げて、台をたたく
+			var hit: float = absf(sin(_time * 4.5))
+			return Vector3(-1.2 - 1.3 * hit, 0.15 * s, 0.0)
 		_:
 			v = Vector3(0.0, 0.0, 0.08)
 	return Vector3(v.x, v.y * s, v.z * s)
@@ -698,7 +711,152 @@ func _build_body() -> void:
 	_build_accessory()
 	if _outfit == "uniform":
 		_build_uniform()
+	_build_joke()
+	if _tired:
+		_build_tired()
 	_build_anger_fx()
+
+
+## 疲れた顔: 目の下のくまと無精ひげ（事務所の店長など）
+func _build_tired() -> void:
+	var dark: StandardMaterial3D = _mat(_skin.darkened(0.35), 0.8)
+	for i in range(2):
+		var sx: float = 1.0 if i == 0 else -1.0
+		var bag: MeshInstance3D = _sphere(_head, 0.04, Vector3(sx * 0.085, -0.028, 0.19), dark, 10)
+		bag.scale = Vector3(1.3, 0.45, 0.4)
+	var stub: StandardMaterial3D = _mat(Color(0.3, 0.28, 0.28), 0.9)
+	for k in range(14):
+		var a: float = deg_to_rad(-70.0 + 140.0 * float(k) / 13.0)
+		_sphere(_head, 0.008, Vector3(sin(a) * 0.17, -0.13 - 0.02 * cos(a * 2.0), cos(a) * 0.17 + 0.02), stub, 4)
+
+
+## ネタのアイテム（要件#86）
+func _build_joke() -> void:
+	match str(_joke.get("head", "")):
+		"cardboard":
+			var cb: StandardMaterial3D = _mat(Color(0.72, 0.55, 0.34), 0.9)
+			_box(_head, Vector3(0.5, 0.5, 0.5), Vector3(0.0, 0.03, 0.0), cb)
+			_box(_head, Vector3(0.22, 0.06, 0.02), Vector3(0.0, 0.04, 0.255), _mat(Color(0.08, 0.06, 0.05)))
+		"bucket":
+			var bk: StandardMaterial3D = _mat(Color(0.25, 0.45, 0.85), 0.4)
+			var b: MeshInstance3D = _cyl(_head, 0.2, 0.25, 0.3, Vector3(0.0, 0.26, 0.0), bk)
+			b.rotation.z = 0.15
+		"chonmage":
+			var cm: StandardMaterial3D = _mat(Color(0.12, 0.1, 0.1), 0.6)
+			var top: MeshInstance3D = _capsule(_head, 0.035, 0.22, Vector3(0.0, 0.24, -0.02), cm)
+			top.rotation.x = PI * 0.5
+			_sphere(_head, 0.23, Vector3(0.0, 0.0, -0.06), cm, 16)
+		"afro":
+			var af: StandardMaterial3D = _mat(_hair_color, 0.95)
+			var ball: MeshInstance3D = _sphere(_head, 0.36, Vector3(0.0, 0.16, -0.04), af, 20)
+			ball.scale = Vector3(1.0, 0.9, 1.0)
+		"crown":
+			var gold: StandardMaterial3D = _mat(Color(1.0, 0.8, 0.2), 0.3)
+			gold.metallic = 0.8
+			_cyl(_head, 0.15, 0.15, 0.08, Vector3(0.0, 0.25, 0.0), gold)
+			for k in range(5):
+				var a: float = TAU * float(k) / 5.0
+				_cyl(_head, 0.0, 0.035, 0.09, Vector3(sin(a) * 0.13, 0.33, cos(a) * 0.13), gold)
+				_sphere(_head, 0.02, Vector3(sin(a) * 0.15, 0.25, cos(a) * 0.15), _mat(Color(0.9, 0.1, 0.2), 0.2), 6)
+	var dark: StandardMaterial3D = _mat(Color(0.08, 0.08, 0.1), 0.3)
+	match str(_joke.get("face", "")):
+		"nose_glasses":
+			_sphere(_head, 0.05, Vector3(0.0, -0.02, 0.235), _skin_mat, 10)
+			var mus: MeshInstance3D = _box(_head, Vector3(0.14, 0.03, 0.03), Vector3(0.0, -0.075, 0.215), dark)
+			mus.rotation.z = 0.0
+			for i in range(2):
+				var sx: float = 1.0 if i == 0 else -1.0
+				var ring: MeshInstance3D = _torus(_head, 0.045, 0.06, Vector3(sx * 0.085, 0.03, 0.225), dark)
+				ring.rotation.x = PI * 0.5
+			_box(_head, Vector3(0.06, 0.05, 0.03), Vector3(0.0, 0.06, 0.23), dark)
+		"mustache":
+			for i in range(2):
+				var sx2: float = 1.0 if i == 0 else -1.0
+				var m: MeshInstance3D = _box(_head, Vector3(0.05, 0.02, 0.02), Vector3(sx2 * 0.025, -0.065, 0.21), dark)
+				m.rotation.z = sx2 * 0.2
+		"party_glasses":
+			var pg: StandardMaterial3D = _mat(Color(1.0, 0.3, 0.7), 0.3)
+			pg.emission_enabled = true
+			pg.emission = Color(1.0, 0.3, 0.7)
+			pg.emission_energy_multiplier = 0.4
+			for i in range(2):
+				var sx3: float = 1.0 if i == 0 else -1.0
+				var st: MeshInstance3D = _cyl(_head, 0.06, 0.06, 0.02, Vector3(sx3 * 0.09, 0.035, 0.225), pg)
+				st.rotation.x = PI * 0.5
+			_box(_head, Vector3(0.35, 0.02, 0.02), Vector3(0.0, 0.1, 0.22), pg)
+		"lips":
+			var lp: StandardMaterial3D = _mat(Color(0.9, 0.2, 0.3), 0.4)
+			var l: MeshInstance3D = _sphere(_head, 0.07, Vector3(0.0, -0.1, 0.2), lp, 12)
+			l.scale = Vector3(1.3, 0.55, 0.6)
+			_mouth.visible = false
+		"swirl_glasses":
+			var white: StandardMaterial3D = _mat(Color(0.97, 0.97, 0.97), 0.2)
+			for i in range(2):
+				var sx4: float = 1.0 if i == 0 else -1.0
+				var lens: MeshInstance3D = _cyl(_head, 0.065, 0.065, 0.015, Vector3(sx4 * 0.085, 0.03, 0.225), white)
+				lens.rotation.x = PI * 0.5
+				for k in range(3):
+					var r: MeshInstance3D = _torus(_head, 0.012 + 0.018 * float(k), 0.018 + 0.018 * float(k), Vector3(sx4 * 0.085, 0.03, 0.234), dark)
+					r.rotation.x = PI * 0.5
+	var hand_node: Node3D = _node(_arm_r, Vector3(0.0, -0.6, 0.06))
+	match str(_joke.get("hand", "")):
+		"harisen":
+			var paper: StandardMaterial3D = _mat(Color(0.97, 0.96, 0.9), 0.8)
+			var fan: MeshInstance3D = _box(hand_node, Vector3(0.05, 0.45, 0.16), Vector3(0.0, -0.2, 0.0), paper)
+			fan.rotation.x = 0.15
+			_box(hand_node, Vector3(0.06, 0.08, 0.06), Vector3(0.0, 0.02, 0.0), _mat(Color(0.85, 0.2, 0.2)))
+		"megaphone":
+			var mg: StandardMaterial3D = _mat(Color(0.95, 0.95, 0.95), 0.4)
+			var cone: MeshInstance3D = _cyl(hand_node, 0.12, 0.04, 0.3, Vector3(0.0, -0.08, 0.15), mg)
+			cone.rotation.x = PI * 0.5
+			_cyl(hand_node, 0.121, 0.121, 0.03, Vector3(0.0, -0.08, 0.29), _mat(Color(0.9, 0.2, 0.15)))
+		"complaint_file":
+			_box(hand_node, Vector3(0.08, 0.32, 0.25), Vector3(0.0, -0.12, 0.02), _mat(Color(0.2, 0.3, 0.6)))
+			_box(hand_node, Vector3(0.085, 0.3, 0.2), Vector3(0.0, -0.12, 0.04), _mat(Color(0.97, 0.97, 0.95)))
+		"big_plush":
+			var pl: StandardMaterial3D = _mat(Color(1.0, 0.85, 0.3), 0.9)
+			var bodyp: MeshInstance3D = _sphere(hand_node, 0.18, Vector3(0.0, -0.15, 0.12), pl, 14)
+			bodyp.scale = Vector3(1.0, 1.1, 0.9)
+			_sphere(hand_node, 0.12, Vector3(0.0, 0.05, 0.14), pl, 14)
+			_sphere(hand_node, 0.02, Vector3(0.04, 0.07, 0.25), dark, 6)
+			_sphere(hand_node, 0.02, Vector3(-0.04, 0.07, 0.25), dark, 6)
+			var beak: MeshInstance3D = _sphere(hand_node, 0.03, Vector3(0.0, 0.03, 0.26), _mat(Color(1.0, 0.5, 0.1)), 6)
+			beak.scale = Vector3(1.0, 0.6, 1.3)
+		"ecobag_leek":
+			var eb: StandardMaterial3D = _mat(Color(0.35, 0.6, 0.4), 0.9)
+			_box(hand_node, Vector3(0.24, 0.26, 0.12), Vector3(0.0, -0.22, 0.0), eb)
+			var leek: MeshInstance3D = _cyl(hand_node, 0.025, 0.025, 0.45, Vector3(0.05, -0.02, 0.0), _mat(Color(0.95, 0.97, 0.9)))
+			leek.rotation.z = -0.25
+			var green: MeshInstance3D = _cyl(hand_node, 0.03, 0.02, 0.18, Vector3(0.1, 0.24, 0.0), _mat(Color(0.25, 0.65, 0.25)))
+			green.rotation.z = -0.25
+	match str(_joke.get("body", "")):
+		"sash":
+			var sm: StandardMaterial3D = _mat(Color(0.95, 0.2, 0.25), 0.6)
+			var sash: MeshInstance3D = _box(_torso, Vector3(0.09, 0.62, 0.02), Vector3(0.0, 0.0, 0.2 * _bw + 0.03), sm)
+			sash.rotation.z = 0.7
+			var back: MeshInstance3D = _box(_torso, Vector3(0.09, 0.62, 0.02), Vector3(0.0, 0.0, -0.2 * _bw - 0.03), sm)
+			back.rotation.z = -0.7
+		"angel_wings":
+			var wm: StandardMaterial3D = _mat(Color(0.98, 0.98, 1.0), 0.8)
+			for i in range(2):
+				var sx5: float = 1.0 if i == 0 else -1.0
+				var w: MeshInstance3D = _sphere(_torso, 0.22, Vector3(sx5 * 0.2, 0.08, -0.25 * _bw), wm, 12)
+				w.scale = Vector3(1.4, 1.0, 0.25)
+				w.rotation.z = sx5 * 0.5
+		"cape":
+			var cp: StandardMaterial3D = _mat(Color(0.75, 0.1, 0.15), 0.7)
+			var cape: MeshInstance3D = _box(_torso, Vector3(0.5 * _bw, 0.85, 0.03), Vector3(0.0, -0.2, -0.22 * _bw), cp)
+			cape.rotation.x = 0.12
+			_box(_torso, Vector3(0.3 * _bw, 0.05, 0.05), Vector3(0.0, 0.27, -0.15 * _bw), _mat(Color(0.9, 0.75, 0.2)))
+		"kigurumi":
+			var kg: StandardMaterial3D = _mat(Color(0.98, 0.85, 0.25), 0.95)
+			var suit: MeshInstance3D = _sphere(_torso, 0.34 * _bw, Vector3(0.0, -0.05, 0.0), kg, 20)
+			suit.scale = Vector3(1.0, 1.25, 0.95)
+			for i in range(2):
+				var sx6: float = 1.0 if i == 0 else -1.0
+				var ear: MeshInstance3D = _sphere(_head, 0.08, Vector3(sx6 * 0.17, 0.25, -0.02), kg, 10)
+				ear.scale = Vector3(0.8, 1.4, 0.6)
+			_sphere(_torso, 0.15, Vector3(0.0, -0.1, 0.27 * _bw), _mat(Color(1.0, 0.97, 0.88), 0.95), 12)
 
 
 ## 店員の制服: 前掛けのエプロンと白い名札（要件#84）

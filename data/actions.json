@@ -24,7 +24,8 @@
 			"age_allow": "入店OK",
 			"age_refuse": "退店をお願いする",
 			"sell_ok": "販売する",
-			"sell_refuse": "販売をお断りする"
+			"sell_refuse": "販売をお断りする",
+			"ask_other_id": "別の身分証をお願いする"
 		},
 		"en": {
 			"discount": "Offer a discount",
@@ -42,7 +43,8 @@
 			"age_allow": "OK to stay",
 			"age_refuse": "Ask them to leave",
 			"sell_ok": "Sell it",
-			"sell_refuse": "Decline the sale"
+			"sell_refuse": "Decline the sale",
+			"ask_other_id": "Ask for another ID"
 		},
 		"zh": {
 			"discount": "打折",
@@ -60,7 +62,8 @@
 			"age_allow": "可以入店",
 			"age_refuse": "请对方离店",
 			"sell_ok": "出售",
-			"sell_refuse": "拒绝出售"
+			"sell_refuse": "拒绝出售",
+			"ask_other_id": "请出示其他证件"
 		}
 	},
 	"effects": {

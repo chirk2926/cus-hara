@@ -316,7 +316,7 @@ static func gacha_pull(currency: String, ten: bool) -> Array:
 
 # ---------------------------------------------------------------- 対戦のキャラクター（要件#84）
 
-const AVATAR_CATS: Array = ["hair", "hair_color", "casual", "uniform", "acc"]
+const AVATAR_CATS: Array = ["hair", "hair_color", "casual", "uniform", "acc", "head", "face", "hand", "body"]
 
 
 static func avatar_created() -> bool:
@@ -362,5 +362,6 @@ static func avatar_look(av: Dictionary, role: String) -> Dictionary:
 		"height": clampf(float(av.get("height", 1.0)), 0.85, 1.15),
 		"gender": str(av.get("gender", "x")),
 		"outfit": "uniform" if role == "uniform" else "casual",
+		"head": str(av.get("head", "")), "face": str(av.get("face", "")), "hand": str(av.get("hand", "")), "body": str(av.get("body", "")),
 	}
 
