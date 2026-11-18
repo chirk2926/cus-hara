@@ -1202,6 +1202,7 @@ func _shop_item(it: Dictionary) -> Control:
 
 ## 使うものを変えた後: 背景はすぐ変え、名札の飾りはサーバーに送る（対戦の相手に見える）
 func _after_equip(cat: String) -> void:
+	_refresh_title()   # 後ろの STAFF CARD（HP/KAS・名札）もすぐ新しくする
 	if cat == "bg":
 		var bd: Dictionary = Shop.backdrop()
 		set_stage(str(bd["stage"]), str(bd["variant"]))
