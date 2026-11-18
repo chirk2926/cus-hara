@@ -171,8 +171,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f docs/screenshots
           git commit -m "スクリーンショットを更新 [skip ci]" || exit 0
-          git pull --rebase -q origin "${GITHUB_REF_NAME}"
-          git push -q origin "HEAD:${GITHUB_REF_NAME}"
+          # 前の実行のスクリーンショットとぶつかったら、こちら（新しい方）を使う。押し合いで負けたら少し待ってやり直す
+          for i in 1 2 3; do
+            git pull --rebase -X theirs -q origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep 10
+          done
 
   msix:
     name: Build Microsoft Store package (MSIX)
