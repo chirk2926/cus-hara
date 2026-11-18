@@ -96,8 +96,6 @@ const REVIEW_LOG_MAX: int = 200
 var tutorial_seen: bool = false
 ## 初めて起動したときに難しさ（かめ・うさぎ・チーター）を選んだか（要件#91）
 var difficulty_asked: bool = false
-## 読み上げ（Godot の TTS でお客さんがしゃべる。要件#91）
-var tts_on: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
 var _resolution_from_cmdline: bool = false
 var push_to_talk_key: int = KEY_SPACE
@@ -111,7 +109,8 @@ var is_test: bool = false
 
 
 func _ready() -> void:
-	is_test = OS.has_feature("testbuild") or OS.get_cmdline_user_args().has("--test")
+	# `--test` はデバッグ用のビルド（エディタ・CI）でだけ効く。リリース版の exe では引数をつけてもデバッグパネルは出ない（要件#93）
+	is_test = OS.has_feature("testbuild") or (OS.is_debug_build() and OS.get_cmdline_user_args().has("--test"))
 	if is_test:
 		_profile = "test"
 	load_settings()
@@ -207,7 +206,6 @@ func load_settings() -> void:
 	crane_payout = clampi(int(cfg.get_value("play", "crane_payout", 30)), 10, 80)
 	tutorial_seen = bool(cfg.get_value("play", "tutorial_seen", false))
 	difficulty_asked = bool(cfg.get_value("play", "difficulty_asked", false))
-	tts_on = bool(cfg.get_value("audio", "tts", false))
 	mental_xp = maxi(0, int(cfg.get_value("play", "mental_xp", 0)))
 	var st: Variant = cfg.get_value("play", "stats", {})
 	stats = st if typeof(st) == TYPE_DICTIONARY else {}
@@ -250,7 +248,6 @@ func save_settings() -> void:
 	cfg.set_value("play", "crane_payout", crane_payout)
 	cfg.set_value("play", "tutorial_seen", tutorial_seen)
 	cfg.set_value("play", "difficulty_asked", difficulty_asked)
-	cfg.set_value("audio", "tts", tts_on)
 	cfg.set_value("play", "mental_xp", mental_xp)
 	cfg.set_value("play", "stats", stats)
 	cfg.set_value("play", "titles", unlocked_titles)

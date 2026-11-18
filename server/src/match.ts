@@ -9,7 +9,7 @@ import { sttEnabled, transcribe } from "./stt.ts";
 import { MAX_BYTES, mulawToPcm16, isNearlySilent } from "./audio.ts";
 import { eloDelta, rankName } from "./rating.ts";
 import { type Player, playerById, recordMatch, recentPairCount, addReport } from "./db.ts";
-import { moderate, type ModerationCategory } from "./moderation.ts";
+import { moderate, keywordModeration, type ModerationCategory } from "./moderation.ts";
 import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
@@ -277,12 +277,25 @@ export class Match {
         if (this.anger >= 100) { outcome = "explode"; break; }
         continue;
       }
-      // 不適切な発言（要件#88）: 相手には伏せ字で見せ、採点はせずに怒りを大きく上げる
-      const sc = await this.screen(staff, reply);
-      if (this.finished) return null;
-      if (sc.flagged) {
-        history.push({ role: "staff", text: sc.text });
-        this.broadcastLine("staff", staff, sc.text, input.via);
+      // 不適切な発言（要件#88）: 相手には伏せ字で見せ、採点はせずに怒りを大きく上げる。
+      // まずキーワードで見て、通ったら AI の採点と同じ1回の呼び出しで AI にも確かめさせる（呼び出しを2回から1回に。要件#93）
+      const kw = keywordModeration(reply);
+      let flag: ModerationCategory = kw.flagged ? kw.category : "none";
+      let j = null;
+      if (flag === "none") {
+        history.push({ role: "staff", text: reply });
+        j = await this.judgeStaff(card, reply, usedStaff, history, input.via === "voice", staff);
+        if (this.finished) return null;
+        if (j.flag !== undefined && j.flag !== "none") {
+          flag = j.flag;
+          history.pop();
+        }
+      }
+      if (flag !== "none" || j === null) {
+        const masked = this.strike(staff, flag, kw.flagged ? "keyword" : "ai", reply);
+        if (this.finished) return null;
+        history.push({ role: "staff", text: masked });
+        this.broadcastLine("staff", staff, masked, input.via);
         this.anger = clamp(this.anger + 25, 0, 100);
         this.broadcastJudged(25, 0, pick(this.lang, { ja: "不適切な発言。お客さんが激怒した。", en: "Inappropriate remark. The customer is furious.", zh: "不当发言。顾客暴怒了。" }), "staff");
         if (this.anger >= 100) { outcome = "explode"; break; }
@@ -290,10 +303,7 @@ export class Match {
         if (this.finished) return null;
         continue;
       }
-      history.push({ role: "staff", text: reply });
       this.broadcastLine("staff", staff, reply, input.via);
-      const j = await this.judgeStaff(card, reply, usedStaff, history, input.via === "voice", staff);
-      if (this.finished) return null;
       usedStaff.push(reply);
       this.anger = clamp(this.anger + j.anger_delta, 0, 100);
       this.resolveVal = clamp(this.resolveVal + j.resolve_delta, 0, 100);
@@ -317,15 +327,26 @@ export class Match {
       const line = await this.inputToText(customer, cin, "customer");
       if (this.finished) return null;
       let shown = line !== "" ? line : pick(this.lang, { ja: "……（言葉に詰まっている）", en: "... (lost for words)", zh: "……（说不出话来）" });
-      const csc = line !== "" ? await this.screen(customer, line) : { text: line, flagged: false };
-      if (this.finished) return null;
-      if (csc.flagged) shown = csc.text;
-      history.push({ role: "customer", text: shown });
+      // 不適切な発言の確かめ方は店員の番と同じ（キーワード → AI の採点と一緒に。要件#88, #93）
+      const ckw = line !== "" ? keywordModeration(line) : { flagged: false, category: "none" as ModerationCategory };
+      let cflag: ModerationCategory = ckw.flagged ? ckw.category : "none";
+      let cj = null;
+      if (cflag === "none") {
+        history.push({ role: "customer", text: shown });
+        cj = await this.judgeCustomer(card, line, usedCustomer, history, cin.via === "voice", customer);
+        if (this.finished) return null;
+        if (cj.flag !== undefined && cj.flag !== "none") {
+          cflag = cj.flag;
+          history.pop();
+        }
+      }
+      if (cflag !== "none" || cj === null) {
+        shown = this.strike(customer, cflag, ckw.flagged ? "keyword" : "ai", line);
+        if (this.finished) return null;
+        history.push({ role: "customer", text: shown });
+        cj = { anger_delta: 0, resolve_delta: 15, comment: pick(this.lang, { ja: "不適切な発言。店員側に有利になった。", en: "Inappropriate remark. Advantage to the clerk.", zh: "不当发言。对店员有利。" }) };
+      }
       this.broadcastLine("customer", customer, shown, cin.via);
-      const cj = csc.flagged
-        ? { anger_delta: 0, resolve_delta: 15, comment: pick(this.lang, { ja: "不適切な発言。店員側に有利になった。", en: "Inappropriate remark. Advantage to the clerk.", zh: "不当发言。对店员有利。" }) }
-        : await this.judgeCustomer(card, line, usedCustomer, history, cin.via === "voice", customer);
-      if (this.finished) return null;
       if (line !== "") usedCustomer.push(line);
       this.anger = clamp(this.anger + cj.anger_delta, 0, 100);
       this.resolveVal = clamp(this.resolveVal + cj.resolve_delta, 0, 100);
@@ -446,7 +467,7 @@ export class Match {
   // ---------------------------------------------------------------- 入力の受け口
 
   onSay(seat: number, raw: unknown): void {
-    const text = typeof raw === "string" ? raw.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
+    const text = typeof raw === "string" ? raw.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
     if (!this.waiting || this.waiting.seat !== seat || text === "") return;
     this.inputs[seat]++;
     this.resolveWaiting({ text, via: "text" });
@@ -510,10 +531,16 @@ export class Match {
     this.send(1 - seat, { t: "opponent_status", connected: true });
   }
 
-  /** 不適切な発言を確かめる（要件#88）。見つけたら伏せ字の文を返し、言った人に警告する。MOD_MAX 回で負け */
+  /** 不適切な発言を確かめる（要件#88）。最初のクレームのように AI の採点がない発言に使う。見つけたら伏せ字の文を返す */
   private async screen(seat: number, text: string): Promise<{ text: string; flagged: boolean }> {
     const m = await moderate(text, this.seats[seat].player.id);
     if (!m.flagged) return { text, flagged: false };
+    return { text: this.strike(seat, m.category, m.by, text), flagged: true };
+  }
+
+  /** 不適切な発言が見つかったとき: 言った人に警告し、自動で通報を残す。MOD_MAX 回で負け。伏せ字の文を返す */
+  private strike(seat: number, category: ModerationCategory, by: string, text: string): string {
+    const m = { category, by };
     this.strikes[seat]++;
     const masked = pick(this.lang, { ja: "（不適切な発言のため表示しません）", en: "(Hidden: inappropriate remark)", zh: "（不当发言，已隐藏）" });
     const reason = REPORT_OF[m.category];
@@ -531,7 +558,7 @@ export class Match {
     });
     this.send(1 - seat, { t: "notice", text: pick(this.lang, { ja: "相手の不適切な発言を伏せました。", en: "An inappropriate remark from your opponent was hidden.", zh: "已隐藏对手的不当发言。" }) });
     if (this.strikes[seat] >= MOD_MAX) this.forfeit(seat, "moderation");
-    return { text: masked, flagged: true };
+    return masked;
   }
 
   forfeit(seat: number, reason: string): void {

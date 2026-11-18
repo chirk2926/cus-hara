@@ -13,12 +13,15 @@ export interface Judgement {
   yielded: boolean;
   customer_reply: string;
   comment: string;
+  /** AI が採点と一緒に見た「不適切な発言」の判定（対戦だけで使う。要件#93）。AI を使わないときはない */
+  flag?: "sexual" | "hate" | "threat" | "personal_info" | "none";
 }
 
 export interface CustomerLineJudgement {
   anger_delta: number;
   resolve_delta: number;
   comment: string;
+  flag?: "sexual" | "hate" | "threat" | "personal_info" | "none";
 }
 
 interface Words {

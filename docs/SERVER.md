@@ -201,6 +201,15 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | CI | 既定の権限を「読み取りだけ」にし、スクリーンショットを書き戻すジョブだけ書き込みにした |
 | ゲーム側の自分のAPIキー | 設定ファイルに平文で置いていたのを、このPCの固有IDで暗号化したファイル（`settings_secret.cfg`）に移した（古い版の平文は起動時に移して消す） |
 
+### 8.1 2回目の点検（要件#93、2026-11-18）
+| 見たこと | 結果・対策 |
+|---|---|
+| 依存パッケージの脆弱性（`npm audit`） | ws・zod に報告があったので ws 8.23.0・zod 4.6.7 に上げた（バージョンは固定）。`npm audit` は 0 件 |
+| テスト用のデバッグパネル | 本番の exe でも `-- --test` で開けてしまっていたのを、テスト版の exe（機能タグ testbuild）か、エディタ・デバッグ版で動かしたときだけにした |
+| 対戦のセリフの長さ | ゲーム側の上限（日本語・中国語128文字、英語256文字）に合わせて、サーバーも256文字で切る |
+| 通報・名札の飾り・キャラクター | 値は決まった選択肢だけ通す（`cleanTag`・`cleanAvatar`）。通報は1時間10回まで、同じ相手・同じ試合は1回だけ |
+| SQL・認証・プロンプト注入 | 8節のとおり。新しい表（reports）もプレースホルダだけ |
+
 残っていること（運営の準備）: 本番では HTTPS（`wss://`）の前段を置くこと（docs/MAINTENANCE.md）。`TRUST_PROXY=1` は、前段のプロキシが `X-Forwarded-For` を付け直す場合だけにすること（そうでないとIPを偽れる）。
 
 ## 9. AIの料金を下げる・Claude 以外のAI（要件#78）
@@ -208,6 +217,8 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 ### 9.1 プロンプトのキャッシュ（Claude）
 - 判定・お客さんづくりの指示文（毎回同じで長い部分）に `cache_control` を付け、2回目以降はキャッシュから読む。キャッシュから読んだ分の入力の料金は、ふつうの入力より大幅に安い（料金表は Anthropic のサイト）。会話の部分は毎回違うので、指示文の後ろに置いている。
 - Claude Haiku 5.5 は 512 トークン以上の指示文からキャッシュされる。このゲームの指示文はそれより長い。
+- **会話の部分もキャッシュする（要件#93）**: 判定に送る文を「舞台・人物（変わらない）→ 会話を1行ずつ → 今の怒り・納得度（毎回変わる）」の順に並べ、会話の最後の行に `cache_control` を付ける。会話は後ろに1行ずつ足されるだけなので、次の判定では前回までの会話がキャッシュから読まれ、新しい行の分だけがふつうの料金になる。送る中身は前と同じなので、判定の質は変わらない。
+- **対戦の不適切な発言の確認を、採点と同じ1回の呼び出しにまとめた（要件#93）**: 前は「AIで不適切か確かめる」→「AIで採点する」の2回呼んでいた。今は採点の出力に `flag`（sexual / hate / threat / personal_info / none）を足し、1回で両方を返す。キーワードの確認はその前にそのまま行う。客役の最初のクレームは採点がないので、今までどおり別に確かめる。セリフを相手に見せるのは確かめた後なので、伏せ字の扱いも前と同じ。AI が使えない・上限に達したときはキーワードだけ（前と同じ）。
 - 効き具合は `GET /api/v1/info` の `ai_cache.cache_read_ratio`（入力のうちキャッシュから読めた割合）で見られる。0 のままなら、指示文が毎回変わってしまっている（日時などを指示文に入れないこと）。
 
 ### 9.2 Claude 以外のAI
@@ -233,5 +244,6 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
   ```bash
   sqlite3 server/var/cushara.db "SELECT datetime(created_at/1000,'unixepoch'), reporter_id, target_id, reason, note FROM reports ORDER BY id DESC LIMIT 50;"
   ```
-- 不適切な発言の検出は、キーワード（`server/src/moderation.ts`）と、AI が使えるときは AI（`moderateWithLlm`）。AI の呼び出しは1人1分に30回まで。
+- 不適切な発言の検出は、キーワード（`server/src/moderation.ts`）と、AI が使えるときは AI。AI は採点と同じ呼び出しで `flag` を返す（要件#93）。採点のない客役の最初のクレームだけ `moderateWithLlm` を別に呼ぶ（1人1分に30回まで）。
+- テスト: `server/test/anthropic_cache.test.ts`（偽の API サーバーで、キャッシュの印の位置と `flag` を確かめる）。
 

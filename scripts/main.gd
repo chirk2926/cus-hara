@@ -351,26 +351,7 @@ func set_stink(on: bool) -> void:
 
 
 func customer_say(speaker: String, text: String, angry: bool = false) -> void:
-	_speak(text, angry)
 	await _hud.say(speaker, text, angry)
-
-
-## 読み上げ（要件#91）: Godot の TTS（パソコンに入っている声）。設定でオン・オフ。言語に合う声がなければ読まない
-var _tts_voice: Dictionary = {}
-
-
-func _speak(text: String, angry: bool) -> void:
-	if not GameSettings.tts_on or smoke or text.strip_edges() == "" or text.begins_with("……"):
-		return
-	var lang: String = GameSettings.language
-	if str(_tts_voice.get("lang", "")) != lang:
-		var ids: PackedStringArray = DisplayServer.tts_get_voices_for_language(lang)
-		_tts_voice = {"lang": lang, "id": ids[0] if ids.size() > 0 else ""}
-	var vid: String = str(_tts_voice.get("id", ""))
-	if vid == "":
-		return
-	DisplayServer.tts_stop()
-	DisplayServer.tts_speak(text, vid, int(GameSettings.volume * 100.0), 1.0 if not angry else 0.85, 1.15 if angry else 1.0)
 
 
 func customer_react(kind: String) -> void:
@@ -1648,7 +1629,8 @@ func _show_mental_list() -> void:
 		c.add_child(UI.text(tr("1人用（経験値で上がる）") if side == "a" else tr("対戦（レートで決まる・素材）"), UI.S_BODY, UI.INK, UI.F_BOLD))
 		var cur: int = ra if side == "a" else rb
 		for r in range(1, 21):
-			var reached: bool = r <= cur
+			# 対戦（レートで決まる）は全部見せる。1人用はまだ届いていないランクを「？？？」に（要件#93）
+			var reached: bool = r <= cur or side == "b"
 			var name: String = (GameSettings.mental_name_a(r) if side == "a" else GameSettings.mental_name_b(r)) if reached else tr("？？？")
 			var need: String = ""
 			if side == "a":
@@ -1659,7 +1641,7 @@ func _show_mental_list() -> void:
 			c.add_child(line)
 			var mark: String = "▶" if r == cur else "  "
 			line.add_child(UI.text("%s %2d" % [mark, r], UI.S_SMALL, UI.SHU if r == cur else UI.INK_SOFT, UI.F_DOT))
-			line.add_child(UI.text(name, UI.S_SMALL, UI.INK if reached else UI.INK_SOFT, UI.F_BOLD if r == cur else UI.F_BODY))
+			line.add_child(UI.text(name, UI.S_SMALL, UI.INK if r <= cur else UI.INK_SOFT, UI.F_BOLD if r == cur else UI.F_BODY))
 			line.add_child(UI.spacer())
 			line.add_child(UI.text(need, UI.S_SMALL - 2, UI.INK_SOFT, UI.F_DOT))
 	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
@@ -2805,14 +2787,6 @@ func _show_settings() -> void:
 
 	var time_opt: OptionButton = _option(_translated(GameSettings.ANSWER_TIMES), GameSettings.answer_time)
 	_form_row(grid, tr("返事の時間"), time_opt)
-	# 読み上げ（要件#91）: お客さんのセリフをパソコンの声で読む
-	var tts_chk: CheckBox = UI.check(tr("お客さんのセリフを読み上げる"), GameSettings.tts_on)
-	tts_chk.toggled.connect(func(on: bool) -> void:
-		GameSettings.tts_on = on
-		GameSettings.save_settings()
-		if not on:
-			DisplayServer.tts_stop())
-	_form_row(grid, tr("読み上げ"), tts_chk)
 
 	var vol: HSlider = HSlider.new()
 	vol.min_value = 0.0

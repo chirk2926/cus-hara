@@ -250,14 +250,20 @@ func _solo_shift() -> void:
 	if target == "" and stage_btns.has("credit") and not stage_btns.has("crane_stuck"):
 		target = "credit"
 	if target != "":
+		var pressed: int = 0
 		for i in range(2):
 			if not await _wait_turn(solo, 15.0):
 				break
 			if not bool(solo.get("_active")) or solo.get("_cust") != cust:
 				break
 			solo.call("_on_action", target)
+			pressed += 1
 			await _wait(2.5)
-		check("same action twice is a violation (" + target + ")", GameSettings.stat("violations") >= viol_before + 1, str(GameSettings.stat("violations")))
+		# 1回目でお客さんが帰ったとき（納得・味をしめた など）は2回目を押せないので確かめない
+		if pressed >= 2:
+			check("same action twice is a violation (" + target + ")", GameSettings.stat("violations") >= viol_before + 1, str(GameSettings.stat("violations")))
+		else:
+			print("QA SKIP violation (customer left after ", pressed, " press)")
 	else:
 		print("QA SKIP violation (buttons: ", stage_btns, ")")
 	# 残りは自動で最後まで

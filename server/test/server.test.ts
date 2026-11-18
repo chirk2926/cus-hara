@@ -376,3 +376,20 @@ test("プレイヤーの通報（要件#87）: 理由つきで保存し、同じ
   const bad = await api(srv.base, "POST", "/api/v1/report", { player_id: b.body.player.id, reason: "nope" }, a.body.token);
   assert.equal(bad.status, 400);
 });
+
+test("不適切な発言（要件#88, #93）: 店員の不適切なセリフは誰にも見せず伏せ字にし、言った人に警告する", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "Mさん");
+  const b = await guest(srv.base, srv.wsUrl, "Nさん");
+  autoplay(a.c, { staffText: "おっぱい見せて" });
+  autoplay(b.c, { staffText: "おっぱい見せて" });
+  a.c.send({ t: "queue", format: "text" });
+  b.c.send({ t: "queue", format: "text" });
+  const ea = await a.c.wait((m) => m.t === "match_end", 60000);
+  const eb = await b.c.wait((m) => m.t === "match_end", 60000);
+  const all = [...a.c.inbox, ...b.c.inbox];
+  assert.ok(all.some((m) => m.t === "warning" && m.category === "sexual"), "言った人に警告が届く");
+  assert.ok(!all.some((m) => m.t === "line" && String(m.text).includes("おっぱい")), "セリフは誰にも見せない");
+  assert.ok(all.some((m) => m.t === "line" && m.role === "staff" && String(m.text).includes("不適切")), "伏せ字の文が出る");
+  assert.ok(["moderation", "completed"].includes(ea.reason) && eb.reason === ea.reason);
+  a.c.close(); b.c.close();
+});
