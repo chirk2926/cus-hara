@@ -13,6 +13,8 @@ export interface Player {
   wins: number;
   losses: number;
   draws: number;
+  /** つけている称号の ID（要件#79。"t001" など。無ければ ""） */
+  title?: string;
 }
 
 let db: DatabaseSync | null = null;
@@ -51,6 +53,9 @@ export function openDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_players_rating ON players(rating DESC);
   `);
+  // 称号の列（要件#79）。古いDBには後から足す
+  const cols = db.prepare("PRAGMA table_info(players)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "title")) db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''");
   return db;
 }
 
@@ -76,7 +81,7 @@ export function createPlayer(name: string): { player: Player; token: string } {
 
 export function playerByToken(token: string): Player | null {
   const row = openDb()
-    .prepare("SELECT id, name, rating, wins, losses, draws FROM players WHERE token_hash = ?")
+    .prepare("SELECT id, name, rating, wins, losses, draws, title FROM players WHERE token_hash = ?")
     .get(hashToken(token)) as Player | undefined;
   if (!row) return null;
   openDb().prepare("UPDATE players SET last_seen = ? WHERE id = ?").run(Date.now(), row.id);
@@ -84,8 +89,17 @@ export function playerByToken(token: string): Player | null {
 }
 
 export function playerById(id: string): Player | null {
-  const row = openDb().prepare("SELECT id, name, rating, wins, losses, draws FROM players WHERE id = ?").get(id) as Player | undefined;
+  const row = openDb().prepare("SELECT id, name, rating, wins, losses, draws, title FROM players WHERE id = ?").get(id) as Player | undefined;
   return row ? { ...row } : null;
+}
+
+/** 称号の ID の形（"t" + 3桁）。中身（手に入れたか）はゲームのPCにあるので確かめられない（見た目だけのもの） */
+export function cleanTitle(raw: unknown): string {
+  return typeof raw === "string" && /^t\d{3}$/.test(raw) ? raw : "";
+}
+
+export function setPlayerTitle(id: string, title: string): void {
+  openDb().prepare("UPDATE players SET title = ? WHERE id = ?").run(title, id);
 }
 
 export function renamePlayer(id: string, name: string): void {

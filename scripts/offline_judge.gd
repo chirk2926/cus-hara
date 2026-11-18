@@ -166,6 +166,37 @@ static func memo_overlap(customer: Dictionary, text: String, lang: String, stop:
 	return n
 
 
+## 返事の特徴（称号の記録用。要件#79）。AIで判定したときも、同じ決まりで数える
+static func flags(customer: Dictionary, reply: String, used: Array) -> Dictionary:
+	var lang: String = _lang()
+	var w: Dictionary = words(lang)
+	var raw: String = reply.strip_edges()
+	var text: String = _norm(raw, lang)
+	var re: RegEx = RegEx.new()
+	re.compile(str(w.get("polite_pattern", "です|ます")))
+	var polite: bool = re.search(text) != null or _count(text, w.get("polite", []), lang) > 0
+	var ex_text: String = text
+	for e in (w.get("excuse_exempt", []) as Array):
+		ex_text = ex_text.replace(_norm(str(e), lang), "")
+	var near: bool = used.has(raw)
+	for u in used:
+		if similarity(raw, str(u), lang) >= 0.8:
+			near = true
+	return {
+		"apology": _count(text, w.get("apology", []), lang) > 0,
+		"empathy": _count(text, w.get("empathy", []), lang) > 0,
+		"question": (text.find("？") != -1 or text.find("?") != -1) and polite,
+		"memo": memo_overlap(customer, text, lang, w.get("stop_tokens", [])) >= 2,
+		"firm": _count(text, w.get("firm", []), lang) > 0,
+		"casual": not polite,
+		"rude": _count(text, w.get("rude", []), lang) > 0,
+		"repeat": near,
+		"excuse": _count(ex_text, w.get("excuse", []), lang) > 0,
+		"offtopic": is_off_topic(raw),
+		"short": (raw.split(" ", false).size() < 3) if lang == "en" else raw.length() <= 3,
+	}
+
+
 ## customer: お客さんデータ / reply: プレイヤーの返答 / used: これまでの返答 / anger, resolve: 現在値(0-100)
 static func judge(customer: Dictionary, reply: String, used: Array, anger: float, resolve: float) -> Dictionary:
 	var lang: String = _lang()

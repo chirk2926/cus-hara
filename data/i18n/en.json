@@ -465,5 +465,13 @@
 	"メンタル %d「%s」%s ／ 対戦 %d「%s」": "Mental %d \"%s\"%s / Versus %d \"%s\"",
 	"メンタル %d「%s」": "Mental %d \"%s\"",
 	"メンタルランクアップ！": "Mental rank up!",
-	"オフラインのため経験値なし": "No EXP (played offline)"
+	"オフラインのため経験値なし": "No EXP (played offline)",
+	"称号を手に入れた！": "Title earned!",
+	"称号": "Titles",
+	"いまの称号: %s": "Current title: %s",
+	"なし": "None",
+	"称号をはずす": "Remove title",
+	"称号 →": "Titles →",
+	"［ネタ］": "[Joke]",
+	"？？？": "???"
 }

@@ -261,6 +261,16 @@ func lobby_id() -> String:
 	return str(_lobby.get("lobby_id"))
 
 
+## 称号を EOS の実績にも記録する（要件#78, #79）。EOS につながっているときだけ。実績のIDは称号の id（開発者ポータルに同じIDで登録が要る）
+func unlock_achievements(ids: Array) -> void:
+	if ids.is_empty() or not _ready_eos:
+		return
+	var ha: Node = _node("HAchievements")
+	if ha == null:
+		return
+	ha.unlock_achievements_async(ids)
+
+
 # ---------------------------------------------------------------- 後片付け
 
 ## 試合が始まったら（または、やめたら）ロビーを抜ける

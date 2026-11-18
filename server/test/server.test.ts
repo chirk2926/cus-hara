@@ -324,3 +324,14 @@ test("セキュリティ（要件#77）: ログイン前は auth 以外を受け
   ws2.send(JSON.stringify({ t: "auth", token: "x".repeat(10000) }));
   assert.equal(await closed2, 4001, "ログイン前の大きなメッセージは切る");
 });
+
+test("称号（要件#79）: つけた称号は名前を変えずに保存され、形の違う値は空にする", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "称号の人" });
+  const set = await api(srv.base, "POST", "/api/v1/me", { title: "t015" }, g.body.token);
+  assert.equal(set.body.player.title, "t015");
+  assert.equal(set.body.player.name, "称号の人", "称号だけ変えても名前はそのまま");
+  const me = await api(srv.base, "GET", "/api/v1/me", undefined, g.body.token);
+  assert.equal(me.body.player.title, "t015");
+  const bad = await api(srv.base, "POST", "/api/v1/me", { title: "<script>" }, g.body.token);
+  assert.equal(bad.body.player.title, "");
+});

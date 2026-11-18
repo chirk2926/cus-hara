@@ -1,0 +1,1605 @@
+{
+	"_comment": "称号（要件#79）。stat の値が min 以上で手に入る。res:<日本語の呼び名> はそのお客さんを納得させた回数、all:<店> はその店の台本のお客さん全員を納得させたら 1。名前・説明の en / zh は訳。EOS の実績のIDは id と同じ。",
+	"titles": [
+		{
+			"id": "t001",
+			"name": {
+				"ja": "見習い店員",
+				"en": "Rookie Clerk",
+				"zh": "见习店员"
+			},
+			"desc": {
+				"ja": "チュートリアル（新人研修）を最後まで受けた",
+				"en": "Finished the tutorial (new-hire training)",
+				"zh": "完成了教程（新人培训）"
+			},
+			"rarity": 1,
+			"stat": "tutorial_done",
+			"min": 1
+		},
+		{
+			"id": "t002",
+			"name": {
+				"ja": "はじめての納得",
+				"en": "First Win-Over",
+				"zh": "初次认同"
+			},
+			"desc": {
+				"ja": "お客さんを初めて納得させた",
+				"en": "Won over a customer for the first time",
+				"zh": "第一次让顾客认同"
+			},
+			"rarity": 1,
+			"stat": "resolved",
+			"min": 1
+		},
+		{
+			"id": "t003",
+			"name": {
+				"ja": "聞き上手",
+				"en": "Good Listener",
+				"zh": "倾听达人"
+			},
+			"desc": {
+				"ja": "納得させたお客さん 10人",
+				"en": "Won over 10 customers",
+				"zh": "让10位顾客认同"
+			},
+			"rarity": 1,
+			"stat": "resolved",
+			"min": 10
+		},
+		{
+			"id": "t004",
+			"name": {
+				"ja": "なだめ職人",
+				"en": "Master Soother",
+				"zh": "安抚匠人"
+			},
+			"desc": {
+				"ja": "納得させたお客さん 50人",
+				"en": "Won over 50 customers",
+				"zh": "让50位顾客认同"
+			},
+			"rarity": 2,
+			"stat": "resolved",
+			"min": 50
+		},
+		{
+			"id": "t005",
+			"name": {
+				"ja": "クレーム処理班",
+				"en": "Complaint Squad",
+				"zh": "投诉处理组"
+			},
+			"desc": {
+				"ja": "納得させたお客さん 100人",
+				"en": "Won over 100 customers",
+				"zh": "让100位顾客认同"
+			},
+			"rarity": 2,
+			"stat": "resolved",
+			"min": 100
+		},
+		{
+			"id": "t006",
+			"name": {
+				"ja": "伝説の接客人",
+				"en": "Legendary Clerk",
+				"zh": "传说中的店员"
+			},
+			"desc": {
+				"ja": "納得させたお客さん 300人",
+				"en": "Won over 300 customers",
+				"zh": "让300位顾客认同"
+			},
+			"rarity": 3,
+			"stat": "resolved",
+			"min": 300
+		},
+		{
+			"id": "t007",
+			"name": {
+				"ja": "一言で鎮める者",
+				"en": "One-Line Wonder",
+				"zh": "一句话平息"
+			},
+			"desc": {
+				"ja": "1回目の返事でお客さんを納得させた",
+				"en": "Won over a customer with your first reply",
+				"zh": "第一句回复就让顾客认同"
+			},
+			"rarity": 2,
+			"stat": "one_turn_resolve",
+			"min": 1
+		},
+		{
+			"id": "t008",
+			"name": {
+				"ja": "神対応",
+				"en": "Godlike Service",
+				"zh": "神级服务"
+			},
+			"desc": {
+				"ja": "怒り 20 以下のまま納得させた",
+				"en": "Won over a customer while keeping anger at 20 or below",
+				"zh": "怒气保持在20以下让顾客认同"
+			},
+			"rarity": 2,
+			"stat": "calm_resolve",
+			"min": 1
+		},
+		{
+			"id": "t009",
+			"name": {
+				"ja": "ギリギリの説得",
+				"en": "Clutch Save",
+				"zh": "绝地说服"
+			},
+			"desc": {
+				"ja": "怒り 90 以上から納得させた",
+				"en": "Won over a customer from anger 90 or above",
+				"zh": "从怒气90以上让顾客认同"
+			},
+			"rarity": 2,
+			"stat": "clutch_resolve",
+			"min": 1
+		},
+		{
+			"id": "t010",
+			"name": {
+				"ja": "丁寧語の鬼",
+				"en": "Politeness Demon",
+				"zh": "敬语狂魔"
+			},
+			"desc": {
+				"ja": "1シフトで一度もタメ口・暴言と言われなかった（4人とも）",
+				"en": "Never called rude or abusive in a shift (all 4 customers)",
+				"zh": "一个班次中从未被说没礼貌或出言不逊（4人全部）"
+			},
+			"rarity": 2,
+			"stat": "polite_shift",
+			"min": 1
+		},
+		{
+			"id": "t011",
+			"name": {
+				"ja": "断る勇気",
+				"en": "Dares to Say No",
+				"zh": "敢于说不"
+			},
+			"desc": {
+				"ja": "不当な要求をはっきり断って納得させた 10回",
+				"en": "Firmly refused an unfair demand and won them over 10 times",
+				"zh": "明确拒绝无理要求并让顾客认同10次"
+			},
+			"rarity": 2,
+			"stat": "firm_resolve",
+			"min": 10
+		},
+		{
+			"id": "t012",
+			"name": {
+				"ja": "揺るがぬ規定",
+				"en": "Rules Are Rules",
+				"zh": "规定不动摇"
+			},
+			"desc": {
+				"ja": "1シフトで一度も屈服しなかった 10回",
+				"en": "Finished a shift without caving in 10 times",
+				"zh": "一个班次中从未屈服，达成10次"
+			},
+			"rarity": 2,
+			"stat": "no_yield_shift",
+			"min": 10
+		},
+		{
+			"id": "t013",
+			"name": {
+				"ja": "皆勤賞",
+				"en": "Perfect Attendance",
+				"zh": "全勤奖"
+			},
+			"desc": {
+				"ja": "シフトを 30回 最後まで勤めた",
+				"en": "Finished 30 shifts",
+				"zh": "完成30个班次"
+			},
+			"rarity": 2,
+			"stat": "shifts",
+			"min": 30
+		},
+		{
+			"id": "t014",
+			"name": {
+				"ja": "店の顔",
+				"en": "Face of the Store",
+				"zh": "门店招牌"
+			},
+			"desc": {
+				"ja": "シフトを 100回 最後まで勤めた",
+				"en": "Finished 100 shifts",
+				"zh": "完成100个班次"
+			},
+			"rarity": 3,
+			"stat": "shifts",
+			"min": 100
+		},
+		{
+			"id": "t015",
+			"name": {
+				"ja": "パーフェクトシフト",
+				"en": "Perfect Shift",
+				"zh": "完美班次"
+			},
+			"desc": {
+				"ja": "1シフトの4人全員を納得させた",
+				"en": "Won over all 4 customers in one shift",
+				"zh": "一个班次中让4位顾客全部认同"
+			},
+			"rarity": 2,
+			"stat": "perfect_shift",
+			"min": 1
+		},
+		{
+			"id": "t016",
+			"name": {
+				"ja": "連続パーフェクト",
+				"en": "Perfect Streak",
+				"zh": "连续完美"
+			},
+			"desc": {
+				"ja": "パーフェクトシフトを 2回続けた",
+				"en": "Got a Perfect Shift 2 times in a row",
+				"zh": "连续2次完美班次"
+			},
+			"rarity": 3,
+			"stat": "perfect_streak_max",
+			"min": 2
+		},
+		{
+			"id": "t017",
+			"name": {
+				"ja": "謝罪のプロ",
+				"en": "Sorry Pro",
+				"zh": "道歉专家"
+			},
+			"desc": {
+				"ja": "謝罪の言葉を使った返事 100回",
+				"en": "Made 100 replies with an apology",
+				"zh": "使用道歉用语回复100次"
+			},
+			"rarity": 1,
+			"stat": "apology_replies",
+			"min": 100
+		},
+		{
+			"id": "t018",
+			"name": {
+				"ja": "共感の人",
+				"en": "Empath",
+				"zh": "共情之人"
+			},
+			"desc": {
+				"ja": "気持ちを受け止める言葉を使った返事 100回",
+				"en": "Made 100 replies acknowledging feelings",
+				"zh": "使用体谅心情的话语回复100次"
+			},
+			"rarity": 1,
+			"stat": "empathy_replies",
+			"min": 100
+		},
+		{
+			"id": "t019",
+			"name": {
+				"ja": "質問上手",
+				"en": "Question Master",
+				"zh": "提问高手"
+			},
+			"desc": {
+				"ja": "ていねいな質問で話を聞いた 30回",
+				"en": "Listened with polite questions 30 times",
+				"zh": "用礼貌的提问倾听顾客30次"
+			},
+			"rarity": 2,
+			"stat": "question_replies",
+			"min": 30
+		},
+		{
+			"id": "t020",
+			"name": {
+				"ja": "メモ読みの達人",
+				"en": "Memo Reader",
+				"zh": "备忘达人"
+			},
+			"desc": {
+				"ja": "引き継ぎメモの中身に触れた返事 50回",
+				"en": "Made 50 replies citing the handover memo",
+				"zh": "提及交接备忘内容的回复50次"
+			},
+			"rarity": 2,
+			"stat": "memo_replies",
+			"min": 50
+		},
+		{
+			"id": "t021",
+			"name": {
+				"ja": "火に油",
+				"en": "Fuel on the Fire",
+				"zh": "火上浇油"
+			},
+			"desc": {
+				"ja": "お客さんを初めてブチギレさせた",
+				"en": "Made a customer snap for the first time",
+				"zh": "第一次让顾客发飙"
+			},
+			"rarity": 0,
+			"stat": "explode",
+			"min": 1
+		},
+		{
+			"id": "t022",
+			"name": {
+				"ja": "炎上請負人",
+				"en": "Flame Contractor",
+				"zh": "专业点火"
+			},
+			"desc": {
+				"ja": "ブチギレさせたお客さん 30人",
+				"en": "Made 30 customers snap",
+				"zh": "让30位顾客发飙"
+			},
+			"rarity": 0,
+			"stat": "explode",
+			"min": 30
+		},
+		{
+			"id": "t023",
+			"name": {
+				"ja": "時間切れの人",
+				"en": "Overthinker",
+				"zh": "想太多的人"
+			},
+			"desc": {
+				"ja": "考えすぎて時間切れでブチギレさせた 10回",
+				"en": "Made a customer snap by running out of time 10 times",
+				"zh": "想太久超时导致顾客发飙10次"
+			},
+			"rarity": 0,
+			"stat": "timeout",
+			"min": 10
+		},
+		{
+			"id": "t024",
+			"name": {
+				"ja": "ゴネ得の店",
+				"en": "Squeaky Wheel Store",
+				"zh": "会闹的有糖吃"
+			},
+			"desc": {
+				"ja": "不当な要求に初めて屈した",
+				"en": "Gave in to an unfair demand for the first time",
+				"zh": "第一次向无理要求低头"
+			},
+			"rarity": 0,
+			"stat": "yield",
+			"min": 1
+		},
+		{
+			"id": "t025",
+			"name": {
+				"ja": "何でも言うこと聞く人",
+				"en": "Total Pushover",
+				"zh": "有求必应"
+			},
+			"desc": {
+				"ja": "屈服 20回",
+				"en": "Caved in 20 times",
+				"zh": "屈服20次"
+			},
+			"rarity": 0,
+			"stat": "yield",
+			"min": 20
+		},
+		{
+			"id": "t026",
+			"name": {
+				"ja": "土下座の達人",
+				"en": "Kneeling Expert",
+				"zh": "下跪达人"
+			},
+			"desc": {
+				"ja": "土下座 10回",
+				"en": "Kneeled and bowed 10 times",
+				"zh": "下跪道歉10次"
+			},
+			"rarity": 0,
+			"stat": "dogeza",
+			"min": 10
+		},
+		{
+			"id": "t027",
+			"name": {
+				"ja": "土下座マスター",
+				"en": "Kneeling Master",
+				"zh": "下跪大师"
+			},
+			"desc": {
+				"ja": "土下座 50回",
+				"en": "Kneeled and bowed 50 times",
+				"zh": "下跪道歉50次"
+			},
+			"rarity": 0,
+			"stat": "dogeza",
+			"min": 50
+		},
+		{
+			"id": "t028",
+			"name": {
+				"ja": "早退常習犯",
+				"en": "Early Leaver",
+				"zh": "早退惯犯"
+			},
+			"desc": {
+				"ja": "メンタルが折れて早退 5回",
+				"en": "Went home early from mental breakdown 5 times",
+				"zh": "心态崩溃早退5次"
+			},
+			"rarity": 0,
+			"stat": "breakdown",
+			"min": 5
+		},
+		{
+			"id": "t029",
+			"name": {
+				"ja": "オウム返し",
+				"en": "Parrot",
+				"zh": "复读机"
+			},
+			"desc": {
+				"ja": "同じ返事のくり返しと言われた 10回",
+				"en": "Told you were repeating yourself 10 times",
+				"zh": "被说重复同样的回复10次"
+			},
+			"rarity": 0,
+			"stat": "repeat_replies",
+			"min": 10
+		},
+		{
+			"id": "t030",
+			"name": {
+				"ja": "言い訳名人",
+				"en": "Excuse Artist",
+				"zh": "找借口大师"
+			},
+			"desc": {
+				"ja": "言い訳に聞こえると言われた 20回",
+				"en": "Told you sounded like you were making excuses 20 times",
+				"zh": "被说像在找借口20次"
+			},
+			"rarity": 0,
+			"stat": "excuse_replies",
+			"min": 20
+		},
+		{
+			"id": "t031",
+			"name": {
+				"ja": "口が悪い店員",
+				"en": "Potty Mouth",
+				"zh": "嘴臭店员"
+			},
+			"desc": {
+				"ja": "お客さんに暴言を言ってしまった 5回",
+				"en": "Said something abusive to a customer 5 times",
+				"zh": "对顾客出言不逊5次"
+			},
+			"rarity": 0,
+			"stat": "rude_replies",
+			"min": 5
+		},
+		{
+			"id": "t032",
+			"name": {
+				"ja": "話がそれる人",
+				"en": "Off on a Tangent",
+				"zh": "跑题达人"
+			},
+			"desc": {
+				"ja": "接客と関係ない話をした 5回",
+				"en": "Talked about things unrelated to service 5 times",
+				"zh": "说了与接待无关的话5次"
+			},
+			"rarity": 0,
+			"stat": "offtopic_replies",
+			"min": 5
+		},
+		{
+			"id": "t033",
+			"name": {
+				"ja": "★1の店",
+				"en": "One-Star Store",
+				"zh": "一星店"
+			},
+			"desc": {
+				"ja": "店舗レビュー ★1.0 のシフト",
+				"en": "Got a ★1.0 store review in a shift",
+				"zh": "某个班次的店铺评价为★1.0"
+			},
+			"rarity": 0,
+			"stat": "review1_shift",
+			"min": 1
+		},
+		{
+			"id": "t034",
+			"name": {
+				"ja": "全滅シフト",
+				"en": "Total Wipeout",
+				"zh": "全军覆没"
+			},
+			"desc": {
+				"ja": "1シフトの4人全員をブチギレさせた",
+				"en": "Made all 4 customers snap in one shift",
+				"zh": "一个班次中让4位顾客全部发飙"
+			},
+			"rarity": 0,
+			"stat": "all_explode_shift",
+			"min": 1
+		},
+		{
+			"id": "t035",
+			"name": {
+				"ja": "割引しすぎ",
+				"en": "Discount Addict",
+				"zh": "折扣打太多"
+			},
+			"desc": {
+				"ja": "1シフトで割引 3回以上",
+				"en": "Gave 3 or more discounts in one shift",
+				"zh": "一个班次中打折3次以上"
+			},
+			"rarity": 0,
+			"stat": "discount3_shift",
+			"min": 1
+		},
+		{
+			"id": "t036",
+			"name": {
+				"ja": "コンビニ新人",
+				"en": "Konbini Rookie",
+				"zh": "便利店新人"
+			},
+			"desc": {
+				"ja": "コンビニのシフトを初めて最後まで勤めた",
+				"en": "Finished a konbini shift for the first time",
+				"zh": "第一次完成便利店班次"
+			},
+			"rarity": 1,
+			"stat": "shifts_konbini",
+			"min": 1
+		},
+		{
+			"id": "t037",
+			"name": {
+				"ja": "コンビニの守護者",
+				"en": "Konbini Guardian",
+				"zh": "便利店守护者"
+			},
+			"desc": {
+				"ja": "コンビニで納得させたお客さん 50人",
+				"en": "Won over 50 customers at the konbini",
+				"zh": "在便利店让50位顾客认同"
+			},
+			"rarity": 2,
+			"stat": "resolved_konbini",
+			"min": 50
+		},
+		{
+			"id": "t038",
+			"name": {
+				"ja": "24時間戦士",
+				"en": "24/7 Warrior",
+				"zh": "24小时战士"
+			},
+			"desc": {
+				"ja": "コンビニのシフト 30回",
+				"en": "Finished 30 konbini shifts",
+				"zh": "完成30个便利店班次"
+			},
+			"rarity": 2,
+			"stat": "shifts_konbini",
+			"min": 30
+		},
+		{
+			"id": "t039",
+			"name": {
+				"ja": "お箸係",
+				"en": "Chopstick Duty",
+				"zh": "筷子专员"
+			},
+			"desc": {
+				"ja": "「説教好きの常連」を納得させた",
+				"en": "Won over \"The Lecturing Regular\"",
+				"zh": "让“说教常客”认同"
+			},
+			"rarity": 1,
+			"stat": "res:説教好きの常連",
+			"min": 1
+		},
+		{
+			"id": "t040",
+			"name": {
+				"ja": "おでん番長",
+				"en": "Oden Boss",
+				"zh": "关东煮老大"
+			},
+			"desc": {
+				"ja": "「おでん大根おじさん」を納得させた",
+				"en": "Won over \"Oden Daikon Uncle\"",
+				"zh": "让“关东煮萝卜大叔”认同"
+			},
+			"rarity": 1,
+			"stat": "res:おでん大根おじさん",
+			"min": 1
+		},
+		{
+			"id": "t041",
+			"name": {
+				"ja": "袋のプロ",
+				"en": "Bagging Pro",
+				"zh": "装袋专家"
+			},
+			"desc": {
+				"ja": "「レジ袋三枚男」を納得させた",
+				"en": "Won over \"The Three-Bag Man\"",
+				"zh": "让“三个袋子男”认同"
+			},
+			"rarity": 1,
+			"stat": "res:レジ袋三枚男",
+			"min": 1
+		},
+		{
+			"id": "t042",
+			"name": {
+				"ja": "ポイント管理人",
+				"en": "Points Keeper",
+				"zh": "积分管家"
+			},
+			"desc": {
+				"ja": "「ポイントカードの鬼」を納得させた",
+				"en": "Won over \"The Points Card Fanatic\"",
+				"zh": "让“积分卡狂魔”认同"
+			},
+			"rarity": 1,
+			"stat": "res:ポイントカードの鬼",
+			"min": 1
+		},
+		{
+			"id": "t043",
+			"name": {
+				"ja": "映えの案内人",
+				"en": "Insta Guide",
+				"zh": "出片向导"
+			},
+			"desc": {
+				"ja": "「映え待ちの客」を納得させた",
+				"en": "Won over \"The Photo-Op Customer\"",
+				"zh": "让“等出片的顾客”认同"
+			},
+			"rarity": 1,
+			"stat": "res:映え待ちの客",
+			"min": 1
+		},
+		{
+			"id": "t044",
+			"name": {
+				"ja": "酔いざまし係",
+				"en": "Sober-Upper",
+				"zh": "醒酒专员"
+			},
+			"desc": {
+				"ja": "「酔っ払い会社員」を納得させた",
+				"en": "Won over \"The Tipsy Salaryman\"",
+				"zh": "让“醉酒上班族”认同"
+			},
+			"rarity": 1,
+			"stat": "res:酔っ払い会社員",
+			"min": 1
+		},
+		{
+			"id": "t045",
+			"name": {
+				"ja": "コンビニ全制覇",
+				"en": "Konbini Conqueror",
+				"zh": "便利店全制霸"
+			},
+			"desc": {
+				"ja": "コンビニの台本のお客さん全員を一度ずつ納得させた",
+				"en": "Won over every konbini script customer at least once",
+				"zh": "让便利店剧本中的所有顾客各认同一次"
+			},
+			"rarity": 3,
+			"stat": "all:konbini",
+			"min": 1
+		},
+		{
+			"id": "t046",
+			"name": {
+				"ja": "ゲーセン新人",
+				"en": "Arcade Rookie",
+				"zh": "游戏厅新人"
+			},
+			"desc": {
+				"ja": "ゲームセンターのシフトを初めて最後まで勤めた",
+				"en": "Finished an arcade shift for the first time",
+				"zh": "第一次完成游戏厅班次"
+			},
+			"rarity": 1,
+			"stat": "shifts_arcade",
+			"min": 1
+		},
+		{
+			"id": "t047",
+			"name": {
+				"ja": "夜のゲーセン番",
+				"en": "Night Arcade Keeper",
+				"zh": "夜班游戏厅"
+			},
+			"desc": {
+				"ja": "ゲームセンターのシフト 30回",
+				"en": "Finished 30 arcade shifts",
+				"zh": "完成30个游戏厅班次"
+			},
+			"rarity": 2,
+			"stat": "shifts_arcade",
+			"min": 30
+		},
+		{
+			"id": "t048",
+			"name": {
+				"ja": "アームの調律師",
+				"en": "Claw Tuner",
+				"zh": "爪子调音师"
+			},
+			"desc": {
+				"ja": "台の調整でお客さんに景品を取らせた 10回",
+				"en": "Let customers win a prize by adjusting the machine 10 times",
+				"zh": "通过调整机台让顾客抓到奖品10次"
+			},
+			"rarity": 2,
+			"stat": "crane_won",
+			"min": 10
+		},
+		{
+			"id": "t049",
+			"name": {
+				"ja": "クレーンの神",
+				"en": "Crane God",
+				"zh": "抓娃娃之神"
+			},
+			"desc": {
+				"ja": "台の調整でお客さんに景品を取らせた 50回",
+				"en": "Let customers win a prize by adjusting the machine 50 times",
+				"zh": "通过调整机台让顾客抓到奖品50次"
+			},
+			"rarity": 3,
+			"stat": "crane_won",
+			"min": 50
+		},
+		{
+			"id": "t050",
+			"name": {
+				"ja": "置き直しの名人",
+				"en": "Prize Placement Pro",
+				"zh": "摆位高手"
+			},
+			"desc": {
+				"ja": "「景品を取りやすい位置へ」で取らせた 10回",
+				"en": "Let customers win via \"Move the prize closer\" 10 times",
+				"zh": "通过“把奖品挪到好抓的位置”让顾客抓到10次"
+			},
+			"rarity": 2,
+			"stat": "crane_move_won",
+			"min": 10
+		},
+		{
+			"id": "t051",
+			"name": {
+				"ja": "しれっと強化",
+				"en": "Sneaky Buff",
+				"zh": "偷偷加强"
+			},
+			"desc": {
+				"ja": "アームの強さを規定外にした",
+				"en": "Set the claw strength outside store rules",
+				"zh": "把爪力调到规定范围之外"
+			},
+			"rarity": 0,
+			"stat": "crane_cheat",
+			"min": 1
+		},
+		{
+			"id": "t052",
+			"name": {
+				"ja": "テストプレイヤー",
+				"en": "Test Player",
+				"zh": "试玩员"
+			},
+			"desc": {
+				"ja": "テストプレイ 20回",
+				"en": "Test played 20 times",
+				"zh": "试玩20次"
+			},
+			"rarity": 1,
+			"stat": "crane_tests",
+			"min": 20
+		},
+		{
+			"id": "t053",
+			"name": {
+				"ja": "確率の支配者",
+				"en": "Lord of Odds",
+				"zh": "概率主宰"
+			},
+			"desc": {
+				"ja": "確率設定でシフトを 10回 勤めた",
+				"en": "Finished 10 shifts using the probability setting",
+				"zh": "使用概率设定完成10个班次"
+			},
+			"rarity": 2,
+			"stat": "prob_shifts",
+			"min": 10
+		},
+		{
+			"id": "t054",
+			"name": {
+				"ja": "良心的な店",
+				"en": "Generous Store",
+				"zh": "良心店"
+			},
+			"desc": {
+				"ja": "ペイアウト率 60%以上でシフトを最後まで勤めた",
+				"en": "Finished a shift with a payout rate of 60% or more",
+				"zh": "以60%以上的出奖率完成班次"
+			},
+			"rarity": 2,
+			"stat": "payout60_shift",
+			"min": 1
+		},
+		{
+			"id": "t055",
+			"name": {
+				"ja": "渋い店",
+				"en": "Stingy Store",
+				"zh": "抠门店"
+			},
+			"desc": {
+				"ja": "ペイアウト率 10%でシフトを最後まで勤めた",
+				"en": "Finished a shift with a payout rate of 10%",
+				"zh": "以10%的出奖率完成班次"
+			},
+			"rarity": 0,
+			"stat": "payout10_shift",
+			"min": 1
+		},
+		{
+			"id": "t056",
+			"name": {
+				"ja": "帳簿の番人",
+				"en": "Ledger Keeper",
+				"zh": "账本守护者"
+			},
+			"desc": {
+				"ja": "筐体のデータを見た 20回",
+				"en": "Checked machine data 20 times",
+				"zh": "查看机台数据20次"
+			},
+			"rarity": 1,
+			"stat": "machine_data_views",
+			"min": 20
+		},
+		{
+			"id": "t057",
+			"name": {
+				"ja": "嘘を見抜く者",
+				"en": "Lie Detector",
+				"zh": "识破谎言"
+			},
+			"desc": {
+				"ja": "「〇〇円使った」の嘘を、記録をもとに話して納得させた 10回",
+				"en": "Won over customers lying about how much they spent by citing the record 10 times",
+				"zh": "识破“花了〇〇元”的谎言，根据记录说明并让顾客认同10次"
+			},
+			"rarity": 2,
+			"stat": "lie_caught",
+			"min": 10
+		},
+		{
+			"id": "t058",
+			"name": {
+				"ja": "払い出しの判断",
+				"en": "Payout Judge",
+				"zh": "出奖判断"
+			},
+			"desc": {
+				"ja": "目標金額に届いていた客に景品を取らせた 5回",
+				"en": "Let a customer who reached the target amount win a prize 5 times",
+				"zh": "让达到目标金额的顾客抓到奖品5次"
+			},
+			"rarity": 2,
+			"stat": "payout_reached_won",
+			"min": 5
+		},
+		{
+			"id": "t059",
+			"name": {
+				"ja": "メダルの番人",
+				"en": "Medal Keeper",
+				"zh": "推币机守护者"
+			},
+			"desc": {
+				"ja": "メダルの台のお客さんを納得させた 20人",
+				"en": "Won over 20 medal game customers",
+				"zh": "让20位推币机顾客认同"
+			},
+			"rarity": 2,
+			"stat": "resolved_medal",
+			"min": 20
+		},
+		{
+			"id": "t060",
+			"name": {
+				"ja": "音ゲーの守り人",
+				"en": "Rhythm Guardian",
+				"zh": "音游守护者"
+			},
+			"desc": {
+				"ja": "音楽ゲームの台のお客さんを納得させた 20人",
+				"en": "Won over 20 rhythm game customers",
+				"zh": "让20位音乐游戏顾客认同"
+			},
+			"rarity": 2,
+			"stat": "resolved_rhythm",
+			"min": 20
+		},
+		{
+			"id": "t061",
+			"name": {
+				"ja": "格ゲーの仲裁人",
+				"en": "Fight Referee",
+				"zh": "格斗仲裁人"
+			},
+			"desc": {
+				"ja": "ビデオゲームの台のお客さんを納得させた 20人",
+				"en": "Won over 20 video game customers",
+				"zh": "让20位电子游戏顾客认同"
+			},
+			"rarity": 2,
+			"stat": "resolved_video",
+			"min": 20
+		},
+		{
+			"id": "t062",
+			"name": {
+				"ja": "引っかかり救出隊",
+				"en": "Stuck-Prize Rescue",
+				"zh": "卡奖救援队"
+			},
+			"desc": {
+				"ja": "「引っかかった景品をとる」で納得させた 5回",
+				"en": "Won over customers via \"Free the stuck prize\" 5 times",
+				"zh": "通过“取出卡住的奖品”让顾客认同5次"
+			},
+			"rarity": 1,
+			"stat": "stuck_resolved",
+			"min": 5
+		},
+		{
+			"id": "t063",
+			"name": {
+				"ja": "売上の鬼",
+				"en": "Sales Demon",
+				"zh": "营业额狂魔"
+			},
+			"desc": {
+				"ja": "1シフトの売上が 30,000円（相当）以上",
+				"en": "Made $300 or more in sales in one shift",
+				"zh": "一个班次的营业额达到2,400元以上"
+			},
+			"rarity": 2,
+			"stat": "max_sales",
+			"min": 30000
+		},
+		{
+			"id": "t064",
+			"name": {
+				"ja": "星5の店",
+				"en": "Five-Star Store",
+				"zh": "五星店"
+			},
+			"desc": {
+				"ja": "店舗レビュー ★5.0 のシフト",
+				"en": "Got a ★5.0 store review in a shift",
+				"zh": "某个班次的店铺评价为★5.0"
+			},
+			"rarity": 3,
+			"stat": "review5_shift",
+			"min": 1
+		},
+		{
+			"id": "t065",
+			"name": {
+				"ja": "ゲーセン全制覇",
+				"en": "Arcade Conqueror",
+				"zh": "游戏厅全制霸"
+			},
+			"desc": {
+				"ja": "ゲームセンターの台本のお客さん全員を一度ずつ納得させた",
+				"en": "Won over every arcade script customer at least once",
+				"zh": "让游戏厅剧本中的所有顾客各认同一次"
+			},
+			"rarity": 3,
+			"stat": "all:arcade",
+			"min": 1
+		},
+		{
+			"id": "t066",
+			"name": {
+				"ja": "身分証チェッカー",
+				"en": "ID Checker",
+				"zh": "证件检查员"
+			},
+			"desc": {
+				"ja": "年齢確認を正しく判断した 10回",
+				"en": "Judged an age check correctly 10 times",
+				"zh": "正确判断年龄确认10次"
+			},
+			"rarity": 1,
+			"stat": "age_correct",
+			"min": 10
+		},
+		{
+			"id": "t067",
+			"name": {
+				"ja": "年齢確認の鬼",
+				"en": "Age Check Demon",
+				"zh": "年龄确认狂魔"
+			},
+			"desc": {
+				"ja": "年齢確認を正しく判断した 50回",
+				"en": "Judged an age check correctly 50 times",
+				"zh": "正确判断年龄确认50次"
+			},
+			"rarity": 2,
+			"stat": "age_correct",
+			"min": 50
+		},
+		{
+			"id": "t068",
+			"name": {
+				"ja": "定期券は通しません",
+				"en": "Passes Don't Pass",
+				"zh": "月票不算数"
+			},
+			"desc": {
+				"ja": "定期券を出したお客さんを正しく断った 5回",
+				"en": "Correctly refused a customer who showed a commuter pass 5 times",
+				"zh": "正确拒绝出示月票的顾客5次"
+			},
+			"rarity": 2,
+			"stat": "age_commuter_refused",
+			"min": 5
+		},
+		{
+			"id": "t069",
+			"name": {
+				"ja": "顔認証いらず",
+				"en": "Human Face ID",
+				"zh": "肉眼人脸识别"
+			},
+			"desc": {
+				"ja": "顔の違う身分証を見破った 5回",
+				"en": "Spotted an ID with someone else's face 5 times",
+				"zh": "识破照片不符的证件5次"
+			},
+			"rarity": 2,
+			"stat": "age_borrowed_caught",
+			"min": 5
+		},
+		{
+			"id": "t070",
+			"name": {
+				"ja": "お酒の門番",
+				"en": "Liquor Gatekeeper",
+				"zh": "酒类守门人"
+			},
+			"desc": {
+				"ja": "コンビニの年齢確認（お酒・たばこ）を正しく判断した 20回",
+				"en": "Judged a konbini age check (alcohol/tobacco) correctly 20 times",
+				"zh": "正确判断便利店的年龄确认（酒类·香烟）20次"
+			},
+			"rarity": 2,
+			"stat": "age_konbini_correct",
+			"min": 20
+		},
+		{
+			"id": "t071",
+			"name": {
+				"ja": "夜10時の番人",
+				"en": "10 PM Watchman",
+				"zh": "晚十点守门人"
+			},
+			"desc": {
+				"ja": "22時以降の年齢確認を正しく判断した 20回",
+				"en": "Judged an age check after 10 PM correctly 20 times",
+				"zh": "正确判断22点以后的年龄确认20次"
+			},
+			"rarity": 2,
+			"stat": "age_night_correct",
+			"min": 20
+		},
+		{
+			"id": "t072",
+			"name": {
+				"ja": "疑いすぎ",
+				"en": "Too Suspicious",
+				"zh": "疑心太重"
+			},
+			"desc": {
+				"ja": "入れてよい大人を帰してしまった 5回",
+				"en": "Turned away adults who were allowed in 5 times",
+				"zh": "把可以入场的成年人赶走5次"
+			},
+			"rarity": 0,
+			"stat": "age_wrong",
+			"min": 5
+		},
+		{
+			"id": "t073",
+			"name": {
+				"ja": "警察沙汰",
+				"en": "Police Matter",
+				"zh": "惊动警察"
+			},
+			"desc": {
+				"ja": "警察が来て営業停止になった",
+				"en": "Got shut down by police",
+				"zh": "警察上门，被停业整顿"
+			},
+			"rarity": 0,
+			"stat": "suspended",
+			"min": 1
+		},
+		{
+			"id": "t074",
+			"name": {
+				"ja": "常連の警察",
+				"en": "Police Regular",
+				"zh": "警局常客"
+			},
+			"desc": {
+				"ja": "営業停止 3回",
+				"en": "Got shut down by police 3 times",
+				"zh": "被停业整顿3次"
+			},
+			"rarity": 0,
+			"stat": "suspended",
+			"min": 3
+		},
+		{
+			"id": "t075",
+			"name": {
+				"ja": "無傷の夜",
+				"en": "Flawless Night",
+				"zh": "无伤之夜"
+			},
+			"desc": {
+				"ja": "年齢確認が2人来たシフトを、両方正しく判断して勤め上げた",
+				"en": "Finished a shift with 2 age checks, judging both correctly",
+				"zh": "在有2位年龄确认顾客的班次中全部正确判断并完成班次"
+			},
+			"rarity": 2,
+			"stat": "age_double_clean",
+			"min": 1
+		},
+		{
+			"id": "t076",
+			"name": {
+				"ja": "要注意人物と遭遇",
+				"en": "Wild Encounter",
+				"zh": "遭遇危险人物"
+			},
+			"desc": {
+				"ja": "要注意人物に初めて会った",
+				"en": "Met a wild customer for the first time",
+				"zh": "第一次遇到危险人物"
+			},
+			"rarity": 1,
+			"stat": "wild_met",
+			"min": 1
+		},
+		{
+			"id": "t077",
+			"name": {
+				"ja": "猛獣使い",
+				"en": "Beast Tamer",
+				"zh": "驯兽师"
+			},
+			"desc": {
+				"ja": "要注意人物を納得させた 5回",
+				"en": "Won over wild customers 5 times",
+				"zh": "让危险人物认同5次"
+			},
+			"rarity": 2,
+			"stat": "wild_resolved",
+			"min": 5
+		},
+		{
+			"id": "t078",
+			"name": {
+				"ja": "奇人の友",
+				"en": "Friend of Weirdos",
+				"zh": "怪人之友"
+			},
+			"desc": {
+				"ja": "要注意人物を納得させた 20回",
+				"en": "Won over wild customers 20 times",
+				"zh": "让危险人物认同20次"
+			},
+			"rarity": 3,
+			"stat": "wild_resolved",
+			"min": 20
+		},
+		{
+			"id": "t079",
+			"name": {
+				"ja": "店長のお気に入り",
+				"en": "Manager's Pet",
+				"zh": "店长的宠儿"
+			},
+			"desc": {
+				"ja": "店長がアドバイスに来た 10回",
+				"en": "The manager came to give advice 10 times",
+				"zh": "店长来给建议10次"
+			},
+			"rarity": 1,
+			"stat": "manager_visits",
+			"min": 10
+		},
+		{
+			"id": "t080",
+			"name": {
+				"ja": "店長いらず",
+				"en": "Who Needs a Manager",
+				"zh": "不需要店长"
+			},
+			"desc": {
+				"ja": "店長が来ずに、パーフェクトシフト",
+				"en": "Got a Perfect Shift without the manager showing up",
+				"zh": "店长没来的情况下达成完美班次"
+			},
+			"rarity": 2,
+			"stat": "perfect_no_manager",
+			"min": 1
+		},
+		{
+			"id": "t081",
+			"name": {
+				"ja": "ネタ枠キラー",
+				"en": "Joke Slayer",
+				"zh": "搞笑克星"
+			},
+			"desc": {
+				"ja": "ネタ枠のお客さんを納得させた 10人",
+				"en": "Won over 10 joke customers",
+				"zh": "让10位搞笑顾客认同"
+			},
+			"rarity": 2,
+			"stat": "rare_resolved",
+			"min": 10
+		},
+		{
+			"id": "t082",
+			"name": {
+				"ja": "豆腐メンタル卒業",
+				"en": "No More Tofu Heart",
+				"zh": "告别玻璃心"
+			},
+			"desc": {
+				"ja": "メンタルランク 5 になった",
+				"en": "Reached Mental Rank 5",
+				"zh": "心态等级达到5"
+			},
+			"rarity": 1,
+			"stat": "mental_rank",
+			"min": 5
+		},
+		{
+			"id": "t083",
+			"name": {
+				"ja": "まずまずの心",
+				"en": "Steady Heart",
+				"zh": "心态还行"
+			},
+			"desc": {
+				"ja": "メンタルランク 10 になった",
+				"en": "Reached Mental Rank 10",
+				"zh": "心态等级达到10"
+			},
+			"rarity": 2,
+			"stat": "mental_rank",
+			"min": 10
+		},
+		{
+			"id": "t084",
+			"name": {
+				"ja": "鋼の心の持ち主",
+				"en": "Heart of Steel",
+				"zh": "钢铁之心"
+			},
+			"desc": {
+				"ja": "メンタルランク 18 になった",
+				"en": "Reached Mental Rank 18",
+				"zh": "心态等级达到18"
+			},
+			"rarity": 3,
+			"stat": "mental_rank",
+			"min": 18
+		},
+		{
+			"id": "t085",
+			"name": {
+				"ja": "悟りを開いた店員",
+				"en": "Enlightened Clerk",
+				"zh": "顿悟的店员"
+			},
+			"desc": {
+				"ja": "メンタルランク 20（悟り）",
+				"en": "Reached Mental Rank 20 (Enlightened)",
+				"zh": "心态等级达到20（大彻大悟）"
+			},
+			"rarity": 3,
+			"stat": "mental_rank",
+			"min": 20
+		},
+		{
+			"id": "t086",
+			"name": {
+				"ja": "折れても立つ",
+				"en": "Broken but Standing",
+				"zh": "越挫越勇"
+			},
+			"desc": {
+				"ja": "メンタル 10 以下からシフトを最後まで勤めた",
+				"en": "Finished a shift after dropping to mental 10 or below",
+				"zh": "心态降到10以下仍完成班次"
+			},
+			"rarity": 2,
+			"stat": "low_mental_finish",
+			"min": 1
+		},
+		{
+			"id": "t087",
+			"name": {
+				"ja": "対戦デビュー",
+				"en": "Versus Debut",
+				"zh": "对战出道"
+			},
+			"desc": {
+				"ja": "対戦を初めて最後まで遊んだ",
+				"en": "Finished a versus match for the first time",
+				"zh": "第一次完成对战"
+			},
+			"rarity": 1,
+			"stat": "vs_matches",
+			"min": 1
+		},
+		{
+			"id": "t088",
+			"name": {
+				"ja": "初勝利",
+				"en": "First Victory",
+				"zh": "首胜"
+			},
+			"desc": {
+				"ja": "対戦で初めて勝った",
+				"en": "Won a versus match for the first time",
+				"zh": "第一次在对战中获胜"
+			},
+			"rarity": 1,
+			"stat": "vs_wins",
+			"min": 1
+		},
+		{
+			"id": "t089",
+			"name": {
+				"ja": "連勝街道",
+				"en": "Win Streak",
+				"zh": "连胜之路"
+			},
+			"desc": {
+				"ja": "対戦で 5連勝",
+				"en": "Won 5 versus matches in a row",
+				"zh": "对战5连胜"
+			},
+			"rarity": 2,
+			"stat": "vs_streak_max",
+			"min": 5
+		},
+		{
+			"id": "t090",
+			"name": {
+				"ja": "対戦の常連",
+				"en": "Versus Regular",
+				"zh": "对战常客"
+			},
+			"desc": {
+				"ja": "対戦を 50回",
+				"en": "Played 50 versus matches",
+				"zh": "进行50次对战"
+			},
+			"rarity": 2,
+			"stat": "vs_matches",
+			"min": 50
+		},
+		{
+			"id": "t091",
+			"name": {
+				"ja": "百戦錬磨",
+				"en": "Battle-Hardened",
+				"zh": "百战老将"
+			},
+			"desc": {
+				"ja": "対戦で 100勝",
+				"en": "Won 100 versus matches",
+				"zh": "对战胜利100次"
+			},
+			"rarity": 3,
+			"stat": "vs_wins",
+			"min": 100
+		},
+		{
+			"id": "t092",
+			"name": {
+				"ja": "石の心",
+				"en": "Heart of Stone",
+				"zh": "石头之心"
+			},
+			"desc": {
+				"ja": "対戦のメンタル（素材）が「石」以上",
+				"en": "Reached versus mental (material) \"Stone\" or higher",
+				"zh": "对战心态（材质）达到“石头”以上"
+			},
+			"rarity": 2,
+			"stat": "vs_mental_b",
+			"min": 11
+		},
+		{
+			"id": "t093",
+			"name": {
+				"ja": "鋼鉄の対戦者",
+				"en": "Steel Contender",
+				"zh": "钢铁对战者"
+			},
+			"desc": {
+				"ja": "対戦のメンタル（素材）が「鋼鉄」以上",
+				"en": "Reached versus mental (material) \"Steel\" or higher",
+				"zh": "对战心态（材质）达到“钢铁”以上"
+			},
+			"rarity": 3,
+			"stat": "vs_mental_b",
+			"min": 15
+		},
+		{
+			"id": "t094",
+			"name": {
+				"ja": "アダマンタイトの心",
+				"en": "Adamantite Heart",
+				"zh": "精金之心"
+			},
+			"desc": {
+				"ja": "対戦のメンタル（素材）が「アダマンタイト」",
+				"en": "Reached versus mental (material) \"Adamantite\"",
+				"zh": "对战心态（材质）达到“精金”"
+			},
+			"rarity": 3,
+			"stat": "vs_mental_b",
+			"min": 20
+		},
+		{
+			"id": "t095",
+			"name": {
+				"ja": "最強のクレーマー",
+				"en": "Ultimate Complainer",
+				"zh": "最强投诉者"
+			},
+			"desc": {
+				"ja": "対戦で客役として勝ったラウンド 20回",
+				"en": "Won 20 versus rounds as the customer",
+				"zh": "在对战中以顾客身份赢得20回合"
+			},
+			"rarity": 2,
+			"stat": "vs_customer_rounds",
+			"min": 20
+		},
+		{
+			"id": "t096",
+			"name": {
+				"ja": "鉄壁の店員",
+				"en": "Iron Wall Clerk",
+				"zh": "铁壁店员"
+			},
+			"desc": {
+				"ja": "対戦で店員役として勝ったラウンド 20回",
+				"en": "Won 20 versus rounds as the clerk",
+				"zh": "在对战中以店员身份赢得20回合"
+			},
+			"rarity": 2,
+			"stat": "vs_staff_rounds",
+			"min": 20
+		},
+		{
+			"id": "t097",
+			"name": {
+				"ja": "声で勝負",
+				"en": "Voice Battler",
+				"zh": "用声音一决胜负"
+			},
+			"desc": {
+				"ja": "声の対戦を 10回",
+				"en": "Played 10 voice versus matches",
+				"zh": "进行10次语音对战"
+			},
+			"rarity": 1,
+			"stat": "vs_voice",
+			"min": 10
+		},
+		{
+			"id": "t098",
+			"name": {
+				"ja": "国際派店員",
+				"en": "Global Clerk",
+				"zh": "国际派店员"
+			},
+			"desc": {
+				"ja": "英語か中国語でシフトを最後まで勤めた",
+				"en": "Finished a shift in English or Chinese",
+				"zh": "用英语或中文完成班次"
+			},
+			"rarity": 1,
+			"stat": "shift_foreign",
+			"min": 1
+		},
+		{
+			"id": "t099",
+			"name": {
+				"ja": "三か国語の店員",
+				"en": "Trilingual Clerk",
+				"zh": "三语店员"
+			},
+			"desc": {
+				"ja": "日本語・英語・中国語の3つでシフトを最後まで勤めた",
+				"en": "Finished shifts in all 3 languages: Japanese, English and Chinese",
+				"zh": "用日语、英语、中文三种语言分别完成班次"
+			},
+			"rarity": 2,
+			"stat": "langs_count",
+			"min": 3
+		},
+		{
+			"id": "t100",
+			"name": {
+				"ja": "称号コレクター",
+				"en": "Title Collector",
+				"zh": "称号收藏家"
+			},
+			"desc": {
+				"ja": "称号を 50個 集めた",
+				"en": "Collected 50 titles",
+				"zh": "收集50个称号"
+			},
+			"rarity": 3,
+			"stat": "titles_count",
+			"min": 50
+		}
+	]
+}

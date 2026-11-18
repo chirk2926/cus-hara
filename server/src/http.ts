@@ -2,7 +2,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { config } from "./config.ts";
-import { type Player, cleanName, createPlayer, playerByToken, renamePlayer, leaderboard } from "./db.ts";
+import { type Player, cleanName, cleanTitle, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
@@ -136,9 +136,17 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
 
   if (method === "POST" && p === "/api/v1/me") {
     const body = await readJson(req);
-    const name = cleanName(body.name);
-    renamePlayer(player.id, name);
-    return { player: publicPlayer({ ...player, name }) };
+    // 送られてきた項目だけ変える（名前だけ・称号だけでもよい）
+    let next: Player = { ...player };
+    if (body.name !== undefined) {
+      next.name = cleanName(body.name);
+      renamePlayer(player.id, next.name);
+    }
+    if (body.title !== undefined) {
+      next = { ...next, title: cleanTitle(body.title) };
+      setPlayerTitle(player.id, next.title ?? "");
+    }
+    return { player: publicPlayer(next) };
   }
 
   if (method === "POST" && p === "/api/v1/solo/start") {

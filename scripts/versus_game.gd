@@ -12,6 +12,7 @@ const VoiceScript = preload("res://scripts/voice.gd")
 const Scenarios = preload("res://scripts/scenarios.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
 const EosScript = preload("res://scripts/eos_matchmaker.gd")
+const Titles = preload("res://scripts/titles.gd")
 
 ## サーバーのエラーコード → 画面の言葉（サーバーの文は日本語だけなので、ここで訳す）
 const ERROR_TEXT: Dictionary = {
@@ -301,7 +302,11 @@ func _on_match_found(msg: Dictionary) -> void:
 		var op: Dictionary = msg.get("opponent", {})
 		var kind_label: String = tr("ランクマッチ") if str(msg.get("kind", "")) == "ranked" else tr("フレンド対戦")
 		hud.set_top(tr(str(STAGE_NAMES.get(stage, ""))), kind_label, "")
-		hud.set_comment(tr("対戦相手: %s（%s・%d）") % [str(op.get("name", "")), str(op.get("rank", "")), int(op.get("rating", 0))])
+		var op_title: Dictionary = Titles.by_id(str(op.get("title", "")))
+		var op_name: String = str(op.get("name", ""))
+		if not op_title.is_empty():
+			op_name = tr("「%s」") % Titles.title_name(op_title) + op_name
+		hud.set_comment(tr("対戦相手: %s（%s・%d）") % [op_name, str(op.get("rank", "")), int(op.get("rating", 0))])
 		hud.show_banner(tr("対戦開始！"), UI.POP)
 		main.sfx.play("door")
 	var voice_format: bool = str(msg.get("format", "text")) == "voice"
@@ -453,6 +458,9 @@ func _on_round_end(msg: Dictionary) -> void:
 	_update_top()
 	var outcome: String = str(msg.get("outcome", ""))
 	var won: bool = str(msg.get("winner", "")) == "you"
+	# 称号の記録（要件#79）: 役ごとのラウンドの勝ち
+	if won:
+		GameSettings.stat_add("vs_staff_rounds" if _role == "staff" else "vs_customer_rounds")
 	var what: String = tr("納得して帰った")
 	var mood: String = "happy"
 	if outcome == "explode":
@@ -481,6 +489,21 @@ func _leave_later(mood: String) -> void:
 
 
 func _on_match_end(msg: Dictionary) -> void:
+	# 称号の記録（要件#79）
+	GameSettings.stat_add("vs_matches")
+	if str(_match.get("format", "")) == "voice":
+		GameSettings.stat_add("vs_voice")
+	if str(msg.get("result", "")) == "win":
+		GameSettings.stat_add("vs_wins")
+		GameSettings.stat_add("vs_streak")
+		GameSettings.stat_max("vs_streak_max", GameSettings.stat("vs_streak"))
+	else:
+		GameSettings.stats["vs_streak"] = 0
+	var pl: Variant = msg.get("player", null)
+	if typeof(pl) == TYPE_DICTIONARY:
+		GameSettings.last_profile = pl
+	msg["new_titles"] = Titles.check()
+	GameSettings.save_settings()
 	state = "idle"
 	_phase = ""
 	hud.set_input_enabled(false, "")

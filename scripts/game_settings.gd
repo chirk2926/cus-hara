@@ -76,6 +76,10 @@ const MENTAL_XP_SHIFT: int = 200
 const MENTAL_B_BASE_RATING: int = 1000
 const MENTAL_B_STEP: int = 60
 var mental_xp: int = 0
+## 称号（要件#79）: 記録・手に入れた称号・つけている称号
+var stats: Dictionary = {}
+var unlocked_titles: Array = []
+var equipped_title: String = ""
 ## チュートリアル（要件#53）を一度でも終えた／断ったか
 var tutorial_seen: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
@@ -180,6 +184,11 @@ func load_settings() -> void:
 	crane_payout = clampi(int(cfg.get_value("play", "crane_payout", 30)), 10, 80)
 	tutorial_seen = bool(cfg.get_value("play", "tutorial_seen", false))
 	mental_xp = maxi(0, int(cfg.get_value("play", "mental_xp", 0)))
+	var st: Variant = cfg.get_value("play", "stats", {})
+	stats = st if typeof(st) == TYPE_DICTIONARY else {}
+	var ut: Variant = cfg.get_value("play", "titles", [])
+	unlocked_titles = ut if typeof(ut) == TYPE_ARRAY else []
+	equipped_title = str(cfg.get_value("play", "title", ""))
 	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
 		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -206,6 +215,9 @@ func save_settings() -> void:
 	cfg.set_value("play", "crane_payout", crane_payout)
 	cfg.set_value("play", "tutorial_seen", tutorial_seen)
 	cfg.set_value("play", "mental_xp", mental_xp)
+	cfg.set_value("play", "stats", stats)
+	cfg.set_value("play", "titles", unlocked_titles)
+	cfg.set_value("play", "title", equipped_title)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 
@@ -291,6 +303,28 @@ func own_key_ready() -> bool:
 
 
 ## 怒りの上がる速さにかける倍率（1人用とフレンド対戦）
+## 称号の記録（要件#79）
+func stat(key: String) -> int:
+	return int(stats.get(key, 0))
+
+
+func stat_add(key: String, n: int = 1) -> void:
+	stats[key] = stat(key) + n
+
+
+func stat_max(key: String, v: int) -> void:
+	if v > stat(key):
+		stats[key] = v
+
+
+## 遊んだ言語（「三か国語の店員」用）
+func stat_lang(lang: String) -> void:
+	var langs: Array = stats.get("langs", []) if typeof(stats.get("langs", null)) == TYPE_ARRAY else []
+	if not langs.has(lang):
+		langs.append(lang)
+	stats["langs"] = langs
+
+
 ## メンタルランク A（通常モード）。1〜20
 func mental_rank() -> int:
 	return mental_rank_for_xp(mental_xp)

@@ -16,7 +16,7 @@ import json, re, sys, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LANGS = ["en", "zh"]
-UI_FILES = ["main.gd", "hud.gd", "solo_game.gd", "versus_game.gd", "game_settings.gd", "ui_paper.gd", "server_api.gd", "shop_actions.gd", "crane_minigame.gd", "eos_matchmaker.gd", "tutorial.gd"]
+UI_FILES = ["main.gd", "hud.gd", "solo_game.gd", "versus_game.gd", "game_settings.gd", "ui_paper.gd", "server_api.gd", "shop_actions.gd", "crane_minigame.gd", "eos_matchmaker.gd", "tutorial.gd", "titles.gd"]
 SKIP_FUNCS = ("_smoke_autoplay", "_run_shots", "_run_smoke", "_run_versus_smoke", "_auto_reply")
 JA = re.compile(r"[぀-ヿ㐀-鿿！-｠]")
 STR = re.compile(r'"((?:[^"\\]|\\.)*)"')

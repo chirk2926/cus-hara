@@ -14,6 +14,7 @@ const UI = preload("res://scripts/ui_kit.gd")
 const Judge = preload("res://scripts/offline_judge.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
 const Scenarios = preload("res://scripts/scenarios.gd")
+const Titles = preload("res://scripts/titles.gd")
 
 signal finished
 signal _next
@@ -334,8 +335,11 @@ func _end(completed: bool) -> void:
 	_active = false
 	_run += 1
 	GameSettings.tutorial_seen = true
+	if completed:
+		GameSettings.stat_add("tutorial_done")
 	GameSettings.save_settings()
 	_free_overlay()
 	if completed:
 		main.sfx.play("win")
+		main.show_new_titles(Titles.check())
 	finished.emit()

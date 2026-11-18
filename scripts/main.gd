@@ -23,6 +23,7 @@ const Paper = preload("res://scripts/ui_paper.gd")
 const ScenariosScript = preload("res://scripts/scenarios.gd")
 const CraneScript = preload("res://scripts/crane_minigame.gd")
 const TutorialScript = preload("res://scripts/tutorial.gd")
+const Titles = preload("res://scripts/titles.gd")
 const ShopActionsScript = preload("res://scripts/shop_actions.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
@@ -651,6 +652,112 @@ func start_tutorial() -> void:
 	_tutorial.start()
 
 
+## 称号を手に入れたお知らせ（要件#79）。画面の上に札を出して少しずつ消す。EOS の実績にも記録する
+var _toast_queue: Array = []
+var _toast_busy: bool = false
+
+
+func show_new_titles(list: Array) -> void:
+	if list.is_empty():
+		return
+	var ids: Array = []
+	for t in list:
+		ids.append(str((t as Dictionary).get("id", "")))
+		_toast_queue.append(t)
+	if _versus != null and _versus.eos != null:
+		_versus.eos.unlock_achievements(ids)
+	if not _toast_busy:
+		_run_toasts()
+
+
+func _run_toasts() -> void:
+	_toast_busy = true
+	while not _toast_queue.is_empty():
+		var t: Dictionary = _toast_queue.pop_front()
+		var card: PanelContainer = UI.paper(UI.POP, 14, 4)
+		card.anchor_left = 0.5
+		card.anchor_right = 0.5
+		card.offset_left = -220
+		card.offset_right = 220
+		card.offset_top = 16
+		card.rotation_degrees = -1.0
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ui.add_child(card)
+		var col: VBoxContainer = UI.vbox(2)
+		card.add_child(col)
+		col.add_child(UI.text(tr("称号を手に入れた！"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+		col.add_child(UI.text(tr("「%s」") % Titles.title_name(t), UI.S_LEAD, UI.INK, UI.F_BOLD))
+		col.add_child(UI.para(Titles.title_desc(t), UI.S_SMALL, UI.INK_SOFT))
+		sfx.play("win", 1.4)
+		await get_tree().create_timer(2.6 if _toast_queue.size() < 3 else 0.9).timeout
+		var tw: Tween = create_tween()
+		tw.tween_property(card, "modulate:a", 0.0, 0.4)
+		await tw.finished
+		card.queue_free()
+	_toast_busy = false
+
+
+## 称号の一覧（要件#79）。手に入れたものは押すと名札につける
+func _show_titles() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(760, "center")
+	var all_t: Array = Titles.all()
+	_sheet_title(col, tr("称号") + "  %d / %d" % [GameSettings.unlocked_titles.size(), all_t.size()])
+	var now: Label = UI.text(tr("いまの称号: %s") % (Titles.equipped_name() if Titles.equipped_name() != "" else tr("なし")), UI.S_BODY, UI.INK, UI.F_BOLD)
+	col.add_child(now)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(700, 420)
+	col.add_child(scroll)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
+	scroll.add_child(grid)
+	for t in all_t:
+		var d: Dictionary = t
+		var id: String = str(d.get("id", ""))
+		var have: bool = GameSettings.unlocked_titles.has(id)
+		var stars: String = tr("［ネタ］") if int(d.get("rarity", 1)) == 0 else "★".repeat(int(d.get("rarity", 1)))
+		var b: Button = UI.link("", UI.S_SMALL, UI.INK if have else UI.INK_SOFT)
+		b.text = "%s %s\n%s" % [stars, Titles.title_name(d) if have else tr("？？？"), Titles.title_desc(d)]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.custom_minimum_size = Vector2(340, 0)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.disabled = not have
+		if GameSettings.equipped_title == id:
+			b.add_theme_color_override("font_color", UI.SHU)
+		b.pressed.connect(func() -> void:
+			_equip_title(id)
+			_show_titles())
+		grid.add_child(b)
+	var row: HBoxContainer = UI.hbox(24)
+	col.add_child(row)
+	var off: Button = UI.link(tr("称号をはずす"), UI.S_BODY, UI.INK_SOFT)
+	off.pressed.connect(func() -> void:
+		_equip_title("")
+		_show_titles())
+	row.add_child(off)
+	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	close.pressed.connect(func() -> void:
+		_close_sheet()
+		_refresh_title())
+	row.add_child(close)
+
+
+func _equip_title(id: String) -> void:
+	sfx.play("click")
+	if GameSettings.equipped_title != id:
+		GameSettings.stat_add("title_changes")
+	GameSettings.equipped_title = id
+	GameSettings.save_settings()
+	# 対戦の相手にも見えるように、サーバーに送る（見た目だけ）
+	if GameSettings.token != "":
+		api.request("POST", "/api/v1/me", {"title": id})
+
+
 func _offer_tutorial() -> void:
 	var col: VBoxContainer = _open_sheet(520, "center")
 	_sheet_title(col, tr("新人研修"))
@@ -710,7 +817,9 @@ func _refresh_title() -> void:
 	if p.is_empty():
 		_profile_label.text = tr("名札: まだ登録されていません")
 	else:
-		_profile_label.text = tr("名札: %s　レート %d（%s）") % [str(p.get("name", "")), int(p.get("rating", 1000)), tr(str(p.get("rank", "")))]
+		var tname: String = Titles.equipped_name()
+		var shown: String = (tr("「%s」") % tname + str(p.get("name", ""))) if tname != "" else str(p.get("name", ""))
+		_profile_label.text = tr("名札: %s　レート %d（%s）") % [shown, int(p.get("rating", 1000)), tr(str(p.get("rank", "")))]
 	if _mental_label != null:
 		var ra: int = GameSettings.mental_rank()
 		var rb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
@@ -786,9 +895,14 @@ func _build_title() -> void:
 	var versus: Button = UI.primary(tr("対戦する（客 vs 店員）"), UI.S_LEAD)
 	versus.pressed.connect(_show_versus_lobby)
 	b.add_child(versus)
+	var links: HBoxContainer = UI.hbox(24)
+	b.add_child(links)
 	var tut: Button = UI.link(tr("新人研修（チュートリアル） →"), UI.S_BODY)
 	tut.pressed.connect(start_tutorial)
-	b.add_child(tut)
+	links.add_child(tut)
+	var ttl: Button = UI.link(tr("称号 →"), UI.S_BODY)
+	ttl.pressed.connect(_show_titles)
+	links.add_child(ttl)
 	b.add_child(UI.gap(8))
 	_profile_label = UI.text("", UI.S_SMALL, UI.INK, UI.F_DOT)
 	b.add_child(_profile_label)
@@ -1311,6 +1425,9 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var back: Button = UI.link(tr("タイトルへ戻る"), UI.S_BODY)
 	back.pressed.connect(_quit_to_title)
 	btns.add_child(back)
+	show_new_titles(sm.get("new_titles", []))
+	# メンタルランクの称号は、経験値を足した後で見る
+	show_new_titles(Titles.check())
 	# お客様の声（要件#62）は右の空いた所に付箋で
 	var reviews: Array = sm.get("reviews", [])
 	if not reviews.is_empty() and _sheet != null:
@@ -1531,6 +1648,7 @@ func _on_lobby_event(kind: String, data: Dictionary) -> void:
 
 
 func _on_versus_finished(summary: Dictionary) -> void:
+	show_new_titles(summary.get("new_titles", []))
 	if smoke:
 		print("VERSUS OK ", summary)
 		await get_tree().create_timer(1.0).timeout
@@ -1777,6 +1895,12 @@ func _run_shots() -> void:
 	_show_settings()
 	await _wait(0.6)
 	await _shot(dir, prefix + "06_settings")
+	# 称号の一覧（要件#79）: いくつか手に入れた状態で
+	GameSettings.unlocked_titles = ["t001", "t002", "t003", "t007", "t015", "t021", "t024", "t026", "t039", "t051", "t073", "t082"]
+	GameSettings.equipped_title = "t026"
+	_show_titles()
+	await _wait(0.6)
+	await _shot(dir, prefix + "06b_titles")
 	_show_howto()
 	await _wait(0.6)
 	await _shot(dir, prefix + "07_howto")

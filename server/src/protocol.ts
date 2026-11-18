@@ -19,5 +19,5 @@ export interface Conn {
 
 export function publicPlayer(p: Player, rating?: number) {
   const r = rating ?? p.rating;
-  return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws };
+  return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws, title: p.title ?? "" };
 }
