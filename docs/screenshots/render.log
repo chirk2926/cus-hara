@@ -42,36 +42,36 @@ SHOT en_4x3_06h_exchange
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1171)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1214)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1172)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1215)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT en_4x3_06f_shop_chara
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1626)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1669)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1627)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1670)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT en_4x3_06g_avatar_maker
 SHOT en_4x3_07_howto
 SHOT en_4x3_08_lobby
@@ -126,36 +126,36 @@ SHOT en_06h_exchange
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1171)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1214)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1172)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1215)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT en_06f_shop_chara
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1626)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1669)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1627)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1670)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT en_06g_avatar_maker
 SHOT en_07_howto
 SHOT en_08_lobby
@@ -210,36 +210,36 @@ SHOT ja_06h_exchange
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1171)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1214)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1172)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1215)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT ja_06f_shop_chara
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1626)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1669)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1627)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1670)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT ja_06g_avatar_maker
 SHOT ja_bg_medal
 SHOT ja_bg_video
@@ -301,46 +301,42 @@ SHOT ja_wide_06h_exchange
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1171)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1214)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1172)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1215)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT ja_wide_06f_shop_chara
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1626)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1669)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1627)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1670)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT ja_wide_06g_avatar_maker
 SHOT ja_wide_07_howto
 SHOT ja_wide_08_lobby
 SHOT ja_wide_09_versus_result
 SHOT ja_wide_10_versus_customer_view
 SHOTS OK
-WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
-     at: cleanup (core/object/object.cpp:2514)
-ERROR: 2 resources still in use at exit (run with --verbose for details).
-   at: clear (core/io/resource.cpp:795)
 Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
 Vulkan 1.4.335 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
 libpulse.so.0: cannot open shared object file: No such file or directory
@@ -385,36 +381,36 @@ SHOT zh_06h_exchange
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1171)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1214)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] _shop_items (res://scripts/main.gd:1172)
-       [2] _show_shop (res://scripts/main.gd:1153)
-       [3] _run_shots (res://scripts/main.gd:2730)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] _shop_items (res://scripts/main.gd:1215)
+       [2] _show_shop (res://scripts/main.gd:1196)
+       [3] _run_shots (res://scripts/main.gd:2775)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT zh_06f_shop_chara
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1626)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1669)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 ERROR: Node not inside tree. Use look_at_from_position() instead.
    at: look_at (scene/3d/node_3d.cpp:1224)
    GDScript backtrace (most recent call first):
-       [0] avatar_preview (res://scripts/main.gd:1580)
-       [1] <anonymous lambda> (res://scripts/main.gd:1627)
-       [2] show_avatar_maker (res://scripts/main.gd:1701)
-       [3] _run_shots (res://scripts/main.gd:2734)
-       [4] _shot (res://scripts/main.gd:2555)
+       [0] avatar_preview (res://scripts/main.gd:1623)
+       [1] <anonymous lambda> (res://scripts/main.gd:1670)
+       [2] show_avatar_maker (res://scripts/main.gd:1744)
+       [3] _run_shots (res://scripts/main.gd:2779)
+       [4] _shot (res://scripts/main.gd:2598)
 SHOT zh_06g_avatar_maker
 SHOT zh_07_howto
 SHOT zh_08_lobby
