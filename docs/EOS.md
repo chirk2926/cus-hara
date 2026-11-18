@@ -14,7 +14,7 @@
 2. 「Product Settings」で次を控える: Product ID / Sandbox ID / Deployment ID / Client ID / Client Secret（クライアントのポリシーは「GameClient」。ロビー・Connect を許可）。
 3. **Epic Account Services**: フレンド招待（Epic のフレンド画面）を使うなら設定する。使わない場合も、ランクマッチは「Device ID」での匿名ログイン（EOS Connect）で動く。
 4. EOSG の GitHub の Releases から zip を取り、`addons/epic-online-services-godot/` をこのプロジェクトの `addons/` に置く（中の `bin/` に EOS SDK の dll が入っている）。Godot の「プロジェクト設定 → プラグイン」で有効にする（自動読み込みの HPlatform・HAuth・HLobbies などが登録される）。
-5. `config/eos.cfg` に 2. の値を入れる。`encryption_key` は 64 文字の16進数（自分で作る）。
+5. `config/eos.cfg` をコピーして `config/eos.local.cfg` を作り、そこに 2. の値を入れる（`.gitignore` 済みなのでリポジトリには入らない。`config/eos.cfg` は空のひな形のまま）。`encryption_key` は 64 文字の16進数（自分で作る）。
    - `client_secret` は EOS の仕組み上ゲームに同梱される値で、サーバーの Claude API キーのような秘密ではない。ただし公開リポジトリに入れたくなければ、ビルドのときだけ書き込む。
 6. Steam 版で Steam のアカウントを使いたい場合は、`HAuth` の Steam ログインに差し替えられる（今は Epic アカウント → 無ければ端末 ID の順）。
 

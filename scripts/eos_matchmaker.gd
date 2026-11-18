@@ -26,6 +26,8 @@ signal failed(message: String)
 
 const PLUGIN_DIR: String = "res://addons/epic-online-services-godot"
 const CREDENTIALS_PATH: String = "res://config/eos.cfg"
+## 本物の ID はこちらに書く（.gitignore 済み。リポジトリには入らない）。あれば eos.cfg より優先（要件#76）
+const CREDENTIALS_LOCAL_PATH: String = "res://config/eos.local.cfg"
 const GAME_TAG: String = "cushara"
 const WAIT_FOR_ROOM_SEC: float = 20.0
 const RATING_WINDOW: int = 300
@@ -54,12 +56,15 @@ func available() -> bool:
 
 
 func _credentials() -> Dictionary:
-	var cfg: ConfigFile = ConfigFile.new()
-	if cfg.load(CREDENTIALS_PATH) != OK:
-		return {}
 	var out: Dictionary = {}
-	for k in ["product_name", "product_version", "product_id", "sandbox_id", "deployment_id", "client_id", "client_secret", "encryption_key"]:
-		out[k] = str(cfg.get_value("eos", k, ""))
+	for path in [CREDENTIALS_PATH, CREDENTIALS_LOCAL_PATH]:
+		var cfg: ConfigFile = ConfigFile.new()
+		if cfg.load(path) != OK:
+			continue
+		for k in ["product_name", "product_version", "product_id", "sandbox_id", "deployment_id", "client_id", "client_secret", "encryption_key"]:
+			var v: String = str(cfg.get_value("eos", k, ""))
+			if v != "" or not out.has(k):
+				out[k] = v
 	return out
 
 

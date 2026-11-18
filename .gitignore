@@ -6,3 +6,15 @@ packaging/steam/output/
 shots.log
 server/node_modules/
 server/var/
+
+# 秘密の値（要件#76）。本物の EOS の ID は config/eos.local.cfg に書く（config/eos.cfg は空のひな形のまま）
+config/*.local.cfg
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.der
+

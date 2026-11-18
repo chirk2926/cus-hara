@@ -98,7 +98,7 @@ EOS のコードはできているが、**次の準備が無いと動かない**
 | 2 | プロダクトの「Product Settings」で、クライアント（ポリシー: GameClient。Lobbies と Connect を許可）を作る | 開発者ポータル | Product ID / Sandbox ID / Deployment ID / Client ID / Client Secret |
 | 3 | フレンド招待を使うなら「Epic Account Services」を設定する（アプリ名・使う権限: 基本プロフィール・フレンド・オンライン状態）。審査（Brand Review）が要る | 開発者ポータル | 設定したかどうか |
 | 4 | 暗号キー（64文字の16進数）を1つ決める。例: PowerShell で `-join ((1..32) \| % { '{0:x2}' -f (Get-Random -Max 256) })` | 自分のPC | その文字列 |
-| 5 | 上の値を `config/eos.cfg` に書く（または引き継ぐ人に安全な方法で渡す。**チャットや公開リポジトリに貼らない**） | このリポジトリ | ― |
+| 5 | 上の値を `config/eos.local.cfg`（`config/eos.cfg` をコピーして作る。`.gitignore` 済み）に書く（または引き継ぐ人に安全な方法で渡す。**チャットや公開リポジトリに貼らない**） | このリポジトリ | ― |
 | 6 | Godot 用 EOS プラグイン（EOSG, 3ddelano/epic-online-services-godot）の Releases から zip を取り、`addons/epic-online-services-godot/` を `addons/` に置いて、Godot の「プロジェクト設定 → プラグイン」で有効にする。プラグインには EOS SDK の dll も入っている（Epic のライセンスに同意が要る） | GitHub・Godot | プラグインの版 |
 | 7 | 2台のPC（または2つの Epic アカウント）で、ランクマッチとフレンド招待を試す時間をとる | ― | 結果（動いた／エラーの画面） |
 
