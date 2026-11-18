@@ -19,7 +19,7 @@ export interface Conn {
 
 export function publicPlayer(p: Player, rating?: number) {
   const r = rating ?? p.rating;
-  return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws, title: p.title ?? "", tag: tagObject(p.tag ?? "") };
+  return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws, title: p.title ?? "", tag: tagObject(p.tag ?? ""), avatar: avatarObject(p.avatar ?? "") };
 }
 
 /** 名札の飾り（要件#82）を {frame, color, stamp} にして渡す */
@@ -27,3 +27,15 @@ export function tagObject(tag: string): { frame: string; color: string; stamp: s
   const [frame = "", color = "", stamp = ""] = tag.split(":");
   return { frame, color, stamp };
 }
+
+/** 対戦のキャラクター（要件#84）。まだ作っていなければ null */
+export function avatarObject(avatar: string): Record<string, unknown> | null {
+  if (avatar === "") return null;
+  try {
+    const v = JSON.parse(avatar) as unknown;
+    return typeof v === "object" && v !== null ? (v as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+

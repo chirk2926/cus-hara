@@ -347,7 +347,20 @@ func _on_round_start(msg: Dictionary) -> void:
 	hud.set_gauges(_anger, _resolve, -1.0)
 	main.display_anger = _anger
 	var look: Dictionary = _card.get("look", {}) if typeof(_card.get("look", null)) == TYPE_DICTIONARY else {}
-	main.spawn_customer(look)
+	# 対戦のキャラクター（要件#84）: 客役は私服、店員役は制服。作っていない人は台本の見た目・ふつうの店員
+	var op_av: Variant = (_match.get("opponent", {}) as Dictionary).get("avatar", null)
+	if _role == "staff":
+		main.free_staff()
+		main.set_customer_view(false)
+		if typeof(op_av) == TYPE_DICTIONARY:
+			look = Shop.avatar_look(op_av, "casual")
+		main.spawn_customer(look)
+	else:
+		if Shop.avatar_created():
+			look = Shop.avatar_look(Shop.avatar_dict(), "casual")
+		main.spawn_staff(Shop.avatar_look(op_av if typeof(op_av) == TYPE_DICTIONARY else {}, "uniform"))
+		main.set_customer_view(true)
+		main.spawn_customer(look)
 
 
 func _update_top() -> void:
@@ -431,6 +444,7 @@ func _on_line(msg: Dictionary) -> void:
 		main.customer_say(speaker, text, _anger >= 70.0)
 	else:
 		hud.show_echo(tr("店員（%s）: ") % _who(by), text)
+		main.staff_talk(clampf(float(text.length()) * 0.08, 0.8, 3.0))
 
 
 func _on_judged(msg: Dictionary) -> void:
@@ -493,6 +507,8 @@ func _leave_later(mood: String) -> void:
 
 
 func _on_match_end(msg: Dictionary) -> void:
+	main.free_staff()
+	main.set_customer_view(false)
 	# 称号の記録（要件#79）
 	GameSettings.stat_add("vs_matches")
 	if str(_match.get("format", "")) == "voice":

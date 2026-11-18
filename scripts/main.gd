@@ -29,6 +29,10 @@ const ShopActionsScript = preload("res://scripts/shop_actions.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
 const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
+## 対戦の店員役のキャラクターの位置と、客役のときのカメラ（要件#84）
+const STAFF_POS: Vector3 = Vector3(0.0, 0.0, 1.2)
+const CUSTOMER_VIEW_POS: Vector3 = Vector3(0.75, 1.75, -1.85)
+const CUSTOMER_VIEW_TARGET: Vector3 = Vector3(-0.1, 1.35, 1.2)
 const STAGE_ORDER: Array = ["arcade", "konbini"]   # 勤務先はゲームセンターが上（要件#82）
 ## 名前・説明は日本語の文をキーにして tr() で訳す
 const STAGES: Dictionary = {
@@ -313,6 +317,7 @@ func enter_versus(stage_id: String) -> void:
 	mode = "versus"
 	display_anger = 0.0
 	_free_customer()
+	free_staff()
 	set_stage(stage_id)
 	bgm.play("versus")
 
@@ -578,6 +583,39 @@ const POLICE_LOOK: Dictionary = {"body_color": "#1d2a5a", "skin_color": "#eec39c
 	"hair": "cap", "build": "big", "accessory": "none", "height": 1.1}
 
 
+## 対戦の店員役のキャラクター（要件#84）。カウンターの中に立ち、お客さんのほうを向く
+var _staff = null
+
+
+func spawn_staff(look: Dictionary) -> void:
+	free_staff()
+	_world.call("ensure_staff_side")
+	_staff = CustomerScript.new()
+	add_child(_staff)
+	_staff.call("setup", look)
+	_staff.position = STAFF_POS
+	_staff.rotation.y = PI
+
+
+func staff_talk(duration: float) -> void:
+	if _staff != null and is_instance_valid(_staff):
+		_staff.call("talk", duration)
+
+
+func free_staff() -> void:
+	if _staff != null and is_instance_valid(_staff):
+		_staff.queue_free()
+	_staff = null
+
+
+## 客役のときは、カウンターの外（お客さんの斜めうしろ）から店員を見る
+func set_customer_view(on: bool) -> void:
+	if on:
+		camera_to(CUSTOMER_VIEW_POS, CUSTOMER_VIEW_TARGET, 0.8)
+	else:
+		camera_release(0.5)
+
+
 ## 対戦の相手の名札を右上に少しの間出す（要件#82）
 func show_opponent_tag(op: Dictionary) -> void:
 	var t: Dictionary = Titles.by_id(str(op.get("title", "")))
@@ -812,6 +850,8 @@ func _quit_to_title() -> void:
 		_versus.leave_match()
 	_versus.cancel()
 	_free_customer()
+	free_staff()
+	_cam_override = false
 	_close_sheet()
 	_show_title()
 
@@ -835,6 +875,7 @@ func _check_server() -> void:
 	if bool(res.get("ok", false)):
 		_server_info = res["body"]
 		await api.ensure_login()
+		_sync_look()
 	else:
 		_server_info = {"error": str(res.get("message", ""))}
 	_refresh_title()
@@ -1077,12 +1118,12 @@ static func _num(n: int) -> String:
 
 # ---------------------------------------------------------------- ショップ（要件#82）
 
-var _shop_cat: String = "bg"
+var _shop_tab: String = "gacha"   # gacha / tag / chara / exchange
 
 
 func _show_shop() -> void:
 	sfx.play("click")
-	var col: VBoxContainer = _open_sheet(780, "center")
+	var col: VBoxContainer = _open_sheet(820, "center")
 	var head: HBoxContainer = UI.hbox(12)
 	col.add_child(head)
 	head.add_child(UI.text(tr("ショップ"), UI.S_HEAD, UI.INK, UI.F_SIGN))
@@ -1090,39 +1131,26 @@ func _show_shop() -> void:
 	head.add_child(UI.text("HP %s" % _num(GameSettings.hp_points), UI.S_LEAD, Color("#c4661b"), UI.F_DOT))
 	head.add_child(UI.text("KAS %s" % _num(GameSettings.kas_points), UI.S_LEAD, Color("#b0258a"), UI.F_DOT))
 	col.add_child(UI.para(tr("HP（ハラスメントポイント）はオフラインのシフト、KAS（カスポイント）はオンラインのシフトと対戦の給与。KAS でしか買えないものもあります。"), UI.S_SMALL, UI.INK_SOFT))
-	# カテゴリのつまみ
 	var tabs: HBoxContainer = UI.hbox(8)
 	col.add_child(tabs)
 	var group: ButtonGroup = ButtonGroup.new()
-	for c in Shop.categories():
-		var cid: String = str((c as Dictionary).get("id", ""))
-		var t: Button = UI.tag(Shop.text((c as Dictionary).get("name", {})), UI.S_BODY)
+	for tb in [["gacha", "背景ガチャ"], ["tag", "名札"], ["chara", "キャラクター"], ["exchange", "両替"]]:
+		var tid: String = str(tb[0])
+		var t: Button = UI.tag(tr(str(tb[1])), UI.S_BODY)
 		t.toggle_mode = true
 		t.button_group = group
-		t.button_pressed = cid == _shop_cat
+		t.button_pressed = tid == _shop_tab
 		t.pressed.connect(func() -> void:
-			_shop_cat = cid
+			_shop_tab = tid
 			_show_shop())
 		tabs.add_child(t)
-	# いまの名札（名札の飾りを選んでいるとき）
-	if _shop_cat != "bg":
-		var prev: HBoxContainer = UI.hbox(12)
-		col.add_child(prev)
-		prev.add_child(UI.text(tr("いまの名札:"), UI.S_SMALL, UI.INK_SOFT))
-		var pname: String = str(GameSettings.last_profile.get("name", GameSettings.player_name))
-		prev.add_child(Shop.name_tag(pname if pname != "" else tr("新人"), Titles.equipped_name(), Shop.tag_dict(), UI.S_BODY))
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(720, 340)
-	col.add_child(scroll)
-	var grid: GridContainer = GridContainer.new()
-	grid.columns = 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(grid)
-	for it in Shop.items(_shop_cat):
-		grid.add_child(_shop_item(it))
+	match _shop_tab:
+		"gacha":
+			_shop_gacha(col)
+		"exchange":
+			_shop_exchange(col)
+		_:
+			_shop_items(col, _shop_tab)
 	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
 	close.pressed.connect(func() -> void:
 		_close_sheet()
@@ -1130,14 +1158,56 @@ func _show_shop() -> void:
 	col.add_child(close)
 
 
+## 名札・キャラクターの品物（カテゴリごとに見出し）
+func _shop_items(col: VBoxContainer, group_id: String) -> void:
+	var top: HBoxContainer = UI.hbox(16)
+	col.add_child(top)
+	var pname: String = str(GameSettings.last_profile.get("name", GameSettings.player_name))
+	if group_id == "tag":
+		top.add_child(UI.text(tr("いまの名札:"), UI.S_SMALL, UI.INK_SOFT))
+		top.add_child(Shop.name_tag(pname if pname != "" else tr("新人"), Titles.equipped_name(), Shop.tag_dict(), UI.S_BODY))
+	else:
+		var av: Dictionary = Shop.avatar_dict()
+		top.add_child(avatar_preview(Shop.avatar_look(av, "casual"), Vector2(150, 190)))
+		top.add_child(avatar_preview(Shop.avatar_look(av, "uniform"), Vector2(150, 190)))
+		var side: VBoxContainer = UI.vbox(8)
+		top.add_child(side)
+		side.add_child(UI.para(tr("左が客役（私服）、右が店員役（制服）。対戦の相手の画面に出ます。"), UI.S_SMALL, UI.INK_SOFT))
+		var edit: Button = UI.stamp(tr("性別・身長・体型・肌の色を変える"), UI.S_SMALL)
+		edit.pressed.connect(func() -> void: show_avatar_maker(Callable()))
+		side.add_child(edit)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(760, 300 if group_id == "chara" else 330)
+	col.add_child(scroll)
+	var list: VBoxContainer = UI.vbox(10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for c in Shop.categories():
+		var cd: Dictionary = c
+		if str(cd.get("group", "")) != group_id:
+			continue
+		var cat: String = str(cd.get("id", ""))
+		list.add_child(UI.text(Shop.text(cd.get("name", {})), UI.S_LEAD, UI.INK, UI.F_SIGN))
+		var grid: GridContainer = GridContainer.new()
+		grid.columns = 3 if group_id == "chara" else 2
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_theme_constant_override("h_separation", 10)
+		grid.add_theme_constant_override("v_separation", 10)
+		list.add_child(grid)
+		for it in Shop.items(cat):
+			grid.add_child(_shop_item(it))
+
+
 func _shop_item(it: Dictionary) -> Control:
 	var cat: String = str(it.get("cat", ""))
 	var id: String = str(it.get("id", ""))
 	var have: bool = Shop.owns(cat, id)
 	var using: bool = Shop.equipped(cat) == id
-	var box: PanelContainer = UI.paper(UI.PAPER if not using else UI.POP.lerp(UI.PAPER, 0.6), 12, 2)
+	var chara: bool = cat in Shop.AVATAR_CATS
+	var box: PanelContainer = UI.paper(UI.PAPER if not using else UI.POP.lerp(UI.PAPER, 0.6), 10, 2)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.custom_minimum_size = Vector2(340, 0)
+	box.custom_minimum_size = Vector2(232 if chara else 350, 0)
 	var c: VBoxContainer = UI.vbox(6)
 	box.add_child(c)
 	var top: HBoxContainer = UI.hbox(8)
@@ -1146,28 +1216,21 @@ func _shop_item(it: Dictionary) -> Control:
 	top.add_child(UI.spacer())
 	if int(it.get("hp", 0)) <= 0 and int(it.get("kas", 0)) > 0:
 		top.add_child(UI.text(tr("KAS限定"), UI.S_SMALL, Color("#b0258a"), UI.F_BOLD))
-	# 見本
 	var pname: String = str(GameSettings.last_profile.get("name", GameSettings.player_name))
 	if pname == "":
 		pname = tr("新人")
+	# 見本
 	match cat:
-		"frame":
-			c.add_child(Shop.name_tag(pname, "", {"frame": id, "color": Shop.equipped("color"), "stamp": Shop.equipped("stamp")}, UI.S_BODY))
-		"color":
-			c.add_child(Shop.name_tag(pname, "", {"frame": Shop.equipped("frame"), "color": id, "stamp": Shop.equipped("stamp")}, UI.S_BODY))
-		"stamp":
-			c.add_child(Shop.name_tag(pname, "", {"frame": Shop.equipped("frame"), "color": Shop.equipped("color"), "stamp": id}, UI.S_BODY))
-		"bg":
+		"frame", "color", "stamp":
+			var tg: Dictionary = Shop.tag_dict()
+			tg[cat] = id
+			c.add_child(Shop.name_tag(pname, "", tg, UI.S_BODY))
+		"hair_color", "casual", "uniform":
 			var sw: ColorRect = ColorRect.new()
-			var night: bool = str(it.get("variant", "")) == "night"
-			var arcade: bool = str(it.get("stage", "")) == "arcade"
-			sw.color = (Color("#2a1846") if arcade else Color("#cfe3f2")) if not night else (Color("#0b0a18") if arcade else Color("#1a2340"))
-			sw.custom_minimum_size = Vector2(0, 46)
+			sw.color = Color(str(it.get("value", "#888888")))
+			sw.custom_minimum_size = Vector2(0, 22)
 			c.add_child(sw)
-			var lbl: Label = UI.text(tr("ゲームセンター") if arcade else tr("コンビニ"), UI.S_SMALL, UI.PAPER if (arcade or night) else UI.INK, UI.F_SIGN)
-			lbl.position = Vector2(10, 10)
-			sw.add_child(lbl)
-	var row: HBoxContainer = UI.hbox(10)
+	var row: HBoxContainer = UI.hbox(8)
 	c.add_child(row)
 	if using:
 		row.add_child(UI.text(tr("使用中"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
@@ -1200,14 +1263,456 @@ func _shop_item(it: Dictionary) -> Control:
 	return box
 
 
-## 使うものを変えた後: 背景はすぐ変え、名札の飾りはサーバーに送る（対戦の相手に見える）
+## 背景ガチャ（要件#84）
+func _shop_gacha(col: VBoxContainer) -> void:
+	var pool: Array = Shop.gacha_pool()
+	var have_n: int = 0
+	for it in pool:
+		if Shop.owns("bg", str((it as Dictionary).get("id", ""))):
+			have_n += 1
+	col.add_child(UI.para(tr("背景はガチャで出ます。持っている背景が出たら、1回分の3割を返します。10連は10回分の値段で11回。") + "  " + tr("集めた背景: %d / %d") % [have_n, pool.size()], UI.S_SMALL, UI.INK_SOFT))
+	var row: HBoxContainer = UI.hbox(10)
+	col.add_child(row)
+	var can: bool = Shop.gacha_has_new()
+	for spec in [["kas", false], ["kas", true], ["hp", false], ["hp", true]]:
+		var cur: String = str(spec[0])
+		var ten: bool = bool(spec[1])
+		var price: int = Shop.gacha_price(cur, ten)
+		var wallet: int = GameSettings.kas_points if cur == "kas" else GameSettings.hp_points
+		var label: String = (tr("10連") if ten else tr("1回")) + "  %s %s" % [_num(price), "KAS" if cur == "kas" else "HP"]
+		var b: Button = UI.primary(label, UI.S_BODY) if cur == "kas" else UI.stamp(label, UI.S_BODY)
+		b.disabled = not can or wallet < price
+		b.pressed.connect(func() -> void:
+			var res: Array = Shop.gacha_pull(cur, ten)
+			if not res.is_empty():
+				_show_gacha_result(res))
+		row.add_child(b)
+	if not can:
+		col.add_child(UI.text(tr("背景を全部集めました！"), UI.S_BODY, UI.SHU, UI.F_BOLD))
+	# 持っている背景（使うものを選ぶ）
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(760, 290)
+	col.add_child(scroll)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	scroll.add_child(grid)
+	for it in Shop.items("bg"):
+		grid.add_child(_bg_card(it))
+
+
+func _bg_card(it: Dictionary) -> Control:
+	var id: String = str(it.get("id", ""))
+	var have: bool = Shop.owns("bg", id)
+	var using: bool = Shop.equipped("bg") == id
+	var rar: int = int(it.get("rarity", 0))
+	var box: PanelContainer = UI.paper(UI.POP.lerp(UI.PAPER, 0.6) if using else UI.PAPER, 10, 2)
+	box.custom_minimum_size = Vector2(240, 0)
+	var c: VBoxContainer = UI.vbox(4)
+	box.add_child(c)
+	var sw: ColorRect = ColorRect.new()
+	sw.color = _bg_swatch(it) if have else Color(0.2, 0.2, 0.22)
+	sw.custom_minimum_size = Vector2(0, 40)
+	c.add_child(sw)
+	var star: Label = UI.text("★".repeat(rar) if rar > 0 else tr("最初から"), UI.S_SMALL, _rarity_color(rar), UI.F_BOLD)
+	star.position = Vector2(8, 8)
+	sw.add_child(star)
+	c.add_child(UI.text(Shop.item_name(it) if have else tr("？？？"), UI.S_SMALL, UI.INK if have else UI.INK_SOFT, UI.F_BOLD))
+	if using:
+		c.add_child(UI.text(tr("使用中"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
+	elif have:
+		var use: Button = UI.stamp(tr("使う"), UI.S_SMALL)
+		use.pressed.connect(func() -> void:
+			sfx.play("click")
+			Shop.equip("bg", id)
+			_after_equip("bg")
+			_show_shop())
+		c.add_child(use)
+	return box
+
+
+func _bg_swatch(it: Dictionary) -> Color:
+	var night: bool = str(it.get("variant", "")) == "night"
+	match str(it.get("stage", "")):
+		"arcade":
+			return Color("#0b0a18") if night else Color("#2a1846")
+		"konbini":
+			return Color("#1a2340") if night else Color("#cfe3f2")
+		"bg_medal":
+			return Color("#6b1420")
+		"bg_video":
+			return Color("#1a1a40")
+		"bg_rhythm":
+			return Color("#3a1050")
+		"bg_office":
+			return Color("#8a8778")
+		"bg_purikura":
+			return Color("#f2b8d6")
+	return Color("#444444")
+
+
+static func _rarity_color(r: int) -> Color:
+	match r:
+		3:
+			return Color("#ffcc33")
+		2:
+			return Color("#9ad0ff")
+		1:
+			return Color("#e6e6e6")
+	return Color("#c8c8c8")
+
+
+## ガチャの結果。カプセルを1つずつ開ける
+func _show_gacha_result(res: Array) -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(820, "center")
+	col.add_child(UI.text(tr("ガチャの結果"), UI.S_HEAD, UI.INK, UI.F_SIGN))
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 4 if res.size() > 1 else 1
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	col.add_child(grid)
+	var cards: Array = []
+	for r in res:
+		var d: Dictionary = r
+		var it: Dictionary = d["item"]
+		var rar: int = int(it.get("rarity", 1))
+		var card: PanelContainer = PanelContainer.new()
+		var sb: StyleBoxFlat = UI.flat_style(Color(0.1, 0.08, 0.16), 10, 8)
+		sb.border_color = _rarity_color(rar)
+		sb.set_border_width_all(3 if rar >= 3 else 2)
+		if rar >= 3:
+			sb.shadow_color = Color(1.0, 0.8, 0.2, 0.6)
+			sb.shadow_size = 10
+		card.add_theme_stylebox_override("panel", sb)
+		card.custom_minimum_size = Vector2(185, 96)
+		card.modulate.a = 0.0
+		var cc: VBoxContainer = UI.vbox(2)
+		card.add_child(cc)
+		cc.add_child(UI.text("★".repeat(rar), UI.S_BODY, _rarity_color(rar), UI.F_BOLD))
+		var nm: Label = UI.para(Shop.item_name(it), UI.S_SMALL, UI.PAPER, UI.F_BOLD)
+		nm.custom_minimum_size = Vector2(165, 0)
+		cc.add_child(nm)
+		if bool(d.get("new", false)):
+			cc.add_child(UI.text("NEW!", UI.S_SMALL, UI.POP, UI.F_SIGN))
+		else:
+			cc.add_child(UI.text(tr("持っている（+%d 返却）") % int(d.get("refund", 0)), UI.S_SMALL - 2, UI.PAPER_DIM))
+		grid.add_child(card)
+		cards.append([card, rar])
+	var again: Button = UI.link(tr("ショップへ戻る"), UI.S_BODY)
+	again.pressed.connect(func() -> void:
+		_shop_tab = "gacha"
+		_show_shop())
+	col.add_child(again)
+	show_new_titles(Titles.check())
+	for pair in cards:
+		# 途中でショップを閉じたら止める（消えたカードを触らない）
+		if not is_instance_valid(pair[0]):
+			return
+		var card2: Control = pair[0]
+		var tw: Tween = card2.create_tween()
+		tw.tween_property(card2, "modulate:a", 1.0, 0.18)
+		sfx.play("win" if int(pair[1]) >= 3 else "good", 1.0 + 0.1 * float(int(pair[1])))
+		await get_tree().create_timer(0.22 if res.size() > 1 else 0.4).timeout
+
+
+## KAS → HP の両替機（要件#84）。お札（KAS）を入れるとコイン（HP）が出てくる。逆はできない
+func _shop_exchange(col: VBoxContainer) -> void:
+	var rate: int = Shop.hp_per_kas()
+	var wrap: Control = Control.new()
+	wrap.custom_minimum_size = Vector2(760, 400)
+	col.add_child(wrap)
+	# 機械の本体
+	var body: PanelContainer = PanelContainer.new()
+	var bs: StyleBoxFlat = UI.flat_style(Color("#3b3f48"), 16, 10)
+	bs.border_color = Color("#22252b")
+	bs.set_border_width_all(4)
+	bs.shadow_color = Color(0, 0, 0, 0.4)
+	bs.shadow_size = 8
+	body.add_theme_stylebox_override("panel", bs)
+	body.position = Vector2(150, 0)
+	body.size = Vector2(420, 400)
+	wrap.add_child(body)
+	var mc: VBoxContainer = UI.vbox(10)
+	body.add_child(mc)
+	# 看板
+	var plate: PanelContainer = PanelContainer.new()
+	plate.add_theme_stylebox_override("panel", UI.flat_style(UI.POP, 6, 4))
+	mc.add_child(plate)
+	var pt: Label = UI.text(tr("両替機") + "  CHANGE", UI.S_LEAD, UI.INK, UI.F_SIGN)
+	pt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	plate.add_child(pt)
+	# 表示
+	var lcd: PanelContainer = PanelContainer.new()
+	lcd.add_theme_stylebox_override("panel", UI.flat_style(Color("#1d2b1d"), 8, 4))
+	mc.add_child(lcd)
+	var lcd_t: Label = UI.text("KAS 1 → HP %d   KAS %s" % [rate, _num(GameSettings.kas_points)], UI.S_BODY, UI.LCD_ON, UI.F_DOT)
+	lcd.add_child(lcd_t)
+	# お札の入れ口
+	mc.add_child(UI.text(tr("お札（KAS）を入れてください"), UI.S_SMALL, UI.PAPER_DIM))
+	var slot: ColorRect = ColorRect.new()
+	slot.color = Color("#111215")
+	slot.custom_minimum_size = Vector2(0, 10)
+	mc.add_child(slot)
+	var bills: HBoxContainer = UI.hbox(8)
+	mc.add_child(bills)
+	# コインの受け皿
+	mc.add_child(UI.text(tr("コイン（HP）の受け皿"), UI.S_SMALL, UI.PAPER_DIM))
+	var tray: PanelContainer = PanelContainer.new()
+	var ts: StyleBoxFlat = UI.flat_style(Color("#16171b"), 8, 10)
+	ts.border_color = Color("#8a8f99")
+	ts.border_width_top = 3
+	tray.add_theme_stylebox_override("panel", ts)
+	tray.custom_minimum_size = Vector2(0, 74)
+	tray.clip_contents = true
+	mc.add_child(tray)
+	var coins: Control = Control.new()
+	tray.add_child(coins)
+	var out: Label = UI.text("", UI.S_LEAD, Color("#ffc94a"), UI.F_DOT)
+	out.position = Vector2(250, 14)
+	coins.add_child(out)
+	var amounts: Array = [10, 50, 100, GameSettings.kas_points]
+	for i in range(amounts.size()):
+		var kas: int = int(amounts[i])
+		var label: String = (tr("全部") + " " if i == amounts.size() - 1 else "") + "KAS %s" % _num(kas)
+		var bill: Button = Button.new()
+		bill.text = label
+		bill.add_theme_font_override("font", UI.font(UI.F_DOT))
+		bill.add_theme_font_size_override("font_size", UI.S_SMALL)
+		var bst: StyleBoxFlat = UI.flat_style(Color("#cfe6c4"), 8, 3)
+		bst.border_color = Color("#4f7a45")
+		bst.set_border_width_all(2)
+		bill.add_theme_stylebox_override("normal", bst)
+		var bh: StyleBoxFlat = bst.duplicate()
+		bh.bg_color = Color("#e4f5da")
+		bill.add_theme_stylebox_override("hover", bh)
+		bill.add_theme_stylebox_override("pressed", bh)
+		bill.add_theme_color_override("font_color", Color("#24402a"))
+		bill.disabled = kas <= 0 or kas > GameSettings.kas_points
+		bill.pressed.connect(func() -> void:
+			if not Shop.exchange(kas):
+				return
+			sfx.play("good", 1.3)
+			lcd_t.text = "KAS 1 → HP %d   KAS %s" % [rate, _num(GameSettings.kas_points)]
+			out.text = "+%s HP" % _num(kas * rate)
+			_refresh_title()
+			_drop_coins(coins, mini(14, 3 + int(kas / 10.0)))
+			for b2 in bills.get_children():
+				var idx: int = b2.get_index()
+				(b2 as Button).disabled = int(amounts[idx]) <= 0 or int(amounts[idx]) > GameSettings.kas_points)
+		bills.add_child(bill)
+	# POP（貼り紙）
+	var pop1: PanelContainer = UI.paper(UI.POP, 10, 3)
+	pop1.position = Vector2(0, 30)
+	pop1.rotation_degrees = -6.0
+	wrap.add_child(pop1)
+	var p1: VBoxContainer = UI.vbox(2)
+	pop1.add_child(p1)
+	p1.add_child(UI.text(tr("業務両替禁止！"), UI.S_LEAD, UI.SHU, UI.F_HAND))
+	var p1t: Label = UI.para(tr("お店のつり銭用の両替はお断りします"), UI.S_SMALL, UI.INK, UI.F_HAND)
+	p1t.custom_minimum_size = Vector2(130, 0)
+	p1.add_child(p1t)
+	var pop2: PanelContainer = UI.paper(Color("#ffd1e3"), 10, 3)
+	pop2.position = Vector2(592, 120)
+	pop2.rotation_degrees = 5.0
+	wrap.add_child(pop2)
+	var p2: VBoxContainer = UI.vbox(2)
+	pop2.add_child(p2)
+	p2.add_child(UI.text(tr("お札→コインのみ"), UI.S_BODY, UI.SHU, UI.F_HAND))
+	var p2t: Label = UI.para(tr("HP を KAS には戻せません"), UI.S_SMALL, UI.INK, UI.F_HAND)
+	p2t.custom_minimum_size = Vector2(130, 0)
+	p2.add_child(p2t)
+
+
+## コインが受け皿に落ちてくる
+func _drop_coins(parent: Control, n: int) -> void:
+	for i in range(n):
+		if not is_instance_valid(parent):
+			return
+		var c: Label = UI.text("●", UI.S_LEAD, Color("#ffc94a"), UI.F_BODY)
+		c.position = Vector2(randf_range(10.0, 220.0), -30.0)
+		parent.add_child(c)
+		var tw: Tween = c.create_tween()
+		tw.tween_property(c, "position:y", randf_range(18.0, 34.0), 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		sfx.play("click", 1.6 + randf() * 0.4)
+		await get_tree().create_timer(0.05).timeout
+
+
+## 使うものを変えた後: 背景はすぐ変え、名札の飾り・キャラクターはサーバーに送る（対戦の相手に見える）
 func _after_equip(cat: String) -> void:
 	_refresh_title()   # 後ろの STAFF CARD（HP/KAS・名札）もすぐ新しくする
 	if cat == "bg":
 		var bd: Dictionary = Shop.backdrop()
 		set_stage(str(bd["stage"]), str(bd["variant"]))
-	elif GameSettings.token != "":
-		api.request("POST", "/api/v1/me", {"tag": Shop.tag_dict()})
+	else:
+		_sync_look()
+
+
+## 名札の飾りとキャラクターをサーバーに送る
+func _sync_look() -> void:
+	if GameSettings.token == "":
+		return
+	var body: Dictionary = {"tag": Shop.tag_dict()}
+	if Shop.avatar_created():
+		body["avatar"] = Shop.avatar_dict()
+	api.request("POST", "/api/v1/me", body)
+
+
+# ---------------------------------------------------------------- 対戦のキャラクター（要件#84）
+
+## キャラクターを小さな画面で回して見せる
+func avatar_preview(look: Dictionary, size: Vector2) -> Control:
+	var svc: SubViewportContainer = SubViewportContainer.new()
+	svc.stretch = true
+	svc.custom_minimum_size = size
+	svc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vp: SubViewport = SubViewport.new()
+	vp.own_world_3d = true
+	vp.transparent_bg = true
+	vp.msaa_3d = Viewport.MSAA_4X
+	svc.add_child(vp)
+	var cam: Camera3D = Camera3D.new()
+	cam.fov = 32.0
+	cam.position = Vector3(0.0, 1.15, 3.9)
+	vp.add_child(cam)
+	cam.look_at(Vector3(0.0, 0.95, 0.0), Vector3.UP)
+	var sun: DirectionalLight3D = DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-40.0, 30.0, 0.0)
+	sun.light_energy = 1.2
+	vp.add_child(sun)
+	var env: WorldEnvironment = WorldEnvironment.new()
+	var e: Environment = Environment.new()
+	e.background_mode = Environment.BG_CLEAR_COLOR
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(0.9, 0.9, 1.0)
+	e.ambient_light_energy = 0.7
+	env.environment = e
+	vp.add_child(env)
+	var ch: Node3D = CustomerScript.new()
+	vp.add_child(ch)
+	ch.call("setup", look)
+	ch.rotation.y = -0.5
+	var tw: Tween = ch.create_tween().set_loops()
+	tw.tween_property(ch, "rotation:y", 0.5, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(ch, "rotation:y", -0.5, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return svc
+
+
+## キャラクターを作る・直す（初めての対戦の前に出る）。done は作り終えたら呼ぶ
+func show_avatar_maker(done: Callable) -> void:
+	sfx.play("click")
+	var a: Dictionary = GameSettings.avatar
+	if not a.has("gender"):
+		a = {"gender": "x", "height": 1.0, "build": "normal", "skin": "s2"}
+		GameSettings.avatar = a
+	var col: VBoxContainer = _open_sheet(820, "center")
+	col.add_child(UI.text(tr("対戦のキャラクター"), UI.S_HEAD, UI.INK, UI.F_SIGN))
+	col.add_child(UI.para(tr("対戦では、客役のときは私服、店員役のときは制服で相手の画面に出ます。髪型や服はショップで増やせます。"), UI.S_SMALL, UI.INK_SOFT))
+	var row: HBoxContainer = UI.hbox(18)
+	col.add_child(row)
+	var previews: HBoxContainer = UI.hbox(4)
+	row.add_child(previews)
+	var form: GridContainer = GridContainer.new()
+	form.columns = 2
+	form.add_theme_constant_override("h_separation", 12)
+	form.add_theme_constant_override("v_separation", 10)
+	row.add_child(form)
+	var refresh: Callable = func() -> void:
+		for ch in previews.get_children():
+			ch.queue_free()
+		var av: Dictionary = Shop.avatar_dict()
+		previews.add_child(avatar_preview(Shop.avatar_look(av, "casual"), Vector2(170, 260)))
+		previews.add_child(avatar_preview(Shop.avatar_look(av, "uniform"), Vector2(170, 260)))
+	# 性別
+	var g_row: HBoxContainer = UI.hbox(6)
+	var g_group: ButtonGroup = ButtonGroup.new()
+	for g in [["m", "男性"], ["f", "女性"], ["x", "そのほか"]]:
+		var gid: String = str(g[0])
+		var b: Button = UI.tag(tr(str(g[1])), UI.S_SMALL)
+		b.toggle_mode = true
+		b.button_group = g_group
+		b.button_pressed = str(a.get("gender", "x")) == gid
+		b.pressed.connect(func() -> void:
+			GameSettings.avatar["gender"] = gid
+			refresh.call())
+		g_row.add_child(b)
+	_form_row(form, tr("性別"), g_row)
+	# 身長
+	var h: HSlider = HSlider.new()
+	h.min_value = 0.85
+	h.max_value = 1.15
+	h.step = 0.01
+	h.value = float(a.get("height", 1.0))
+	h.custom_minimum_size = Vector2(220, 0)
+	h.drag_ended.connect(func(_c: bool) -> void:
+		GameSettings.avatar["height"] = h.value
+		refresh.call())
+	_form_row(form, tr("身長"), h)
+	# 体型
+	var b_row: HBoxContainer = UI.hbox(6)
+	var b_group: ButtonGroup = ButtonGroup.new()
+	for bb in [["slim", "細め"], ["normal", "ふつう"], ["big", "がっしり"]]:
+		var bid: String = str(bb[0])
+		var b2: Button = UI.tag(tr(str(bb[1])), UI.S_SMALL)
+		b2.toggle_mode = true
+		b2.button_group = b_group
+		b2.button_pressed = str(a.get("build", "normal")) == bid
+		b2.pressed.connect(func() -> void:
+			GameSettings.avatar["build"] = bid
+			refresh.call())
+		b_row.add_child(b2)
+	_form_row(form, tr("体型"), b_row)
+	# 肌の色
+	var s_row: HBoxContainer = UI.hbox(6)
+	for sk in Shop.skins():
+		var sid: String = str((sk as Dictionary).get("id", ""))
+		var sw: Button = Button.new()
+		sw.custom_minimum_size = Vector2(34, 34)
+		var st: StyleBoxFlat = UI.flat_style(Color(str((sk as Dictionary).get("value", "#f1c9a5"))), 0, 17)
+		st.border_color = UI.SHU if str(a.get("skin", "s2")) == sid else UI.INK_SOFT
+		st.set_border_width_all(3 if str(a.get("skin", "s2")) == sid else 1)
+		sw.add_theme_stylebox_override("normal", st)
+		sw.add_theme_stylebox_override("hover", st)
+		sw.add_theme_stylebox_override("pressed", st)
+		sw.pressed.connect(func() -> void:
+			GameSettings.avatar["skin"] = sid
+			GameSettings.save_settings()
+			show_avatar_maker(done))
+		s_row.add_child(sw)
+	_form_row(form, tr("肌の色"), s_row)
+	# 髪型・髪の色（持っているもの）
+	for cat in ["hair", "hair_color"]:
+		var opt: OptionButton = UI.option()
+		var ids: Array = []
+		for it in Shop.items(cat):
+			var iid: String = str((it as Dictionary).get("id", ""))
+			if Shop.owns(cat, iid):
+				opt.add_item(Shop.item_name(it))
+				ids.append(iid)
+				if Shop.equipped(cat) == iid:
+					opt.select(ids.size() - 1)
+		var cat_id: String = cat
+		opt.item_selected.connect(func(i: int) -> void:
+			Shop.equip(cat_id, str(ids[i]))
+			refresh.call())
+		_form_row(form, tr("髪型") if cat == "hair" else tr("髪の色"), opt)
+	refresh.call()
+	var btns: HBoxContainer = UI.hbox(20)
+	col.add_child(btns)
+	var ok: Button = UI.primary(tr("このキャラクターにする"), UI.S_LEAD)
+	ok.pressed.connect(func() -> void:
+		GameSettings.avatar["created"] = true
+		GameSettings.save_settings()
+		_sync_look()
+		_close_sheet()
+		if done.is_valid():
+			done.call()
+		else:
+			_shop_tab = "chara"
+			_show_shop())
+	btns.add_child(ok)
 
 
 func _quit_game() -> void:
@@ -1741,6 +2246,10 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 # ---------------------------------------------------------------- 対戦ロビー（バックヤードの掲示板）
 
 func _show_versus_lobby() -> void:
+	# 初めての対戦の前に、キャラクターを作る（要件#84）
+	if not Shop.avatar_created() and not smoke:
+		show_avatar_maker(_show_versus_lobby)
+		return
 	sfx.play("click")
 	_close_sheet()
 	_sheet = Control.new()
@@ -1771,6 +2280,11 @@ func _show_versus_lobby() -> void:
 	# メンタルランク B（素材型。要件#72）
 	var mb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
 	head.add_child(UI.text(tr("メンタル %d「%s」") % [mb, GameSettings.mental_name_b(mb)], UI.S_BODY, UI.PAPER, UI.F_DOT))
+	var chara: Button = UI.link(tr("キャラクター →"), UI.S_BODY, UI.POP)
+	chara.pressed.connect(func() -> void:
+		_sheet_is_lobby = false
+		show_avatar_maker(_show_versus_lobby))
+	head.add_child(chara)
 
 	# 形式（文字・音声）
 	var fmt_row: HBoxContainer = UI.hbox(8)
@@ -2052,6 +2566,9 @@ func _run_shots() -> void:
 	var tag: String = _arg("--shot-tag=")
 	var prefix: String = GameSettings.language + ("_" + tag if tag != "" else "") + "_"
 	GameSettings.last_profile = {"name": "テスト店員" if GameSettings.language == "ja" else "Test Clerk", "rating": 1084, "rank": "バイトリーダー"}
+	GameSettings.avatar = {"created": true, "gender": "f", "height": 1.0, "build": "normal", "skin": "s2"}
+	GameSettings.equipped_items = {"hair": "ponytail", "hair_color": "brown", "casual": "red", "uniform": "blue", "acc": "ribbon"}
+	GameSettings.owned_items = ["hair:ponytail", "casual:red", "acc:ribbon"]
 	_server_info = {"ai": true, "voice": true}
 	_refresh_title()
 	await _wait(1.5)
@@ -2192,7 +2709,7 @@ func _run_shots() -> void:
 	GameSettings.kas_points = 480
 	GameSettings.owned_items = ["frame:neon", "stamp:oni"]
 	GameSettings.equipped_items = {"frame": "neon", "stamp": "oni"}
-	_shop_cat = "frame"
+	_shop_tab = "tag"
 	_show_shop()
 	await _wait(0.6)
 	await _shot(dir, prefix + "06c_shop")
@@ -2200,6 +2717,35 @@ func _run_shots() -> void:
 	_refresh_title()
 	await _wait(0.4)
 	await _shot(dir, prefix + "06d_title_card")
+	# 背景ガチャ（要件#84）
+	GameSettings.kas_points = 1500
+	_show_gacha_result(Shop.gacha_pull("kas", true))
+	await _wait(3.4)
+	await _shot(dir, prefix + "06e_gacha")
+	_shop_tab = "exchange"
+	_show_shop()
+	await _wait(0.5)
+	await _shot(dir, prefix + "06h_exchange")
+	_shop_tab = "chara"
+	_show_shop()
+	await _wait(0.8)
+	await _shot(dir, prefix + "06f_shop_chara")
+	_close_sheet()
+	show_avatar_maker(Callable())
+	await _wait(0.8)
+	await _shot(dir, prefix + "06g_avatar_maker")
+	_close_sheet()
+	# 新しい背景（日本語のときだけ撮る）
+	if GameSettings.language == "ja" and tag == "":
+		for bgid in ["bg_medal", "bg_video", "bg_rhythm", "bg_office", "bg_purikura", "konbini_night", "arcade_night"]:
+			GameSettings.owned_items.append("bg:" + bgid)
+			Shop.equip("bg", bgid)
+			_show_title()
+			_title.visible = false
+			await _wait(1.0)
+			await _shot(dir, prefix + "bg_" + bgid.trim_prefix("bg_"))
+		Shop.equip("bg", "arcade_day")
+		_show_title()
 	_show_howto()
 	await _wait(0.6)
 	await _shot(dir, prefix + "07_howto")
@@ -2215,5 +2761,16 @@ func _run_shots() -> void:
 		"rating_before": 1068, "rating_after": 1084, "rating_delta": 16, "rank": "バイトリーダー"})
 	await _wait(0.6)
 	await _shot(dir, prefix + "09_versus_result")
+	# 対戦の客役の画面（要件#84）: 相手（店員役）のキャラクターをカウンターの外から見る
+	_close_sheet()
+	set_stage("arcade")
+	await spawn_customer(Shop.avatar_look(Shop.avatar_dict(), "casual"))
+	spawn_staff(Shop.avatar_look({"gender": "m", "height": 1.05, "build": "big", "skin": "s3", "hair": "spiky", "hair_color": "black", "casual": "navy", "uniform": "green", "acc": "sunglasses"}, "uniform"))
+	set_customer_view(true)
+	_hud.clear_round()
+	await _wait(1.2)
+	await _shot(dir, prefix + "10_versus_customer_view")
+	set_customer_view(false)
+	free_staff()
 	print("SHOTS OK")
 	get_tree().quit(0)

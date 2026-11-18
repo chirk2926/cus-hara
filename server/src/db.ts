@@ -17,6 +17,8 @@ export interface Player {
   title?: string;
   /** 名札の飾り（要件#82）。"枠:名前の色:スタンプ"（ショップで買ったものの ID。無ければ ""） */
   tag?: string;
+  /** 対戦のキャラクター（要件#84）。cleanAvatar を通した JSON（無ければ ""） */
+  avatar?: string;
 }
 
 let db: DatabaseSync | null = null;
@@ -60,6 +62,8 @@ export function openDb(): DatabaseSync {
   if (!cols.some((c) => c.name === "title")) db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''");
   // 名札の飾りの列（要件#82）
   if (!cols.some((c) => c.name === "tag")) db.exec("ALTER TABLE players ADD COLUMN tag TEXT NOT NULL DEFAULT ''");
+  // 対戦のキャラクターの列（要件#84）
+  if (!cols.some((c) => c.name === "avatar")) db.exec("ALTER TABLE players ADD COLUMN avatar TEXT NOT NULL DEFAULT ''");
   return db;
 }
 
@@ -85,7 +89,7 @@ export function createPlayer(name: string): { player: Player; token: string } {
 
 export function playerByToken(token: string): Player | null {
   const row = openDb()
-    .prepare("SELECT id, name, rating, wins, losses, draws, title, tag FROM players WHERE token_hash = ?")
+    .prepare("SELECT id, name, rating, wins, losses, draws, title, tag, avatar FROM players WHERE token_hash = ?")
     .get(hashToken(token)) as Player | undefined;
   if (!row) return null;
   openDb().prepare("UPDATE players SET last_seen = ? WHERE id = ?").run(Date.now(), row.id);
@@ -93,7 +97,7 @@ export function playerByToken(token: string): Player | null {
 }
 
 export function playerById(id: string): Player | null {
-  const row = openDb().prepare("SELECT id, name, rating, wins, losses, draws, title, tag FROM players WHERE id = ?").get(id) as Player | undefined;
+  const row = openDb().prepare("SELECT id, name, rating, wins, losses, draws, title, tag, avatar FROM players WHERE id = ?").get(id) as Player | undefined;
   return row ? { ...row } : null;
 }
 
@@ -117,6 +121,33 @@ export function cleanTag(raw: unknown): string {
 
 export function setPlayerTag(id: string, tag: string): void {
   openDb().prepare("UPDATE players SET tag = ? WHERE id = ?").run(tag, id);
+}
+
+/** 対戦のキャラクター: 決まった項目だけ（ID は英小文字・数字・_ の16文字まで、身長は 0.85〜1.15）。形の違う値は "" */
+export function cleanAvatar(raw: unknown): string {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return "";
+  const r = raw as Record<string, unknown>;
+  const id = (v: unknown, ok?: string[]): string => {
+    const s = typeof v === "string" && /^[a-z0-9_]{1,16}$/.test(v) ? v : "";
+    return ok && !ok.includes(s) ? "" : s;
+  };
+  const h = typeof r.height === "number" && Number.isFinite(r.height) ? Math.min(1.15, Math.max(0.85, r.height)) : 1;
+  const out = {
+    gender: id(r.gender, ["m", "f", "x"]) || "x",
+    height: Math.round(h * 100) / 100,
+    build: id(r.build, ["slim", "normal", "big"]) || "normal",
+    skin: id(r.skin),
+    hair: id(r.hair),
+    hair_color: id(r.hair_color),
+    casual: id(r.casual),
+    uniform: id(r.uniform),
+    acc: id(r.acc),
+  };
+  return JSON.stringify(out);
+}
+
+export function setPlayerAvatar(id: string, avatar: string): void {
+  openDb().prepare("UPDATE players SET avatar = ? WHERE id = ?").run(avatar, id);
 }
 
 export function renamePlayer(id: string, name: string): void {

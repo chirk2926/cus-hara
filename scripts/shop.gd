@@ -8,6 +8,8 @@ extends RefCounted
 ## 品物: 背景（タイトルの背景の店と時間帯）・名札の枠・名前の色・スタンプ。
 ##   値段は hp と kas の2つ（0 はその通貨では買えない）。KAS でしか買えないものもある。
 ## 名札の飾り（枠・名前の色・スタンプ）はサーバーに送り、対戦の相手にも見える（見た目だけ）。
+## 要件#84: 背景はガチャ（KAS か HP。HP は高め。1回と10連=11回）。KAS は HP に両替できる（1 KAS = 3 HP、逆はできない）。
+## 対戦のキャラクター（客役は私服、店員役は制服）。髪型・髪の色・私服・制服・小物はショップの品物。
 
 const UI = preload("res://scripts/ui_kit.gd")
 
@@ -220,3 +222,145 @@ static func hanko(ch: String, size: int) -> Control:
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(l)
 	return box
+
+
+# ---------------------------------------------------------------- 両替（要件#84）
+
+static func hp_per_kas() -> int:
+	return int((data().get("exchange", {}) as Dictionary).get("hp_per_kas", 3))
+
+
+## KAS を HP にする（逆はできない）。できたら true
+static func exchange(kas: int) -> bool:
+	if kas <= 0 or kas > GameSettings.kas_points:
+		return false
+	GameSettings.kas_points -= kas
+	GameSettings.hp_points += kas * hp_per_kas()
+	GameSettings.save_settings()
+	return true
+
+
+# ---------------------------------------------------------------- 背景ガチャ（要件#84）
+
+static func gacha_conf() -> Dictionary:
+	return data().get("gacha", {})
+
+
+static func gacha_pool() -> Array:
+	var out: Array = []
+	for it in items("bg"):
+		if bool((it as Dictionary).get("gacha", false)):
+			out.append(it)
+	return out
+
+
+## まだ持っていない背景があるか（全部持っていたら回せない）
+static func gacha_has_new() -> bool:
+	for it in gacha_pool():
+		if not owns("bg", str((it as Dictionary).get("id", ""))):
+			return true
+	return false
+
+
+## 1回分の値段。currency は "kas" か "hp"
+static func gacha_price(currency: String, ten: bool) -> int:
+	var c: Dictionary = gacha_conf()
+	var one: int = int(c.get("price_kas", 100)) if currency == "kas" else int(c.get("price_hp", 400))
+	return one * int(c.get("ten_price_mul", 10)) if ten else one
+
+
+## 回す。結果は [{item, new, refund}]。払えない・全部持っているときは []
+static func gacha_pull(currency: String, ten: bool) -> Array:
+	if not gacha_has_new():
+		return []
+	var c: Dictionary = gacha_conf()
+	var price: int = gacha_price(currency, ten)
+	var wallet: int = GameSettings.kas_points if currency == "kas" else GameSettings.hp_points
+	if wallet < price:
+		return []
+	if currency == "kas":
+		GameSettings.kas_points -= price
+	else:
+		GameSettings.hp_points -= price
+	var count: int = int(c.get("ten_pulls", 11)) if ten else 1
+	var one_price: int = gacha_price(currency, false)
+	var refund_one: int = int(floor(float(one_price) * float(c.get("refund_rate", 0.3))))
+	var weights: Dictionary = c.get("weights", {})
+	var pool: Array = gacha_pool()
+	var total_w: float = 0.0
+	for it in pool:
+		total_w += float(weights.get(str(int((it as Dictionary).get("rarity", 1))), 10))
+	var out: Array = []
+	for i in range(count):
+		var r: float = randf() * total_w
+		var pick: Dictionary = pool[pool.size() - 1]
+		for it in pool:
+			r -= float(weights.get(str(int((it as Dictionary).get("rarity", 1))), 10))
+			if r <= 0.0:
+				pick = it
+				break
+		var id: String = str(pick.get("id", ""))
+		var is_new: bool = not owns("bg", id)
+		if is_new:
+			GameSettings.owned_items.append(_key("bg", id))
+		else:
+			if currency == "kas":
+				GameSettings.kas_points += refund_one
+			else:
+				GameSettings.hp_points += refund_one
+		out.append({"item": pick, "new": is_new, "refund": 0 if is_new else refund_one})
+	GameSettings.stat_add("gacha_pulls", count)
+	GameSettings.save_settings()
+	return out
+
+
+# ---------------------------------------------------------------- 対戦のキャラクター（要件#84）
+
+const AVATAR_CATS: Array = ["hair", "hair_color", "casual", "uniform", "acc"]
+
+
+static func avatar_created() -> bool:
+	return bool(GameSettings.avatar.get("created", false))
+
+
+static func skins() -> Array:
+	return data().get("skins", [])
+
+
+static func skin_hex(id: String) -> String:
+	for sk in skins():
+		if str((sk as Dictionary).get("id", "")) == id:
+			return str((sk as Dictionary).get("value", "#f1c9a5"))
+	return "#f1c9a5"
+
+
+## サーバーに送る・相手から届くキャラクター（IDだけ。色はこのゲームの表から引く）
+static func avatar_dict() -> Dictionary:
+	var a: Dictionary = GameSettings.avatar
+	var out: Dictionary = {"gender": str(a.get("gender", "x")), "height": snappedf(float(a.get("height", 1.0)), 0.01),
+		"build": str(a.get("build", "normal")), "skin": str(a.get("skin", "s2"))}
+	for c in AVATAR_CATS:
+		out[c] = equipped(c)
+	return out
+
+
+## キャラクターの見た目（customer_character.gd の look）。role は "casual"（客役）か "uniform"（店員役）
+static func avatar_look(av: Dictionary, role: String) -> Dictionary:
+	var hair: Dictionary = item("hair", str(av.get("hair", "")))
+	var hc: Dictionary = item("hair_color", str(av.get("hair_color", "")))
+	var cloth: Dictionary = item(role, str(av.get(role, "")))
+	if cloth.is_empty():
+		cloth = item(role, default_id(role))
+	var acc: Dictionary = item("acc", str(av.get("acc", "")))
+	return {
+		"body_color": str(cloth.get("value", "#2f3b63")),
+		"skin_color": skin_hex(str(av.get("skin", "s2"))),
+		"hair_color": str(hc.get("value", "#262326")),
+		"hair": str(hair.get("id", "short")),
+		"build": str(av.get("build", "normal")) if str(av.get("build", "")) in ["slim", "normal", "big"] else "normal",
+		"accessory": str(acc.get("id", "none")),
+		"height": clampf(float(av.get("height", 1.0)), 0.85, 1.15),
+		"gender": str(av.get("gender", "x")),
+		"outfit": "uniform" if role == "uniform" else "casual",
+	}
+

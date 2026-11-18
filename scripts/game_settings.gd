@@ -86,6 +86,8 @@ var hp_points: int = 0
 var kas_points: int = 0
 var owned_items: Array = []
 var equipped_items: Dictionary = {}
+## 対戦のキャラクター（要件#84）: 性別・身長・体型・肌の色（髪型などはショップの equipped_items）。created は作ったか
+var avatar: Dictionary = {}
 ## チュートリアル（要件#53）を一度でも終えた／断ったか
 var tutorial_seen: bool = false
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
@@ -201,6 +203,8 @@ func load_settings() -> void:
 	owned_items = oi if typeof(oi) == TYPE_ARRAY else []
 	var ei: Variant = cfg.get_value("shop", "equipped", {})
 	equipped_items = ei if typeof(ei) == TYPE_DICTIONARY else {}
+	var av: Variant = cfg.get_value("shop", "avatar", {})
+	avatar = av if typeof(av) == TYPE_DICTIONARY else {}
 	if not RESOLUTIONS.any(func(r: Array) -> bool: return str(r[0]) == resolution):
 		resolution = "auto"
 	var hs: Variant = cfg.get_value("score", "high_scores", {})
@@ -234,6 +238,7 @@ func save_settings() -> void:
 	cfg.set_value("shop", "kas", kas_points)
 	cfg.set_value("shop", "owned", owned_items)
 	cfg.set_value("shop", "equipped", equipped_items)
+	cfg.set_value("shop", "avatar", avatar)
 	cfg.set_value("score", "high_scores", high_scores)
 	cfg.save(_path())
 

@@ -23,6 +23,10 @@ var _height: float = 1.0
 var _bw: float = 1.0
 var _hair: String = "short"
 var _accessory: String = "none"
+var _outfit: String = "casual"   # "uniform" は店員の制服（エプロンと名札。要件#84）
+var _gender: String = ""
+## 背景の人物用の決まったポーズ（要件#84）: "slump"（うなだれる）・"peek"（スマホを構えてのぞく）。"" はふつう
+var hold_pose: String = ""         # "f" はまつげ（対戦のキャラクター。要件#84）
 var _skin: Color = Color(0.95, 0.79, 0.65)
 var _body_color: Color = Color(0.54, 0.35, 0.24)
 var _hair_color: Color = Color(0.2, 0.2, 0.2)
@@ -102,6 +106,10 @@ func setup(look: Dictionary) -> void:
 		_bw = 1.3
 	_hair = str(look.get("hair", "short"))
 	_accessory = str(look.get("accessory", "none"))
+	_outfit = str(look.get("outfit", "casual"))
+	_gender = str(look.get("gender", ""))
+	if _gender == "f":
+		_bw *= 0.92
 	_expr = "neutral"
 	_expr_time = 0.0
 	_arm_override = ""
@@ -370,6 +378,13 @@ func _process(delta: float) -> void:
 	_body_pivot.rotation.z = sin(_time * 0.9) * 0.025 * (1.0 - a * 0.5)
 	_head_pivot.rotation.z = sin(_time * 0.7 + 1.0) * 0.04
 	_head_pivot.rotation.y = sin(_time * 0.45) * 0.06 * (1.0 - a)
+	match hold_pose:
+		"slump":
+			_body_pivot.rotation.x = 0.22
+			_head_pivot.rotation.x = 0.5 + 0.06 * sin(_time * 0.4)
+		"peek":
+			_body_pivot.rotation.x = 0.3
+			_head_pivot.rotation.x = -0.12
 
 	# --- legs
 	if _walking:
@@ -382,6 +397,8 @@ func _process(delta: float) -> void:
 
 	# --- arms
 	var pose: String = _arm_override if _arm_override_time > 0.0 else _default_pose(a, expr)
+	if hold_pose != "":
+		pose = hold_pose
 	var arm_k: float = clampf(delta * 14.0, 0.0, 1.0)
 	_arm_l.rotation = _arm_l.rotation.lerp(_arm_target(pose, true), arm_k)
 	_arm_r.rotation = _arm_r.rotation.lerp(_arm_target(pose, false), arm_k)
@@ -528,8 +545,12 @@ func _arm_target(pose: String, is_left: bool) -> Vector3:
 			v = Vector3(-0.2, 0.0, 0.35)
 		"cheer":
 			v = Vector3(0.0, 0.0, 1.0 + 0.2 * sin(_time * 10.0))
-		"drop":
+		"drop", "slump":
 			v = Vector3(0.05, 0.0, 0.02)
+		"peek":
+			if not is_left:
+				return Vector3(-1.4, 0.2, 0.0)
+			v = Vector3(0.0, 0.0, 0.1)
 		_:
 			v = Vector3(0.0, 0.0, 0.08)
 	return Vector3(v.x, v.y * s, v.z * s)
@@ -675,7 +696,22 @@ func _build_body() -> void:
 	_build_face()
 	_build_hair(hair_m)
 	_build_accessory()
+	if _outfit == "uniform":
+		_build_uniform()
 	_build_anger_fx()
+
+
+## 店員の制服: 前掛けのエプロンと白い名札（要件#84）
+func _build_uniform() -> void:
+	var apron_m: StandardMaterial3D = _mat(_body_color.darkened(0.45), 0.8)
+	var apron: MeshInstance3D = _box(_torso, Vector3(0.3 * _bw, 0.5, 0.02), Vector3(0.0, -0.06, 0.2 * _bw + 0.02), apron_m)
+	apron.rotation.x = -0.05
+	_box(_torso, Vector3(0.3 * _bw, 0.04, 0.025), Vector3(0.0, 0.2, 0.2 * _bw + 0.025), _mat(_body_color.lightened(0.5), 0.6))
+	var badge_m: StandardMaterial3D = _mat(Color(0.97, 0.97, 0.95), 0.5)
+	_box(_torso, Vector3(0.09, 0.05, 0.012), Vector3(0.08, 0.13, 0.2 * _bw + 0.035), badge_m)
+	# 腰から下のエプロン
+	var skirt: MeshInstance3D = _box(_figure, Vector3(0.36 * _bw, 0.36, 0.02), Vector3(0.0, 0.58, 0.17 * _bw + 0.03), apron_m)
+	skirt.rotation.x = 0.06
 
 
 func _build_face() -> void:
@@ -709,6 +745,12 @@ func _build_face() -> void:
 	_box(_brow_r, Vector3(0.12, 0.032, 0.03), Vector3.ZERO, brow_m)
 	_brow_l.rotation.y = 0.35
 	_brow_r.rotation.y = -0.35
+	if _gender == "f":
+		for i in range(2):
+			var sx: float = 1.0 if i == 0 else -1.0
+			for k in range(2):
+				var lash: MeshInstance3D = _box(_head, Vector3(0.03, 0.01, 0.01), Vector3(sx * (0.125 + 0.018 * float(k)), 0.07 + 0.008 * float(k), 0.19), black)
+				lash.rotation.z = sx * (0.5 + 0.3 * float(k))
 
 	# mouth: centre bar + two corner pieces that tilt up (smile) or down (frown)
 	_mouth = _node(_head, Vector3(0.0, -0.1, 0.195))
@@ -767,6 +809,41 @@ func _build_hair(m: StandardMaterial3D) -> void:
 			var brim: MeshInstance3D = _box(_head, Vector3(0.26, 0.022, 0.15), Vector3(0.0, 0.155, 0.235), cm)
 			brim.rotation.x = 0.12
 			_sphere(_head, 0.025, Vector3(0.0, 0.3, -0.01), cm, 8)
+		"bob":
+			_hair_top(m)
+			_hair_back(m)
+			var bob: MeshInstance3D = _sphere(_head, 0.25, Vector3(0.0, -0.01, -0.03), m, 24)
+			bob.scale = Vector3(1.0, 0.8, 0.95)
+			_box(_head, Vector3(0.36, 0.06, 0.08), Vector3(0.0, 0.15, 0.17), m)
+		"ponytail":
+			_hair_top(m)
+			_hair_back(m)
+			var tie: Node3D = _node(_head, Vector3(0.0, 0.08, -0.24))
+			_sphere(tie, 0.04, Vector3.ZERO, _mat(Color(0.85, 0.2, 0.3), 0.5), 10)
+			var tail: MeshInstance3D = _capsule(tie, 0.06, 0.34, Vector3(0.0, -0.15, -0.05), m)
+			tail.rotation.x = 0.35
+		"twintail":
+			_hair_top(m)
+			_hair_back(m)
+			for i in range(2):
+				var sx5: float = 1.0 if i == 0 else -1.0
+				var tw: Node3D = _node(_head, Vector3(sx5 * 0.2, 0.1, -0.12))
+				_sphere(tw, 0.035, Vector3.ZERO, _mat(Color(0.95, 0.4, 0.6), 0.5), 10)
+				var t2: MeshInstance3D = _capsule(tw, 0.055, 0.36, Vector3(sx5 * 0.05, -0.17, 0.0), m)
+				t2.rotation.z = sx5 * 0.25
+		"spiky":
+			_hair_back(m)
+			for i in range(9):
+				var az2: float = deg_to_rad(-120.0 + 30.0 * float(i))
+				var spike: MeshInstance3D = _cyl(_head, 0.0, 0.07, 0.2, Vector3(sin(az2) * 0.13, 0.2, cos(az2) * 0.12 - 0.03), m)
+				spike.rotation = Vector3(cos(az2) * 0.6, 0.0, -sin(az2) * 0.6)
+			var cap2: MeshInstance3D = _sphere(_head, 0.226, Vector3(0.0, 0.12, -0.02), m, 20)
+			cap2.scale = Vector3(1.0, 0.6, 1.0)
+		"mohawk":
+			for i in range(7):
+				var z: float = 0.16 - 0.06 * float(i)
+				var y: float = 0.2 + 0.05 * cos(float(i) / 6.0 * PI - PI * 0.5)
+				_box(_head, Vector3(0.06, 0.2, 0.07), Vector3(0.0, y + 0.05, z), m)
 		_:
 			_hair_top(m)
 			_hair_back(m)
@@ -808,6 +885,35 @@ func _build_accessory() -> void:
 				var ang: float = deg_to_rad(15.0 + 150.0 * float(j) / 6.0)
 				var seg: MeshInstance3D = _box(_head, Vector3(0.035, 0.1, 0.05), Vector3(cos(ang) * 0.255, 0.03 + sin(ang) * 0.27, -0.01), dark)
 				seg.rotation.z = ang
+		"sunglasses":
+			var sg: StandardMaterial3D = _mat(Color(0.05, 0.05, 0.08), 0.15)
+			for i in range(2):
+				var sx6: float = 1.0 if i == 0 else -1.0
+				var lens2: MeshInstance3D = _box(_head, Vector3(0.11, 0.07, 0.02), Vector3(sx6 * 0.085, 0.03, 0.225), sg)
+				lens2.rotation.y = sx6 * 0.15
+				_box(_head, Vector3(0.01, 0.012, 0.2), Vector3(sx6 * 0.15, 0.04, 0.12), dark)
+			_box(_head, Vector3(0.05, 0.015, 0.015), Vector3(0.0, 0.045, 0.228), dark)
+		"necktie":
+			var tie_m: StandardMaterial3D = _mat(Color(0.75, 0.12, 0.18), 0.5)
+			_box(_torso, Vector3(0.05, 0.05, 0.03), Vector3(0.0, 0.25, 0.2 * _bw + 0.03), tie_m)
+			var blade: MeshInstance3D = _box(_torso, Vector3(0.06, 0.3, 0.02), Vector3(0.0, 0.07, 0.2 * _bw + 0.035), tie_m)
+			blade.rotation.x = -0.04
+		"beanie":
+			var bn: StandardMaterial3D = _mat(Color(0.85, 0.35, 0.2), 0.9)
+			var dome2: MeshInstance3D = _sphere(_head, 0.24, Vector3(0.0, 0.14, -0.01), bn, 24)
+			dome2.scale = Vector3(1.0, 0.75, 1.0)
+			var rim: MeshInstance3D = _torus(_head, 0.2, 0.25, Vector3(0.0, 0.1, -0.01), _mat(Color(0.95, 0.9, 0.85), 0.9))
+			rim.scale = Vector3(1.0, 1.4, 1.0)
+			_sphere(_head, 0.06, Vector3(0.0, 0.33, -0.01), _mat(Color(0.97, 0.95, 0.9), 0.9), 10)
+		"ribbon":
+			var rb: StandardMaterial3D = _mat(Color(0.95, 0.3, 0.45), 0.5)
+			var bow: Node3D = _node(_head, Vector3(0.12, 0.2, 0.02))
+			bow.rotation.z = -0.4
+			_sphere(bow, 0.03, Vector3.ZERO, rb, 10)
+			for i in range(2):
+				var sx7: float = 1.0 if i == 0 else -1.0
+				var wing: MeshInstance3D = _sphere(bow, 0.06, Vector3(sx7 * 0.06, 0.0, 0.0), rb, 12)
+				wing.scale = Vector3(1.0, 0.7, 0.4)
 		"bag":
 			var bm: StandardMaterial3D = _mat(Color(0.97, 0.97, 0.95), 0.6)
 			var bag: Node3D = _node(_arm_r, Vector3(-0.05, -0.6, 0.0))

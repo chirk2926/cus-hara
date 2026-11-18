@@ -11,6 +11,7 @@ const STAND_POS: Vector3 = Vector3(0.0, 0.0, -0.35)
 const ENTRANCE_POS: Vector3 = Vector3(3.6, 0.0, -3.0)
 const TENSION_COLOR: Color = Color(1.0, 0.16, 0.1)
 const ARCADE_SCRIPT: String = "res://scripts/arcade_stage.gd"
+const BACKDROP_SCRIPT: String = "res://scripts/backdrop_stage.gd"
 
 var _stage_id: String = ""
 var _built: bool = false
@@ -38,6 +39,15 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func build(stage_id: String, variant: String = "day") -> void:
 	_clear()
 	_rng.seed = 7741
+	if stage_id.begins_with("bg_"):
+		# タイトルの背景だけの場面（要件#84）
+		_stage_id = stage_id
+		var bd: Node3D = (load(BACKDROP_SCRIPT) as GDScript).new()
+		bd.set("label_font", label_font)
+		add_child(bd)
+		bd.call("build", stage_id)
+		_built = true
+		return
 	if stage_id == "arcade":
 		_stage_id = "arcade"
 		_build_arcade_delegate()
@@ -85,6 +95,34 @@ func _find_env_owner() -> Node:
 		if c is WorldEnvironment:
 			return c
 	return null
+
+
+## 対戦の客役のカメラ（カウンターの外から店員を見る。要件#84）のための、店員のうしろの壁と棚。1回だけ作る
+var _staff_side: Node3D = null
+
+
+func ensure_staff_side() -> void:
+	if _staff_side != null and is_instance_valid(_staff_side):
+		return
+	_staff_side = Node3D.new()
+	add_child(_staff_side)
+	var arcade: bool = _stage_id == "arcade"
+	var wall_c: Color = Color(0.16, 0.12, 0.24) if arcade else Color(0.9, 0.92, 0.94)
+	var parts: Array = []
+	parts.append(_box(_staff_side, Vector3(8.0, 3.2, 0.1), Vector3(0.0, 1.6, 2.7), _mat(wall_c), false))
+	for row in range(4):
+		var y: float = 0.9 + 0.42 * float(row)
+		parts.append(_box(_staff_side, Vector3(3.2, 0.04, 0.32), Vector3(0.0, y, 2.5), _mat(Color(0.75, 0.75, 0.78), 0.3, 0.5), false))
+		for k in range(12):
+			var c: Color = Color.from_hsv(fmod(float(k * 7 + row * 3) / 12.0, 1.0), 0.55 if not arcade else 0.7, 0.9)
+			var sz: Vector3 = Vector3(0.2, 0.3, 0.2) if arcade else Vector3(0.18, 0.08, 0.05)
+			parts.append(_box(_staff_side, sz, Vector3(-1.45 + 0.265 * float(k), y + sz.y * 0.5 + 0.02, 2.48), _mat(c, 0.6), false))
+	if arcade:
+		_label(_staff_side, "景品カウンター", Vector3(0.0, 2.75, 2.64), 90, Color(1.0, 0.85, 0.3)).rotation_degrees.y = 180.0
+	else:
+		_label(_staff_side, "TOBACCO", Vector3(0.0, 2.75, 2.64), 80, Color(0.2, 0.3, 0.5), 0.003, Color(1, 1, 1, 0.0), 0).rotation_degrees.y = 180.0
+	for p in parts:
+		(p as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func get_customer_stand() -> Vector3:
@@ -165,6 +203,7 @@ func _clear() -> void:
 		remove_child(child)
 		child.queue_free()
 	_arcade = null
+	_staff_side = null
 	_env = null
 	_alarm = null
 	_lights.clear()

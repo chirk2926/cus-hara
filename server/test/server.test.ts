@@ -345,3 +345,20 @@ test("名札の飾り（要件#82）: 枠・名前の色・スタンプを保存
   const bad = await api(srv.base, "POST", "/api/v1/me", { tag: { frame: "<b>", color: "x".repeat(40) } }, g.body.token);
   assert.deepEqual(bad.body.player.tag, { frame: "", color: "", stamp: "" });
 });
+
+test("対戦のキャラクター（要件#84）: 決まった項目だけ保存し、身長は範囲に収め、おかしな値は捨てる", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "キャラの人" });
+  const me0 = await api(srv.base, "GET", "/api/v1/me", undefined, g.body.token);
+  assert.equal(me0.body.player.avatar, null, "まだ作っていなければ null");
+  const set = await api(srv.base, "POST", "/api/v1/me",
+    { avatar: { gender: "f", height: 3, build: "big", skin: "s3", hair: "ponytail", hair_color: "<x>", casual: "red", uniform: "blue", acc: "ribbon", evil: "x" } }, g.body.token);
+  const av = set.body.player.avatar;
+  assert.equal(av.gender, "f");
+  assert.equal(av.height, 1.15, "身長は 1.15 まで");
+  assert.equal(av.hair, "ponytail");
+  assert.equal(av.hair_color, "", "形の違う ID は空");
+  assert.equal(av.evil, undefined, "決まった項目だけ");
+  const bad = await api(srv.base, "POST", "/api/v1/me", { avatar: "nope" }, g.body.token);
+  assert.equal(bad.body.player.avatar, null);
+});
+
