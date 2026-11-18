@@ -1,4 +1,5 @@
-// Claude API（公式 SDK）を使う部分。APIキーはサーバーの環境変数 ANTHROPIC_API_KEY にだけ置く。
+// AI を使う部分。既定は Claude API（公式 SDK）。APIキーはサーバーの環境変数にだけ置く。
+// LLM_PROVIDER=openai_compatible で、OpenAI 互換の API（OpenAI・Gemini・DeepSeek・Mistral・Groq・Ollama など）も使える（要件#78）。
 // どの関数も失敗時は例外を投げる。呼び出し側はキーワード判定（keyword_judge.ts）に切り替える。
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
@@ -152,8 +153,17 @@ let client: Anthropic | null = null;
 export function llmEnabled(): boolean {
   if (config.llmMode === "offline") return false;
   if (config.llmMode === "claude") return true;
+  if (config.llmProvider === "openai_compatible") return config.llmBaseUrl !== "" && config.llmModel !== "";
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
+
+/** 今使っているAIの名前（info 用。キーは含めない） */
+export function llmName(): string {
+  return config.llmProvider === "openai_compatible" ? `openai_compatible:${config.llmModel}` : `anthropic:${config.model}`;
+}
+
+/** プロンプトのキャッシュの効き（要件#78）。読めた分・書いた分・ふつうの入力の合計（トークン） */
+export const cacheStats = { calls: 0, cacheRead: 0, cacheWrite: 0, input: 0 };
 
 function getClient(): Anthropic {
   if (client === null) {
@@ -175,10 +185,12 @@ async function callJson<T>(system: string, user: string, schema: z.ZodType<T>): 
   // SDK の補助関数が、構造化出力で使えない制約（最小値など）を説明文に移してくれる
   const format = zodOutputFormat(schema as z.ZodType<T> & z.ZodObject);
   const jsonSchema = (format as unknown as { schema: Record<string, unknown> }).schema;
+  if (config.llmProvider === "openai_compatible") return callOpenAiCompatible(system, user, schema, jsonSchema);
   const params: Record<string, unknown> = {
     model: config.model,
     max_tokens: 16000,
-    system,
+    // 指示文（毎回同じ・長い）をキャッシュして料金を下げる（要件#78）。会話の部分は毎回違うので user に置く
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: user }],
     output_config: { effort: "low", format: { type: "json_schema", schema: jsonSchema } },
   };
@@ -196,6 +208,11 @@ async function callJson<T>(system: string, user: string, schema: z.ZodType<T>): 
     if (e instanceof Anthropic.APIError) throw new LlmError(`AIサーバーのエラー（${e.status ?? "接続"}）`);
     throw e;
   }
+  const u = res.usage as unknown as { input_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
+  cacheStats.calls++;
+  cacheStats.input += u.input_tokens ?? 0;
+  cacheStats.cacheRead += u.cache_read_input_tokens ?? 0;
+  cacheStats.cacheWrite += u.cache_creation_input_tokens ?? 0;
   if (res.stop_reason === "refusal") throw new LlmError("AIが応答を控えました");
   if (res.stop_reason === "max_tokens") throw new LlmError("AIの応答が途中で切れました");
   for (const block of res.content) {
@@ -206,6 +223,62 @@ async function callJson<T>(system: string, user: string, schema: z.ZodType<T>): 
     }
   }
   throw new LlmError("AIの応答を読み取れませんでした");
+}
+
+/**
+ * OpenAI 互換の Chat Completions API で1回呼ぶ（要件#78）。fetch だけを使い、追加のライブラリは要らない。
+ * 出力は JSON にさせ、zod のスキーマで確かめる（形が違えば LlmError → 呼び出し側でキーワード判定）。
+ */
+async function callOpenAiCompatible<T>(system: string, user: string, schema: z.ZodType<T>, jsonSchema: Record<string, unknown>): Promise<T> {
+  const url = config.llmBaseUrl.replace(/\/+$/, "") + "/chat/completions";
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  const key = process.env.LLM_API_KEY ?? "";
+  if (key !== "") headers.authorization = `Bearer ${key}`;
+  const schemaMode = config.llmJsonMode !== "json_object";
+  const body: Record<string, unknown> = {
+    model: config.llmModel,
+    messages: [
+      // json_object のときは、スキーマを指示文に入れて形を伝える
+      { role: "system", content: schemaMode ? system : `${system}\n\n# 出力の形\n次の JSON スキーマに合う JSON オブジェクトだけを出力する。\n${JSON.stringify(jsonSchema)}` },
+      { role: "user", content: user },
+    ],
+    response_format: schemaMode ? { type: "json_schema", json_schema: { name: "result", strict: true, schema: jsonSchema } } : { type: "json_object" },
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), config.llmTimeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal });
+  } catch (e) {
+    throw new LlmError(ctrl.signal.aborted ? "AIの応答が時間切れになりました" : "AIサーバーにつながりません");
+  } finally {
+    clearTimeout(timer);
+  }
+  if (res.status === 401 || res.status === 403) throw new LlmError("サーバーのAPIキーが正しくありません");
+  if (res.status === 429) throw new LlmError("AIの利用制限に達しました");
+  if (!res.ok) throw new LlmError(`AIサーバーのエラー（${res.status}）`);
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
+    usage?: { prompt_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
+  };
+  cacheStats.calls++;
+  cacheStats.input += data.usage?.prompt_tokens ?? 0;
+  cacheStats.cacheRead += data.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+  const choice = data.choices?.[0];
+  if (choice?.message?.refusal) throw new LlmError("AIが応答を控えました");
+  if (choice?.finish_reason === "length") throw new LlmError("AIの応答が途中で切れました");
+  const text = choice?.message?.content ?? "";
+  // ```json ... ``` で囲んで返すモデルもあるので外す
+  const raw = text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    throw new LlmError("AIの応答を読み取れませんでした");
+  }
+  const parsed = schema.safeParse(obj);
+  if (parsed.success) return parsed.data;
+  throw new LlmError("AIの応答の形が想定と違いました");
 }
 
 const LANG_LINE: Record<Lang, string> = {

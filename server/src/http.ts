@@ -6,7 +6,7 @@ import { type Player, cleanName, createPlayer, playerByToken, renamePlayer, lead
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
-import { llmEnabled, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
+import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
 import { isAllowed, judgeAction, actionAsStaffLine } from "./actions.ts";
@@ -98,6 +98,9 @@ export function info(lobby: Lobby) {
     name: "cushara-server",
     version: VERSION,
     ai: llmEnabled(),
+    ai_provider: llmEnabled() ? llmName().split(":")[0] : "none",
+    // プロンプトのキャッシュの効き（要件#78）: 読めた割合が高いほど料金が下がっている
+    ai_cache: { calls: cacheStats.calls, cache_read_ratio: cacheStats.input + cacheStats.cacheRead > 0 ? Math.round((100 * cacheStats.cacheRead) / (cacheStats.input + cacheStats.cacheRead)) / 100 : 0 },
     voice: sttEnabled(),
     langs: LANGS,
     rules: { rounds: config.versus.rounds, opening_seconds: config.versus.openingSec, customer_seconds: config.versus.customerSec },

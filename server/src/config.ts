@@ -30,6 +30,14 @@ export const config = {
   llmMode: str("LLM_MODE", "auto") as LlmMode,
   // 既定は Haiku（要件#33。速さと運営の料金のため）
   model: str("CLAUDE_MODEL", "claude-haiku-5-5"),
+  // どのAIを使うか（要件#78）: "anthropic"（Claude。既定）| "openai_compatible"（OpenAI・Gemini・DeepSeek・Mistral・Groq・Ollama など、
+  // OpenAI 互換の Chat Completions API を持つもの）
+  llmProvider: str("LLM_PROVIDER", "anthropic"),
+  // openai_compatible のとき: API の場所（例 https://api.openai.com/v1 、http://127.0.0.1:11434/v1）・モデル名・キー
+  llmBaseUrl: str("LLM_BASE_URL", ""),
+  llmModel: str("LLM_MODEL", ""),
+  // JSON の出させ方: "json_schema"（スキーマどおりに出させる。対応していれば一番確実）| "json_object"（JSON だけ出させ、形は指示文で伝える）
+  llmJsonMode: str("LLM_JSON_MODE", "json_schema"),
   llmTimeoutMs: num("LLM_TIMEOUT_MS", 45000),
 
   // 音声の文字起こし（音声対戦に必要）

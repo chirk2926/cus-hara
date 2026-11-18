@@ -48,6 +48,11 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | `ANTHROPIC_API_KEY` | なし | Claude API のキー。**サーバーにだけ置く**（クライアントには渡らない） |
 | `CLAUDE_MODEL` | `claude-haiku-5-5` | 使うモデル（要件#33。サーバーは Haiku だけを提供） |
 | `LLM_MODE` | `auto` | `auto`=キーがあればAI / `claude`=必ずAI / `offline`=使わない |
+| `LLM_PROVIDER` | `anthropic` | 使うAI（要件#78）。`anthropic`=Claude（`ANTHROPIC_API_KEY`・`CLAUDE_MODEL`）/ `openai_compatible`=OpenAI 互換の API |
+| `LLM_BASE_URL` | なし | `openai_compatible` のときの API の場所。例: OpenAI `https://api.openai.com/v1`、Gemini `https://generativelanguage.googleapis.com/v1beta/openai`、DeepSeek `https://api.deepseek.com/v1`、Groq `https://api.groq.com/openai/v1`、Mistral `https://api.mistral.ai/v1`、ローカルの Ollama `http://127.0.0.1:11434/v1` |
+| `LLM_MODEL` | なし | `openai_compatible` のときのモデル名（各社の名前をそのまま） |
+| `LLM_API_KEY` | なし | `openai_compatible` のときのキー（ローカルの Ollama などは不要）。**サーバーにだけ置く** |
+| `LLM_JSON_MODE` | `json_schema` | `json_schema`=スキーマどおりに出させる（対応していれば確実）/ `json_object`=JSON だけ出させ、形は指示文で伝える（スキーマ指定に対応していないAI向け） |
 | `LLM_TIMEOUT_MS` | 45000 | AIの応答待ちの上限 |
 | `LLM_PER_MINUTE` | 20 | 1人のプレイヤーが1分間に使えるAI呼び出し回数（運営の料金を守る。超えるとキーワード判定） |
 | `STT_PROVIDER` | `none` | 音声の文字起こし。`none` / `openai_compatible` / `whisper_cpp` / `mock`（テスト用） |
@@ -197,4 +202,28 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | ゲーム側の自分のAPIキー | 設定ファイルに平文で置いていたのを、このPCの固有IDで暗号化したファイル（`settings_secret.cfg`）に移した（古い版の平文は起動時に移して消す） |
 
 残っていること（運営の準備）: 本番では HTTPS（`wss://`）の前段を置くこと（docs/MAINTENANCE.md）。`TRUST_PROXY=1` は、前段のプロキシが `X-Forwarded-For` を付け直す場合だけにすること（そうでないとIPを偽れる）。
+
+## 9. AIの料金を下げる・Claude 以外のAI（要件#78）
+
+### 9.1 プロンプトのキャッシュ（Claude）
+- 判定・お客さんづくりの指示文（毎回同じで長い部分）に `cache_control` を付け、2回目以降はキャッシュから読む。キャッシュから読んだ分の入力の料金は、ふつうの入力より大幅に安い（料金表は Anthropic のサイト）。会話の部分は毎回違うので、指示文の後ろに置いている。
+- Claude Haiku 5.5 は 512 トークン以上の指示文からキャッシュされる。このゲームの指示文はそれより長い。
+- 効き具合は `GET /api/v1/info` の `ai_cache.cache_read_ratio`（入力のうちキャッシュから読めた割合）で見られる。0 のままなら、指示文が毎回変わってしまっている（日時などを指示文に入れないこと）。
+
+### 9.2 Claude 以外のAI
+- `LLM_PROVIDER=openai_compatible` にして、`LLM_BASE_URL`・`LLM_MODEL`・`LLM_API_KEY` を入れる。OpenAI 互換の Chat Completions API（`/chat/completions`）を持つものなら使える。
+- 出力は JSON にさせ、サーバーで形を確かめる（形が違う・失敗したときは、今までどおりキーワード判定・台本に切り替わるので、ゲームは止まらない）。
+- スキーマ指定（`response_format: json_schema`）に対応していないAIは `LLM_JSON_MODE=json_object` にする。
+- OpenAI などは、同じ前半の指示文を自動でキャッシュする（設定不要）。読めた量は同じく `ai_cache` に出る。
+- 品質の注意: 判定の指示文は Claude に合わせて作っている。ほかのAIでは、判定が甘い・厳しい、言語の指定を守らない、などが起きうる。切り替えたら、数人分遊んで確かめること。
+- テスト: `server/test/openai_compatible.test.ts`（偽の API サーバーで確かめる）。
+
+### 9.3 EOS に任せられること・任せないこと
+| 項目 | 今 | EOS に移すと | 判断 |
+|---|---|---|---|
+| AIの判定・お客さんづくり | サーバー | 移せない（APIキーを配れない） | サーバーのまま。料金はキャッシュと上限で下げる |
+| マッチング・フレンド招待 | EOS（あれば）→ 無ければサーバー | 済み（要件#48） | ― |
+| 称号・実績 | ゲーム（このPC）に保存 | EOS の実績（Achievements）にも記録できる | EOS が使えるときは EOS の実績にも記録する（要件#78。称号の一覧が決まってから、開発者ポータルに同じIDで登録する） |
+| レーティング・ランキング | サーバー（SQLite） | EOS の統計はゲームから書き込むので、改造で書き換えられる | 不正対策のためサーバーのまま。ランキングを出すのは小さな問い合わせ1つで、サーバー代はほぼかからない |
+| 対戦の声 | サーバーが相手に中継し、文字起こしもする | EOS のボイスチャット（RTC）で相手に直接届けられる | 判定のための文字起こしにサーバーへの送信は残るので、減るのは中継の通信量だけ（1回 最大約0.4MB）。実機で確かめられる環境ができてから検討 |
 
