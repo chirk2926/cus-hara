@@ -270,9 +270,12 @@ func _build_medal() -> void:
 	# あくまでメダルゲーム（要件#89: ギャンブルではない。メダルは換金・景品交換できない）
 	_label(self, "MEDAL GAME", Vector3(0.0, 2.75, -7.85), 180, Color(1.0, 0.85, 0.3))
 	_label(self, "メダルコーナー", Vector3(0.0, 2.25, -7.85), 90, Color(1.0, 1.0, 1.0))
-	_box(self, Vector3(1.6, 0.55, 0.02), Vector3(3.4, 1.7, -7.88), _mat(Color(1.0, 1.0, 1.0)))
-	_label(self, "メダルの払い戻し・\n景品との交換はできません", Vector3(3.4, 1.7, -7.85), 44, Color(0.85, 0.1, 0.1), 0.004)
-	_label(self, "メダルはお店の中で遊ぶためだけのものです", Vector3(-3.0, 1.75, -7.85), 40, Color(1.0, 1.0, 1.0), 0.004)
+	# 注意書きは天井から手前に下げて、タイトルからも読めるように（要件#90）
+	_box(self, Vector3(2.2, 0.62, 0.03), Vector3(1.9, 2.45, -2.6), _mat(Color(1.0, 1.0, 1.0)))
+	_label(self, "メダルの払い戻し・\n景品との交換はできません", Vector3(1.9, 2.45, -2.57), 64, Color(0.85, 0.1, 0.1), 0.004)
+	_cyl(self, 0.006, 0.006, 0.45, Vector3(1.2, 2.98, -2.6), _mat(Color(0.2, 0.2, 0.2)))
+	_cyl(self, 0.006, 0.006, 0.45, Vector3(2.6, 2.98, -2.6), _mat(Color(0.2, 0.2, 0.2)))
+	_label(self, "メダルはお店の中で遊ぶためだけのものです", Vector3(0.0, 1.85, -7.85), 64, Color(1.0, 1.0, 1.0), 0.004)
 	for k3 in range(22):
 		var x: float = -2.6 + 5.2 * float(k3) / 21.0
 		_cyl(self, 0.05, 0.05, 0.03, Vector3(x, 3.1, -7.9), _blink_mat(Color(1.0, 0.85, 0.4), 3.0, 6.0, float(k3) * 0.8), Vector3(PI * 0.5, 0.0, 0.0))
@@ -691,7 +694,22 @@ func _build_manager_home() -> void:
 	# スマホに「着信: 店」
 	var ph: MeshInstance3D = _box(tb, Vector3(0.08, 0.01, 0.15), Vector3(0.1, 0.39, 0.2), _mat(Color(0.1, 0.1, 0.12)))
 	_box(ph, Vector3(0.07, 0.005, 0.13), Vector3(0.0, 0.006, 0.0), _blink_mat(Color(0.6, 0.9, 1.0), 2.0, 8.0, 0.0))
-	_label(self, "着信: 店", Vector3(0.1, 0.65, -1.4), 60, Color(1.0, 0.3, 0.3), 0.004)
+	_label(self, "着信: 店", Vector3(0.55, 0.62, -1.15), 60, Color(1.0, 0.3, 0.3), 0.004)
+	# 散らかった部屋: コンビニの袋・ゴミ袋・積んだ弁当のから・脱いだ服
+	for k3 in range(4):
+		_box(self, Vector3(0.3, 0.32, 0.22), Vector3(-2.5 + 0.35 * float(k3 % 2), 0.16, -1.2 + 0.4 * floorf(float(k3) / 2.0)), _mat(Color(0.95, 0.95, 0.95), 0.0, 0.9), Vector3(0.0, 0.3 * float(k3), 0.0))
+	for k4 in range(2):
+		var bag: MeshInstance3D = MeshInstance3D.new()
+		var sm: SphereMesh = SphereMesh.new()
+		sm.radius = 0.28
+		sm.height = 0.5
+		bag.mesh = sm
+		bag.material_override = _mat(Color(0.25, 0.3, 0.45), 0.0, 0.4)
+		bag.position = Vector3(2.4 - 0.5 * float(k4), 0.25, -3.1)
+		add_child(bag)
+	for k5 in range(5):
+		_box(self, Vector3(0.2, 0.04 * float(k5 + 1), 0.15), Vector3(0.7, 0.02 * float(k5 + 1), -0.8), _mat(Color(0.15, 0.15, 0.15)))
+	_box(self, Vector3(0.6, 0.03, 0.45), Vector3(-0.9, 0.015, -0.6), _mat(Color(0.18, 0.43, 0.82), 0.0, 0.95), Vector3(0.0, 0.5, 0.0))
 	# 店長（テーブルの向こうに座っている。コンビニ弁当を前にぐったり）
 	var mg: Node3D = _person({"body_color": "#8a8f99", "skin_color": "#d9b89a", "hair_color": "#55524f", "hair": "bald",
 		"build": "normal", "accessory": "glasses", "height": 0.9, "tired": true}, Vector3(0.0, -0.5, -2.2), 0.0, "slump")
@@ -739,7 +757,7 @@ func _build_parents_home() -> void:
 		"build": "normal", "accessory": "glasses", "height": 0.92}, Vector3(-0.35, -0.48, -2.35), 0.0, "sit")
 	_person({"body_color": "#8a6a4a", "skin_color": "#ecc9a8", "hair_color": "#b8b4ae", "hair": "perm",
 		"build": "normal", "accessory": "none", "height": 0.86, "gender": "f"}, Vector3(0.6, -0.48, -2.1), -0.35, "sit")
-	_label(self, "ちゃんと食べてる？", Vector3(0.9, 1.4, -1.9), 56, Color(0.4, 0.25, 0.1), 0.004)
+	_label(self, "ちゃんと食べてる？", Vector3(0.75, 1.15, -1.5), 60, Color(0.4, 0.25, 0.1), 0.004)
 	# 掛け軸・ちゃぶ台の上の写真・古いテレビ
 	_box(self, Vector3(0.5, 1.1, 0.02), Vector3(2.3, 1.45, -2.9), _mat(Color(0.95, 0.93, 0.85)))
 	_label(self, "忍耐", Vector3(2.3, 1.55, -2.87), 110, Color(0.1, 0.1, 0.1), 0.004)
