@@ -13,7 +13,7 @@ import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
 import { type Lang, pick } from "./lang.ts";
-import { isAllowed, judgeAction, actionLabel, actionAsStaffLine } from "./actions.ts";
+import { isAllowed, judgeAction, actionLabel, actionAsStaffLine, CRANE_RESULTS } from "./actions.ts";
 
 interface Seat {
   player: Player;
@@ -424,7 +424,9 @@ export class Match {
   onAction(seat: number, raw: unknown): void {
     if (!this.waiting || this.waiting.seat !== seat || this.waiting.phase !== "staff_turn" || !this.card) return;
     const id = typeof raw === "string" ? raw : "";
-    if (id.startsWith("crane_") || !isAllowed(this.stage, this.card, id)) return;
+    // 対戦には台の調整のミニゲームが無いので、その結果（crane_won / crane_lost）だけは受け付けない。
+    // 「引っかかった景品をとる」（crane_stuck）は使える（以前は crane_ で始まる行動をすべて断っていたバグ）
+    if ((CRANE_RESULTS as readonly string[]).includes(id) || !isAllowed(this.stage, this.card, id)) return;
     this.inputs[seat]++;
     this.resolveWaiting({ text: actionLabel(id, this.lang), via: "action", action: id });
   }

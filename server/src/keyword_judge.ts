@@ -35,6 +35,9 @@ interface Words {
   pressure: string[];
   generic_lines: Record<string, string | string[]>;
   polite_pattern: string;
+  excuse_soft?: string[];
+  excuse_exempt?: string[];
+  stop_tokens?: string[];
 }
 
 // 店長の一言など、判定が出す文言
@@ -53,6 +56,7 @@ const COMMENTS: Record<Lang, Record<string, string>> = {
     good: "いい受け止め方だ。",
     ok: "悪くない。次は解決策を。",
     miss: "響いてないぞ。メモを読もう。",
+    specific: "メモの中身に触れているのはいい。あと一歩、具体的に。",
     offtopic: "接客と関係ない話はやめよう。",
     c_silent: "お客さんが言葉に詰まった！",
     c_abuse: "度を越した暴言。店長が止めに入った。",
@@ -73,6 +77,7 @@ const COMMENTS: Record<Lang, Record<string, string>> = {
     good: "Good, you took it on board.",
     ok: "Not bad. Now offer a solution.",
     miss: "That missed. Read the memo.",
+    specific: "Good, you're using what's in the memo. Now be more specific.",
     offtopic: "Stay on the job, not off-topic chatter.",
     c_silent: "The customer is lost for words!",
     c_abuse: "Way over the line. The manager stepped in.",
@@ -93,6 +98,7 @@ const COMMENTS: Record<Lang, Record<string, string>> = {
     good: "接得很好。",
     ok: "还不错。接下来给出解决方案。",
     miss: "没说到点上。看看备忘录。",
+    specific: "提到了备忘录里的内容，不错。再具体一点。",
     offtopic: "别聊和接待无关的话题。",
     c_silent: "顾客一时语塞！",
     c_abuse: "骂得太过分了。店长出面制止了。",
@@ -146,6 +152,53 @@ export function isOffTopic(text: string, lang: Lang): boolean {
   return count(t, OFFTOPIC[lang]) > 0 || count(t, OFFTOPIC.ja) > 0 || /```|<script|\bdef\s+\w+\(|function\s*\(/.test(text);
 }
 
+// ---------------------------------------------------------------- 精度を上げるための道具（要件#73。scripts/offline_judge.gd と同じ）
+
+/** 文を節に分ける（「、」「。」や but で区切る）。否定が同じ節にあるかを見るため */
+export function clauses(text: string, lang: Lang): string[] {
+  const re = lang === "en" ? /[.,!?;\n]|\bbut\b/g : /[。、！？!?，,．\n]/g;
+  return text.replace(re, "|").split("|").filter((x) => x !== "");
+}
+
+/** 中身のある語のかたまり: 日本語は漢字・カタカナ、中国語は漢字の2文字の並び、英語は4文字以上の単語 */
+export function tokens(text: string, lang: Lang): Set<string> {
+  const out = new Set<string>();
+  if (lang === "en") {
+    for (const m of text.toLowerCase().matchAll(/[a-z]{4,}/g)) out.add(m[0]);
+    return out;
+  }
+  const re = lang === "zh" ? /[\u4E00-\u9FFF]{2,}/g : /[\u4E00-\u9FFF\u30A0-\u30FF]{2,}/g;
+  for (const m of text.matchAll(re)) {
+    const run = m[0];
+    for (let i = 0; i < run.length - 1; i++) out.add(run.slice(i, i + 2));
+  }
+  return out;
+}
+
+/** 2つの文の似ている度合い（0〜1） */
+export function similarity(a: string, b: string, lang: Lang): number {
+  const grams = (t: string) => {
+    const s = new Set<string>();
+    if (lang === "en") for (const w of t.toLowerCase().split(" ").filter(Boolean)) s.add(w);
+    else for (let i = 0; i < t.length - 1; i++) s.add(t.slice(i, i + 2));
+    return s;
+  };
+  const ta = grams(a);
+  const tb = grams(b);
+  if (ta.size === 0 || tb.size === 0) return a === b ? 1 : 0;
+  let inter = 0;
+  for (const k of ta) if (tb.has(k)) inter++;
+  return inter / (ta.size + tb.size - inter);
+}
+
+/** 返事が、メモの中身にいくつ触れているか */
+export function memoOverlap(c: Customer, text: string, lang: Lang, stop: string[]): number {
+  const mt = tokens(c.memo ?? "", lang);
+  let n = 0;
+  for (const k of tokens(text, lang)) if (mt.has(k) && !stop.includes(k)) n++;
+  return n;
+}
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export function judgeStaff(c: Customer, reply: string, used: string[], anger: number, resolve: number, lang: Lang = "ja"): Judgement {
@@ -160,22 +213,33 @@ export function judgeStaff(c: Customer, reply: string, used: string[], anger: nu
 
   const apology = count(text, w.apology);
   const empathy = count(text, w.empathy);
-  const listen = count(text, w.listen);
+  let listen = count(text, w.listen);
   const firm = count(text, w.firm);
   const polite = count(text, w.polite);
   const rude = count(text, w.rude);
-  const excuse = count(text, w.excuse);
   const solution = Math.min(count(text, (c.solution_keywords ?? []).map((k) => norm(k, lang))), 2);
+  // 言い訳: 「いつでも」などの「でも」は除く。「でも／but」は、解決策や断りが続くなら言い訳にしない（要件#73）
+  let exText = text;
+  for (const e of w.excuse_exempt ?? []) if (e !== "") exText = exText.split(norm(e, lang)).join("");
+  let excuse = count(exText, w.excuse);
+  if (solution === 0 && firm === 0) excuse += count(exText, w.excuse_soft);
+  // 屈服: 不当な要求の語と否定が「同じ節」にあるかで見る
   let stripped = text;
   for (const f of w.apology_forms) if (f !== "") stripped = stripped.split(f).join("");
-  const negated = count(stripped, w.negation) > 0;
-  if (count(text, (c.yield_keywords ?? []).map((k) => norm(k, lang))) > 0 && !negated) yielded = true;
+  const yk = (c.yield_keywords ?? []).map((k) => norm(k, lang));
+  for (const cl of clauses(stripped, lang)) if (count(cl, yk) > 0 && count(cl, w.negation) === 0) yielded = true;
+  // 同じ謝罪ばかりだと効きが落ちる
+  const pastApology = used.filter((u) => count(norm(u, lang), w.apology) > 0).length;
+  // ていねいに質問して聞き出すのも「話を聞く」に数える
+  if (listen === 0 && /[？?]/.test(text) && polite > 0) listen = 1;
+  const overlap = memoOverlap(c, text, lang, w.stop_tokens ?? []);
 
-  if (apology > 0) a -= 8;
+  if (apology > 0) a -= pastApology >= 2 ? 3 : 8;
   if (empathy > 0) a -= 7;
   if (listen > 0) { a -= 5; r += 8; }
   if (polite > 0) a -= 3;
   if (solution > 0) { a -= 6 * solution; r += 24 * solution; comment = cm.solution; }
+  else if (overlap >= 2) { a -= 3; r += 10; comment = cm.specific; }
   if (firm > 0) {
     r += 15;
     if (apology === 0 && empathy === 0) { a += 6; comment = cm.cushion; }
@@ -190,7 +254,8 @@ export function judgeStaff(c: Customer, reply: string, used: string[], anger: nu
   // 英語は単語数、日本語・中国語は文字数で短さを見る
   const tooShort = lang === "en" ? raw.split(/\s+/).filter(Boolean).length < 3 : raw.length < 6;
   if (tooShort) { a += 10; comment = cm.short; }
-  if (used.includes(raw)) { a = Math.max(a, 0) + 12; r = 0; comment = cm.repeat; }
+  const nearRepeat = used.some((u) => similarity(raw, u, lang) >= 0.8);
+  if (used.includes(raw) || nearRepeat) { a = Math.max(a, 0) + 12; r = 0; comment = cm.repeat; }
   if (isOffTopic(raw, lang)) { a = Math.max(a, 0) + 12; r = 0; yielded = false; comment = cm.offtopic; }
   if (rude > 0) { a += 25; r = 0; comment = cm.rude; }
   if (yielded) comment = cm.yielded;

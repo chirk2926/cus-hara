@@ -95,6 +95,7 @@ var summary: Dictionary = {}
 var _age_count: int = 0          # このシフトの年齢確認のお客さんの数
 var _suspended: bool = false     # 営業停止になった
 var _crane_wins: int = 0         # 台の調整で取れた回数（レビュー用）
+var _offline_used: bool = false  # このシフトで台本・キーワード判定（オフライン）のお客さんがいた（経験値なし。要件#74）
 var _id_seen: bool = false       # このお客さんの身分証を見た
 var _wild: bool = false          # このお客さんは要注意人物
 var _wild_used: bool = false     # このシフトで要注意人物が来たか
@@ -139,6 +140,7 @@ func start(stage_id: String, stage_name: String) -> void:
 	_sales = 0
 	_review = REVIEW_START
 	_age_count = 0
+	_offline_used = false
 	_suspended = false
 	_crane_wins = 0
 	_payout = GameSettings.effective_payout()
@@ -178,7 +180,7 @@ func _finish_summary() -> void:
 	_total += sales_bonus + review_bonus
 	summary = {"sales": _sales, "review": review, "sales_bonus": sales_bonus, "review_bonus": review_bonus,
 		"payout": _payout if (_stage_id == "arcade" and GameSettings.crane_mode == "prob") else -1,
-		"suspended": _suspended, "reviews": _make_reviews(),
+		"suspended": _suspended, "reviews": _make_reviews(), "offline": _offline_used or GameSettings.solo_source == "offline",
 		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 
 
@@ -574,6 +576,9 @@ func _play_customer(my_run: int) -> void:
 		return
 	_cust = data
 	_id_seen = false
+	# 年齢確認のお客さんはもともとゲームの中だけで判定するので数えない
+	if _source == "offline" and not _is_age_check():
+		_offline_used = true
 	_titles.append(str(_cust.get("title", "")))
 	if _wild:
 		_make_wild_look()

@@ -1228,7 +1228,11 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var is_best: bool = GameSettings.submit_score(stage_id, total)
 	var rank: Array = rank_for(total)
 	# メンタルランク A の経験値（要件#72）
-	var mr: Dictionary = GameSettings.add_mental_xp(total)
+	# オフライン（台本・キーワード判定）で遊んだシフトは経験値なし（要件#74）
+	var offline: bool = bool(_solo.summary.get("offline", false))
+	var mr: Dictionary = {"before": GameSettings.mental_rank(), "after": GameSettings.mental_rank(), "gain": 0}
+	if not offline:
+		mr = GameSettings.add_mental_xp(total)
 	sfx.play("win" if total >= 2400 else "lose")
 	var col: VBoxContainer = _open_sheet(580, "center", false, true)
 	col.add_theme_constant_override("separation", 6)
@@ -1285,7 +1289,10 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var ra: int = int(mr["after"])
 	var rb0: int = int(mr["before"])
 	mrow.add_child(UI.text(tr("メンタル %d「%s」") % [ra, GameSettings.mental_name_a(ra)], UI.S_BODY, STAMP_INK, UI.F_DOT))
-	mrow.add_child(UI.text("+%d EXP" % int(mr["gain"]), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+	if offline:
+		mrow.add_child(UI.text(tr("オフラインのため経験値なし"), UI.S_SMALL, UI.INK_SOFT))
+	else:
+		mrow.add_child(UI.text("+%d EXP" % int(mr["gain"]), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
 	mrow.add_child(UI.spacer())
 	if ra > rb0:
 		mrow.add_child(UI.text(tr("メンタルランクアップ！"), UI.S_BODY, UI.SHU, UI.F_BOLD))

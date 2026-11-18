@@ -155,3 +155,26 @@ test("ネタ枠（rare）は出にくい", async () => {
   const share = rare / 2000;
   assert.ok(share > 0.02 && share < 0.15, `ネタ枠の割合 ${share}`);
 });
+
+test("キーワード判定の精度（要件#73）", async () => {
+  const { judgeStaff, clauses, similarity } = await import("../src/keyword_judge.ts");
+  const c = allCustomers("konbini").find((x) => x.title === "説教好きの常連")!;
+  // 屈服は「同じ節」で見る: 否定が別の節にあっても、要求を飲んだ節があれば屈服
+  const yk = c.yield_keywords![0];
+  const caved = judgeStaff(c, `申し訳ございません。${yk}いたします、ただ返金はできません。`, [], 40, 0, "ja");
+  assert.equal(caved.yielded, true, "別の節の否定では屈服を打ち消さない");
+  const refused = judgeStaff(c, `申し訳ございません、${yk}はいたしかねます。`, [], 40, 0, "ja");
+  assert.equal(refused.yielded, false, "同じ節で断っていれば屈服ではない");
+  assert.deepEqual(clauses("a、b。c", "ja"), ["a", "b", "c"]);
+  // 「いつでも」の「でも」は言い訳ではない
+  const anytime = judgeStaff(c, "申し訳ございません。お箸はいつでもお渡しできますので、すぐにお持ちいたします。", [], 40, 0, "ja");
+  assert.notEqual(anytime.comment, "言い訳に聞こえてるぞ。");
+  // 少し変えただけの同じ返事は、くり返しとみなす
+  const first = "申し訳ございません。お気持ちお察しいたします。すぐにお箸をお持ちいたします。";
+  assert.ok(similarity(first, first + "！", "ja") >= 0.8);
+  const again = judgeStaff(c, first + "！", [first], 40, 0, "ja");
+  assert.equal(again.resolve_delta, 0, "ほぼ同じ返事は納得が上がらない");
+  // キーワードが無くても、メモの中身（弁当・交換など）に具体的に触れれば少し納得する
+  const specific = judgeStaff({ ...c, solution_keywords: ["存在しない語"] }, "大変申し訳ございません。お弁当の交換はいたしかねますが、在庫がございますのでご用意いたします。", [], 40, 0, "ja");
+  assert.ok(specific.resolve_delta > 0, `メモに触れた返事で納得が上がる: ${specific.resolve_delta}`);
+});

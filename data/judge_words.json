@@ -70,7 +70,6 @@
 			"は？"
 		],
 		"excuse": [
-			"でも",
 			"だって",
 			"仕方ない",
 			"しょうがない",
@@ -146,7 +145,32 @@
 			"explode": "もういい！！話にならん！店長を呼べ！！！",
 			"yielded": "最初からそうすればいいんだよ。また来るからな。"
 		},
-		"polite_pattern": "です|ます|ません|ございま"
+		"polite_pattern": "です|ます|ません|ございま",
+		"excuse_soft": [
+			"でも",
+			"だけど",
+			"けれど"
+		],
+		"excuse_exempt": [
+			"いつでも",
+			"何でも",
+			"なんでも",
+			"どれでも",
+			"どこでも",
+			"誰でも",
+			"どなたでも",
+			"それでもよろしければ"
+		],
+		"stop_tokens": [
+			"申し",
+			"訳ご",
+			"訳あ",
+			"お客",
+			"客様",
+			"ござ",
+			"誠に",
+			"大変"
+		]
 	},
 	"en": {
 		"apology": [
@@ -246,7 +270,6 @@
 			"pathetic"
 		],
 		"excuse": [
-			"but ",
 			"not my fault",
 			"it's the rules",
 			"those are the rules",
@@ -341,7 +364,35 @@
 			"explode": "That's IT! This is hopeless! MANAGER!!!",
 			"yielded": "Should've done that from the start. I'll be back, you know."
 		},
-		"polite_pattern": "please|sorry|thank|certainly|would|could|may i|apolog|sir|ma'am|of course|appreciate|kindly"
+		"polite_pattern": "please|sorry|thank|certainly|would|could|may i|apolog|sir|ma'am|of course|appreciate|kindly",
+		"excuse_soft": [
+			"but ",
+			"however"
+		],
+		"excuse_exempt": [],
+		"stop_tokens": [
+			"sorry",
+			"please",
+			"thank",
+			"thanks",
+			"customer",
+			"really",
+			"very",
+			"this",
+			"that",
+			"with",
+			"have",
+			"your",
+			"there",
+			"would",
+			"could",
+			"will",
+			"just",
+			"right",
+			"away",
+			"understand",
+			"feel"
+		]
 	},
 	"zh": {
 		"apology": [
@@ -417,8 +468,6 @@
 			"哈？"
 		],
 		"excuse": [
-			"但是",
-			"可是",
 			"我也没办法",
 			"不是我的错",
 			"规定就是这样",
@@ -504,6 +553,26 @@
 			"explode": "够了！！根本说不通！叫店长来！！！",
 			"yielded": "一开始这样不就好了。我还会再来的。"
 		},
-		"polite_pattern": "您|请|抱歉|对不起|谢谢|不好意思|麻烦|感谢"
+		"polite_pattern": "您|请|抱歉|对不起|谢谢|不好意思|麻烦|感谢",
+		"excuse_soft": [
+			"但是",
+			"可是",
+			"不过"
+		],
+		"excuse_exempt": [],
+		"stop_tokens": [
+			"非常",
+			"抱歉",
+			"对不",
+			"不起",
+			"您的",
+			"我们",
+			"顾客",
+			"请您",
+			"可以",
+			"这个",
+			"那个",
+			"马上"
+		]
 	}
 }

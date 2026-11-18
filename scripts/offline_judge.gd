@@ -10,6 +10,7 @@ const COMMENTS: Dictionary = {
 		"short": "短すぎる。ちゃんと話そう。", "repeat": "同じ返事の繰り返しはNG。", "rude": "お客さんに暴言はダメ！",
 		"yielded": "不当な要求を飲んじゃダメだ…。", "good": "いい受け止め方だ。", "ok": "悪くない。次は解決策を。",
 		"miss": "響いてないぞ。メモを読もう。", "offtopic": "接客と関係ない話はやめよう。",
+		"specific": "メモの中身に触れているのはいい。あと一歩、具体的に。",
 	},
 	"en": {
 		"solution": "A concrete solution. Nice!", "cushion": "Soften a refusal with a kind word first.", "firm": "Polite but firm. Keep it up.",
@@ -17,6 +18,7 @@ const COMMENTS: Dictionary = {
 		"short": "Too short. Say a bit more.", "repeat": "Don't repeat the same reply.", "rude": "Never insult a customer!",
 		"yielded": "You caved to an unreasonable demand...", "good": "Good, you took it on board.", "ok": "Not bad. Now offer a solution.",
 		"miss": "That missed. Read the memo.", "offtopic": "Stay on the job, not off-topic chatter.",
+		"specific": "Good, you're using what's in the memo. Now be more specific.",
 	},
 	"zh": {
 		"solution": "具体的解决方案，很好！", "cushion": "拒绝的时候更要先说句软话。", "firm": "坚定又得体，保持住。",
@@ -24,6 +26,7 @@ const COMMENTS: Dictionary = {
 		"short": "太短了。好好说几句。", "repeat": "重复同样的回答可不行。", "rude": "不能对顾客恶语相向！",
 		"yielded": "不能答应无理要求啊…。", "good": "接得很好。", "ok": "还不错。接下来给出解决方案。",
 		"miss": "没说到点上。看看备忘录。", "offtopic": "别聊和接待无关的话题。",
+		"specific": "提到了备忘录里的内容，不错。再具体一点。",
 	},
 }
 
@@ -98,6 +101,71 @@ static func is_off_topic(text: String) -> bool:
 	return t.find("```") != -1 or t.find("<script") != -1
 
 
+# ---------------------------------------------------------------- 精度を上げるための道具（要件#73）
+
+## 文を節に分ける（「、」「。」や「but」で区切る）。否定が同じ節にあるかを見るため
+static func _clauses(text: String, lang: String) -> PackedStringArray:
+	var re: RegEx = RegEx.new()
+	if lang == "en":
+		re.compile("[.,!?;\\n]|\\bbut\\b")
+	else:
+		re.compile("[。、！？!?，,．\\n]")
+	return PackedStringArray(re.sub(text, "|", true).split("|", false))
+
+
+## 中身のある語のかたまり: 日本語は漢字・カタカナの2文字の並び、中国語は漢字の2文字の並び、英語は4文字以上の単語
+static func _tokens(text: String, lang: String) -> Dictionary:
+	var out: Dictionary = {}
+	var re: RegEx = RegEx.new()
+	if lang == "en":
+		re.compile("[a-z]{4,}")
+		for m in re.search_all(text.to_lower()):
+			out[m.get_string()] = true
+		return out
+	if lang == "zh":
+		re.compile("[\\x{4E00}-\\x{9FFF}]{2,}")
+	else:
+		re.compile("[\\x{4E00}-\\x{9FFF}\\x{30A0}-\\x{30FF}]{2,}")
+	for m in re.search_all(text):
+		var run: String = m.get_string()
+		for i in range(run.length() - 1):
+			out[run.substr(i, 2)] = true
+	return out
+
+
+## 2つの文の似ている度合い（0〜1）。日本語・中国語は2文字ずつ、英語は単語で比べる
+static func similarity(a: String, b: String, lang: String) -> float:
+	var ta: Dictionary = {}
+	var tb: Dictionary = {}
+	if lang == "en":
+		for wd in a.to_lower().split(" ", false):
+			ta[wd] = true
+		for wd in b.to_lower().split(" ", false):
+			tb[wd] = true
+	else:
+		for i in range(a.length() - 1):
+			ta[a.substr(i, 2)] = true
+		for i in range(b.length() - 1):
+			tb[b.substr(i, 2)] = true
+	if ta.is_empty() or tb.is_empty():
+		return 1.0 if a == b else 0.0
+	var inter: int = 0
+	for k in ta:
+		if tb.has(k):
+			inter += 1
+	return float(inter) / float(ta.size() + tb.size() - inter)
+
+
+## 返事が、メモの中身（何が起きたか・規定・できること）にいくつ触れているか
+static func memo_overlap(customer: Dictionary, text: String, lang: String, stop: Array) -> int:
+	var mt: Dictionary = _tokens(str(customer.get("memo", "")), lang)
+	var n: int = 0
+	for k in _tokens(text, lang):
+		if mt.has(k) and not stop.has(k):
+			n += 1
+	return n
+
+
 ## customer: お客さんデータ / reply: プレイヤーの返答 / used: これまでの返答 / anger, resolve: 現在値(0-100)
 static func judge(customer: Dictionary, reply: String, used: Array, anger: float, resolve: float) -> Dictionary:
 	var lang: String = _lang()
@@ -116,19 +184,38 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 	var firm: int = _count(text, w.get("firm", []), lang)
 	var polite: int = _count(text, w.get("polite", []), lang)
 	var rude: int = _count(text, w.get("rude", []), lang)
-	var excuse: int = _count(text, w.get("excuse", []), lang)
 	var solution: int = mini(_count(text, customer.get("solution_keywords", []), lang), 2)
+	# 言い訳: 「いつでも」「何でも」の「でも」は言い訳ではない。「でも／but」は、続けて解決策や断りがあれば言い訳にしない（要件#73）
+	var ex_text: String = text
+	for e in (w.get("excuse_exempt", []) as Array):
+		var es: String = _norm(str(e), lang)
+		if es != "":
+			ex_text = ex_text.replace(es, "")
+	var excuse: int = _count(ex_text, w.get("excuse", []), lang)
+	if solution == 0 and firm == 0:
+		excuse += _count(ex_text, w.get("excuse_soft", []), lang)
+	# 屈服: 不当な要求の語と、否定が「同じ節」にあるかで見る（「無料で交換します、返金はできません」は屈服）
 	var stripped: String = text
 	for f in (w.get("apology_forms", []) as Array):
 		var fs: String = _norm(str(f), lang)
 		if fs != "":
 			stripped = stripped.replace(fs, "")
-	var negated: bool = _count(stripped, w.get("negation", []), lang) > 0
-	if _count(text, customer.get("yield_keywords", []), lang) > 0 and not negated:
-		yielded = true
+	for cl in _clauses(stripped, lang):
+		if _count(cl, customer.get("yield_keywords", []), lang) > 0 and _count(cl, w.get("negation", []), lang) == 0:
+			yielded = true
+	# 同じ謝罪ばかりだと効きが落ちる
+	var past_apology: int = 0
+	for u in used:
+		if _count(_norm(str(u), lang), w.get("apology", []), lang) > 0:
+			past_apology += 1
+	# ていねいに質問して聞き出すのも「話を聞く」に数える
+	if listen == 0 and (text.find("？") != -1 or text.find("?") != -1) and polite > 0:
+		listen = 1
+	# メモの中身に触れているか（キーワードが無くても、具体的に話していれば少し納得する）
+	var overlap: int = memo_overlap(customer, text, lang, w.get("stop_tokens", []))
 
 	if apology > 0:
-		a -= 8.0
+		a -= 3.0 if past_apology >= 2 else 8.0
 	if empathy > 0:
 		a -= 7.0
 	if listen > 0:
@@ -140,6 +227,10 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 		a -= 6.0 * float(solution)
 		r += 24.0 * float(solution)
 		comment = str(cm["solution"])
+	elif overlap >= 2:
+		a -= 3.0
+		r += 10.0
+		comment = str(cm["specific"])
 	if firm > 0:
 		r += 15.0
 		if apology == 0 and empathy == 0:
@@ -165,7 +256,11 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 	if too_short:
 		a += 10.0
 		comment = str(cm["short"])
-	if used.has(raw):
+	var near_repeat: bool = false
+	for u in used:
+		if similarity(raw, str(u), lang) >= 0.8:
+			near_repeat = true
+	if used.has(raw) or near_repeat:
 		a = maxf(a, 0.0) + 12.0
 		r = 0.0
 		comment = str(cm["repeat"])

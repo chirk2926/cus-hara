@@ -464,5 +464,6 @@
 	"（MAX）": " (MAX)",
 	"メンタル %d「%s」%s ／ 対戦 %d「%s」": "Mental %d \"%s\"%s / Versus %d \"%s\"",
 	"メンタル %d「%s」": "Mental %d \"%s\"",
-	"メンタルランクアップ！": "Mental rank up!"
+	"メンタルランクアップ！": "Mental rank up!",
+	"オフラインのため経験値なし": "No EXP (played offline)"
 }
