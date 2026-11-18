@@ -37,6 +37,7 @@ var token: String = ""
 var player_name: String = ""
 var solo_source: String = "server"
 var api_key: String = ""
+var _migrate_key: bool = false   # 古い版の平文のキーを、暗号化ファイルへ移す
 var model: String = "claude-haiku-5-5"
 var volume: float = 0.8
 var bgm_volume: float = 0.5
@@ -100,6 +101,7 @@ func _ready() -> void:
 		var os_lang: String = OS.get_locale_language()
 		language = os_lang if os_lang in ["ja", "zh"] else "en"
 	_resolution_from_cmdline = OS.get_cmdline_args().has("--resolution")
+	_finish_migration()
 	apply_language()
 	apply_window()
 
@@ -128,6 +130,13 @@ var _translations: Array = []
 var _profile: String = ""
 
 
+## 古い版の設定ファイルに平文のキーがあれば、暗号化ファイルへ移して消す
+func _finish_migration() -> void:
+	if _migrate_key:
+		_migrate_key = false
+		save_settings()
+
+
 func _path() -> String:
 	if _profile == "":
 		return PATH
@@ -149,7 +158,13 @@ func load_settings() -> void:
 	solo_source = str(cfg.get_value("ai", "source", solo_source))
 	if not ["server", "own_key", "offline"].has(solo_source):
 		solo_source = "server"
-	api_key = str(cfg.get_value("ai", "api_key", ""))
+	# 自分の API キーは、このPCだけで開ける暗号化ファイルに置く（要件#77）。古い版の平文の値があれば移す
+	api_key = _load_secret_key()
+	var old_plain: String = str(cfg.get_value("ai", "api_key", ""))
+	if old_plain != "":
+		if api_key == "":
+			api_key = old_plain
+		_migrate_key = true
 	model = str(cfg.get_value("ai", "model", model))
 	volume = float(cfg.get_value("audio", "volume", 0.8))
 	bgm_volume = float(cfg.get_value("audio", "bgm_volume", 0.5))
@@ -179,7 +194,7 @@ func save_settings() -> void:
 	cfg.set_value("server", "name", player_name)
 	cfg.set_value("server", "profile", last_profile)
 	cfg.set_value("ai", "source", solo_source)
-	cfg.set_value("ai", "api_key", api_key)
+	_save_secret_key(api_key)
 	cfg.set_value("ai", "model", model)
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("audio", "bgm_volume", bgm_volume)
@@ -244,6 +259,24 @@ static func parse_resolution(res: String) -> Vector2i:
 	if parts.size() != 2:
 		return Vector2i(1280, 720)
 	return Vector2i(int(parts[0]), int(parts[1]))
+
+
+## 自分の API キーの保存先（暗号化。鍵はこのPCの固有ID。別のPCにコピーしても開けない）
+func _secret_path() -> String:
+	return _path().get_basename() + "_secret.cfg"
+
+
+func _load_secret_key() -> String:
+	var c: ConfigFile = ConfigFile.new()
+	if c.load_encrypted_pass(_secret_path(), OS.get_unique_id() + "cushara") != OK:
+		return ""
+	return str(c.get_value("ai", "api_key", ""))
+
+
+func _save_secret_key(key: String) -> void:
+	var c: ConfigFile = ConfigFile.new()
+	c.set_value("ai", "api_key", key)
+	c.save_encrypted_pass(_secret_path(), OS.get_unique_id() + "cushara")
 
 
 func get_api_key() -> String:

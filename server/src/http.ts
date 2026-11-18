@@ -142,7 +142,10 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     const body = await readJson(req);
     if (!isStage(body.stage)) throw new HttpError(400, "bad_stage", "ステージの指定が正しくありません");
     const lang = toLang(body.lang);
-    const avoid = Array.isArray(body.avoid) ? body.avoid.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
+    // AIへの指示文に入るので、長さと文字を絞る（要件#77: 長い文や指示を混ぜられないように）
+    const avoid = Array.isArray(body.avoid)
+      ? body.avoid.filter((x): x is string => typeof x === "string").slice(0, 10).map((x) => x.replace(/[\u0000-\u001f\n\r]/g, " ").trim().slice(0, 30)).filter(Boolean)
+      : [];
     const wild = body.event === "wild";
     // クレーンのペイアウト率（要件#55）。ゲームセンターの「取れない」クレームの出やすさと、言う金額が変わる
     const payout = clampPayout(body.payout);
@@ -184,6 +187,11 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       lastAt: Date.now(),
       finished: false,
     };
+    // 全体の上限（メモリを使いきらないように。古いものから捨てる。要件#77）
+    if (soloSessions.size >= 20000) {
+      const oldest = [...soloSessions.values()].sort((a, b) => a.updated - b.updated).slice(0, 1000);
+      for (const o of oldest) soloSessions.delete(o.id);
+    }
     soloSessions.set(session.id, session);
     return { session_id: session.id, source, notice, event: wild ? "wild" : "", customer: publicCustomer(customer) };
   }
@@ -207,6 +215,10 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     const s = typeof body.session_id === "string" ? soloSessions.get(body.session_id) : undefined;
     if (!s || s.playerId !== player.id) throw new HttpError(404, "no_session", "このお客さんとの会話は終わっています。次のお客さんへ進んでください");
     if (s.finished) throw new HttpError(409, "finished", "このお客さんとの会話は終わっています");
+    if (s.history.filter((h) => h.role === "staff").length >= config.soloMaxTurns) {
+      s.finished = true;
+      throw new HttpError(409, "too_long", "やりとりが長すぎるので、このお客さんは帰りました");
+    }
     // チート対策（要件#47）: 納得はサーバーの値だけを使う。怒りは、待っている間に上がる分だけ
     // クライアントの値を受け入れる（サーバーが覚えている値より下げることはできない）
     const resolve = s.resolve;

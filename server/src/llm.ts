@@ -7,6 +7,7 @@ import { config } from "./config.ts";
 import { type Customer, type StageId, spendFacts } from "./scenarios.ts";
 import { type Judgement, type CustomerLineJudgement, scriptedLine } from "./keyword_judge.ts";
 import { type Lang, pick } from "./lang.ts";
+import { allow } from "./ratelimit.ts";
 
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
@@ -169,6 +170,8 @@ export class LlmError extends Error {}
 
 /** JSONスキーマを指定して1回呼び、検証済みのオブジェクトを返す */
 async function callJson<T>(system: string, user: string, schema: z.ZodType<T>): Promise<T> {
+  // サーバー全体の上限（要件#77）。超えたら呼ばずに、呼び出し側でキーワード判定・台本に切り替える
+  if (!allow("llm:global", config.llmGlobalPerMinute, 60_000)) throw new LlmError("AIが混み合っています");
   // SDK の補助関数が、構造化出力で使えない制約（最小値など）を説明文に移してくれる
   const format = zodOutputFormat(schema as z.ZodType<T> & z.ZodObject);
   const jsonSchema = (format as unknown as { schema: Record<string, unknown> }).schema;
@@ -259,7 +262,8 @@ export interface HistoryEntry {
 }
 
 function historyText(history: HistoryEntry[]): string {
-  return history.map((h) => `${h.role === "customer" ? "お客さん" : "スタッフ"}: ${h.text}`).join("\n");
+  // AIに送る会話は最後の20件まで（長い会話で料金がふくらまないように。要件#77）
+  return history.slice(-20).map((h) => `${h.role === "customer" ? "お客さん" : "スタッフ"}: ${h.text}`).join("\n");
 }
 
 export async function judgeStaffTurn(stage: StageId, c: Customer, history: HistoryEntry[], anger: number, resolve: number, voice: boolean, lang: Lang = "ja"): Promise<Judgement> {

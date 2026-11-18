@@ -6,10 +6,13 @@ import { playerByToken } from "./db.ts";
 import { type Conn, publicPlayer } from "./protocol.ts";
 import type { Lobby } from "./lobby.ts";
 import { allow } from "./ratelimit.ts";
+import { config } from "./config.ts";
 import { toLang } from "./lang.ts";
 import { log } from "./log.ts";
 
 const MAX_MESSAGE = 512 * 1024; // 音声20秒（μ-law 16kHz = 320KB）を base64 にしても収まる大きさ
+const MAX_AUTH_MESSAGE = 4 * 1024; // ログイン前に受け付ける大きさ（要件#77）
+const perIp = new Map<string, number>();
 
 export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketServer {
   const wss = new WebSocketServer({ server, path: "/ws", maxPayload: MAX_MESSAGE });
@@ -30,6 +33,21 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
   wss.on("connection", (ws, req) => {
     const fwd = req.headers["x-forwarded-for"];
     const ip = typeof fwd === "string" && process.env.TRUST_PROXY === "1" ? fwd.split(",")[0].trim() : req.socket.remoteAddress ?? "unknown";
+    // 1つのIPからの同時接続数と、接続の速さを制限する（要件#77: 接続を大量に開いて重くさせない）
+    const open = perIp.get(ip) ?? 0;
+    if (open >= config.wsPerIp || !allow(`wsconn:${ip}`, 60, 60_000)) {
+      ws.close(4029, "too many connections");
+      return;
+    }
+    perIp.set(ip, open + 1);
+    let counted = true;
+    const release = () => {
+      if (!counted) return;
+      counted = false;
+      const n = (perIp.get(ip) ?? 1) - 1;
+      if (n <= 0) perIp.delete(ip);
+      else perIp.set(ip, n);
+    };
     alive.set(ws, true);
     ws.on("pong", () => alive.set(ws, true));
     let conn: Conn | null = null;
@@ -43,6 +61,11 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
 
     ws.on("message", (data, isBinary) => {
       if (isBinary) return;
+      // ログイン前は小さなメッセージ（auth）だけ。それ以外は切る
+      if (!conn && (data as Buffer).length > MAX_AUTH_MESSAGE) {
+        ws.close(4001, "auth required");
+        return;
+      }
       let msg: Record<string, unknown>;
       try {
         msg = JSON.parse(data.toString());
@@ -52,7 +75,10 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
       if (typeof msg !== "object" || msg === null) return;
       const t = msg.t;
       if (!conn) {
-        if (t !== "auth") return;
+        if (t !== "auth") {
+          ws.close(4001, "auth required");
+          return;
+        }
         const player = typeof msg.token === "string" ? playerByToken(msg.token) : null;
         if (!player) {
           sendRaw({ t: "error", code: "unauthorized", message: "ログイン情報が無効です" });
@@ -111,6 +137,7 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
     });
 
     ws.on("close", () => {
+      release();
       clearTimeout(authTimer);
       if (conn) lobby.onDisconnect(conn);
     });

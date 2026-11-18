@@ -310,3 +310,17 @@ test("要注意人物のイベントと店長のアドバイス（要件#52）",
   const steal = await api(srv.base, "POST", "/api/v1/solo/hint", { session_id: wild.body.session_id }, other.body.token);
   assert.equal(steal.status, 404, "他人の会話のアドバイスは聞けない");
 });
+
+test("セキュリティ（要件#77）: ログイン前は auth 以外を受け付けず切る", async () => {
+  const { WebSocket } = await import("ws");
+  const ws = new WebSocket(srv.wsUrl);
+  await new Promise((r) => ws.once("open", r));
+  const closed = new Promise<number>((r) => ws.once("close", (code) => r(code)));
+  ws.send(JSON.stringify({ t: "queue", format: "text" }));
+  assert.equal(await closed, 4001);
+  const ws2 = new WebSocket(srv.wsUrl);
+  await new Promise((r) => ws2.once("open", r));
+  const closed2 = new Promise<number>((r) => ws2.once("close", (code) => r(code)));
+  ws2.send(JSON.stringify({ t: "auth", token: "x".repeat(10000) }));
+  assert.equal(await closed2, 4001, "ログイン前の大きなメッセージは切る");
+});

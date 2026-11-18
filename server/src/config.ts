@@ -41,6 +41,12 @@ export const config = {
 
   // 1人のプレイヤーが1分間に使える AI 呼び出しの回数（運営側の API 料金を守るため）
   llmPerMinute: num("LLM_PER_MINUTE", 20),
+  // サーバー全体で1分間に使えるAI呼び出しの上限（運営の料金を守る。アカウントを大量に作られても超えない。要件#77）
+  llmGlobalPerMinute: num("LLM_GLOBAL_PER_MINUTE", 300),
+  // 1人用の1人のお客さんとのやりとりの上限（延々と続けてAIの料金を増やされないように）
+  soloMaxTurns: num("SOLO_MAX_TURNS", 30),
+  // 1つのIPから同時に開けるWebSocketの数
+  wsPerIp: num("WS_PER_IP", 16),
   // EOS（Epic Online Services）のロビーで組んだ相手と、ランクマッチの部屋を作ることを許すか（要件#32, #48）。
   // 部屋に入るときに、同じ回線・レーティング差・同じ相手との連戦を確かめる（チート対策）。0 で無効
   allowRankedRooms: str("ALLOW_RANKED_ROOMS", "1") === "1",

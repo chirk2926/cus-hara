@@ -5,8 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+# 既定は読み取りだけ。スクリーンショットを書き戻すジョブだけ書き込みを許す（要件#77）
 permissions:
-  contents: write
+  contents: read
 
 env:
   GODOT_VERSION: 4.5
@@ -38,6 +39,8 @@ jobs:
 
   windows:
     name: Check client, play against the server, build Windows exe
+    permissions:
+      contents: write   # スクリーンショットを書き戻すため
     needs: server
     runs-on: ubuntu-latest
     steps:
