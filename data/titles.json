@@ -2554,14 +2554,14 @@
 		{
 			"id": "t151",
 			"name": {
-				"ja": "ハードコア入門",
-				"en": "Hardcore Rookie",
-				"zh": "硬核入门"
+				"ja": "社員モード入門",
+				"en": "Employee mode Rookie",
+				"zh": "正式员工模式入门"
 			},
 			"desc": {
-				"ja": "ハードコアでシフトを最後まで勤めた",
-				"en": "Finished a shift in Hardcore",
-				"zh": "在硬核模式下完成了一个班次"
+				"ja": "社員モードでシフトを最後まで勤めた",
+				"en": "Finished a shift in Employee mode",
+				"zh": "在正式员工模式模式下完成了一个班次"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -2576,9 +2576,9 @@
 				"zh": "修罗场常客"
 			},
 			"desc": {
-				"ja": "ハードコアでシフトを 30回 勤めた",
-				"en": "Finished 30 shifts in Hardcore",
-				"zh": "在硬核模式下完成30个班次"
+				"ja": "社員モードでシフトを 30回 勤めた",
+				"en": "Finished 30 shifts in Employee mode",
+				"zh": "在正式员工模式模式下完成30个班次"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2593,9 +2593,9 @@
 				"zh": "地狱完美"
 			},
 			"desc": {
-				"ja": "ハードコアでパーフェクトシフト",
-				"en": "A perfect shift in Hardcore",
-				"zh": "在硬核模式下完成完美班次"
+				"ja": "社員モードでパーフェクトシフト",
+				"en": "A perfect shift in Employee mode",
+				"zh": "在正式员工模式模式下完成完美班次"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2610,9 +2610,9 @@
 				"zh": "钢铁脊梁"
 			},
 			"desc": {
-				"ja": "ハードコアで屈服なしのシフトを 10回",
-				"en": "10 Hardcore shifts without giving in",
-				"zh": "硬核模式下10个班次从未屈服"
+				"ja": "社員モードで屈服なしのシフトを 10回",
+				"en": "10 Employee mode shifts without giving in",
+				"zh": "正式员工模式模式下10个班次从未屈服"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2622,14 +2622,14 @@
 		{
 			"id": "t155",
 			"name": {
-				"ja": "ハードコアの頂点",
-				"en": "Hardcore Summit",
-				"zh": "硬核之巅"
+				"ja": "社員モードの頂点",
+				"en": "Employee mode Summit",
+				"zh": "正式员工模式之巅"
 			},
 			"desc": {
-				"ja": "ハードコアの1シフトで 9,000点 以上",
-				"en": "9,000+ points in one Hardcore shift",
-				"zh": "硬核模式单个班次9,000分以上"
+				"ja": "社員モードの1シフトで 9,000点 以上",
+				"en": "9,000+ points in one Employee mode shift",
+				"zh": "正式员工模式模式单个班次9,000分以上"
 			},
 			"rarity": 5,
 			"joke": false,

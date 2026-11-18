@@ -136,7 +136,7 @@ func _customer_schema() -> Dictionary:
 				"required": ["discount", "dogeza", "medal_return", "maintenance", "credit", "crane_stuck"],
 				"additionalProperties": false,
 			},
-			"machine": {"type": "string", "enum": ["crane", "medal", "rhythm", "video", "none"]},
+			"machine": {"type": "string", "enum": ["crane", "medal", "rhythm", "video", "purikura", "none"]},
 		},
 		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "actions", "machine"],
 		"additionalProperties": false,

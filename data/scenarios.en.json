@@ -1714,6 +1714,116 @@
 					"credit": "yield"
 				},
 				"machine": "video"
+			},
+			{
+				"title": "The Selfie Squad That Didn't Look Cute",
+				"name": "Sayaka Miu",
+				"look": {
+					"body_color": "#f2a0c0",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#5a3a2a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "The photo booth works normally; how the photos look is how the machine is designed. There are no free retakes, but you can explain the brightness/beauty settings and inspect the machine.",
+				"opening": "Excuse me! These photos don't flatter us AT ALL! We don't look like this! Give us a free retake!",
+				"demand": "A free retake",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"settings",
+					"brightness",
+					"beauty",
+					"mode",
+					"inspect",
+					"explain"
+				],
+				"yield_keywords": [
+					"free",
+					"no charge",
+					"retake"
+				],
+				"lines": {
+					"calm": [
+						"If changing the settings helps, fine, tell us.",
+						"If you check the machine, okay."
+					],
+					"angry": [
+						"Seriously?! Unbelievable!",
+						"We're posting about this!"
+					],
+					"neutral": [
+						"So? Can we retake or not?"
+					],
+					"demand": [
+						"Just give us a free retake!"
+					],
+					"resolved": "Beauty mode fixed it! Thanks~!",
+					"explode": "Forget it! We're never coming back!",
+					"yielded": "Yay, free retake!"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "purikura"
+			},
+			{
+				"title": "The \"Doodle Time Is Too Short\" Lady",
+				"name": "Reina Ochiai",
+				"look": {
+					"body_color": "#c0a0f2",
+					"skin_color": "#f2cba8",
+					"hair_color": "#3a2a2a",
+					"hair": "bob",
+					"build": "normal",
+					"accessory": "none",
+					"height": 0.97,
+					"gender": "f"
+				},
+				"memo": "Doodle time is fixed by the machine and can't be extended. No refunds, but you can share tips for planning doodles in advance and check the screen for faults.",
+				"opening": "The doodle time is way too short! It ended while I was still drawing a heart! Give me my money back!",
+				"demand": "A refund",
+				"patience": 1.1,
+				"start_anger": 42,
+				"solution_keywords": [
+					"time",
+					"tip",
+					"inspect",
+					"screen",
+					"plan",
+					"explain"
+				],
+				"yield_keywords": [
+					"refund",
+					"money back"
+				],
+				"lines": {
+					"calm": [
+						"Plan ahead, huh... makes sense."
+					],
+					"angry": [
+						"Short is short!",
+						"You just don't get it!"
+					],
+					"neutral": [
+						"So, are you refunding me?"
+					],
+					"demand": [
+						"Refund me!"
+					],
+					"resolved": "Next time I'll plan my doodles first! Thanks.",
+					"explode": "Whatever! A place where you can't even draw a heart!",
+					"yielded": "Lucky, got it back!"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "purikura"
 			}
 		]
 	}

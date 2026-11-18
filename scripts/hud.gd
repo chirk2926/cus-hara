@@ -624,6 +624,7 @@ func set_input_enabled(on: bool, placeholder: String) -> void:
 	_input_on = on
 	_field.editable = on
 	_field.placeholder_text = placeholder
+	_field.max_length = GameSettings.reply_max_length()   # 日本語・中国語 128 文字、英語 256 文字（要件#91）
 	_send.disabled = not on
 	_talk.disabled = not on
 	if not on:

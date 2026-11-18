@@ -164,9 +164,8 @@ func _ready() -> void:
 		qa.call("run", self)
 	else:
 		_check_server()
-		# 初めて起動したときは研修（チュートリアル）を勧める（要件#53）
-		if not GameSettings.tutorial_seen:
-			_offer_tutorial()
+		# 初めて起動したときは、難しさを選んでから研修（チュートリアル）を勧める（要件#53, #91）
+		_offer_first_run()
 
 
 func _arg(prefix: String) -> String:
@@ -315,8 +314,63 @@ func manager_leave_now() -> void:
 	_manager = null
 
 
+## 臭い客（要件#92）: お客さんのまわりに緑のもやもや
+var _stink: CPUParticles3D = null
+
+
+func set_stink(on: bool) -> void:
+	if _stink != null and is_instance_valid(_stink):
+		_stink.queue_free()
+	_stink = null
+	if not on or _customer == null or not is_instance_valid(_customer):
+		return
+	var p: CPUParticles3D = CPUParticles3D.new()
+	var m: SphereMesh = SphereMesh.new()
+	m.radius = 0.05
+	m.height = 0.1
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.55, 0.75, 0.2, 0.45)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.material = mat
+	p.mesh = m
+	p.amount = 24
+	p.lifetime = 2.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.45
+	p.direction = Vector3(0, 1, 0)
+	p.spread = 30.0
+	p.gravity = Vector3(0, 0.15, 0)
+	p.initial_velocity_min = 0.05
+	p.initial_velocity_max = 0.2
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.6
+	p.position = Vector3(0.0, 1.1, 0.0)
+	_customer.add_child(p)
+	_stink = p
+
+
 func customer_say(speaker: String, text: String, angry: bool = false) -> void:
+	_speak(text, angry)
 	await _hud.say(speaker, text, angry)
+
+
+## 読み上げ（要件#91）: Godot の TTS（パソコンに入っている声）。設定でオン・オフ。言語に合う声がなければ読まない
+var _tts_voice: Dictionary = {}
+
+
+func _speak(text: String, angry: bool) -> void:
+	if not GameSettings.tts_on or smoke or text.strip_edges() == "" or text.begins_with("……"):
+		return
+	var lang: String = GameSettings.language
+	if str(_tts_voice.get("lang", "")) != lang:
+		var ids: PackedStringArray = DisplayServer.tts_get_voices_for_language(lang)
+		_tts_voice = {"lang": lang, "id": ids[0] if ids.size() > 0 else ""}
+	var vid: String = str(_tts_voice.get("id", ""))
+	if vid == "":
+		return
+	DisplayServer.tts_stop()
+	DisplayServer.tts_speak(text, vid, int(GameSettings.volume * 100.0), 1.0 if not angry else 0.85, 1.15 if angry else 1.0)
 
 
 func customer_react(kind: String) -> void:
@@ -696,6 +750,7 @@ func _on_talk_started(duration: float) -> void:
 
 
 func _free_customer() -> void:
+	set_stink(false)
 	if _customer != null and is_instance_valid(_customer):
 		_customer.queue_free()
 	_customer = null
@@ -788,17 +843,85 @@ func _run_toasts() -> void:
 	_toast_busy = false
 
 
-## 称号の一覧（要件#79）。手に入れたものは押すと名札につける
+## 称号の一覧（要件#79, #91）。分類のタブ・分類ごとの進み具合・「手に入れたものだけ」・★の数で並べ替え。手に入れたものは押すと名札につける
+const TITLE_CATS: Array = [["all", "すべて", 1, 155], ["basic", "接客の基本", 1, 20], ["fail", "失敗", 21, 35], ["konbini", "コンビニ", 36, 45],
+	["arcade", "ゲームセンター", 46, 65], ["age", "年齢確認・警察", 66, 81], ["rank", "メンタル・対戦", 82, 100], ["fun", "面白い", 101, 125],
+	["hard", "やりこみ", 126, 150], ["staff", "社員モード", 151, 155]]
+var _titles_cat: String = "all"
+var _titles_owned_only: bool = false
+var _titles_sort_stars: bool = false
+
+
+func _title_num(t: Dictionary) -> int:
+	return int(str(t.get("id", "t0")).substr(1))
+
+
 func _show_titles() -> void:
 	sfx.play("click")
-	var col: VBoxContainer = _open_sheet(760, "center")
+	var col: VBoxContainer = _open_sheet(860, "center")
 	var all_t: Array = Titles.all()
-	_sheet_title(col, tr("称号") + "  %d / %d" % [GameSettings.unlocked_titles.size(), all_t.size()])
-	var now: Label = UI.text(tr("いまの称号: %s") % (Titles.equipped_name() if Titles.equipped_name() != "" else tr("なし")), UI.S_BODY, UI.INK, UI.F_BOLD)
-	col.add_child(now)
+	var head: HBoxContainer = UI.hbox(14)
+	col.add_child(head)
+	head.add_child(UI.text(tr("称号"), UI.S_HEAD, UI.INK, UI.F_SIGN))
+	head.add_child(UI.text("%d / %d" % [GameSettings.unlocked_titles.size(), all_t.size()], UI.S_LEAD, UI.SHU, UI.F_DOT))
+	head.add_child(UI.spacer())
+	head.add_child(UI.text(tr("いまの称号: %s") % (Titles.equipped_name() if Titles.equipped_name() != "" else tr("なし")), UI.S_BODY, UI.INK, UI.F_BOLD))
+	# 分類のタブ（進み具合つき）
+	var tabs: HFlowContainer = HFlowContainer.new()
+	tabs.add_theme_constant_override("h_separation", 6)
+	tabs.add_theme_constant_override("v_separation", 6)
+	col.add_child(tabs)
+	var group: ButtonGroup = ButtonGroup.new()
+	for c in TITLE_CATS:
+		var cid: String = str(c[0])
+		var lo: int = int(c[2])
+		var hi: int = int(c[3])
+		var have: int = 0
+		var total: int = 0
+		for t in all_t:
+			var n: int = _title_num(t)
+			if n >= lo and n <= hi:
+				total += 1
+				if GameSettings.unlocked_titles.has(str((t as Dictionary).get("id", ""))):
+					have += 1
+		var b: Button = UI.tag(tr(str(c[1])) + " %d/%d" % [have, total], UI.S_SMALL)
+		b.toggle_mode = true
+		b.button_group = group
+		b.button_pressed = cid == _titles_cat
+		b.pressed.connect(func() -> void:
+			_titles_cat = cid
+			_show_titles())
+		tabs.add_child(b)
+	var opts: HBoxContainer = UI.hbox(16)
+	col.add_child(opts)
+	var own: CheckBox = UI.check(tr("手に入れたものだけ"), _titles_owned_only)
+	own.toggled.connect(func(on: bool) -> void:
+		_titles_owned_only = on
+		_show_titles())
+	opts.add_child(own)
+	var sort: CheckBox = UI.check(tr("★の多い順"), _titles_sort_stars)
+	sort.toggled.connect(func(on: bool) -> void:
+		_titles_sort_stars = on
+		_show_titles())
+	opts.add_child(sort)
+	# 一覧
+	var cat: Array = TITLE_CATS[0]
+	for c2 in TITLE_CATS:
+		if str(c2[0]) == _titles_cat:
+			cat = c2
+	var list: Array = []
+	for t in all_t:
+		var n2: int = _title_num(t)
+		if n2 < int(cat[2]) or n2 > int(cat[3]):
+			continue
+		if _titles_owned_only and not GameSettings.unlocked_titles.has(str((t as Dictionary).get("id", ""))):
+			continue
+		list.append(t)
+	if _titles_sort_stars:
+		list.sort_custom(func(a: Dictionary, b2: Dictionary) -> bool: return int(a.get("rarity", 1)) > int(b2.get("rarity", 1)))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(700, 420)
+	scroll.custom_minimum_size = Vector2(820, 380)
 	col.add_child(scroll)
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 2
@@ -806,25 +929,45 @@ func _show_titles() -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 8)
 	scroll.add_child(grid)
-	for t in all_t:
+	if list.is_empty():
+		grid.add_child(UI.text(tr("まだありません。"), UI.S_BODY, UI.INK_SOFT))
+	for t in list:
 		var d: Dictionary = t
 		var id: String = str(d.get("id", ""))
-		var have: bool = GameSettings.unlocked_titles.has(id)
-		# レア度は★1〜5（要件#81）。ネタの印は出さない（要件#86）
-		var stars: String = "★".repeat(clampi(int(d.get("rarity", 1)), 1, 5))
-		var b: Button = UI.link("", UI.S_SMALL, UI.INK if have else UI.INK_SOFT)
-		b.text = "%s %s\n%s" % [stars, Titles.title_name(d) if have else tr("？？？"), Titles.title_desc(d)]
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.custom_minimum_size = Vector2(340, 0)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.disabled = not have
+		var have2: bool = GameSettings.unlocked_titles.has(id)
+		var box: PanelContainer = UI.paper(UI.POP.lerp(UI.PAPER, 0.55) if GameSettings.equipped_title == id else (UI.PAPER if have2 else UI.PAPER_DIM.lerp(UI.PAPER, 0.4)), 10, 2)
+		box.custom_minimum_size = Vector2(395, 0)
+		grid.add_child(box)
+		var c3: VBoxContainer = UI.vbox(2)
+		box.add_child(c3)
+		var top: HBoxContainer = UI.hbox(8)
+		c3.add_child(top)
+		top.add_child(UI.text("★".repeat(clampi(int(d.get("rarity", 1)), 1, 5)), UI.S_SMALL, UI.SHU if have2 else UI.INK_SOFT, UI.F_BOLD))
+		top.add_child(UI.text(Titles.title_name(d) if have2 else tr("？？？"), UI.S_BODY, UI.INK if have2 else UI.INK_SOFT, UI.F_BOLD))
+		top.add_child(UI.spacer())
 		if GameSettings.equipped_title == id:
-			b.add_theme_color_override("font_color", UI.SHU)
-		b.pressed.connect(func() -> void:
-			_equip_title(id)
-			_show_titles())
-		grid.add_child(b)
+			top.add_child(UI.text(tr("つけている"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
+		var desc: Label = UI.para(Titles.title_desc(d), UI.S_SMALL, UI.INK_SOFT)
+		c3.add_child(desc)
+		if not have2:
+			# 進み具合（数で数える条件だけ）
+			var cur: int = Titles.value(str(d.get("stat", "")))
+			var mn: int = int(d.get("min", 1))
+			if mn > 1:
+				var bar: ProgressBar = ProgressBar.new()
+				bar.show_percentage = false
+				bar.custom_minimum_size = Vector2(0, 6)
+				bar.value = 100.0 * float(mini(cur, mn)) / float(mn)
+				bar.add_theme_stylebox_override("background", UI.flat_style(Color("#e0dbd0"), 0, 2))
+				bar.add_theme_stylebox_override("fill", UI.flat_style(UI.OK, 0, 2))
+				c3.add_child(bar)
+				c3.add_child(UI.text("%s / %s" % [_num(mini(cur, mn)), _num(mn)], UI.S_SMALL - 2, UI.INK_SOFT, UI.F_DOT))
+		elif GameSettings.equipped_title != id:
+			var use: Button = UI.stamp(tr("つける"), UI.S_SMALL)
+			use.pressed.connect(func() -> void:
+				_equip_title(id)
+				_show_titles())
+			c3.add_child(use)
 	var row: HBoxContainer = UI.hbox(24)
 	col.add_child(row)
 	var off: Button = UI.link(tr("称号をはずす"), UI.S_BODY, UI.INK_SOFT)
@@ -848,6 +991,43 @@ func _equip_title(id: String) -> void:
 	# 対戦の相手にも見えるように、サーバーに送る（見た目だけ）
 	if GameSettings.token != "":
 		api.request("POST", "/api/v1/me", {"title": id})
+
+
+func _offer_first_run() -> void:
+	if not GameSettings.difficulty_asked:
+		_offer_difficulty()
+	elif not GameSettings.tutorial_seen:
+		_offer_tutorial()
+
+
+## 初めて起動したとき: タイピングに合わせて難しさを選ぶ（要件#91）
+func _offer_difficulty() -> void:
+	var col: VBoxContainer = _open_sheet(720, "center")
+	_sheet_title(col, tr("難しさを選んでください"))
+	col.add_child(UI.para(tr("このゲームはキーボードでの迅速な入力が必要です。自身のタイピング能力に合わせて難易度を設定してください。（難易度はいつでも設定で変更できます）"), UI.S_BODY, UI.INK))
+	var row: HBoxContainer = UI.hbox(14)
+	col.add_child(row)
+	for d in [["slow", "かめ", "イージー", "返事の時間が長い"], ["normal", "うさぎ", "ノーマル", "ふつう"], ["fast", "チーター", "ハード", "返事の時間が短い"]]:
+		var did: String = str(d[0])
+		var b: Button = Button.new()
+		b.text = tr(str(d[1])) + "\n" + tr(str(d[2])) + "\n" + tr(str(d[3]))
+		b.custom_minimum_size = Vector2(210, 120)
+		b.add_theme_font_size_override("font_size", UI.S_LEAD)
+		b.add_theme_color_override("font_color", UI.INK)
+		b.add_theme_color_override("font_hover_color", UI.INK)
+		var bg: Color = {"slow": Color("#cfe8c4"), "normal": UI.POP, "fast": Color("#f5c3b8")}[did]
+		b.add_theme_stylebox_override("normal", UI.paper_style(bg, 14, 2, 3))
+		b.add_theme_stylebox_override("hover", UI.paper_style(bg.lightened(0.2), 14, 2, 3))
+		b.add_theme_stylebox_override("pressed", UI.paper_style(bg, 14, 2, 1))
+		b.pressed.connect(func() -> void:
+			sfx.play("click")
+			GameSettings.answer_time = did
+			GameSettings.difficulty_asked = true
+			GameSettings.save_settings()
+			_close_sheet()
+			if not GameSettings.tutorial_seen:
+				_offer_tutorial())
+		row.add_child(b)
 
 
 func _offer_tutorial() -> void:
@@ -1002,6 +1182,55 @@ func show_report(target: Dictionary, back_to_result: Dictionary = {}) -> void:
 			status.text = tr("送れませんでした: %s") % str(res.get("message", "")))
 
 
+## 選んで答える問題（社員モードの風営法の確認など。要件#91）。correct 番目が正解。時間切れはまちがい
+signal _quiz_answered(ok: bool)
+
+
+func show_quiz(title: String, question: String, choices: Array, correct: int, seconds: float) -> bool:
+	var col: VBoxContainer = _open_sheet(620, "center")
+	_sheet_title(col, title)
+	col.add_child(UI.para(question, UI.S_LEAD, UI.INK, UI.F_BOLD))
+	var timer_label: Label = UI.text("", UI.S_BODY, UI.SHU, UI.F_DOT)
+	col.add_child(timer_label)
+	var order: Array = range(choices.size())
+	order.shuffle()
+	var done: Array = [false]
+	for i in order:
+		var idx: int = int(i)
+		var b: Button = UI.tag(str(choices[idx]), UI.S_BODY)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.pressed.connect(func() -> void:
+			if done[0]:
+				return
+			done[0] = true
+			_close_sheet()
+			_quiz_answered.emit(idx == correct))
+		col.add_child(b)
+	if smoke:
+		# 自動テストは正解を選ぶ
+		get_tree().create_timer(0.5).timeout.connect(func() -> void:
+			if not done[0]:
+				done[0] = true
+				_close_sheet()
+				_quiz_answered.emit(true))
+	var left: float = seconds
+	var t: Timer = Timer.new()
+	t.wait_time = 0.25
+	add_child(t)
+	t.timeout.connect(func() -> void:
+		left -= 0.25
+		if is_instance_valid(timer_label):
+			timer_label.text = tr("のこり %d 秒") % int(ceil(left))
+		if left <= 0.0 and not done[0]:
+			done[0] = true
+			_close_sheet()
+			_quiz_answered.emit(false))
+	t.start()
+	var ok: bool = await _quiz_answered
+	t.queue_free()
+	return ok
+
+
 func debug_flag(key: String) -> bool:
 	return bool(debug.get(key, false))
 
@@ -1085,10 +1314,10 @@ func _refresh_title() -> void:
 	if _hard_toggle != null:
 		var unlocked: bool = GameSettings.mental_rank() >= SoloScript.HARD_UNLOCK_RANK or GameSettings.is_test
 		_hard_toggle.disabled = not unlocked
-		_hard_toggle.text = tr("ハードコア") + "  →"
+		_hard_toggle.text = tr("社員モード") + "  →"
 		if not unlocked:
 			_hard_toggle.icon = _lock_icon()
-			_hard_toggle.text = tr("ハードコア（メンタル %d で解放）") % SoloScript.HARD_UNLOCK_RANK
+			_hard_toggle.text = tr("社員モード（メンタル %d で解放）") % SoloScript.HARD_UNLOCK_RANK
 		else:
 			_hard_toggle.icon = null
 	if _server_info.has("error"):
@@ -1153,7 +1382,7 @@ func _build_title() -> void:
 	pick_row.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
 	pick_row.add_child(UI.spacer())
 	# ハードコア（要件#86, #90）: メンタルランク 10 までは鍵でふさぎ、解放後は専用の画面へ
-	_hard_toggle = UI.tag(tr("ハードコア"), UI.S_SMALL)
+	_hard_toggle = UI.tag(tr("社員モード"), UI.S_SMALL)
 	_hard_toggle.add_theme_stylebox_override("normal", UI.paper_style(Color("#2a1215"), 8, 2, 3))
 	_hard_toggle.add_theme_stylebox_override("hover", UI.paper_style(Color("#4a1a1e"), 8, 2, 3))
 	_hard_toggle.add_theme_stylebox_override("disabled", UI.paper_style(Color("#55525a"), 8, 2, 1))
@@ -1353,10 +1582,32 @@ func _build_player_card() -> void:
 	var mcol: VBoxContainer = UI.vbox(0)
 	mcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mrow.add_child(mcol)
-	mcol.add_child(UI.text(tr("メンタル") + "  %d「%s」" % [ra, GameSettings.mental_name_a(ra)], UI.S_SMALL, UI.INK, UI.F_BOLD))
-	mcol.add_child(UI.text(_tally(ra), UI.S_LEAD, Color("#2a4fa8"), UI.F_HAND))
+	# メンタルランクをわかりやすく（要件#91）: 「ランク 4 / 20」と名前、次のランクまでの手書きのゲージ、一覧へのリンク
+	var rrow: HBoxContainer = UI.hbox(8)
+	mcol.add_child(rrow)
+	rrow.add_child(UI.text(tr("メンタルランク"), UI.S_SMALL, UI.INK_SOFT, UI.F_BOLD))
+	rrow.add_child(UI.text("%d" % ra, UI.S_HEAD, Color("#2a4fa8"), UI.F_SIGN))
+	rrow.add_child(UI.text("/ 20", UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+	mcol.add_child(UI.text("「%s」" % GameSettings.mental_name_a(ra), UI.S_BODY, UI.INK, UI.F_BOLD))
 	var nxt: int = GameSettings.mental_xp_to_next()
-	mcol.add_child(UI.text((tr("次まで %d EXP") % nxt) if nxt >= 0 else "MAX", UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+	var gauge: ProgressBar = ProgressBar.new()
+	gauge.show_percentage = false
+	gauge.custom_minimum_size = Vector2(150, 8)
+	gauge.add_theme_stylebox_override("background", UI.flat_style(Color("#e4e0d8"), 0, 2))
+	gauge.add_theme_stylebox_override("fill", UI.flat_style(Color("#2a4fa8"), 0, 2))
+	if nxt < 0:
+		gauge.value = 100.0
+	else:
+		var lo: int = int(GameSettings.MENTAL_XP[ra - 1])
+		var hi: int = int(GameSettings.MENTAL_XP[ra])
+		gauge.value = 100.0 * float(GameSettings.mental_xp - lo) / float(maxi(1, hi - lo))
+	mcol.add_child(gauge)
+	var nrow: HBoxContainer = UI.hbox(8)
+	mcol.add_child(nrow)
+	nrow.add_child(UI.text((tr("次まで %d EXP") % nxt) if nxt >= 0 else "MAX", UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+	var list_btn: Button = UI.link(tr("一覧 →"), UI.S_SMALL, Color("#2a4fa8"))
+	list_btn.pressed.connect(_show_mental_list)
+	nrow.add_child(list_btn)
 	var mb: int = GameSettings.mental_rank_b(int(p.get("rating", 1000)))
 	var bcol: VBoxContainer = UI.vbox(2)
 	mrow.add_child(bcol)
@@ -1367,8 +1618,8 @@ func _build_player_card() -> void:
 	# 手持ちのポイントとバーコード
 	var wrow: HBoxContainer = UI.hbox(10)
 	bc.add_child(wrow)
-	wrow.add_child(UI.text("HP %s" % _num(GameSettings.hp_points), UI.S_BODY, Color("#b0611b"), UI.F_DOT))
-	wrow.add_child(UI.text("KAS %s" % _num(GameSettings.kas_points), UI.S_BODY, Color("#a0257e"), UI.F_DOT))
+	wrow.add_child(UI.text("%s HP" % _num(GameSettings.hp_points), UI.S_BODY, Color("#b0611b"), UI.F_DOT))
+	wrow.add_child(UI.text("%s KAS" % _num(GameSettings.kas_points), UI.S_BODY, Color("#a0257e"), UI.F_DOT))
 	wrow.add_child(UI.spacer())
 	var bars: HBoxContainer = UI.hbox(1)
 	bars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1379,6 +1630,41 @@ func _build_player_card() -> void:
 		bar.custom_minimum_size = Vector2(1 + ((seed_v >> (i % 16)) & 1) * 2, 22)
 		bars.add_child(bar)
 	wrow.add_child(bars)
+
+
+## メンタルランクの一覧（要件#91）。まだ届いていないランクは「？？？」
+func _show_mental_list() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(820, "center")
+	_sheet_title(col, tr("メンタルランク一覧"))
+	var ra: int = GameSettings.mental_rank()
+	var rb: int = GameSettings.mental_rank_b(int(GameSettings.last_profile.get("rating", 1000)))
+	var row: HBoxContainer = UI.hbox(30)
+	col.add_child(row)
+	for side in ["a", "b"]:
+		var c: VBoxContainer = UI.vbox(3)
+		c.custom_minimum_size = Vector2(370, 0)
+		row.add_child(c)
+		c.add_child(UI.text(tr("1人用（経験値で上がる）") if side == "a" else tr("対戦（レートで決まる・素材）"), UI.S_BODY, UI.INK, UI.F_BOLD))
+		var cur: int = ra if side == "a" else rb
+		for r in range(1, 21):
+			var reached: bool = r <= cur
+			var name: String = (GameSettings.mental_name_a(r) if side == "a" else GameSettings.mental_name_b(r)) if reached else tr("？？？")
+			var need: String = ""
+			if side == "a":
+				need = "%s EXP" % _num(int(GameSettings.MENTAL_XP[r - 1]))
+			else:
+				need = tr("レート %d〜") % (GameSettings.MENTAL_B_BASE_RATING + (r - 10) * GameSettings.MENTAL_B_STEP) if r > 1 else tr("レート 〜%d") % (GameSettings.MENTAL_B_BASE_RATING - 9 * GameSettings.MENTAL_B_STEP)
+			var line: HBoxContainer = UI.hbox(8)
+			c.add_child(line)
+			var mark: String = "▶" if r == cur else "  "
+			line.add_child(UI.text("%s %2d" % [mark, r], UI.S_SMALL, UI.SHU if r == cur else UI.INK_SOFT, UI.F_DOT))
+			line.add_child(UI.text(name, UI.S_SMALL, UI.INK if reached else UI.INK_SOFT, UI.F_BOLD if r == cur else UI.F_BODY))
+			line.add_child(UI.spacer())
+			line.add_child(UI.text(need, UI.S_SMALL - 2, UI.INK_SOFT, UI.F_DOT))
+	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	close.pressed.connect(_close_sheet)
+	col.add_child(close)
 
 
 ## 「正」の字で数える（5で1つ。端数は書きかけ）
@@ -2171,7 +2457,7 @@ func _fill_review_log(list: VBoxContainer) -> void:
 		c.add_child(head)
 		var st: String = str(d.get("stage", ""))
 		head.add_child(UI.text(str(d.get("date", "")), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
-		head.add_child(UI.text(tr(str((STAGES.get(st, {}) as Dictionary).get("name", st))) + ("  " + tr("ハードコア") if bool(d.get("hard", false)) else ""), UI.S_BODY, UI.INK, UI.F_BOLD))
+		head.add_child(UI.text(tr(str((STAGES.get(st, {}) as Dictionary).get("name", st))) + ("  " + tr("社員モード") if bool(d.get("hard", false)) else ""), UI.S_BODY, UI.INK, UI.F_BOLD))
 		head.add_child(UI.spacer())
 		var rv: float = float(d.get("review", 3.0))
 		head.add_child(UI.text("★".repeat(int(round(rv))) + "☆".repeat(5 - int(round(rv))) + " %.1f" % rv, UI.S_BODY, UI.SHU, UI.F_DOT))
@@ -2277,7 +2563,7 @@ func _show_hardcore() -> void:
 	_sheet.add_child(margin)
 	var root: VBoxContainer = UI.vbox(14)
 	margin.add_child(root)
-	root.add_child(UI.text("HARDCORE", UI.S_HUGE, Color("#ff3b2f"), UI.F_SIGN))
+	root.add_child(UI.text("HARDCORE" + tr("（社員モード）"), UI.S_HUGE, Color("#ff3b2f"), UI.F_SIGN))
 	root.add_child(UI.text(tr("怒りは速く、納得は遅い。店長は来ない。そのかわり点数と給与は 1.5倍。"), UI.S_BODY, Color("#ffd6d0")))
 	var row: HBoxContainer = UI.hbox(24)
 	root.add_child(row)
@@ -2309,7 +2595,7 @@ func _show_hardcore() -> void:
 	var right: VBoxContainer = UI.vbox(6)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(right)
-	right.add_child(UI.text(tr("ハードコアの称号"), UI.S_LEAD, Color("#ffffff"), UI.F_BOLD))
+	right.add_child(UI.text(tr("社員モードの称号"), UI.S_LEAD, Color("#ffffff"), UI.F_BOLD))
 	for id in ["t151", "t152", "t153", "t154", "t155"]:
 		var t: Dictionary = Titles.by_id(id)
 		if t.is_empty():
@@ -2491,10 +2777,10 @@ func _show_settings() -> void:
 	grid.add_theme_constant_override("v_separation", 12)
 	col.add_child(grid)
 
-	var name_edit: LineEdit = UI.field(tr("名前（16文字まで）"), UI.S_BODY)
+	var name_edit: LineEdit = UI.field(tr("フロアネーム（16文字まで）"), UI.S_BODY)
 	name_edit.text = GameSettings.player_name
 	name_edit.max_length = 16
-	_form_row(grid, tr("名前"), name_edit)
+	_form_row(grid, tr("フロアネーム"), name_edit)
 
 	var lang_opt: OptionButton = _option(GameSettings.LANGS, GameSettings.language)
 	_form_row(grid, tr("言語 / Language"), lang_opt)
@@ -2519,6 +2805,14 @@ func _show_settings() -> void:
 
 	var time_opt: OptionButton = _option(_translated(GameSettings.ANSWER_TIMES), GameSettings.answer_time)
 	_form_row(grid, tr("返事の時間"), time_opt)
+	# 読み上げ（要件#91）: お客さんのセリフをパソコンの声で読む
+	var tts_chk: CheckBox = UI.check(tr("お客さんのセリフを読み上げる"), GameSettings.tts_on)
+	tts_chk.toggled.connect(func(on: bool) -> void:
+		GameSettings.tts_on = on
+		GameSettings.save_settings()
+		if not on:
+			DisplayServer.tts_stop())
+	_form_row(grid, tr("読み上げ"), tts_chk)
 
 	var vol: HSlider = HSlider.new()
 	vol.min_value = 0.0
@@ -2559,6 +2853,10 @@ func _show_settings() -> void:
 	row.add_child(save)
 	var test_btn: Button = UI.link(tr("接続を確かめる"), UI.S_BODY)
 	row.add_child(test_btn)
+	# 退職（データ削除。要件#91）: 2回確かめる
+	var resign: Button = UI.link(tr("退職する（データ削除）"), UI.S_SMALL, UI.SHU)
+	resign.pressed.connect(_confirm_resign.bind(1))
+	col.add_child(resign)
 	var close_btn: Button = UI.link(tr("保存しないで閉じる"), UI.S_BODY, UI.INK_SOFT)
 	close_btn.pressed.connect(_close_sheet)
 	row.add_child(close_btn)
@@ -2611,6 +2909,35 @@ func _show_settings() -> void:
 		_server_info = {}
 		_refresh_title()
 		_check_server())
+
+
+## 退職（データ削除）の確認。step 1 → 2 → 消す
+func _confirm_resign(step: int) -> void:
+	sfx.play("warn", 0.8)
+	var col: VBoxContainer = _open_sheet(520, "center")
+	_sheet_title(col, tr("退職届") if step == 1 else tr("本当に退職しますか？"))
+	if step == 1:
+		col.add_child(UI.para(tr("退職すると、このパソコンに保存した記録・称号・HP/KAS・持ち物・キャラクター・設定がすべて消えます。元には戻せません。"), UI.S_BODY, UI.INK))
+	else:
+		col.add_child(UI.para(tr("最後の確認です。すべてのデータを消して、新人からやり直します。"), UI.S_BODY, UI.SHU))
+	var row: HBoxContainer = UI.hbox(20)
+	col.add_child(row)
+	var yes: Button = UI.primary(tr("退職する") if step == 1 else tr("すべて消して退職する"), UI.S_BODY)
+	yes.pressed.connect(func() -> void:
+		if step == 1:
+			_confirm_resign(2)
+			return
+		GameSettings.wipe_all()
+		GameSettings.save_settings()
+		_close_sheet()
+		_server_info = {}
+		_rebuild_ui()
+		_check_server()
+		_offer_first_run())
+	row.add_child(yes)
+	var no: Button = UI.link(tr("やめる"), UI.S_BODY)
+	no.pressed.connect(_show_settings)
+	row.add_child(no)
 
 
 func _translated(items: Array) -> Array:

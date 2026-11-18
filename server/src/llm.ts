@@ -14,7 +14,7 @@ const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
 export const STAGE_TEXT: Record<StageId, string> = {
   konbini: "日本のコンビニエンスストア（24時間営業。弁当・ホットスナック・おでん・コーヒーマシン・レジ袋有料・年齢確認・公共料金支払い・宅配便受付・トイレ・ポイントカードなど）",
-  arcade: "日本のゲームセンター（クレーンゲームが中心。ほかにメダルゲーム・格闘ゲーム・音楽ゲーム・プリントシール機・両替機・年少者の夜間入場制限など。景品交換カウンターは無い。メダルは返還や補填はあっても、景品に交換することは一切ない）",
+  arcade: "日本のゲームセンター（クレーンゲームが中心。ほかにメダルゲーム・格闘ゲーム・音楽ゲーム・プリントシール機・両替機・年少者の夜間入場制限など。景品交換カウンターは無い。メダルは返還や補填はあっても、景品に交換することも店の外に持ち出すことも一切ない。両替機の手数料は無料）",
 };
 
 const PERSONALITIES = [
@@ -132,7 +132,7 @@ const CustomerSchema = z.object({
     credit: z.enum(["good", "neutral", "bad", "yield"]),
     crane_stuck: z.enum(["good", "neutral", "bad", "yield"]),
   }),
-  machine: z.enum(["crane", "medal", "rhythm", "video", "none"]),
+  machine: z.enum(["crane", "medal", "rhythm", "video", "purikura", "none"]),
 });
 
 const TurnSchema = z.object({

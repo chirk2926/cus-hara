@@ -271,7 +271,7 @@ func _build_counter() -> void:
 	# お客さん側の正面ネオン
 	_box(self, Vector3(3.1, 0.04, 0.02), Vector3(0.0, 0.82, 0.54), _mat(Color(1.0, 0.3, 0.7), 3.0))
 	_box(self, Vector3(3.1, 0.04, 0.02), Vector3(0.0, 0.2, 0.54), _mat(Color(0.2, 0.8, 1.0), 3.0))
-	var staff: Label3D = _text(self, "スタッフカウンター", Vector3(0.0, 0.52, 0.535), 80, 0.0024, Color(1.0, 0.95, 0.6))
+	var staff: Label3D = _text(self, "ＣＯＵＮＴＥＲ", Vector3(0.0, 0.52, 0.535), 80, 0.0024, Color(1.0, 0.95, 0.6))
 	staff.rotation_degrees = Vector3(0.0, 180.0, 0.0)
 
 	# レジ

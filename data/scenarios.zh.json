@@ -1685,6 +1685,116 @@
 					"credit": "yield"
 				},
 				"machine": "video"
+			},
+			{
+				"title": "没拍好看的闺蜜团",
+				"name": "美羽 沙耶香",
+				"look": {
+					"body_color": "#f2a0c0",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#5a3a2a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "大头贴机运作正常，拍出来的效果是机器的设定。没有免费重拍，但可以说明亮度和美肌模式的设定，也可以检查机器。",
+				"opening": "喂！这张大头贴一点都没修好看！我们才不长这样！免费让我们重拍！",
+				"demand": "免费重拍",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"设定",
+					"亮度",
+					"美肌",
+					"模式",
+					"检查",
+					"说明"
+				],
+				"yield_keywords": [
+					"免费",
+					"重拍",
+					"不要钱"
+				],
+				"lines": {
+					"calm": [
+						"改设定能变好看？那你说说。",
+						"你们检查一下的话也行。"
+					],
+					"angry": [
+						"哈？太离谱了吧！",
+						"我要发到网上！"
+					],
+					"neutral": [
+						"所以呢？能重拍吗？"
+					],
+					"demand": [
+						"别废话，免费让我们重拍！"
+					],
+					"resolved": "开了美肌模式好看多了！谢啦～！",
+					"explode": "算了！再也不来了！",
+					"yielded": "太好了，免费重拍！"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "purikura"
+			},
+			{
+				"title": "嫌涂鸦时间太短的姐姐",
+				"name": "落合 丽奈",
+				"look": {
+					"body_color": "#c0a0f2",
+					"skin_color": "#f2cba8",
+					"hair_color": "#3a2a2a",
+					"hair": "bob",
+					"build": "normal",
+					"accessory": "none",
+					"height": 0.97,
+					"gender": "f"
+				},
+				"memo": "涂鸦时间由机器固定，不能延长，也不能退款。但可以介绍提前想好涂鸦内容的窍门，并检查屏幕有没有故障。",
+				"opening": "涂鸦时间也太短了吧！？我爱心还没画完就结束了！退钱！",
+				"demand": "退钱",
+				"patience": 1.1,
+				"start_anger": 42,
+				"solution_keywords": [
+					"时间",
+					"窍门",
+					"检查",
+					"屏幕",
+					"提前",
+					"说明"
+				],
+				"yield_keywords": [
+					"退款",
+					"退钱"
+				],
+				"lines": {
+					"calm": [
+						"原来要提前想好……有道理。"
+					],
+					"angry": [
+						"短就是短！",
+						"你根本不懂！"
+					],
+					"neutral": [
+						"所以，退不退？"
+					],
+					"demand": [
+						"退钱！"
+					],
+					"resolved": "下次我先想好画什么！谢谢。",
+					"explode": "算了！连爱心都画不完的店！",
+					"yielded": "运气好，退回来了！"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "purikura"
 			}
 		]
 	}

@@ -275,7 +275,7 @@ func _build_medal() -> void:
 	var stand: Node3D = _node(self, Vector3(0.55, 0.0, -1.2), -10.0)
 	_box(stand, Vector3(0.05, 1.0, 0.05), Vector3(0.0, 0.5, 0.0), _mat(Color(0.3, 0.3, 0.32)))
 	_box(stand, Vector3(1.35, 0.62, 0.03), Vector3(0.0, 1.15, 0.0), _mat(Color(1.0, 1.0, 1.0)))
-	_label(stand, "メダルの払い戻し・\n景品との交換は\nできません", Vector3(0.0, 1.15, 0.025), 40, Color(0.85, 0.1, 0.1), 0.004)
+	_label(stand, "メダルの景品交換・\nお持ち帰りは\nできません", Vector3(0.0, 1.15, 0.025), 40, Color(0.85, 0.1, 0.1), 0.004)
 	_label(self, "メダルはお店の中で遊ぶためだけのものです", Vector3(0.0, 1.85, -7.85), 64, Color(1.0, 1.0, 1.0), 0.004)
 	for k3 in range(22):
 		var x: float = -2.6 + 5.2 * float(k3) / 21.0

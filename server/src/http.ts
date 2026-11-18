@@ -279,7 +279,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       settle(s, anger, fixed);
       return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id, anger: s.anger, resolve: s.resolve };
     }
-    const reply = typeof body.reply === "string" ? body.reply.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) : "";
+    const reply = typeof body.reply === "string" ? body.reply.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
     if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
     s.history.push({ role: "staff", text: reply });
     let result = null;

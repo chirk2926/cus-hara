@@ -42,11 +42,22 @@ static func buttons(stage_id: String, customer: Dictionary, with_crane: bool) ->
 	for id in ids:
 		if minigame.has(str(id)) and not with_crane:
 			continue
+		# 「引っかかった景品をとる」は、本当に景品が引っかかっているお客さんだけ（要件#91）
+		if str(id) == "crane_stuck" and not is_stuck(customer):
+			continue
 		out.append([str(id), label(str(id))])
 	# 「〇〇円使っても取れない」のお客さんには、筐体のデータを見るボタン
 	if stage_id == "arcade" and typeof(customer.get("spend", null)) == TYPE_DICTIONARY:
 		out.append([MACHINE_DATA, label(MACHINE_DATA)])
 	return out
+
+
+## 景品が本当に引っかかっているお客さん（台本で「引っかかった景品をとる」が正解の人）
+static func is_stuck(customer: Dictionary) -> bool:
+	if bool(customer.get("stuck", false)):
+		return true
+	var acts: Variant = customer.get("actions", {})
+	return typeof(acts) == TYPE_DICTIONARY and str((acts as Dictionary).get("crane_stuck", "")) == "good"
 
 
 static func is_minigame(id: String) -> bool:

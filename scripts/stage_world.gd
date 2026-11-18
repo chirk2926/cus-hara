@@ -12,6 +12,7 @@ const ENTRANCE_POS: Vector3 = Vector3(3.6, 0.0, -3.0)
 const TENSION_COLOR: Color = Color(1.0, 0.16, 0.1)
 const ARCADE_SCRIPT: String = "res://scripts/arcade_stage.gd"
 const BACKDROP_SCRIPT: String = "res://scripts/backdrop_stage.gd"
+const SignFit = preload("res://scripts/sign_fit.gd")
 
 var _stage_id: String = ""
 var _built: bool = false
@@ -47,6 +48,7 @@ func build(stage_id: String, variant: String = "day") -> void:
 		add_child(bd)
 		bd.call("build", stage_id)
 		_built = true
+		SignFit.fit_all(self)
 		return
 	if stage_id == "arcade":
 		_stage_id = "arcade"
@@ -61,6 +63,8 @@ func build(stage_id: String, variant: String = "day") -> void:
 	if _stage_id == "konbini":
 		_apply_lighting()
 	_built = true
+	# 看板の文字を板に収める（要件#91）
+	SignFit.fit_all(self)
 
 
 ## 夜にする: 外を暗くし、日の光を消す。ゲームセンターは閉店後なので照明もほとんど落とす
@@ -139,7 +143,7 @@ func ensure_staff_side() -> void:
 			var sz: Vector3 = Vector3(0.2, 0.3, 0.2) if arcade else Vector3(0.18, 0.08, 0.05)
 			parts.append(_box(_staff_side, sz, Vector3(-1.45 + 0.265 * float(k), y + sz.y * 0.5 + 0.02, 2.48), _mat(c, 0.6), false))
 	if arcade:
-		_label(_staff_side, "景品カウンター", Vector3(0.0, 2.75, 2.64), 90, Color(1.0, 0.85, 0.3)).rotation_degrees.y = 180.0
+		_label(_staff_side, "今投入中の景品！", Vector3(0.0, 2.75, 2.64), 90, Color(1.0, 0.85, 0.3)).rotation_degrees.y = 180.0
 	else:
 		_label(_staff_side, "TOBACCO", Vector3(0.0, 2.75, 2.64), 80, Color(0.2, 0.3, 0.5), 0.003, Color(1, 1, 1, 0.0), 0).rotation_degrees.y = 180.0
 	for p in parts:

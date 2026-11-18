@@ -28,6 +28,12 @@ const HARD_REWARD_MUL: float = 1.5
 const HARD_UNLOCK_RANK: int = 10
 ## 店長を呼ぶ（要件#86）: 1シフト1回。呼んだお客さんの点数は半分
 const CALL_MANAGER_POINTS: float = 0.5
+## 社員モードの風営法の確認（要件#91）: お客さんの合間に、この確率で警察が来て質問する（1シフト1回まで）
+const FUEI_CHANCE: float = 0.2
+const FUEI_SECONDS: float = 20.0
+## 臭い客のイベント（要件#92）: この確率でお客さんから強烈なにおい。しれっと消臭剤をかける（30% でバレる）か、遠回しに伝える
+const SMELL_CHANCE: float = 0.12
+const SMELL_CAUGHT: float = 0.3
 const RATE_STEP: float = 0.04           # お客さん1人ごとの上昇率（要件#49で 0.15→0.08、要件#90で 0.04）
 ## お客さんが言い終わってから、怒りが上がり始めるまでの読む時間（秒。要件#90）
 const READ_GRACE: float = 5.0
@@ -90,6 +96,8 @@ var _grace: float = 0.0              # 読む時間の残り（秒）
 var _act_counts: Dictionary = {}     # このお客さんに使った行動の回数
 var _id_views: int = 0               # 身分証を見た回数
 var _alt_resisted: bool = false      # 別の身分証を頼んで、一度しぶられた
+var _smelly: bool = false            # このお客さんは強烈なにおい（要件#92）
+var _smell_done: bool = false        # 消臭剤をかけた・遠回しに伝えた
 var _alt_id_asked: bool = false
 
 var _run: int = 0
@@ -194,8 +202,17 @@ func start(stage_id: String, stage_name: String) -> void:
 	hud.set_mental(_mental)
 	hud.set_voice_mode(false)
 	hud.set_quick_phrases([] if hardcore else hud.DEFAULT_PHRASES)
+	var fuei_done: bool = false
 	for i in range(CUSTOMERS_PER_SHIFT):
 		_index = i
+		# 社員モード: 警察が風営法について聞きに来ることがある（要件#91）
+		if hardcore and not fuei_done and i >= 1 and (randf() < FUEI_CHANCE or main.debug_flag("fuei")):
+			fuei_done = true
+			await _fuei_check(my_run)
+			if my_run != _run:
+				return
+			if _suspended:
+				break
 		await _play_customer(my_run)
 		if my_run != _run:
 			return
@@ -364,6 +381,57 @@ func _police(my_run: int) -> void:
 	await main.dismiss_customer("smug")
 
 
+## 風営法の確認（社員モード。要件#91）: 3つの答えから選ぶ。まちがえる・時間切れは営業停止
+func _fuei_check(my_run: int) -> void:
+	hud.set_actions([])
+	hud.set_input_enabled(false, "")
+	hud.show_banner(tr("警察です！"), Color("#5b7bd5"))
+	main.sfx.play("warn", 0.7)
+	await main.police_visit()
+	if my_run != _run:
+		return
+	var qs: Array = [
+		[tr("風営法の許可証は、どこに掲示していますか？"), [tr("店内の見やすい場所に掲示しています"), tr("事務所の金庫にしまってあります"), tr("店長が家に持って帰っています")]],
+		[tr("従業員名簿を見せてください。"), [tr("事務所に備えてあります。すぐお持ちします"), tr("名簿は作っていません"), tr("個人情報なのでお見せできません")]],
+		[tr("18歳未満の夜間の入場制限は、どこに表示していますか？"), [tr("入口に掲示しています"), tr("表示はしていません"), tr("スタッフが口で伝えています")]],
+	]
+	var q: Array = qs[randi() % qs.size()]
+	await main.customer_say(tr("警察官"), str(q[0]), false)
+	if my_run != _run:
+		return
+	GameSettings.stat_add("fuei_checks")
+	var ok: bool = await main.show_quiz(tr("警察官の質問"), str(q[0]), q[1], 0, FUEI_SECONDS)
+	if my_run != _run:
+		return
+	if ok:
+		GameSettings.stat_add("fuei_passed")
+		main.sfx.play("good", 1.0)
+		await main.customer_say(tr("警察官"), tr("よろしい。引き続き、きちんと営業してください。"), false)
+		if my_run != _run:
+			return
+		await _wait(1.0)
+		hud.hide_bubble()
+		main.manager_leave()
+		return
+	main.shake(0.3)
+	main.sfx.play("explode")
+	await main.customer_say(tr("警察官"), tr("答えられないのですか。営業停止です。"), true)
+	if my_run != _run:
+		return
+	hud.show_banner(tr("営業停止…") + "  %d" % SCORE_SUSPENDED, Color("#ff8a6a"))
+	_suspended = true
+	GameSettings.stat_add("suspended")
+	_total += SCORE_SUSPENDED
+	_review += REVIEW_SUSPENDED
+	_results.append({"title": tr("営業停止（風営法）"), "outcome": "suspended", "points": SCORE_SUSPENDED, "turns": 0, "clock": _clock()})
+	_update_top()
+	await _wait(2.0)
+	if my_run != _run:
+		return
+	hud.hide_bubble()
+	main.manager_leave()
+
+
 ## このお客さんの分の売上（接客した分だけ入る）
 func _add_sales(outcome: String) -> void:
 	_review += float(REVIEW_DELTA.get(outcome, 0.0))
@@ -508,6 +576,69 @@ func _vary_look(base: Dictionary) -> Dictionary:
 	if str(look.get("hair", "")) in ["long", "bob", "ponytail"] and randf() < 0.5:
 		look["gender"] = "f"
 	return look
+
+
+## 行動ボタンに「しれっと消臭剤をかける」を足す（臭い客のとき）
+func _with_smell(btns: Array) -> Array:
+	if _smelly and not _smell_done:
+		btns = btns.duplicate()
+		btns.append(["deodorize", tr("しれっと消臭剤をかける")])
+	return btns
+
+
+func _with_smell_refresh() -> void:
+	hud.set_actions(_with_smell(ShopActions.buttons(_stage_id, _cust, not _crane_used)))
+
+
+## しれっと消臭剤をかける（要件#92）: 30% でバレて怒られる。バレなければにおいが消えて少し落ち着く
+func _deodorize(speaker: String) -> void:
+	_smell_done = true
+	_turns += 1
+	main.sfx.play("click", 1.6)
+	log_lines.append({"role": "staff", "text": tr("（しれっと消臭剤をかけた）")})
+	hud.show_echo(tr("あなた: "), tr("（しれっと消臭剤をかけた）"))
+	if randf() < SMELL_CAUGHT and not main.smoke:
+		GameSettings.stat_add("smell_caught")
+		_anger = minf(100.0, _anger + 25.0)
+		_review -= 0.2
+		_refresh(false)
+		hud.show_delta(25, 0)
+		hud.set_comment(tr("バレた！お客さんが気を悪くした。"))
+		main.set_stink(false)
+		var line: String = str(Judge.pick_lang(["ちょっと！今、何かけたでしょ！？失礼にもほどがある！", "……今の、消臭剤だよね？"], ["Hey! Did you just spray something at me?! How rude!", "...Was that air freshener?"], ["喂！你刚才喷了什么！？太失礼了吧！", "……刚才那是除臭剂吧？"]))
+		log_lines.append({"role": "customer", "text": line})
+		await _customer_line(speaker, line, "angry")
+	else:
+		GameSettings.stat_add("smell_ok")
+		_anger = maxf(0.0, _anger - 5.0)
+		_change_mental(5.0)
+		_refresh(false)
+		hud.show_delta(-5, 0)
+		hud.set_comment(tr("バレずに済んだ。においがやわらいだ。"))
+		main.set_stink(false)
+	_with_smell_refresh()
+
+
+func _smell_talk(reply: String) -> String:
+	var t: String = reply.to_lower()
+	for w in ["臭", "くさ", "におう", "におい", "匂う", "smell", "stink", "b.o.", "臭味", "有味"]:
+		if t.find(w) >= 0:
+			# 「においがこもって」「換気」のような言い方は遠回し
+			for soft in ["換気", "こもって", "空調", "ventilat", "通风"]:
+				if t.find(soft) >= 0:
+					return "hint"
+			return "direct"
+	for w2 in ["換気", "空調", "エアコン", "暑い", "汗", "タオル", "シャワー", "ventilat", "air conditioning", "hot today", "towel", "shower", "通风", "空调", "毛巾", "天热", "出汗"]:
+		if t.find(w2) >= 0:
+			return "hint"
+	return ""
+
+
+## 金額を言ってしまったか（数字＋円・ドル・元、など）
+func _says_amount(reply: String) -> bool:
+	var re: RegEx = RegEx.new()
+	re.compile("[0-9０-９][0-9０-９,，.]*\\s*(円|えん|yen|ドル|dollars?|\\$|元|块|千|万)|[\\$¥￥][0-9０-９]")
+	return re.search(reply.to_lower()) != null
 
 
 ## 景品だけが目当てか（土下座・返金・タダなど、ほかのものも求めていない）
@@ -845,6 +976,8 @@ func _play_customer(my_run: int) -> void:
 	_act_counts = {}
 	_id_views = 0
 	_alt_resisted = false
+	_smelly = (not _is_age_check()) and (randf() < SMELL_CHANCE or main.debug_flag("smell"))
+	_smell_done = false
 	_refresh(false)
 	_update_tools()
 
@@ -856,6 +989,10 @@ func _play_customer(my_run: int) -> void:
 		look = _vary_look(_cust["look"])
 	if _wild:
 		hud.show_banner(tr("！要注意人物が来店！"), UI.SHU)
+	elif ShopActions.is_stuck(_cust) and _stage_id == "arcade":
+		# 景品が本当に引っかかっている（要件#91: しっかり表示）
+		hud.show_banner(tr("景品が引っかかっている！"), UI.POP)
+		hud.set_comment(tr("この台は景品が引っかかっている。「引っかかった景品をとる」が使える。"))
 		hud.set_comment(tr("要注意人物だ。何を言い出すか分からないぞ。納得させれば点数 ×1.5！"))
 		main.sfx.play("warn", 0.8)
 		main.shake(0.12)
@@ -870,9 +1007,17 @@ func _play_customer(my_run: int) -> void:
 		else:
 			hud.set_comment(tr("今は %s。身分証で年齢を確かめよう。") % AgeCheck.clock_text(_clock()))
 	else:
-		hud.set_actions(ShopActions.buttons(_stage_id, _cust, true))
+		hud.set_actions(_with_smell(ShopActions.buttons(_stage_id, _cust, true)))
+	if _smelly:
+		main.set_stink(true)
+		hud.show_banner(tr("強烈なにおい…！"), Color("#8fbf3a"))
+		if not hardcore:
+			hud.set_comment(tr("お客さんから強烈なにおいがする。しれっと消臭剤をかけるか、遠回しに伝えるか…。"))
 	var speaker: String = tr("%s（%s）") % [str(_cust.get("title", tr("お客さん"))), str(_cust.get("name", ""))]
-	hud.set_memo(str(_cust.get("title", "")), str(_cust.get("memo", "")), str(_cust.get("demand", "")))
+	var memo_text: String = str(_cust.get("memo", ""))
+	if ShopActions.is_stuck(_cust) and _stage_id == "arcade":
+		memo_text = tr("【景品が引っかかっています】") + "\n" + memo_text
+	hud.set_memo(str(_cust.get("title", "")), memo_text, str(_cust.get("demand", "")))
 	var opening: String = str(_cust.get("opening", "……"))
 	_history.append({"role": "customer", "text": opening})
 	log_lines.append({"role": "customer", "text": opening})
@@ -911,6 +1056,12 @@ func _play_customer(my_run: int) -> void:
 		if reply.begins_with(ACTION_PREFIX):
 			# ---- 店の行動ボタン（要件#34）・台の調整（要件#37）
 			var id: String = reply.substr(ACTION_PREFIX.length())
+			if id == "deodorize":
+				if _smelly and not _smell_done:
+					await _deodorize(speaker)
+					if my_run != _run:
+						return
+				continue
 			if id == "ask_other_id":
 				if _is_age_check() and not _alt_id_asked:
 					hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
@@ -943,7 +1094,7 @@ func _play_customer(my_run: int) -> void:
 				_crane_used = true
 				# 取れるまでは「景品を取りやすい位置へ」を何回でも押せる（要件#90）。台の調整は1回まで
 				var after: Array = ShopActions.buttons(_stage_id, _cust, str(cr.get("result", "")) != "won")
-				hud.set_actions(after.filter(func(b: Array) -> bool: return str(b[0]) != ShopActions.CRANE_ADJUST))
+				hud.set_actions(_with_smell(after.filter(func(b: Array) -> bool: return str(b[0]) != ShopActions.CRANE_ADJUST)))
 				_t_move_mode = str(cr.get("mode_kind", "")) == "move" or id == ShopActions.CRANE_MOVE
 				id = "crane_won" if str(cr["result"]) == "won" else "crane_lost"
 				GameSettings.stat_add("crane_tests", int(cr.get("tests", 0)))
@@ -978,6 +1129,14 @@ func _play_customer(my_run: int) -> void:
 			_sales_cost += int(SALES_COST.get(id, 0))
 			_t_last_action = id
 			_act_counts[id] = int(_act_counts.get(id, 0)) + 1
+			# 「景品を取りやすい位置へ」は、お客さんが本当に使った金額が目標金額の半分以上のときだけ（要件#91）
+			if id in ["crane_won", "crane_lost"] and _t_move_mode:
+				var spd: Variant = _cust.get("spend", null)
+				if typeof(spd) == TYPE_DICTIONARY and float((spd as Dictionary).get("actual", 0)) < 0.5 * float((spd as Dictionary).get("expected", 1)):
+					_cost += 200
+					_review -= 0.1
+					GameSettings.stat_add("early_move")
+					res["comment"] = tr("まだ目標金額の半分にも届いていない台を動かすのは規定外（-200 点）。")
 			# 引っかかった景品を取ってあげた後の補填は要らない（そこまでに使ったお金は返さない。要件#90）
 			if id == "credit" and int(_act_counts.get("crane_stuck", 0)) > 0:
 				res["anger_delta"] = maxi(int(res.get("anger_delta", 0)), 8)
@@ -1024,6 +1183,27 @@ func _play_customer(my_run: int) -> void:
 			if my_run != _run:
 				return
 			_track_reply(reply, int(res.get("anger_delta", 0)))
+			# 臭い客に、においのことを直接言うと失礼。遠回し（換気・空調・暑さ・汗など）ならよい（要件#92）
+			if _smelly and not _smell_done:
+				var sm: String = _smell_talk(reply)
+				if sm == "direct":
+					res["anger_delta"] = maxi(int(res.get("anger_delta", 0)), 0) + 20
+					res["resolve_delta"] = 0
+					res["comment"] = tr("においのことを直接言うのは失礼だ。")
+					GameSettings.stat_add("smell_direct")
+				elif sm == "hint":
+					_smell_done = true
+					main.set_stink(false)
+					res["anger_delta"] = int(res.get("anger_delta", 0)) - 6
+					res["comment"] = tr("遠回しに伝えられた。お客さんも気づいたようだ。")
+					GameSettings.stat_add("smell_hint")
+					_with_smell_refresh()
+			# 筐体の記録の金額や「あといくらで取れる」を言うのはダメ（要件#91）。「もう少しかもしれません」などはよい
+			if typeof(_cust.get("spend", null)) == TYPE_DICTIONARY and _says_amount(reply):
+				res["anger_delta"] = maxi(int(res.get("anger_delta", 0)), 0) + 10
+				res["resolve_delta"] = 0
+				res["comment"] = tr("記録の金額や「あといくらで取れる」は、お客さんに言わない。「もう少しかもしれません」くらいに。")
+				GameSettings.stat_add("said_amount")
 			_used.append(reply)
 
 		var a_delta: int = int(res.get("anger_delta", 0))
@@ -1047,7 +1227,7 @@ func _play_customer(my_run: int) -> void:
 		var cm: String = str(res.get("comment", "")).strip_edges()
 		if hardcore:
 			cm = ""
-		hud.set_comment(cm if cm != "" else (tr("（ハードコア: ヒントはありません）") if hardcore else tr("落ち着いて、メモの規定どおりに。")))
+		hud.set_comment(cm if cm != "" else (tr("（社員モード: ヒントはありません）") if hardcore else tr("落ち着いて、メモの規定どおりに。")))
 
 		# 店員のメンタル: 怒られるほど減り、落ち着かせると少し戻る
 		if a_delta > 0:

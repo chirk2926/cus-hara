@@ -1686,6 +1686,117 @@
 					"credit": "yield"
 				},
 				"machine": "video"
+			},
+			{
+				"title": "盛れなかった女子会",
+				"name": "美羽 さやか",
+				"look": {
+					"body_color": "#f2a0c0",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#5a3a2a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "プリクラ機は正常に動いていて、写りは機械の仕様。撮り直しの無料サービスはないが、明るさ・美肌モードの設定の案内と、機械の点検はできる。",
+				"opening": "ちょっと！このプリ、全然盛れてないんだけど！私たちこんな顔じゃないし！撮り直しタダにしてよ！",
+				"demand": "撮り直しを無料にすること",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"設定",
+					"明るさ",
+					"美肌",
+					"モード",
+					"点検",
+					"ご案内"
+				],
+				"yield_keywords": [
+					"無料",
+					"タダ",
+					"撮り直し"
+				],
+				"lines": {
+					"calm": [
+						"設定変えたら盛れるの？じゃあ聞く。",
+						"点検してくれるならいいけど。"
+					],
+					"angry": [
+						"は？ありえないんだけど！",
+						"ネットに書くからね！"
+					],
+					"neutral": [
+						"で？撮り直せるの？"
+					],
+					"demand": [
+						"いいから撮り直しタダにして！"
+					],
+					"resolved": "美肌モードにしたら盛れた！ありがと〜！",
+					"explode": "もういい！二度と来ないから！",
+					"yielded": "やった〜タダで撮れた！"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "purikura"
+			},
+			{
+				"title": "落書きタイム短すぎ姉さん",
+				"name": "落合 れいな",
+				"look": {
+					"body_color": "#c0a0f2",
+					"skin_color": "#f2cba8",
+					"hair_color": "#3a2a2a",
+					"hair": "bob",
+					"build": "normal",
+					"accessory": "none",
+					"height": 0.97,
+					"gender": "f"
+				},
+				"memo": "落書きの時間は機械で決まっていて延長はできない。返金もできないが、次の回で落書きを先に考えておくコツの案内と、画面の不具合がないかの点検はできる。",
+				"opening": "落書きの時間、短すぎない！？まだハート描いてる途中で終わったんだけど！お金返して！",
+				"demand": "お金を返すこと",
+				"patience": 1.1,
+				"start_anger": 42,
+				"solution_keywords": [
+					"時間",
+					"コツ",
+					"点検",
+					"画面",
+					"先に",
+					"ご案内"
+				],
+				"yield_keywords": [
+					"返金",
+					"返す",
+					"お金"
+				],
+				"lines": {
+					"calm": [
+						"先に決めとけばいいのね…なるほど。"
+					],
+					"angry": [
+						"短いもんは短いの！",
+						"わかってないなあ！"
+					],
+					"neutral": [
+						"で、返してくれるの？"
+					],
+					"demand": [
+						"お金返して！"
+					],
+					"resolved": "次は先に描くもの決めとく！ありがと。",
+					"explode": "もういいよ！ハートも描けない店なんて！",
+					"yielded": "ラッキー、返ってきた！"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "purikura"
 			}
 		]
 	}

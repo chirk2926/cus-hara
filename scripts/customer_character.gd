@@ -113,8 +113,12 @@ func setup(look: Dictionary) -> void:
 	_joke = {"head": str(look.get("head", "")), "face": str(look.get("face", "")), "hand": str(look.get("hand", "")), "body": str(look.get("body", ""))}
 	_tired = bool(look.get("tired", false))
 	_gender = str(look.get("gender", ""))
+	# 性別で見た目をはっきり変える（要件#91）: 女性は肩幅が狭く少し小柄、男性は肩幅が広い
 	if _gender == "f":
-		_bw *= 0.92
+		_bw *= 0.86
+		_height *= 0.96
+	elif _gender == "m":
+		_bw *= 1.06
 	_expr = "neutral"
 	_expr_time = 0.0
 	_arm_override = ""
@@ -904,11 +908,22 @@ func _build_face() -> void:
 	_brow_l.rotation.y = 0.35
 	_brow_r.rotation.y = -0.35
 	if _gender == "f":
+		# まつげ・ほお紅・細い眉・口紅
+		var blush: StandardMaterial3D = _mat(Color(1.0, 0.55, 0.6, 0.55), 0.8)
+		blush.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		for i in range(2):
 			var sx: float = 1.0 if i == 0 else -1.0
-			for k in range(2):
-				var lash: MeshInstance3D = _box(_head, Vector3(0.03, 0.01, 0.01), Vector3(sx * (0.125 + 0.018 * float(k)), 0.07 + 0.008 * float(k), 0.19), black)
-				lash.rotation.z = sx * (0.5 + 0.3 * float(k))
+			for k in range(3):
+				var lash: MeshInstance3D = _box(_head, Vector3(0.035, 0.012, 0.012), Vector3(sx * (0.12 + 0.02 * float(k)), 0.07 + 0.01 * float(k), 0.19), black)
+				lash.rotation.z = sx * (0.4 + 0.3 * float(k))
+			var ch: MeshInstance3D = _sphere(_head, 0.04, Vector3(sx * 0.12, -0.045, 0.185), blush, 10)
+			ch.scale = Vector3(1.2, 0.6, 0.4)
+		_brow_l.scale = Vector3(0.9, 0.6, 1.0)
+		_brow_r.scale = Vector3(0.9, 0.6, 1.0)
+		mouth_m.albedo_color = Color(0.85, 0.2, 0.3)
+	elif _gender == "m":
+		_brow_l.scale = Vector3(1.1, 1.5, 1.0)
+		_brow_r.scale = Vector3(1.1, 1.5, 1.0)
 
 	# mouth: centre bar + two corner pieces that tilt up (smile) or down (frown)
 	_mouth = _node(_head, Vector3(0.0, -0.1, 0.195))

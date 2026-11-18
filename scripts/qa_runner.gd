@@ -139,6 +139,24 @@ func _screens() -> void:
 	await _wait(0.3)
 	check("payout panel opens", main.get("_sheet") != null)
 	main.call("_close_sheet")
+	main.call("_show_mental_list")
+	await _wait(0.3)
+	check("mental rank list opens", main.get("_sheet") != null)
+	await _snap("mental_list")
+	main.set("_titles_cat", "arcade")
+	main.call("_show_titles")
+	await _wait(0.3)
+	check("titles screen opens", main.get("_sheet") != null)
+	await _snap("titles")
+	main.call("_offer_difficulty")
+	await _wait(0.3)
+	check("difficulty chooser opens", main.get("_sheet") != null)
+	await _snap("difficulty")
+	main.call("_confirm_resign", 1)
+	await _wait(0.3)
+	check("resign confirm opens", main.get("_sheet") != null)
+	await _snap("resign")
+	main.call("_close_sheet")
 
 
 # ---------------------------------------------------------------- 年齢確認・アイテム
@@ -162,6 +180,15 @@ func _age_and_items() -> void:
 	var look: Dictionary = Shop.avatar_look({"hair": "afro", "head": "crown", "face": "nose_glasses", "hand": "harisen", "body": "cape"}, "casual")
 	check("avatar look carries joke items", str(look.get("head", "")) == "crown" and str(look.get("hand", "")) == "harisen")
 	check("155 titles", Titles.all().size() == 155, str(Titles.all().size()))
+	# 要件#91, #92
+	check("stuck button only for stuck customers", not (ShopActions.buttons("arcade", {"machine": "crane", "actions": {"crane_stuck": "neutral"}}, false).map(func(b: Array) -> String: return str(b[0])).has("crane_stuck")))
+	check("stuck button for a stuck customer", ShopActions.buttons("arcade", {"machine": "crane", "actions": {"crane_stuck": "good"}}, false).map(func(b: Array) -> String: return str(b[0])).has("crane_stuck"))
+	check("saying an amount is caught", solo.call("_says_amount", "メーターでは1,000円でした") and solo.call("_says_amount", "あと2000円で取れます"))
+	check("vague wording is fine", not solo.call("_says_amount", "もう少しかもしれません"))
+	check("smell: direct", solo.call("_smell_talk", "お客様、ちょっと臭いです") == "direct")
+	check("smell: hint", solo.call("_smell_talk", "今日は暑いので換気しますね") == "hint")
+	check("reply limit ja 128", GameSettings.reply_max_length() == (256 if GameSettings.language == "en" else 128))
+	check("mental rank 11+ needs more", int(GameSettings.MENTAL_XP[11]) - int(GameSettings.MENTAL_XP[10]) > int(GameSettings.MENTAL_XP[9]) - int(GameSettings.MENTAL_XP[8]))
 
 
 func UI_halfwidth(t: String) -> String:
