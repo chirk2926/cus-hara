@@ -7,7 +7,9 @@ extends RefCounted
 ##   Titles.title_name(t) / Titles.title_desc(t)  今の言語の名前・条件
 ## 条件: titles.json の stat の値が min 以上。stat の特別な名前:
 ##   res:<日本語の呼び名>  そのお客さんを納得させた回数（台本のお客さん。言語に関係なく日本語の呼び名で数える）
-##   all:<店>              その店の台本のお客さん全員を一度ずつ納得させたら 1
+##   exp:<呼び名> / yld:<呼び名>  そのお客さんをブチギレさせた・屈した回数
+##   all:<店> / allx:<店>  その店の台本のお客さん全員を一度ずつ納得させた／ブチギレさせたら 1（<店> が both なら両方の店）
+##   vs_rating / vs_customer_bias / lie_langs_count / payout_set_count / titles_all  そのときの値を計算する
 ##   mental_rank / vs_mental_b / titles_count / langs_count  そのときの値を計算する
 ## EOS が使えるときは、手に入れた称号を EOS の実績にも記録する（実績のIDは称号の id と同じ。開発者ポータルに登録が要る）。
 
@@ -79,26 +81,55 @@ static func value(stat: String) -> int:
 		"langs_count":
 			var langs: Variant = GameSettings.stats.get("langs", [])
 			return (langs as Array).size() if typeof(langs) == TYPE_ARRAY else 0
-	if stat.begins_with("all:"):
-		var stage: String = stat.substr(4)
-		for c in Scenarios.customers(stage, "ja"):
-			if GameSettings.stat("res:" + str((c as Dictionary).get("title", ""))) <= 0:
-				return 0
+		"vs_rating":
+			return int(GameSettings.last_profile.get("rating", 0)) if GameSettings.stat("vs_matches") > 0 else 0
+		"vs_customer_bias":
+			var c: int = GameSettings.stat("vs_customer_rounds")
+			var st: int = GameSettings.stat("vs_staff_rounds")
+			return 1 if c >= 10 and st >= 10 and c >= st * 2 else 0
+		"lie_langs_count":
+			return _list_size("lie_langs")
+		"payout_set_count":
+			return _list_size("payouts")
+		"titles_all":
+			# 自分（ほかを全部集めた）以外の称号を全部持っていたら 1
+			var need: int = 0
+			for t in all():
+				var id: String = str((t as Dictionary).get("id", ""))
+				if str((t as Dictionary).get("stat", "")) != "titles_all" and not GameSettings.unlocked_titles.has(id):
+					need += 1
+			return 1 if need == 0 else 0
+	# all:<店>（全員を納得）・allx:<店>（全員をブチギレ）。<店> が both なら両方の店
+	if stat.begins_with("all:") or stat.begins_with("allx:"):
+		var exploded: bool = stat.begins_with("allx:")
+		var stage: String = stat.substr(5 if exploded else 4)
+		var stages: Array = ["konbini", "arcade"] if stage == "both" else [stage]
+		for sid in stages:
+			for c in Scenarios.customers(sid, "ja"):
+				if GameSettings.stat(("exp:" if exploded else "res:") + str((c as Dictionary).get("title", ""))) <= 0:
+					return 0
 		return 1
 	return GameSettings.stat(stat)
+
+
+static func _list_size(key: String) -> int:
+	var v: Variant = GameSettings.stats.get(key, [])
+	return (v as Array).size() if typeof(v) == TYPE_ARRAY else 0
 
 
 ## 条件を満たした称号を手に入れる。新しく手に入ったものを返す
 static func check() -> Array:
 	var got: Array = []
-	# 称号の数の称号（#100）は、ほかを先に数えてから見る
-	for pass_i in range(2):
+	# 称号の数の称号（#100, #149）と「ほかを全部」（#150）は、ほかを先に数えてから見る
+	for pass_i in range(3):
 		for t in all():
 			var d: Dictionary = t
 			var id: String = str(d.get("id", ""))
 			if id == "" or GameSettings.unlocked_titles.has(id):
 				continue
-			if (str(d.get("stat", "")) == "titles_count") != (pass_i == 1):
+			var st: String = str(d.get("stat", ""))
+			var order: int = 2 if st == "titles_all" else (1 if st == "titles_count" else 0)
+			if order != pass_i:
 				continue
 			if value(str(d.get("stat", ""))) >= int(d.get("min", 1)):
 				GameSettings.unlocked_titles.append(id)

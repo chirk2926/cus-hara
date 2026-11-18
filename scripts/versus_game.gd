@@ -461,6 +461,8 @@ func _on_round_end(msg: Dictionary) -> void:
 	# 称号の記録（要件#79）: 役ごとのラウンドの勝ち
 	if won:
 		GameSettings.stat_add("vs_staff_rounds" if _role == "staff" else "vs_customer_rounds")
+		if _role != "staff" and bool(msg.get("timeout", false)):
+			GameSettings.stat_add("vs_silent_wins")
 	var what: String = tr("納得して帰った")
 	var mood: String = "happy"
 	if outcome == "explode":

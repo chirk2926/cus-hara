@@ -100,7 +100,7 @@ EOS のコードはできているが、**次の準備が無いと動かない**
 | 4 | 暗号キー（64文字の16進数）を1つ決める。例: PowerShell で `-join ((1..32) \| % { '{0:x2}' -f (Get-Random -Max 256) })` | 自分のPC | その文字列 |
 | 5 | 上の値を `config/eos.local.cfg`（`config/eos.cfg` をコピーして作る。`.gitignore` 済み）に書く（または引き継ぐ人に安全な方法で渡す。**チャットや公開リポジトリに貼らない**） | このリポジトリ | ― |
 | 6 | Godot 用 EOS プラグイン（EOSG, 3ddelano/epic-online-services-godot）の Releases から zip を取り、`addons/epic-online-services-godot/` を `addons/` に置いて、Godot の「プロジェクト設定 → プラグイン」で有効にする。プラグインには EOS SDK の dll も入っている（Epic のライセンスに同意が要る） | GitHub・Godot | プラグインの版 |
-| 7 | 「Achievements（実績）」に、称号と同じ ID（`t001`〜`t100`。名前は data/titles.json）で実績を登録する（称号を EOS の実績にも記録するため。要件#79） | 開発者ポータル | ― |
+| 7 | 「Achievements（実績）」に、称号と同じ ID（`t001`〜`t150`。名前は data/titles.json）で実績を登録する（称号を EOS の実績にも記録するため。要件#79） | 開発者ポータル | ― |
 | 8 | 2台のPC（または2つの Epic アカウント）で、ランクマッチとフレンド招待を試す時間をとる | ― | 結果（動いた／エラーの画面） |
 
 補足:

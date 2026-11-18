@@ -685,7 +685,7 @@ func _run_toasts() -> void:
 		_ui.add_child(card)
 		var col: VBoxContainer = UI.vbox(2)
 		card.add_child(col)
-		col.add_child(UI.text(tr("称号を手に入れた！"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+		col.add_child(UI.text(tr("称号を手に入れた！") + "  " + "★".repeat(clampi(int(t.get("rarity", 1)), 1, 5)), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
 		col.add_child(UI.text(tr("「%s」") % Titles.title_name(t), UI.S_LEAD, UI.INK, UI.F_BOLD))
 		col.add_child(UI.para(Titles.title_desc(t), UI.S_SMALL, UI.INK_SOFT))
 		sfx.play("win", 1.4)
@@ -719,7 +719,10 @@ func _show_titles() -> void:
 		var d: Dictionary = t
 		var id: String = str(d.get("id", ""))
 		var have: bool = GameSettings.unlocked_titles.has(id)
-		var stars: String = tr("［ネタ］") if int(d.get("rarity", 1)) == 0 else "★".repeat(int(d.get("rarity", 1)))
+		# レア度は★1〜5（要件#81）。ネタの称号には「ネタ」の印も
+		var stars: String = "★".repeat(clampi(int(d.get("rarity", 1)), 1, 5))
+		if bool(d.get("joke", false)):
+			stars += " " + tr("［ネタ］")
 		var b: Button = UI.link("", UI.S_SMALL, UI.INK if have else UI.INK_SOFT)
 		b.text = "%s %s\n%s" % [stars, Titles.title_name(d) if have else tr("？？？"), Titles.title_desc(d)]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1049,6 +1052,8 @@ func _sheet_title(col: VBoxContainer, t: String) -> void:
 func _show_pause() -> void:
 	if not _in_game or _sheet != null:
 		return
+	if mode == "solo":
+		GameSettings.stat_add("pauses")
 	var col: VBoxContainer = _open_sheet(420, "center")
 	_sheet_title(col, tr("休憩中"))
 	var in_versus: bool = mode == "versus"

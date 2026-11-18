@@ -274,7 +274,7 @@ func _refresh_ui() -> void:
 
 func _result(kind: String) -> Dictionary:
 	return {"result": kind, "cheat": _is_cheat(), "moved": _moved, "mode": "prob" if _prob else "power",
-		"payout": _payout, "tested": _tested, "tests": TEST_PLAYS - _tests_left}
+		"payout": _payout, "tested": _tested, "tests": TEST_PLAYS - _tests_left, "power": _power}
 
 
 func _is_cheat() -> bool:

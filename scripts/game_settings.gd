@@ -319,10 +319,15 @@ func stat_max(key: String, v: int) -> void:
 
 ## 遊んだ言語（「三か国語の店員」用）
 func stat_lang(lang: String) -> void:
-	var langs: Array = stats.get("langs", []) if typeof(stats.get("langs", null)) == TYPE_ARRAY else []
-	if not langs.has(lang):
-		langs.append(lang)
-	stats["langs"] = langs
+	stat_list_add("langs", lang)
+
+
+## 記録の「集めたものの一覧」に足す（同じものは1回だけ）
+func stat_list_add(key: String, v: String) -> void:
+	var list: Array = stats.get(key, []) if typeof(stats.get(key, null)) == TYPE_ARRAY else []
+	if not list.has(v):
+		list.append(v)
+	stats[key] = list
 
 
 ## メンタルランク A（通常モード）。1〜20

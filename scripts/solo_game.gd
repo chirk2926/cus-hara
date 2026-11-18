@@ -104,6 +104,9 @@ var _t_peak: float = 0.0         # このお客さんの怒りの最高
 var _t_firm: bool = false        # このお客さんに、はっきり断る言葉を使った
 var _t_last_action: String = ""
 var _t_move_mode: bool = false   # 最後の台の調整が「景品を取りやすい位置へ」だった
+var _t_data_views: int = 0       # このお客さんで筐体のデータを見た回数
+var _t_manager_here: bool = false  # このお客さんの間に店長が来た
+var _t_crane_lost: bool = false  # 台の調整で取らせられなかった（その後まだ取れていない）
 var _wild: bool = false          # このお客さんは要注意人物
 var _wild_used: bool = false     # このシフトで要注意人物が来たか
 var _manager_used: bool = false  # このシフトで店長が来たか
@@ -152,7 +155,8 @@ func start(stage_id: String, stage_name: String) -> void:
 	_crane_wins = 0
 	_payout = GameSettings.effective_payout()
 	summary = {}
-	_t_shift = {"impolite": false, "discount": 0, "age_total": 0, "age_ok": 0, "manager": false, "mental_min": MENTAL_MAX}
+	_t_shift = {"impolite": false, "discount": 0, "age_total": 0, "age_ok": 0, "manager": false, "mental_min": MENTAL_MAX,
+		"freebies": 0, "wild": false, "spend": false, "mental_lost": false, "calm_n": 0, "oneturn_n": 0, "age_refused": 0}
 	_mental = MENTAL_MAX
 	hud.set_mental(_mental)
 	hud.set_voice_mode(false)
@@ -359,6 +363,9 @@ func _on_action(id: String) -> void:
 	if id == ShopActions.MACHINE_DATA:
 		if _active and not paused and main.mode == "solo":
 			GameSettings.stat_add("machine_data_views")
+			_t_data_views += 1
+			if _t_data_views == 3:
+				GameSettings.stat_add("data_views_one_customer")
 			main.show_machine_data(_cust)
 			if not _data_seen:
 				_data_seen = true
@@ -370,6 +377,8 @@ func _on_action(id: String) -> void:
 
 
 func _change_mental(delta: float) -> void:
+	if delta < 0.0 and not _t_shift.is_empty():
+		_t_shift["mental_lost"] = true
 	_mental = clampf(_mental + delta, 0.0, MENTAL_MAX)
 	hud.set_mental(_mental)
 
@@ -451,6 +460,7 @@ func _maybe_manager_visit(my_run: int) -> void:
 	_manager_used = true
 	GameSettings.stat_add("manager_visits")
 	_t_shift["manager"] = true
+	_t_manager_here = true
 	hud.set_input_enabled(false, "")
 	hud.set_status(tr("店長が来た！"))
 	hud.show_banner(tr("店長が来た！"), UI.POP)
@@ -598,6 +608,13 @@ func _play_customer(my_run: int) -> void:
 	_t_firm = false
 	_t_last_action = ""
 	_t_move_mode = false
+	_t_data_views = 0
+	_t_manager_here = false
+	_t_crane_lost = false
+	if _wild:
+		_t_shift["wild"] = true
+	if typeof(_cust.get("spend", null)) == TYPE_DICTIONARY:
+		_t_shift["spend"] = true
 	# 年齢確認のお客さんはもともとゲームの中だけで判定するので数えない
 	if _source == "offline" and not _is_age_check():
 		_offline_used = true
@@ -705,9 +722,14 @@ func _play_customer(my_run: int) -> void:
 				_t_move_mode = str(cr.get("mode_kind", "")) == "move" or id == ShopActions.CRANE_MOVE
 				id = "crane_won" if str(cr["result"]) == "won" else "crane_lost"
 				GameSettings.stat_add("crane_tests", int(cr.get("tests", 0)))
+				if int(cr.get("power", 0)) >= 10 and str(cr.get("mode", "")) == "power":
+					GameSettings.stat_add("crane_max_power")
+				_t_crane_lost = id == "crane_lost"
 				if id == "crane_won":
 					_crane_wins += 1
 					GameSettings.stat_add("crane_won")
+					if GameSettings.crane_mode == "prob" and _payout <= 10:
+						GameSettings.stat_add("crane_won_p10")
 					if _t_move_mode:
 						GameSettings.stat_add("crane_move_won")
 					var sp: Variant = _cust.get("spend", null)
@@ -733,6 +755,10 @@ func _play_customer(my_run: int) -> void:
 				GameSettings.stat_add("dogeza")
 			if id == "discount":
 				_t_shift["discount"] = int(_t_shift.get("discount", 0)) + 1
+			if id in ["discount", "credit", "medal_return"]:
+				_t_shift["freebies"] = int(_t_shift.get("freebies", 0)) + 1
+			if id == "dogeza" and ShopActions.effect_kind(_cust, id) == "good":
+				GameSettings.stat_add("dogeza_good")
 			if id == "dogeza":
 				_change_mental(-20.0)
 			if crane_cheat:
@@ -746,7 +772,7 @@ func _play_customer(my_run: int) -> void:
 			res = await _judge(reply)
 			if my_run != _run:
 				return
-			_track_reply(reply)
+			_track_reply(reply, int(res.get("anger_delta", 0)))
 			_used.append(reply)
 
 		var a_delta: int = int(res.get("anger_delta", 0))
@@ -962,8 +988,18 @@ func _smoke_autoplay(my_run: int) -> void:
 # ---------------------------------------------------------------- 称号の記録（要件#79）
 
 ## 返事ひとつごとの記録（謝罪・共感・質問・メモ・くり返し・言い訳・暴言・関係ない話・タメ口）
-func _track_reply(reply: String) -> void:
+func _track_reply(reply: String, anger_delta: int = 0) -> void:
 	var f: Dictionary = Judge.flags(_cust, reply, _used)
+	if reply.strip_edges().length() <= 3:
+		GameSettings.stat_add("short_replies")
+	var any: bool = false
+	for k in ["apology", "empathy", "question", "memo", "firm", "repeat", "excuse", "rude", "offtopic"]:
+		any = any or bool(f.get(k, false))
+	if not any and anger_delta > 0:
+		GameSettings.stat_add("miss_replies")
+	# 謝るだけ（共感・質問・メモの中身・はっきり断るが無い）で、怒りが下がらなかった
+	if bool(f.get("apology", false)) and anger_delta >= 0 and not (bool(f.get("empathy", false)) or bool(f.get("question", false)) or bool(f.get("memo", false)) or bool(f.get("firm", false))):
+		GameSettings.stat_add("only_sorry_replies")
 	for k in [["apology", "apology_replies"], ["empathy", "empathy_replies"], ["question", "question_replies"], ["memo", "memo_replies"],
 			["repeat", "repeat_replies"], ["excuse", "excuse_replies"], ["rude", "rude_replies"], ["offtopic", "offtopic_replies"]]:
 		if bool(f.get(k[0], false)):
@@ -1002,10 +1038,23 @@ func _track_customer(outcome: String) -> void:
 				GameSettings.stat_add("rare_resolved")
 			if bool(_cust.get("_lie", false)) and _data_seen:
 				GameSettings.stat_add("lie_caught")
+				GameSettings.stat_list_add("lie_langs", GameSettings.language)
+			if _clock() >= 23 * 60:
+				GameSettings.stat_add("late_resolved")
 		"explode":
 			GameSettings.stat_add("explode")
+			var jx: String = Titles.ja_title(_stage_id, _cust)
+			if jx != "":
+				GameSettings.stat_add("exp:" + jx)
+			if _t_crane_lost:
+				GameSettings.stat_add("crane_lost_explode")
+			if _t_manager_here:
+				GameSettings.stat_add("manager_then_explode")
 		"yield":
 			GameSettings.stat_add("yield")
+			var jy: String = Titles.ja_title(_stage_id, _cust)
+			if jy != "":
+				GameSettings.stat_add("yld:" + jy)
 		"breakdown":
 			GameSettings.stat_add("breakdown")
 		"age_ok", "age_refused":
@@ -1022,6 +1071,27 @@ func _track_customer(outcome: String) -> void:
 				GameSettings.stat_add("age_borrowed_caught")
 		"age_wrong":
 			GameSettings.stat_add("age_wrong")
+	# 年齢確認の連続正解（間違い・ゆるい確認で途切れる）
+	if outcome in ["age_ok", "age_refused"]:
+		GameSettings.stat_add("age_streak")
+		GameSettings.stat_max("age_streak_max", GameSettings.stat("age_streak"))
+	elif outcome in ["age_wrong", "age_lax"]:
+		GameSettings.stats["age_streak"] = 0
+	if outcome == "age_refused":
+		_t_shift["age_refused"] = int(_t_shift.get("age_refused", 0)) + 1
+	# 1シフトの全員が「怒り20以下」「1回目の返事」で納得（パーフェクトのときに見る）
+	if outcome in ["resolved", "age_ok", "age_refused"]:
+		if _t_peak <= 20.0:
+			_t_shift["calm_n"] = int(_t_shift.get("calm_n", 0)) + 1
+		if _turns <= 1:
+			_t_shift["oneturn_n"] = int(_t_shift.get("oneturn_n", 0)) + 1
+	# 22時以降のお客さんの連続（屈服・ブチギレ・早退・帰ってしまう で途切れる）
+	if _clock() >= 22 * 60:
+		if outcome in ["resolved", "age_ok", "age_refused"]:
+			GameSettings.stat_add("night_streak")
+			GameSettings.stat_max("night_streak_max", GameSettings.stat("night_streak"))
+		else:
+			GameSettings.stats["night_streak"] = 0
 	if _is_age_check():
 		_t_shift["age_total"] = int(_t_shift.get("age_total", 0)) + 1
 
@@ -1054,6 +1124,21 @@ func _track_shift(review: float) -> void:
 				GameSettings.stat_add("payout10_shift")
 		if int(_t_shift.get("age_total", 0)) >= 2 and int(_t_shift.get("age_ok", 0)) >= int(_t_shift.get("age_total", 0)):
 			GameSettings.stat_add("age_double_clean")
+			if int(_t_shift.get("age_refused", 0)) >= 2:
+				GameSettings.stat_add("age_double_refused")
+		if bool(_t_shift.get("wild", false)) and bool(_t_shift.get("spend", false)):
+			GameSettings.stat_add("wild_and_spend_shift")
+		if not bool(_t_shift.get("mental_lost", false)):
+			GameSettings.stat_add("no_mental_loss_shift")
+		if GameSettings.mental_rank() >= 20:
+			GameSettings.stat_add("shifts_after_r20")
+		if int(count.get("yield", 0)) == 0:
+			GameSettings.stat_add("no_yield_streak")
+			GameSettings.stat_max("no_yield_streak_max", GameSettings.stat("no_yield_streak"))
+		else:
+			GameSettings.stats["no_yield_streak"] = 0
+		if _stage_id == "arcade" and GameSettings.crane_mode == "prob" and _payout % 10 == 0:
+			GameSettings.stat_list_add("payouts", str(_payout))
 	var perfect: bool = completed and resolved >= CUSTOMERS_PER_SHIFT
 	if perfect:
 		GameSettings.stat_add("perfect_shift")
@@ -1061,12 +1146,20 @@ func _track_shift(review: float) -> void:
 		GameSettings.stat_max("perfect_streak_max", GameSettings.stat("perfect_streak"))
 		if not bool(_t_shift.get("manager", false)):
 			GameSettings.stat_add("perfect_no_manager")
+		if int(_t_shift.get("calm_n", 0)) >= CUSTOMERS_PER_SHIFT:
+			GameSettings.stat_add("calm_perfect_shift")
+		if int(_t_shift.get("oneturn_n", 0)) >= CUSTOMERS_PER_SHIFT:
+			GameSettings.stat_add("oneturn_perfect_shift")
+		if int(_t_shift.get("age_total", 0)) >= 2:
+			GameSettings.stat_add("perfect_night")
 	else:
 		GameSettings.stats["perfect_streak"] = 0
 	if int(count.get("explode", 0)) >= CUSTOMERS_PER_SHIFT:
 		GameSettings.stat_add("all_explode_shift")
 	if int(_t_shift.get("discount", 0)) >= 3:
 		GameSettings.stat_add("discount3_shift")
+	if int(_t_shift.get("freebies", 0)) >= 4:
+		GameSettings.stat_add("freebies4_shift")
 	if review <= 1.0:
 		GameSettings.stat_add("review1_shift")
 	if review >= 5.0:

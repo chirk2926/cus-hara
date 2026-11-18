@@ -222,6 +222,7 @@ export class Match {
     await sleep(this.lineTime(openingText));
     if (this.finished) return null;
 
+    let timedOut = false; // 店員が時間切れで負けた（称号「無言の圧」用。要件#81）
     while (outcome === "") {
       // ---- 店員の番: 考えている間、怒りが上がる。100で時間切れ
       const staffSeconds = (100 - this.anger) / this.rate + voiceExtra;
@@ -233,6 +234,7 @@ export class Match {
       if (input.via === "timeout" || this.anger >= 100) {
         this.anger = 100;
         outcome = "explode";
+        timedOut = true;
         this.broadcastJudged(0, 0, pick(this.lang, { ja: "時間切れ！お客さんがキレた。", en: "Time's up! The customer snapped.", zh: "时间到！顾客发飙了。" }), "staff");
         break;
       }
@@ -316,6 +318,7 @@ export class Match {
         winner: this.who(winner, v),
         points,
         staff: this.who(staff, v),
+        timeout: timedOut,
         totals: {
           you: this.totals[v] + (winner === v ? points : 0),
           opponent: this.totals[1 - v] + (winner === 1 - v ? points : 0),
