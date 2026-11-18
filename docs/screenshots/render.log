@@ -38,6 +38,10 @@ SHOT en_4x3_07_howto
 SHOT en_4x3_08_lobby
 SHOT en_4x3_09_versus_result
 SHOTS OK
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)
 Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
 Vulkan 1.4.335 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
 libpulse.so.0: cannot open shared object file: No such file or directory
@@ -78,6 +82,10 @@ SHOT en_07_howto
 SHOT en_08_lobby
 SHOT en_09_versus_result
 SHOTS OK
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)
 Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
 Vulkan 1.4.335 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
 libpulse.so.0: cannot open shared object file: No such file or directory
@@ -161,6 +169,46 @@ SHOT ja_wide_06_settings
 SHOT ja_wide_07_howto
 SHOT ja_wide_08_lobby
 SHOT ja_wide_09_versus_result
+SHOTS OK
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+Vulkan 1.4.335 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+libpulse.so.0: cannot open shared object file: No such file or directory
+libpulse.so.0: cannot open shared object file: No such file or directory
+ALSA lib confmisc.c:855:(parse_card) [error.core] cannot find card '0'
+ALSA lib conf.c:5211:(_snd_config_evaluate) [error.core] function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) [error.core] error evaluating strings
+ALSA lib conf.c:5211:(_snd_config_evaluate) [error.core] function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) [error.core] error evaluating name
+ALSA lib conf.c:5211:(_snd_config_evaluate) [error.core] function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5734:(snd_config_expand) [error.core] Evaluate error: No such file or directory
+ALSA lib pcm.c:2722:(snd_pcm_open_noupdate) [error.pcm] Unknown PCM default
+ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
+   at: init_output_device (drivers/alsa/audio_driver_alsa.cpp:90)
+WARNING: All audio drivers failed, falling back to the dummy driver.
+     at: initialize (servers/audio_server.cpp:244)
+
+SHOT zh_01_title
+SHOT zh_02_tutorial
+SHOT zh_konbini_1_play
+SHOT zh_konbini_2_angry
+SHOT zh_konbini_3_voice
+SHOT zh_konbini_3c_id_card
+SHOT zh_konbini_3b_manager
+SHOT zh_konbini_4_wide
+SHOT zh_arcade_1_play
+SHOT zh_arcade_2_angry
+SHOT zh_arcade_3_voice
+SHOT zh_arcade_3b_manager
+SHOT zh_arcade_4_wide
+SHOT zh_arcade_4b_machine_data
+SHOT zh_arcade_4c_id_card
+SHOT zh_arcade_5_crane_adjust
+SHOT zh_arcade_6_crane_play
+SHOT zh_05_result
+SHOT zh_06_settings
+SHOT zh_07_howto
+SHOT zh_08_lobby
+SHOT zh_09_versus_result
 SHOTS OK
 WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
      at: cleanup (core/object/object.cpp:2514)
