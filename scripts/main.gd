@@ -25,6 +25,7 @@ const CraneScript = preload("res://scripts/crane_minigame.gd")
 const TutorialScript = preload("res://scripts/tutorial.gd")
 const Titles = preload("res://scripts/titles.gd")
 const Shop = preload("res://scripts/shop.gd")
+const DebugPanelScript = preload("res://scripts/debug_panel.gd")
 const ShopActionsScript = preload("res://scripts/shop_actions.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
@@ -70,6 +71,8 @@ var _server_label: Label = null
 var _player_card: Control = null
 var _version_label: Label = null
 var _current_variant: String = "day"
+## テスト版のデバッグパネルで切り替える1人用のイベント（要件#85）: wild / manager / age / police / anger_stop
+var debug: Dictionary = {}
 var _lobby_status: Label = null
 var _lobby_code: Label = null
 var _current_stage: String = ""
@@ -138,6 +141,11 @@ func _ready() -> void:
 
 	_build_title()
 	_show_title()
+	# テスト版だけ: デバッグパネル（F12 か右上の「TEST」）
+	if GameSettings.is_test:
+		var dp: CanvasLayer = DebugPanelScript.new()
+		add_child(dp)
+		dp.call("setup", self)
 
 	if args.has("--smoke"):
 		_run_smoke()
@@ -840,6 +848,41 @@ func _offer_tutorial() -> void:
 		GameSettings.save_settings()
 		_close_sheet())
 	row.add_child(later)
+
+
+func debug_flag(key: String) -> bool:
+	return bool(debug.get(key, false))
+
+
+## テスト版: 客役の対戦画面を見る（相手の店員役のキャラクターをカウンターの外から）
+func debug_preview_customer_view(op_avatar: Dictionary) -> void:
+	_close_sheet()
+	_title.visible = false
+	_hud.visible = false
+	_in_game = true
+	mode = ""
+	set_stage("arcade")
+	free_staff()
+	spawn_staff(Shop.avatar_look(op_avatar, "uniform"))
+	set_customer_view(true)
+	await spawn_customer(Shop.avatar_look(Shop.avatar_dict(), "casual"))
+
+
+## テスト版: タイムカード（結果）の見本
+func debug_preview_result() -> void:
+	_close_sheet()
+	_title.visible = false
+	_hud.visible = true
+	_in_game = true
+	var cs: Array = ScenariosScript.customers("arcade")
+	_solo.summary = {"sales": 21400, "review": 3.6, "sales_bonus": 70, "review_bonus": 240, "payout": 25, "clock_in": 1020, "clock_out": 1380,
+		"pay": {"hp": 0, "kas": 107}, "reviews": [{"stars": 5, "text": tr("店員さんが景品を取りやすくしてくれた！神対応！")}, {"stars": 2, "text": tr("クレーン、全然取れない。お金が溶けただけ。")}]}
+	_on_solo_finished("arcade", [
+		{"title": str(cs[0]["title"]).replace("{spent}", GameSettings.money(3500)), "outcome": "resolved", "points": 1520, "turns": 3, "clock": 1050},
+		{"title": cs[1]["title"], "outcome": "explode", "points": -300, "turns": 2, "clock": 1155},
+		{"title": cs[5]["title"], "outcome": "resolved", "points": 1430, "turns": 4, "clock": 1260},
+		{"title": cs[4]["title"], "outcome": "age_refused", "points": 600, "turns": 1, "clock": 1350},
+	], 3250)
 
 
 func _quit_to_title() -> void:

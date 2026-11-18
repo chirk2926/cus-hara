@@ -85,7 +85,7 @@ jobs:
       - name: Solo smoke test (offline, Simplified Chinese)
         run: |
           set -o pipefail
-          timeout 300 godot --headless -- --smoke --source=offline --lang=zh --profile=solo_zh 2>&1 | tee smoke_zh.log
+          timeout 300 godot --headless -- --smoke --source=offline --lang=zh --profile=solo_zh --test 2>&1 | tee smoke_zh.log
           grep -q "SMOKE OK" smoke_zh.log
 
       - name: Solo smoke test (via the server, English)
@@ -133,6 +133,23 @@ jobs:
         with:
           name: CusHara-windows
           path: build/windows/
+
+      # テスト版（要件#85）: デバッグパネル付きの exe と、手元で動かすゲームサーバー一式
+      - name: Export Windows test build (debug panel + local server)
+        run: |
+          mkdir -p build/windows_test
+          godot --headless --export-release "Windows Desktop (Test)" build/windows_test/CusHara_Test.exe 2>&1 | tee export_test.log
+          test -s build/windows_test/CusHara_Test.exe
+          mkdir -p build/windows_test/server build/windows_test/data
+          cp -r server/src server/package.json server/package-lock.json build/windows_test/server/
+          (cd build/windows_test/server && npm ci --omit=dev --ignore-scripts --no-audit --no-fund)
+          cp data/*.json build/windows_test/data/
+          cp tools/test_bundle/* build/windows_test/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CusHara-windows-TEST
+          path: build/windows_test/
 
       # コミットメッセージに [shots] を含むときだけ、実際に描画した画面を docs/screenshots/ に保存してコミットする
       - name: Render screenshots

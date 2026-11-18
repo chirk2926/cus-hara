@@ -342,7 +342,7 @@ func _add_sales(outcome: String) -> void:
 
 func _process(delta: float) -> void:
 	# 台の前に筐体のデータを見に行っている間は、怒りは止まる（要件#66）
-	if not _active or not _player_turn or paused or main.machine_view_open:
+	if not _active or not _player_turn or paused or main.machine_view_open or main.debug_flag("anger_stop"):
 		return
 	_anger = minf(100.0, _anger + _rate * delta)
 	_refresh(true)
@@ -456,9 +456,9 @@ func _maybe_manager_visit(my_run: int) -> void:
 	if _manager_used or _turns < 1:
 		return
 	var tense: bool = _anger >= 60.0 or _turns >= 3
-	if not tense and not main.smoke:
+	if not tense and not main.smoke and not main.debug_flag("manager"):
 		return
-	if not (randf() < MANAGER_CHANCE or main.smoke):
+	if not (randf() < MANAGER_CHANCE or main.smoke or main.debug_flag("manager")):
 		return
 	_manager_used = true
 	GameSettings.stat_add("manager_visits")
@@ -589,14 +589,14 @@ func _play_customer(my_run: int) -> void:
 
 	# 要注意人物のイベント（要件#52）。自動テストでは2人目で必ず起こす
 	_wild = false
-	if _index >= 1 and not _wild_used and (randf() < WILD_CHANCE or (main.smoke and _index == 1)):
+	if main.debug_flag("wild") or (_index >= 1 and not _wild_used and (randf() < WILD_CHANCE or (main.smoke and _index == 1))):
 		_wild = true
 		_wild_used = true
 	# 年齢確認のお客さん（要件#61）: 18:00 以降のゲームセンター。自動テストでは4人目で必ず
 	var data: Dictionary = {}
 	var age_ok_here: bool = (_stage_id == "arcade" and AgeCheck.limit_for(_clock()) > 0) or _stage_id == "konbini"
 	var age_chance: float = AGE_CHANCE_KONBINI if _stage_id == "konbini" else AGE_CHANCE
-	if age_ok_here and not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)):
+	if age_ok_here and (main.debug_flag("age") or (not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)))):
 		_age_count += 1
 		_source = "offline"
 		_session_id = ""
@@ -873,7 +873,7 @@ func _play_customer(my_run: int) -> void:
 	_track_customer(outcome)
 	_results.append({"title": str(_cust.get("title", "")), "outcome": outcome, "points": points, "turns": _turns, "clock": _clock()})
 	_add_sales(outcome)
-	if outcome == "age_lax" and (randf() < POLICE_CHANCE) and not main.smoke:
+	if outcome == "age_lax" and (randf() < POLICE_CHANCE or main.debug_flag("police")) and not main.smoke:
 		await _police(my_run)
 		return
 	hud.set_actions([])

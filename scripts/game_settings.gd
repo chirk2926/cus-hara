@@ -98,13 +98,20 @@ var high_scores: Dictionary = {}
 var last_profile: Dictionary = {}
 
 
+## テスト版（要件#85）: テスト用の書き出し（機能タグ testbuild）か、起動引数 `-- --test`。デバッグパネルが出て、セーブは別のファイル
+var is_test: bool = false
+
+
 func _ready() -> void:
+	is_test = OS.has_feature("testbuild") or OS.get_cmdline_user_args().has("--test")
+	if is_test:
+		_profile = "test"
 	load_settings()
 	# 起動引数 `-- --server=http://...` で接続先を一時的に変えられる（テスト用。保存はしない）
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--profile="):
 			# 同じPCで2つ起動して対戦を試すとき、ログイン情報を分ける
-			_profile = a.substr(10)
+			_profile = a.substr(10) if not is_test else "test_" + a.substr(10)
 			load_settings()
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--server="):
