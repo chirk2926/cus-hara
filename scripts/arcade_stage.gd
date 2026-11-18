@@ -439,9 +439,12 @@ func _fill_prizes(root: Node3D, theme: int, detailed: bool, big: float) -> Array
 	for i in range(count):
 		var px: float = _rng.randf_range(-0.4, 0.4)
 		var pz: float = _rng.randf_range(-0.32, 0.3)
-		# 取り出し口の穴の上には置かない
-		if px < -0.14 and pz > 0.05:
-			px += 0.45
+		# 取り出し口のまわりは景品1個分あけておく（要件#90）
+		if px < 0.02 and pz > -0.1:
+			if _rng.randf() < 0.5:
+				px = _rng.randf_range(0.06, 0.4)
+			else:
+				pz = _rng.randf_range(-0.32, -0.13)
 		var layer: float = 0.83 + (0.11 if i >= count - 3 else 0.0)
 		var p: Vector3 = Vector3(px, layer, pz)
 		var c: Color = PLUSH_COLORS[_rng.randi() % PLUSH_COLORS.size()]

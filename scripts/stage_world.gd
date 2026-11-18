@@ -54,8 +54,10 @@ func build(stage_id: String, variant: String = "day") -> void:
 	else:
 		_stage_id = "konbini"
 		_build_konbini()
-	if variant == "night":
+	if variant == "night" or variant == "hard":
 		_apply_night()
+	if variant == "hard":
+		_apply_hard()
 	if _stage_id == "konbini":
 		_apply_lighting()
 	_built = true
@@ -88,6 +90,25 @@ func _apply_night() -> void:
 		if is_instance_valid(_lights[i]):
 			_light_energy[i] = _lights[i].light_energy
 			_light_colors[i] = _lights[i].light_color
+
+
+## ハードコアの画面（要件#90）: 閉店後の店を赤い照明で
+func _apply_hard() -> void:
+	var red: OmniLight3D = OmniLight3D.new()
+	red.light_color = Color(1.0, 0.12, 0.08)
+	red.light_energy = 2.2
+	red.omni_range = 9.0
+	red.position = Vector3(0.0, 2.6, -1.5)
+	add_child(red)
+	var stack: Array = [self]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		if n is WorldEnvironment and (n as WorldEnvironment).environment != null:
+			var env: Environment = (n as WorldEnvironment).environment
+			env.ambient_light_color = Color(0.6, 0.1, 0.08)
+			env.background_color = Color(0.06, 0.0, 0.0)
 
 
 func _find_env_owner() -> Node:

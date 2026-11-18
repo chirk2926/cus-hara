@@ -216,6 +216,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _sheet_is_lobby:
 				_versus.cancel()
 			_close_sheet()
+			# ハードコアの画面などタイトルを隠していた画面を閉じたら、タイトルに戻す
+			if not _in_game and not _title.visible:
+				_show_title()
 		elif _in_game:
 			_show_pause()
 
@@ -1077,10 +1080,12 @@ func _refresh_title() -> void:
 	if _hard_toggle != null:
 		var unlocked: bool = GameSettings.mental_rank() >= SoloScript.HARD_UNLOCK_RANK or GameSettings.is_test
 		_hard_toggle.disabled = not unlocked
-		_hard_toggle.text = tr("ハードコア") if unlocked else tr("ハードコア（メンタル %d で解放）") % SoloScript.HARD_UNLOCK_RANK
+		_hard_toggle.text = tr("ハードコア") + "  →"
 		if not unlocked:
-			_hard_toggle.button_pressed = false
-			_hard_on = false
+			_hard_toggle.icon = _lock_icon()
+			_hard_toggle.text = tr("ハードコア（メンタル %d で解放）") % SoloScript.HARD_UNLOCK_RANK
+		else:
+			_hard_toggle.icon = null
 	if _server_info.has("error"):
 		_server_label.text = tr("サーバーにつながりません（1人用は台本で遊べます）")
 		_server_label.add_theme_color_override("font_color", UI.SHU)
@@ -1142,12 +1147,15 @@ func _build_title() -> void:
 	b.add_child(pick_row)
 	pick_row.add_child(UI.text(tr("勤務先を選んでください"), UI.S_SMALL, UI.INK_SOFT))
 	pick_row.add_child(UI.spacer())
-	# ハードコア（要件#86）: メンタルランク 10 で解放
+	# ハードコア（要件#86, #90）: メンタルランク 10 までは鍵でふさぎ、解放後は専用の画面へ
 	_hard_toggle = UI.tag(tr("ハードコア"), UI.S_SMALL)
-	_hard_toggle.toggle_mode = true
-	_hard_toggle.toggled.connect(func(on: bool) -> void:
-		_hard_on = on
-		sfx.play("click"))
+	_hard_toggle.add_theme_stylebox_override("normal", UI.paper_style(Color("#2a1215"), 8, 2, 3))
+	_hard_toggle.add_theme_stylebox_override("hover", UI.paper_style(Color("#4a1a1e"), 8, 2, 3))
+	_hard_toggle.add_theme_stylebox_override("disabled", UI.paper_style(Color("#55525a"), 8, 2, 1))
+	_hard_toggle.add_theme_color_override("font_color", Color("#ff5a4a"))
+	_hard_toggle.add_theme_color_override("font_hover_color", Color("#ff8a7a"))
+	_hard_toggle.add_theme_color_override("font_disabled_color", Color("#d0ccd6"))
+	_hard_toggle.pressed.connect(_show_hardcore)
 	pick_row.add_child(_hard_toggle)
 	b.add_child(UI.rule(UI.INK, 2))
 	for sid in STAGE_ORDER:
@@ -1160,7 +1168,7 @@ func _build_title() -> void:
 		b.add_child(UI.rule(UI.PAPER_DIM, 1))
 	b.add_child(UI.gap(8))
 	var versus: Button = UI.primary(tr("対戦する（客 vs 店員）"), UI.S_LEAD)
-	versus.pressed.connect(_show_versus_lobby)
+	versus.pressed.connect(_ask_versus_format)
 	b.add_child(versus)
 	var links: HBoxContainer = UI.hbox(24)
 	b.add_child(links)
@@ -1411,8 +1419,8 @@ func _show_shop() -> void:
 	col.add_child(head)
 	head.add_child(UI.text(tr("ショップ"), UI.S_HEAD, UI.INK, UI.F_SIGN))
 	head.add_child(UI.spacer())
-	head.add_child(_money_chip("HP", GameSettings.hp_points, tr("オフラインの給与"), true))
-	head.add_child(_money_chip("KAS", GameSettings.kas_points, tr("オンラインの給与"), false))
+	head.add_child(_money_chip("HP", GameSettings.hp_points, tr("ハラスメントポイント"), true))
+	head.add_child(_money_chip("KAS", GameSettings.kas_points, tr("カスタマーポイント"), false))
 	var body: HBoxContainer = UI.hbox(16)
 	col.add_child(body)
 	# 左: 売り場の案内（大きなボタン）
@@ -1457,22 +1465,42 @@ func _show_shop() -> void:
 			_shop_items(area, _shop_tab)
 
 
-## 手持ちのお金（HP はコイン、KAS はお札の形）
+## 手持ちのお金（HP はコイン、KAS はお札の形。要件#90: 「<アイコン>16,300 HP（ハラスメントポイント）」の形）
+var _wallet_labels: Dictionary = {}
+
+
 func _money_chip(label: String, value: int, note: String, coin: bool) -> Control:
+	var col: VBoxContainer = UI.vbox(0)
 	var row: HBoxContainer = UI.hbox(6)
+	col.add_child(row)
 	var icon: PanelContainer = PanelContainer.new()
 	var st: StyleBoxFlat = UI.flat_style(Color("#e9b949") if coin else Color("#bfe0b4"), 0, 14 if coin else 2)
 	st.border_color = Color("#a8791d") if coin else Color("#4f7a45")
 	st.set_border_width_all(2)
 	icon.add_theme_stylebox_override("panel", st)
-	icon.custom_minimum_size = Vector2(28, 28) if coin else Vector2(42, 24)
+	icon.custom_minimum_size = Vector2(26, 26) if coin else Vector2(40, 22)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var mark: Label = UI.text("HP" if coin else "KAS", 10, Color("#6b4a0a") if coin else Color("#24402a"), UI.F_BOLD)
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon.add_child(mark)
 	row.add_child(icon)
-	var c: VBoxContainer = UI.vbox(0)
-	row.add_child(c)
-	c.add_child(UI.text("%s %s" % [label, _num(value)], UI.S_LEAD, Color("#b0611b") if coin else Color("#a0257e"), UI.F_DOT))
-	c.add_child(UI.text(note, UI.S_SMALL - 2, UI.INK_SOFT))
-	return row
+	var num: Label = UI.text("%s %s" % [_num(value), label], UI.S_LEAD, Color("#b0611b") if coin else Color("#a0257e"), UI.F_DOT)
+	row.add_child(num)
+	_wallet_labels[label] = num
+	var n: Label = UI.text("（%s）" % note, UI.S_SMALL - 2, UI.INK_SOFT)
+	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	col.add_child(n)
+	return col
+
+
+## 手持ちの表示をすぐ新しくする（両替・買い物のたび。要件#90）
+func _refresh_wallet() -> void:
+	for k in _wallet_labels:
+		var l = _wallet_labels[k]
+		if is_instance_valid(l):
+			(l as Label).text = "%s %s" % [_num(GameSettings.hp_points if k == "HP" else GameSettings.kas_points), k]
+	_refresh_title()
 
 
 ## 名札・キャラクターの品物（カテゴリごとに見出し）
@@ -1827,7 +1855,8 @@ func _shop_exchange(col: VBoxContainer) -> void:
 			sfx.play("good", 1.3)
 			lcd_t.text = "KAS 1 → HP %d   KAS %s" % [rate, _num(GameSettings.kas_points)]
 			out.text = "+%s HP" % _num(kas * rate)
-			_refresh_title()
+			_refresh_wallet()
+			_exchange_manager_check()
 			_drop_coins(coins, mini(14, 3 + int(kas / 10.0)))
 			for b2 in bills.get_children():
 				var idx: int = b2.get_index()
@@ -1854,6 +1883,39 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	var p2t: Label = UI.para(tr("HP を KAS には戻せません"), UI.S_SMALL, UI.INK, UI.F_HAND)
 	p2t.custom_minimum_size = Vector2(130, 0)
 	p2.add_child(p2t)
+
+
+## 両替機を続けて押すと、5% で店長が怒る（要件#90。ポイントはそのまま）
+var _last_exchange_ms: int = -100000
+
+
+func _exchange_manager_check() -> void:
+	var now: int = Time.get_ticks_msec()
+	var rapid: bool = now - _last_exchange_ms <= 2000
+	_last_exchange_ms = now
+	if not rapid or randf() >= 0.05 or _sheet == null:
+		return
+	GameSettings.stat_add("exchange_scolded")
+	sfx.play("warn", 0.8)
+	shake(0.15)
+	var note: PanelContainer = UI.paper(UI.POP, 14, 4)
+	note.anchor_left = 0.5
+	note.anchor_right = 0.5
+	note.offset_left = -230
+	note.offset_right = 230
+	note.offset_top = 90
+	note.rotation_degrees = -2.0
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sheet.add_child(note)
+	var c: VBoxContainer = UI.vbox(2)
+	note.add_child(c)
+	c.add_child(UI.text(tr("店長より"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+	c.add_child(UI.para(tr("おい！業務両替じゃないだろうな！？ 貼り紙を読め！"), UI.S_LEAD, UI.SHU, UI.F_HAND))
+	await get_tree().create_timer(2.4).timeout
+	if is_instance_valid(note):
+		var tw: Tween = note.create_tween()
+		tw.tween_property(note, "modulate:a", 0.0, 0.4)
+		tw.tween_callback(note.queue_free)
 
 
 ## コインが受け皿に落ちてくる
@@ -2158,6 +2220,106 @@ func _fill_stats(list: VBoxContainer) -> void:
 		grid.add_child(UI.text(tr(str(r[0])), UI.S_BODY, UI.INK_SOFT))
 		var v: Variant = r[1]
 		grid.add_child(UI.text(_num(int(v)) if typeof(v) == TYPE_INT else str(v), UI.S_BODY, UI.INK, UI.F_DOT))
+
+
+## 鍵マーク（ハードコアが解放されていないとき）
+var _lock_tex: Texture2D = null
+
+
+func _lock_icon() -> Texture2D:
+	if _lock_tex != null:
+		return _lock_tex
+	var img: Image = Image.create(18, 20, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c: Color = Color("#e8e4ee")
+	# つる（U字）
+	for y in range(1, 10):
+		for x in range(3, 15):
+			var dx: float = float(x) - 8.5
+			var dy: float = float(y) - 8.0
+			var r: float = sqrt(dx * dx + dy * dy)
+			if (r >= 4.0 and r <= 6.2 and y <= 8) or ((x == 3 or x == 4 or x == 13 or x == 14) and y >= 7):
+				img.set_pixel(x, y, c)
+	# 本体
+	for y in range(9, 19):
+		for x in range(1, 17):
+			img.set_pixel(x, y, c)
+	for y in range(12, 16):
+		img.set_pixel(8, y, Color("#2a1215"))
+		img.set_pixel(9, y, Color("#2a1215"))
+	_lock_tex = ImageTexture.create_from_image(img)
+	return _lock_tex
+
+
+## ハードコア専用の画面（要件#90）: 勤務先の選択・ハードコアのハイスコアと称号。背景は赤い照明の閉店後の店
+func _show_hardcore() -> void:
+	sfx.play("warn", 0.7)
+	_close_sheet()
+	set_stage("arcade", "hard")
+	bgm.play("versus")
+	_title.visible = false
+	_sheet = Control.new()
+	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(_sheet)
+	var shade: ColorRect = ColorRect.new()
+	shade.color = Color(0.05, 0.0, 0.0, 0.55)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_sheet.add_child(shade)
+	var margin: MarginContainer = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(side, 48)
+	_sheet.add_child(margin)
+	var root: VBoxContainer = UI.vbox(14)
+	margin.add_child(root)
+	root.add_child(UI.text("HARDCORE", UI.S_HUGE, Color("#ff3b2f"), UI.F_SIGN))
+	root.add_child(UI.text(tr("怒りは速く、納得は遅い。店長は来ない。そのかわり点数と給与は 1.5倍。"), UI.S_BODY, Color("#ffd6d0")))
+	var row: HBoxContainer = UI.hbox(24)
+	root.add_child(row)
+	# 勤務先
+	var left: VBoxContainer = UI.vbox(10)
+	left.custom_minimum_size = Vector2(420, 0)
+	row.add_child(left)
+	left.add_child(UI.text(tr("勤務先を選んでください"), UI.S_LEAD, Color("#ffffff"), UI.F_BOLD))
+	for sid in STAGE_ORDER:
+		var sid_s: String = str(sid)
+		var b: Button = Button.new()
+		b.text = tr(str(STAGES[sid_s]["name"])) + "\n" + tr("ハイスコア: %d 点") % GameSettings.get_high_score(sid_s + "_hard")
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size = Vector2(420, 84)
+		b.add_theme_font_size_override("font_size", UI.S_LEAD)
+		b.add_theme_color_override("font_color", Color("#ffffff"))
+		b.add_theme_color_override("font_hover_color", Color("#ffffff"))
+		var st: StyleBoxFlat = UI.flat_style(Color("#5a0f12"), 16, 4)
+		st.border_color = Color("#ff3b2f")
+		st.set_border_width_all(2)
+		b.add_theme_stylebox_override("normal", st)
+		var sh: StyleBoxFlat = st.duplicate()
+		sh.bg_color = Color("#7a1418")
+		b.add_theme_stylebox_override("hover", sh)
+		b.add_theme_stylebox_override("pressed", sh)
+		b.pressed.connect(func() -> void: _start_solo(sid_s, true))
+		left.add_child(b)
+	# ハードコアの称号
+	var right: VBoxContainer = UI.vbox(6)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right)
+	right.add_child(UI.text(tr("ハードコアの称号"), UI.S_LEAD, Color("#ffffff"), UI.F_BOLD))
+	for id in ["t151", "t152", "t153", "t154", "t155"]:
+		var t: Dictionary = Titles.by_id(id)
+		if t.is_empty():
+			continue
+		var have: bool = GameSettings.unlocked_titles.has(id)
+		var cur: int = Titles.value(str(t.get("stat", "")))
+		var line: String = ("★".repeat(int(t.get("rarity", 1))) + "  ") + (Titles.title_name(t) if have else tr("？？？")) + "\n" + Titles.title_desc(t) + ("" if have else "  (%s / %s)" % [_num(mini(cur, int(t.get("min", 1)))), _num(int(t.get("min", 1)))])
+		var l: Label = UI.para(line, UI.S_SMALL, Color("#ffd24a") if have else Color("#d0c8c8"), UI.F_BOLD if have else UI.F_BODY)
+		right.add_child(l)
+	root.add_child(UI.spacer())
+	var back: Button = UI.link(tr("戻る"), UI.S_BODY, Color("#ffffff"))
+	back.pressed.connect(func() -> void:
+		_close_sheet()
+		_show_title())
+	root.add_child(back)
 
 
 func _quit_game() -> void:
@@ -2691,6 +2853,39 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 
 # ---------------------------------------------------------------- 対戦ロビー（バックヤードの掲示板）
 
+## 対戦: まず「文字で言い合う」か「声で言い合う」かを選んでから掲示板へ（要件#90）
+func _ask_versus_format() -> void:
+	sfx.play("click")
+	var col: VBoxContainer = _open_sheet(620, "center")
+	_sheet_title(col, tr("対戦の形式を選んでください"))
+	var row: HBoxContainer = UI.hbox(16)
+	col.add_child(row)
+	var no_voice: bool = _server_info.has("voice") and not bool(_server_info.get("voice", false))
+	for f in [["text", "文字で言い合う", "キーボードで返事を打つ"], ["voice", "声で言い合う", "マイクで話す（ボイスチャット）"]]:
+		var fid: String = str(f[0])
+		var b: Button = Button.new()
+		b.text = tr(str(f[1])) + "\n" + tr(str(f[2]))
+		b.custom_minimum_size = Vector2(270, 110)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", UI.S_LEAD)
+		b.add_theme_color_override("font_color", UI.INK)
+		b.add_theme_color_override("font_hover_color", UI.INK)
+		b.add_theme_stylebox_override("normal", UI.paper_style(UI.POP if fid == "text" else Color("#bfe0f2"), 14, 2, 3))
+		b.add_theme_stylebox_override("hover", UI.paper_style(UI.POP.lightened(0.25) if fid == "text" else Color("#d6ecf8"), 14, 2, 3))
+		b.add_theme_stylebox_override("pressed", UI.paper_style(UI.POP, 14, 2, 1))
+		b.add_theme_stylebox_override("disabled", UI.paper_style(UI.PAPER_DIM, 14, 2, 1))
+		if fid == "voice" and no_voice:
+			b.disabled = true
+			b.tooltip_text = tr("このサーバーは音声対戦に対応していません")
+		b.pressed.connect(func() -> void:
+			_vs_format = fid
+			_show_versus_lobby())
+		row.add_child(b)
+	var back: Button = UI.link(tr("戻る"), UI.S_BODY)
+	back.pressed.connect(_close_sheet)
+	col.add_child(back)
+
+
 func _show_versus_lobby() -> void:
 	# 初めての対戦の前に、キャラクターを作る（要件#84）
 	if not Shop.avatar_created() and not smoke:
@@ -2732,24 +2927,15 @@ func _show_versus_lobby() -> void:
 		show_avatar_maker(_show_versus_lobby))
 	head.add_child(chara)
 
-	# 形式（文字・音声）
-	var fmt_row: HBoxContainer = UI.hbox(8)
+	# 形式（文字・音声）は先に選んである（要件#90）。ここでは表示と「変える」だけ
+	var fmt_row: HBoxContainer = UI.hbox(12)
 	root.add_child(fmt_row)
-	fmt_row.add_child(UI.text(tr("対戦の形式:"), UI.S_BODY, UI.PAPER))
-	var group: ButtonGroup = ButtonGroup.new()
-	for f in [["text", "文字で言い合う"], ["voice", "声で言い合う（ボイスチャット）"]]:
-		var t: Button = UI.tag(tr(str(f[1])), UI.S_BODY)
-		t.toggle_mode = true
-		t.button_group = group
-		t.button_pressed = _vs_format == str(f[0])
-		var fid: String = str(f[0])
-		t.toggled.connect(func(on: bool) -> void:
-			if on:
-				_vs_format = fid)
-		if fid == "voice" and _server_info.has("voice") and not bool(_server_info.get("voice", false)):
-			t.disabled = true
-			t.tooltip_text = tr("このサーバーは音声対戦に対応していません")
-		fmt_row.add_child(t)
+	fmt_row.add_child(UI.text(tr("対戦の形式:") + " " + (tr("文字で言い合う") if _vs_format == "text" else tr("声で言い合う")), UI.S_BODY, UI.PAPER))
+	var change: Button = UI.link(tr("形式を変える"), UI.S_SMALL, UI.POP)
+	change.pressed.connect(func() -> void:
+		_versus.cancel()
+		_ask_versus_format())
+	fmt_row.add_child(change)
 
 	var notes: HBoxContainer = UI.hbox(24)
 	notes.size_flags_vertical = Control.SIZE_EXPAND_FILL

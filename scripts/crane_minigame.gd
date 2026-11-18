@@ -376,14 +376,15 @@ func _drag_to(screen_pos: Vector2) -> void:
 	var p: Vector3 = hit
 	var x: float = clampf(p.x, Arcade.CASE_MIN.x, Arcade.CASE_MAX.x)
 	var z: float = clampf(p.z, Arcade.CASE_MIN.y, Arcade.CASE_MAX.y)
-	# 取り出し口の穴の上には置けない（ふちの柵の外側に押し出す）
-	var hole_x: float = Arcade.CHUTE.x + Arcade.CHUTE_HALF
-	var hole_z: float = Arcade.CHUTE.y - Arcade.CHUTE_HALF
-	if x < hole_x + 0.02 and z > hole_z - 0.02:
-		if (hole_x + 0.02 - x) < (z - (hole_z - 0.02)):
-			x = hole_x + 0.02
+	# 取り出し口の穴の上には置けないが、ふち（穴に少しはみ出すところ）までは置ける（要件#90）
+	var rim: float = 0.06
+	var hole_x: float = Arcade.CHUTE.x + Arcade.CHUTE_HALF - rim
+	var hole_z: float = Arcade.CHUTE.y - Arcade.CHUTE_HALF + rim
+	if x < hole_x and z > hole_z:
+		if (hole_x - x) < (z - hole_z):
+			x = hole_x
 		else:
-			z = hole_z - 0.02
+			z = hole_z
 	_held.position.x = x
 	_held.position.z = z
 	_held.set_meta("dropped", true)

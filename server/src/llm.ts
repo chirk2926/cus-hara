@@ -107,9 +107,9 @@ const LookSchema = z.object({
   body_color: z.string(),
   skin_color: z.string(),
   hair_color: z.string(),
-  hair: z.enum(["bald", "short", "long", "perm", "cap"]),
+  hair: z.enum(["bald", "short", "long", "perm", "cap", "bob", "ponytail", "spiky", "twintail", "mohawk"]),
   build: z.enum(["slim", "normal", "big"]),
-  accessory: z.enum(["none", "glasses", "mask", "headphones", "bag"]),
+  accessory: z.enum(["none", "glasses", "mask", "headphones", "bag", "sunglasses", "necktie", "beanie", "ribbon"]),
   height: z.number(),
 });
 

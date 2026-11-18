@@ -339,13 +339,13 @@ func _build_video(rage: bool = false) -> void:
 		_box(self, Vector3(0.12, 0.04, 1.6), Vector3(0.0, 3.13, z2), _mat(Color(0.6, 0.8, 1.0), 2.5))
 		_omni(Vector3(0.0, 2.8, z2), Color(0.6, 0.7, 1.0), 0.8, 4.5)
 	if rage:
-		# 台パンしている人（要件#86）: 左の列の台の前で、両手で台をたたいている
+		# 台パンしている人（要件#86, #90: 左だとポスターで見切れたので右の列の席へ）
 		var p: Node3D = _person({"body_color": "#5a5f2a", "skin_color": "#e8b890", "hair_color": "#2a2a2a", "hair": "spiky",
-			"build": "big", "accessory": "headphones", "height": 1.0}, Vector3(-0.45, 0.0, -2.2), -PI * 0.5, "slam")
+			"build": "big", "accessory": "headphones", "height": 1.0}, Vector3(0.45, 0.0, -2.2), PI * 0.5, "slam")
 		p.call("set_anger", 1.0)
-		_label(self, "バンッ！", Vector3(-0.9, 1.7, -1.9), 110, Color(1.0, 0.3, 0.2))
-		_rage_label = _label(self, "ドンッ！！", Vector3(-1.0, 2.05, -2.6), 90, Color(1.0, 0.85, 0.2))
-		_label(self, "台パン禁止", Vector3(-4.9, 2.0, -3.2), 80, Color(1.0, 0.2, 0.2), 0.004, 90.0)
+		_label(self, "バンッ！", Vector3(0.8, 1.75, -1.8), 110, Color(1.0, 0.3, 0.2))
+		_rage_label = _label(self, "ドンッ！！", Vector3(1.0, 2.1, -2.6), 90, Color(1.0, 0.85, 0.2))
+		_label(self, "台パン禁止", Vector3(4.9, 2.0, -3.2), 80, Color(1.0, 0.2, 0.2), 0.004, -90.0)
 
 
 # ---------------------------------------------------------------- 音ゲーコーナー（台を増やした。要件#86）
@@ -538,17 +538,17 @@ func _build_purikura() -> void:
 	# 天井から下がった注意書き
 	_box(self, Vector3(1.5, 0.5, 0.03), Vector3(-0.9, 2.55, -2.2), _mat(Color(1.0, 1.0, 1.0)))
 	_label(self, "男性のみのご入場は\nご遠慮ください", Vector3(-0.9, 2.55, -2.17), 46, Color(0.85, 0.1, 0.3), 0.004)
-	_box(self, Vector3(1.3, 0.45, 0.03), Vector3(1.9, 2.35, -2.35), _mat(Color(1.0, 0.95, 0.3)))
-	_label(self, "盗撮は犯罪です", Vector3(1.9, 2.35, -2.32), 64, Color(0.1, 0.1, 0.1), 0.004)
-	# あやしいおじさん: 右の奥、まん中のプリクラ機のカーテンのすき間をスマホでのぞいている（要件#86: 右に移した）
+	_box(self, Vector3(1.3, 0.45, 0.03), Vector3(0.9, 2.5, -3.4), _mat(Color(1.0, 0.95, 0.3)))
+	_label(self, "盗撮は犯罪です", Vector3(0.9, 2.5, -3.37), 64, Color(0.1, 0.1, 0.1), 0.004)
+	# あやしいおじさん: 右の手前（タイトルのポスター・社員証に隠れない所）から、まん中のプリクラ機をスマホでのぞいている（要件#90）
 	var uncle: Node3D = _person({"body_color": "#a89a78", "skin_color": "#e9c19b", "hair_color": "#3d3a36", "hair": "bald",
-		"build": "big", "accessory": "glasses", "height": 0.98}, Vector3(1.85, 0.0, -4.3), -PI * 0.5, "peek")
+		"build": "big", "accessory": "glasses", "height": 0.98}, Vector3(1.9, 0.0, -2.0), -2.6, "peek")
 	var arm: Node3D = uncle.get("_arm_r")
 	if arm != null:
 		var phone: MeshInstance3D = _box(arm, Vector3(0.08, 0.15, 0.02), Vector3(0.0, -0.62, 0.03), _mat(Color(0.1, 0.1, 0.12)))
 		phone.rotation.x = PI * 0.5
 		_box(phone, Vector3(0.07, 0.13, 0.005), Vector3(0.0, 0.0, -0.012), _mat(Color(0.6, 0.85, 1.0), 1.2))
-	_label(self, "！？", Vector3(1.85, 2.05, -4.3), 110, Color(1.0, 0.25, 0.2), 0.004)
+	_label(self, "！？", Vector3(1.9, 1.95, -2.0), 110, Color(1.0, 0.25, 0.2), 0.004)
 	_omni(Vector3(0.0, 2.8, -2.0), Color(1.0, 0.85, 0.95), 1.6, 8.0)
 	_omni(Vector3(-2.5, 2.5, -1.6), Color(1.0, 0.6, 0.85), 0.9, 5.0)
 	_omni(Vector3(2.8, 2.5, -1.6), Color(0.6, 0.85, 1.0), 0.9, 5.0)

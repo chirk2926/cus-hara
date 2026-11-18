@@ -80,7 +80,7 @@ var mental_xp: int = 0
 var stats: Dictionary = {}
 var unlocked_titles: Array = []
 var equipped_title: String = ""
-## ショップ（要件#82）: HP（ハラスメントポイント・オフラインの給与）と KAS（カスポイント・オンラインの給与）、
+## ショップ（要件#82）: HP（ハラスメントポイント・オフラインの給与）と KAS（カスタマーポイント・オンラインの給与）、
 ## 持っているもの（"カテゴリ:ID"）、使っているもの（カテゴリ → ID）
 var hp_points: int = 0
 var kas_points: int = 0

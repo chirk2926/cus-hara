@@ -60,7 +60,8 @@ var _text_row: HBoxContainer
 var _voice_row: HBoxContainer
 var _voice_mode: bool = false
 var _input_on: bool = false
-var _tools: HBoxContainer = null
+var _tools: HFlowContainer = null
+var _menu_btn: Button = null
 var _note_scroll: ScrollContainer = null
 var _say_token: int = 0
 var _blocked: bool = false   # 紙の画面（休憩・設定など）が上に開いている間は入力を受けない
@@ -215,9 +216,14 @@ func _build() -> void:
 	menu.add_theme_stylebox_override("pressed", UI.paper_style(UI.POP, 8, 0, 1))
 	menu.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	menu.pressed.connect(func() -> void: pause_pressed.emit())
-	tag_row.add_child(menu)
-	_tools = UI.hbox(6)
-	tag_row.add_child(_tools)
+	# 休憩・会話ログ・ペイアウト・店長を呼ぶ は名札の下の段に（横に並べると列が広がり、メモの右が切れていた。要件#90）
+	_tools = HFlowContainer.new()
+	_tools.add_theme_constant_override("h_separation", 6)
+	_tools.add_theme_constant_override("v_separation", 6)
+	_tools.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(_tools)
+	_menu_btn = menu
+	_tools.add_child(menu)
 
 	# メモは残りの高さに収め、入りきらない分は切る（下の付箋は必ず見える。要件#44）
 	# 入りきらないときは切らずにスクロールできる（要件#67: 長いメモが見切れて読めなかった）
@@ -471,9 +477,15 @@ func set_comment(t: String) -> void:
 	var n: int = t.length()
 	var long_at: int = 40 if TranslationServer.get_locale().begins_with("ja") or TranslationServer.get_locale().begins_with("zh") else 90
 	_note.add_theme_font_size_override("font_size", UI.S_BODY if n <= long_at else (UI.S_SMALL if n <= long_at * 2 else UI.S_SMALL - 2))
-	# 高さ: 5行ぶんまで伸ばし、それ以上はスクロール
-	var line_h: float = float(_note.get_theme_font_size("font_size")) * 1.45
-	_note_scroll.custom_minimum_size.y = clampf(line_h * ceilf(float(n) / float(maxi(8, int(long_at * 0.5)))), line_h, line_h * 5.0)
+	# 高さ: 字の大きさと幅から行の数を見積もり、5行ぶんまで伸ばす。それ以上はスクロール（要件#90: 1行ぶんしかなく切れていた）
+	var fs: float = float(_note.get_theme_font_size("font_size"))
+	var cjk: bool = long_at == 40
+	var per_line: float = maxf(4.0, 206.0 / (fs * (1.0 if cjk else 0.55)))
+	var lines: float = 0.0
+	for part in t.split("\n"):
+		lines += maxf(1.0, ceilf(float(part.length()) / per_line))
+	var line_h: float = fs * 1.5
+	_note_scroll.custom_minimum_size.y = clampf(line_h * lines + 4.0, line_h, line_h * 5.0)
 	_note_scroll.scroll_vertical = 0
 
 
@@ -482,7 +494,8 @@ func set_tools(items: Array, enabled: Dictionary = {}) -> void:
 	if _tools == null:
 		return
 	for c in _tools.get_children():
-		c.queue_free()
+		if c != _menu_btn:
+			c.queue_free()
 	for it in items:
 		var id: String = str(it[0])
 		var b: Button = UI.link(str(it[1]), UI.S_SMALL, UI.INK)

@@ -28,7 +28,13 @@ const HARD_REWARD_MUL: float = 1.5
 const HARD_UNLOCK_RANK: int = 10
 ## 店長を呼ぶ（要件#86）: 1シフト1回。呼んだお客さんの点数は半分
 const CALL_MANAGER_POINTS: float = 0.5
-const RATE_STEP: float = 0.08           # お客さん1人ごとの上昇率（要件#49で 0.15 から下げた）
+const RATE_STEP: float = 0.04           # お客さん1人ごとの上昇率（要件#49で 0.15→0.08、要件#90で 0.04）
+## お客さんが言い終わってから、怒りが上がり始めるまでの読む時間（秒。要件#90）
+const READ_GRACE: float = 5.0
+## 同じお客さんに2回すると規定違反になる行動（要件#90）。「景品を取りやすい位置へ」は取れるまで何回でもよい
+const ONCE_ONLY: Array = ["maintenance", "credit", "medal_return", "crane_stuck", "discount"]
+const VIOLATION_COST: int = 300
+const VIOLATION_REVIEW: float = -0.2
 const SCORE_RESOLVED: int = 1000
 const SCORE_EXPLODED: int = -300
 const SCORE_YIELDED: int = -600
@@ -80,6 +86,10 @@ var _called_here: bool = false        # このお客さんで店長を呼んだ�
 ## 会話ログ（今のお客さんだけ。要件#86）: {"role": "customer"|"staff"|"manager", "text"}
 var log_lines: Array = []
 var log_open: bool = false
+var _grace: float = 0.0              # 読む時間の残り（秒）
+var _act_counts: Dictionary = {}     # このお客さんに使った行動の回数
+var _id_views: int = 0               # 身分証を見た回数
+var _alt_resisted: bool = false      # 別の身分証を頼んで、一度しぶられた
 var _alt_id_asked: bool = false
 
 var _run: int = 0
@@ -374,6 +384,9 @@ func _process(delta: float) -> void:
 	# 台の前に筐体のデータを見に行っている間は、怒りは止まる（要件#66）
 	if not _active or not _player_turn or paused or main.machine_view_open or main.debug_flag("anger_stop") or log_open:
 		return
+	if _grace > 0.0:
+		_grace -= delta
+		return
 	_anger = minf(100.0, _anger + _rate * delta)
 	_refresh(true)
 	if _anger >= 100.0:
@@ -388,9 +401,15 @@ func _on_action(id: String) -> void:
 	if id == "id_check":
 		if _active and not paused and main.mode == "solo" and _is_age_check():
 			main.show_id_card(_cust)
+			_id_views += 1
+			# 何度も見せてもらうと、お客さんの印象（店舗レビュー）が下がる（要件#90）
+			if _id_views > 2:
+				_review -= 0.05
+				hud.set_comment(tr("何度も身分証を見せてもらうと、お客さんの印象が悪くなる。"))
 			if not _id_seen:
 				_id_seen = true
 				_history.append({"role": "staff", "text": tr("（身分証を確認した）")})
+				hud.set_actions(_age_buttons())
 		return
 	# 筐体のデータは見るだけ（番は終わらない。要件#57）
 	if id == ShopActions.MACHINE_DATA:
@@ -468,6 +487,29 @@ func _track_hardcore() -> void:
 	GameSettings.stat_max("hard_best", _total)
 
 
+## 同じ見た目のお客さんばかりにならないよう、来るたびに少し変える（要件#90）。年齢確認のお客さんと要注意人物はそのまま
+func _vary_look(base: Dictionary) -> Dictionary:
+	var look: Dictionary = base.duplicate()
+	if _is_age_check() or _wild:
+		return look
+	var bodies: Array = ["#3f6b4f", "#8a3a3a", "#2f3b63", "#7a6a4a", "#5a4a7a", "#2a6a7a", "#9a5a2a", "#4a4a4a", "#a03a6a", "#3a7a3a", "#c0a040", "#6a2a2a"]
+	var hairs: Array = ["#262326", "#3a2a20", "#6b4426", "#9a7040", "#b8b4ae", "#555050", "#2a2a3a"]
+	if randf() < 0.75:
+		look["body_color"] = bodies[randi() % bodies.size()]
+	if randf() < 0.5:
+		look["hair_color"] = hairs[randi() % hairs.size()]
+	if randf() < 0.45 and str(look.get("hair", "")) != "bald":
+		look["hair"] = ["short", "long", "perm", "cap", "bob", "ponytail", "spiky"][randi() % 7]
+	if randf() < 0.35:
+		look["accessory"] = ["none", "glasses", "headphones", "mask", "sunglasses", "beanie", "bag", "necktie"][randi() % 8]
+	if randf() < 0.3:
+		look["build"] = ["slim", "normal", "big"][randi() % 3]
+	look["height"] = clampf(float(look.get("height", 1.0)) + randf_range(-0.06, 0.06), 0.85, 1.15)
+	if str(look.get("hair", "")) in ["long", "bob", "ponytail"] and randf() < 0.5:
+		look["gender"] = "f"
+	return look
+
+
 ## 景品だけが目当てか（土下座・返金・タダなど、ほかのものも求めていない）
 func _prize_only() -> bool:
 	var d: String = str(_cust.get("demand", "")).to_lower()
@@ -517,7 +559,8 @@ func _is_age_check() -> bool:
 
 func _age_buttons() -> Array:
 	var out: Array = [["id_check", ShopActions.label("id_check")]]
-	if not _alt_id_asked:
+	# 別の身分証は、まず身分証を見せてもらってから（要件#90）
+	if not _alt_id_asked and _id_seen:
 		out.append(["ask_other_id", ShopActions.label("ask_other_id")])
 	if _age_mode() == "konbini":
 		out.append_array([["age_allow", ShopActions.label("sell_ok")], ["age_refuse", ShopActions.label("sell_refuse")]])
@@ -537,8 +580,20 @@ func _wants_other_id(reply: String) -> bool:
 
 
 func _ask_other_id(speaker: String) -> void:
-	_alt_id_asked = true
 	_turns += 1
+	# たまに渋る（要件#90）: 1回目は 30% で「なんでよ」。もう一度頼めば出す（または持っていないと言う）
+	if not _alt_resisted and randf() < 0.3:
+		_alt_resisted = true
+		_anger = minf(100.0, _anger + 8.0)
+		_refresh(false)
+		hud.show_delta(8, 0)
+		var no: String = str(Judge.pick_lang(["えー、なんでよ。それでいいでしょ？", "めんどくさいなあ……さっきの見たでしょ。", "は？疑ってるの？"], ["Ugh, why? That one's fine, right?", "What a hassle... you already saw it.", "What, you don't believe me?"], ["诶，为什么啊。那个不就行了？", "真麻烦……刚才不是看过了吗。", "啊？你怀疑我？"]))
+		if not hardcore:
+			hud.set_comment(tr("しぶっている。ていねいに、もう一度お願いしてみよう。"))
+		log_lines.append({"role": "customer", "text": no})
+		await _customer_line(speaker, no, "angry")
+		return
+	_alt_id_asked = true
 	var ag: Dictionary = _cust.get("age", {})
 	var alt: Dictionary = ag.get("alt", {}) if typeof(ag.get("alt", null)) == TYPE_DICTIONARY else {}
 	var line: String = ""
@@ -787,6 +842,9 @@ func _play_customer(my_run: int) -> void:
 	_called_here = false
 	log_lines = []
 	_alt_id_asked = false
+	_act_counts = {}
+	_id_views = 0
+	_alt_resisted = false
 	_refresh(false)
 	_update_tools()
 
@@ -795,7 +853,7 @@ func _play_customer(my_run: int) -> void:
 	main.sfx.play("door")
 	var look: Dictionary = {}
 	if typeof(_cust.get("look", null)) == TYPE_DICTIONARY:
-		look = _cust["look"]
+		look = _vary_look(_cust["look"])
 	if _wild:
 		hud.show_banner(tr("！要注意人物が来店！"), UI.SHU)
 		hud.set_comment(tr("要注意人物だ。何を言い出すか分からないぞ。納得させれば点数 ×1.5！"))
@@ -829,6 +887,7 @@ func _play_customer(my_run: int) -> void:
 		if my_run != _run:
 			return
 		_player_turn = true
+		_grace = READ_GRACE
 		hud.set_status(tr("キレられる前に返事を書こう（Enterで渡す）"))
 		hud.set_input_enabled(true, tr("ここに返事を書く…"))
 		if main.smoke:
@@ -882,7 +941,9 @@ func _play_customer(my_run: int) -> void:
 				if str(cr.get("result", "cancelled")) == "cancelled":
 					continue
 				_crane_used = true
-				hud.set_actions(ShopActions.buttons(_stage_id, _cust, false))
+				# 取れるまでは「景品を取りやすい位置へ」を何回でも押せる（要件#90）。台の調整は1回まで
+				var after: Array = ShopActions.buttons(_stage_id, _cust, str(cr.get("result", "")) != "won")
+				hud.set_actions(after.filter(func(b: Array) -> bool: return str(b[0]) != ShopActions.CRANE_ADJUST))
 				_t_move_mode = str(cr.get("mode_kind", "")) == "move" or id == ShopActions.CRANE_MOVE
 				id = "crane_won" if str(cr["result"]) == "won" else "crane_lost"
 				GameSettings.stat_add("crane_tests", int(cr.get("tests", 0)))
@@ -916,6 +977,22 @@ func _play_customer(my_run: int) -> void:
 			_cost += int(ACTION_COST.get(id, 0))
 			_sales_cost += int(SALES_COST.get(id, 0))
 			_t_last_action = id
+			_act_counts[id] = int(_act_counts.get(id, 0)) + 1
+			# 引っかかった景品を取ってあげた後の補填は要らない（そこまでに使ったお金は返さない。要件#90）
+			if id == "credit" and int(_act_counts.get("crane_stuck", 0)) > 0:
+				res["anger_delta"] = maxi(int(res.get("anger_delta", 0)), 8)
+				res["resolve_delta"] = 0
+				res["comment"] = tr("景品は取ってあげた。そこまでに使ったお金まで返す必要はない。")
+			# 同じ対応を2回は規定違反（要件#90）: 減点・店長の注意・レビューが下がる・お客さんは味をしめる
+			if id in ONCE_ONLY and int(_act_counts[id]) >= 2:
+				_cost += VIOLATION_COST
+				_review += VIOLATION_REVIEW
+				res["anger_delta"] = int(res.get("anger_delta", 0)) + 10
+				res["resolve_delta"] = 0
+				res["comment"] = tr("店長: 同じ対応を2回するのは規定違反だ！（%d 点）") % -VIOLATION_COST
+				GameSettings.stat_add("violations")
+				hud.show_banner(tr("規定違反"), UI.SHU)
+				main.sfx.play("warn", 0.9)
 			if id == "dogeza":
 				GameSettings.stat_add("dogeza")
 			if id == "discount":
@@ -928,7 +1005,7 @@ func _play_customer(my_run: int) -> void:
 				_change_mental(-20.0)
 			if crane_cheat:
 				res["comment"] = str(res.get("comment", "")) + "\n" + tr("（アームは規定外の強さ…店長には内緒だ）")
-		elif _is_age_check() and not _alt_id_asked and _wants_other_id(reply):
+		elif _is_age_check() and not _alt_id_asked and _id_seen and _wants_other_id(reply):
 			# 話して別の身分証を頼んだ（要件#86）
 			hud.show_echo(tr("あなた: "), reply)
 			log_lines.append({"role": "staff", "text": reply})
@@ -957,7 +1034,7 @@ func _play_customer(my_run: int) -> void:
 		# 景品を渡したら（引っかかった景品を取った・台の調整で取れた）、景品が目当てのお客さんはそれで納得。
 		# 景品のほかにも求めている（土下座・返金など）お客さんは、大きく納得して話は続く（要件#86）
 		var last_act: String = str(res.get("action", ""))
-		if last_act in ["crane_stuck", "crane_won"] and ShopActions.effect_kind(_cust, last_act) in ["good", "crane_won"]:
+		if last_act in ["crane_stuck", "crane_won"] and ShopActions.effect_kind(_cust, last_act) in ["good", "crane_won"] and int(_act_counts.get(last_act, 0)) <= 1:
 			if _prize_only():
 				r_delta = maxi(r_delta, int(ceil(100.0 - _resolve)))
 				res["customer_reply"] = Judge.line(_cust, "resolved")
