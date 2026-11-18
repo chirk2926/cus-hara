@@ -665,6 +665,8 @@ func _play_customer(my_run: int) -> void:
 				var cr: Dictionary = await main.run_crane_minigame({"mode": "adjust" if id == ShopActions.CRANE_ADJUST else "move", "customer": _cust})
 				if my_run != _run:
 					return
+				# 確率設定・ペイアウト率を変えたら、ここからの売上・レビューに効かせる
+				_payout = GameSettings.effective_payout()
 				if str(cr.get("result", "cancelled")) == "cancelled":
 					continue
 				_crane_used = true

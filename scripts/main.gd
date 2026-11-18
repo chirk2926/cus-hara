@@ -791,6 +791,10 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false) ->
 		row.add_child(UI.spacer())
 	var panel: PanelContainer = Paper.Receipt.new() if receipt else UI.paper(UI.PAPER, 28, 6)
 	panel.resized.connect(_fit_to_screen.bind(panel, true))
+	# コンテナは並べ直すたびに子の scale を 1 に戻すので、並べ直した後にもう一度縮める（レシートが画面からはみ出していた）
+	row.sort_children.connect(func() -> void:
+		if is_instance_valid(panel):
+			_fit_to_screen(panel, true))
 	panel.custom_minimum_size = Vector2(width, 0)
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(panel)

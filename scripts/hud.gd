@@ -45,6 +45,7 @@ var _echo: Label
 var _status: Label
 var _tags: HBoxContainer
 var _actions: HBoxContainer
+var _actions_row: HBoxContainer
 var _desk: PanelContainer
 var _upper: MarginContainer
 var _mental
@@ -103,6 +104,10 @@ func _build() -> void:
 	_tags = UI.hbox(8)
 	db.add_child(_tags)
 
+	# 行動ボタンが多いとき（クレーンの客など）の専用の行。少ないときは入力の行の左に置く
+	_actions_row = UI.hbox(8)
+	_actions_row.visible = false
+	db.add_child(_actions_row)
 	# 入力の行: [店の行動ボタン（ハンコ）][記入欄][返事をする]。記入欄が縮むので、はみ出さない
 	_text_row = UI.hbox(16)
 	db.add_child(_text_row)
@@ -111,6 +116,7 @@ func _build() -> void:
 	_text_row.add_child(_actions)
 	_field = UI.field("", UI.S_LEAD)
 	_field.max_length = 200
+	_field.custom_minimum_size.x = 280   # 行動ボタンに押されて書けなくならないように
 	_field.text_submitted.connect(func(_t: String) -> void: _submit())
 	_text_row.add_child(_field)
 	_send = UI.primary(tr("返事をする"), UI.S_LEAD)
@@ -409,6 +415,15 @@ func set_mental(v: float) -> void:
 func set_actions(items: Array) -> void:
 	for c in _actions.get_children():
 		c.queue_free()
+	# 4つ以上なら専用の行へ（入力の行に並べると記入欄が狭くなる）
+	var wide: bool = items.size() > 3
+	var want: Node = _actions_row if wide else _text_row
+	if _actions.get_parent() != want:
+		_actions.get_parent().remove_child(_actions)
+		want.add_child(_actions)
+		if not wide:
+			_text_row.move_child(_actions, 0)
+	_actions_row.visible = wide
 	for it in items:
 		var id: String = str(it[0])
 		var b: Button = UI.stamp(tr(str(it[1])), UI.S_SMALL)
