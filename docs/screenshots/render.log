@@ -16,6 +16,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio_server.cpp:244)
 
 SHOT en_4x3_01_title
+SHOT en_4x3_02_tutorial
 SHOT en_4x3_konbini_1_play
 SHOT en_4x3_konbini_2_angry
 SHOT en_4x3_konbini_3_voice
@@ -26,6 +27,7 @@ SHOT en_4x3_arcade_2_angry
 SHOT en_4x3_arcade_3_voice
 SHOT en_4x3_arcade_3b_manager
 SHOT en_4x3_arcade_4_wide
+SHOT en_4x3_arcade_4b_machine_data
 SHOT en_4x3_arcade_5_crane_adjust
 SHOT en_4x3_arcade_6_crane_play
 SHOT en_4x3_05_result
@@ -56,6 +58,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio_server.cpp:244)
 
 SHOT en_01_title
+SHOT en_02_tutorial
 SHOT en_konbini_1_play
 SHOT en_konbini_2_angry
 SHOT en_konbini_3_voice
@@ -66,6 +69,7 @@ SHOT en_arcade_2_angry
 SHOT en_arcade_3_voice
 SHOT en_arcade_3b_manager
 SHOT en_arcade_4_wide
+SHOT en_arcade_4b_machine_data
 SHOT en_arcade_5_crane_adjust
 SHOT en_arcade_6_crane_play
 SHOT en_05_result
@@ -96,6 +100,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio_server.cpp:244)
 
 SHOT ja_01_title
+SHOT ja_02_tutorial
 SHOT ja_konbini_1_play
 SHOT ja_konbini_2_angry
 SHOT ja_konbini_3_voice
@@ -106,6 +111,7 @@ SHOT ja_arcade_2_angry
 SHOT ja_arcade_3_voice
 SHOT ja_arcade_3b_manager
 SHOT ja_arcade_4_wide
+SHOT ja_arcade_4b_machine_data
 SHOT ja_arcade_5_crane_adjust
 SHOT ja_arcade_6_crane_play
 SHOT ja_05_result
@@ -136,6 +142,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio_server.cpp:244)
 
 SHOT ja_wide_01_title
+SHOT ja_wide_02_tutorial
 SHOT ja_wide_konbini_1_play
 SHOT ja_wide_konbini_2_angry
 SHOT ja_wide_konbini_3_voice
@@ -146,6 +153,7 @@ SHOT ja_wide_arcade_2_angry
 SHOT ja_wide_arcade_3_voice
 SHOT ja_wide_arcade_3b_manager
 SHOT ja_wide_arcade_4_wide
+SHOT ja_wide_arcade_4b_machine_data
 SHOT ja_wide_arcade_5_crane_adjust
 SHOT ja_wide_arcade_6_crane_play
 SHOT ja_wide_05_result
