@@ -10,6 +10,7 @@ const Scenarios = preload("res://scripts/scenarios.gd")
 const Judge = preload("res://scripts/offline_judge.gd")
 const UI = preload("res://scripts/ui_kit.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
+const AgeCheck = preload("res://scripts/age_check.gd")
 
 signal finished(stage_id: String, results: Array, total: int)
 signal _reply(text: String)
@@ -29,7 +30,19 @@ const CRANE_SALES: float = 3000.0      # ゲームセンターのクレーンの
 const SALES_COST: Dictionary = {"discount": 300, "medal_return": 200, "credit": 300}   # 行動で減る売上（円）
 const SALES_YIELD: int = 1000          # 要求に屈したとき減る売上（円）
 const REVIEW_START: float = 3.0
-const REVIEW_DELTA: Dictionary = {"resolved": 0.3, "explode": -0.4, "yield": -0.2, "breakdown": -0.3}
+const REVIEW_DELTA: Dictionary = {"resolved": 0.3, "explode": -0.4, "yield": -0.2, "breakdown": -0.3,
+	"age_ok": 0.1, "age_refused": 0.1, "age_wrong": -0.2, "age_left": -0.1, "age_lax": 0.0}
+## シフトの時刻（要件#61）。i 人目のお客さんが来る時刻（0:00 からの分）
+const CLOCK: Dictionary = {"konbini": [1080, 1200, 1320, 1410], "arcade": [1050, 1155, 1260, 1350]}
+## 年齢確認（要件#61）。18:00 以降のゲームセンターで、この確率で年齢の怪しいお客さんが来る（1シフト2人まで）
+const AGE_CHANCE: float = 0.3
+const AGE_MAX: int = 2
+## 年齢確認の点数（減りは少なめ）
+const SCORE_AGE: Dictionary = {"age_ok": 700, "age_refused": 600, "age_wrong": -150, "age_lax": -200, "age_left_ok": 300, "age_left_ng": -150}
+## 入店できない客を遊ばせていたとき、警察が来る確率と営業停止の点数
+const POLICE_CHANCE: float = 0.7
+const SCORE_SUSPENDED: int = -2000
+const REVIEW_SUSPENDED: float = -1.5
 const CHEAT_COST: int = 150
 ## 店員のメンタル（要件#38）
 const MENTAL_MAX: float = 100.0
@@ -77,6 +90,10 @@ var _review: float = REVIEW_START # このシフトの店舗レビュー（★1�
 var _payout: int = 30            # このシフトのペイアウト率（ゲームセンター）
 ## シフトの終わりにまとめた売上・レビュー（main のレシートが読む）
 var summary: Dictionary = {}
+var _age_count: int = 0          # このシフトの年齢確認のお客さんの数
+var _suspended: bool = false     # 営業停止になった
+var _crane_wins: int = 0         # 台の調整で取れた回数（レビュー用）
+var _id_seen: bool = false       # このお客さんの身分証を見た
 var _wild: bool = false          # このお客さんは要注意人物
 var _wild_used: bool = false     # このシフトで要注意人物が来たか
 var _manager_used: bool = false  # このシフトで店長が来たか
@@ -119,6 +136,9 @@ func start(stage_id: String, stage_name: String) -> void:
 	_manager_used = false
 	_sales = 0
 	_review = REVIEW_START
+	_age_count = 0
+	_suspended = false
+	_crane_wins = 0
 	_payout = GameSettings.effective_payout()
 	summary = {}
 	_mental = MENTAL_MAX
@@ -130,6 +150,8 @@ func start(stage_id: String, stage_name: String) -> void:
 		await _play_customer(my_run)
 		if my_run != _run:
 			return
+		if _suspended:
+			break
 		if _mental <= 0.0:
 			# 心が折れたので早退（要件#38）
 			hud.show_banner(tr("心が折れた…早退します"), Color("#ff8a6a"))
@@ -153,11 +175,130 @@ func _finish_summary() -> void:
 	var review_bonus: int = int((review - REVIEW_START) * 400.0)
 	_total += sales_bonus + review_bonus
 	summary = {"sales": _sales, "review": review, "sales_bonus": sales_bonus, "review_bonus": review_bonus,
-		"payout": _payout if (_stage_id == "arcade" and GameSettings.crane_mode == "prob") else -1}
+		"payout": _payout if (_stage_id == "arcade" and GameSettings.crane_mode == "prob") else -1,
+		"suspended": _suspended, "reviews": _make_reviews()}
+
+
+## お客様の声（要件#62）: 高い評価と低い評価を1つずつ。どちらも当てはまらない・出ないこともある
+func _make_reviews() -> Array:
+	var count: Dictionary = {}
+	for r in _results:
+		var o: String = str((r as Dictionary).get("outcome", ""))
+		count[o] = int(count.get(o, 0)) + 1
+	var arcade: bool = _stage_id == "arcade"
+	var prob: bool = arcade and GameSettings.crane_mode == "prob"
+	var highs: Array = []
+	var lows: Array = []
+	if int(count.get("resolved", 0)) > 0:
+		highs.append(tr("店員さんがちゃんと話を聞いてくれた。また来ます。"))
+		highs.append(tr("言い方は丁寧なのに、できないことははっきり。気持ちのいい店。"))
+	if int(count.get("resolved", 0)) >= 3:
+		highs.append(tr("クレーム対応が神。この店員さん、何者？"))
+	if _crane_wins > 0:
+		highs.append(tr("店員さんが景品を取りやすくしてくれた！神対応！"))
+	if prob and _payout >= 45:
+		highs.append(tr("このゲーセン、ちゃんと取れる。良心的！"))
+	if int(count.get("age_ok", 0)) + int(count.get("age_refused", 0)) > 0:
+		highs.append(tr("夜でも年齢確認がしっかりしていて、安心して遊べる。"))
+	if not arcade and int(count.get("resolved", 0)) > 0:
+		highs.append(tr("深夜でも感じのいいコンビニ。おでんもおいしい。"))
+	if int(count.get("explode", 0)) > 0:
+		lows.append(tr("店員の対応が最悪。二度と来ない。"))
+		lows.append(tr("ちょっと文句を言っただけなのに、話にならなかった。"))
+	if int(count.get("yield", 0)) > 0:
+		lows.append(tr("ゴネた人だけ得してた。まじめに遊んでるのがバカらしい。"))
+	if int(count.get("breakdown", 0)) > 0:
+		lows.append(tr("店員さんが途中でいなくなった…大丈夫？"))
+	if prob and _payout <= 20:
+		lows.append(tr("クレーン、全然取れない。お金が溶けただけ。"))
+	if int(count.get("age_wrong", 0)) > 0:
+		lows.append(tr("ちゃんと免許証を見せたのに追い出された。"))
+	if _suspended:
+		lows.append(tr("行ったら営業停止になってた。何があったの？"))
+	var out: Array = []
+	# どちらも、当てはまっても出ないことがある（2割）
+	if not highs.is_empty() and randf() < 0.8:
+		out.append({"stars": 5 if randf() < 0.6 else 4, "text": str(highs[randi() % highs.size()])})
+	if not lows.is_empty() and (randf() < 0.8 or _suspended):
+		out.append({"stars": 1 if randf() < 0.6 else 2, "text": str(lows[randi() % lows.size()])})
+	return out
+
+
+## 年齢確認の結果の点数・表示（要件#61。減りは少なめ）
+func _age_result(outcome: String) -> Dictionary:
+	var must: bool = bool((_cust.get("age", {}) as Dictionary).get("must_leave", true))
+	var points: int = 0
+	var mood: String = "happy"
+	match outcome:
+		"age_ok":
+			points = SCORE_AGE["age_ok"]
+			hud.show_banner(tr("年齢確認OK") + "  +%d" % points, UI.LCD_ON)
+			hud.set_comment(tr("使える身分証で、年齢も足りていた。正しい判断だ。"))
+			main.sfx.play("win")
+		"age_refused":
+			points = SCORE_AGE["age_refused"]
+			mood = "angry"
+			hud.show_banner(tr("退店してもらった") + "  +%d" % points, UI.LCD_ON)
+			hud.set_comment(tr("入店できない客だった。きちんと帰ってもらえたな。"))
+			main.sfx.play("win")
+		"age_wrong":
+			points = SCORE_AGE["age_wrong"]
+			mood = "angry"
+			hud.show_banner(tr("大人だったのに…") + "  %d" % points, Color("#ff8a6a"))
+			hud.set_comment(tr("顔写真つきの公的な身分証で、年齢も足りていた。帰す必要はなかった。"))
+			_change_mental(-5.0)
+			main.sfx.play("lose")
+		"age_lax":
+			points = SCORE_AGE["age_lax"]
+			hud.show_banner(tr("年齢確認があまい…") + "  %d" % points, UI.POP)
+			hud.set_comment(tr("その身分証では入店させられない。警察に見つかったら営業停止だぞ…"))
+			main.sfx.play("lose")
+		"age_left":
+			points = SCORE_AGE["age_left_ok"] if must else SCORE_AGE["age_left_ng"]
+			mood = "angry"
+			hud.show_banner(tr("怒って帰った") + "  %+d" % points, Color("#ff8a6a"))
+			hud.set_comment(tr("帰ってもらう客ではあったが、もっと落ち着いて伝えよう。") if must else tr("入れる客を怒らせて帰してしまった。"))
+			main.sfx.play("bad")
+	return {"points": points, "mood": mood}
+
+
+## 警察が来て営業停止（要件#61）。入店できない客を遊ばせていたとき POLICE_CHANCE の確率で
+func _police(my_run: int) -> void:
+	await _wait(1.2)
+	if my_run != _run:
+		return
+	hud.set_actions([])
+	hud.show_banner(tr("警察です！"), Color("#5b7bd5"))
+	main.sfx.play("warn", 0.7)
+	await main.police_visit()
+	if my_run != _run:
+		return
+	await main.customer_say(tr("警察官"), tr("こちらの店で、入店できない時間に未成年を遊ばせていましたね。営業停止です。"), true)
+	if my_run != _run:
+		return
+	main.shake(0.3)
+	main.sfx.play("explode")
+	hud.show_banner(tr("営業停止…") + "  %d" % SCORE_SUSPENDED, Color("#ff8a6a"))
+	hud.set_comment(tr("年齢確認はきちんとやろう…。"))
+	_suspended = true
+	_total += SCORE_SUSPENDED
+	_review += REVIEW_SUSPENDED
+	_results.append({"title": tr("営業停止"), "outcome": "suspended", "points": SCORE_SUSPENDED, "turns": 0})
+	_update_top()
+	await _wait(2.6)
+	if my_run != _run:
+		return
+	hud.hide_bubble()
+	main.manager_leave()
+	await main.dismiss_customer("smug")
 
 
 ## このお客さんの分の売上（接客した分だけ入る）
 func _add_sales(outcome: String) -> void:
+	_review += float(REVIEW_DELTA.get(outcome, 0.0))
+	# 退店してもらった客の分の売上は入らない
+	if outcome in ["age_refused", "age_wrong", "age_left"]:
+		return
 	var s: float = float(SALES_PER_CUSTOMER.get(_stage_id, 2500))
 	if _stage_id == "arcade":
 		# ペイアウト率が低いほどクレーンの売上が上がる（30% で 1 倍、10% で 1.29 倍、80% で 0.29 倍）
@@ -166,7 +307,6 @@ func _add_sales(outcome: String) -> void:
 	if outcome == "yield":
 		s -= float(SALES_YIELD)
 	_sales += int(s)
-	_review += float(REVIEW_DELTA.get(outcome, 0.0))
 
 
 func _process(delta: float) -> void:
@@ -182,6 +322,14 @@ func _process(delta: float) -> void:
 
 ## 店の行動ボタン
 func _on_action(id: String) -> void:
+	# 身分証を見せてもらう（番は終わらない。要件#61）
+	if id == "id_check":
+		if _active and not paused and main.mode == "solo" and _is_age_check():
+			main.show_id_card(_cust)
+			if not _id_seen:
+				_id_seen = true
+				_history.append({"role": "staff", "text": tr("（身分証を確認した）")})
+		return
 	# 筐体のデータは見るだけ（番は終わらない。要件#57）
 	if id == ShopActions.MACHINE_DATA:
 		if _active and not paused and main.mode == "solo":
@@ -215,7 +363,29 @@ func _refresh(show_countdown: bool) -> void:
 
 
 func _update_top() -> void:
-	hud.set_top(_stage_name, tr("お客さん %d / %d") % [_index + 1, CUSTOMERS_PER_SHIFT], tr("%d 点") % _total)
+	hud.set_top(_stage_name, tr("お客さん %d / %d") % [_index + 1, CUSTOMERS_PER_SHIFT] + "  " + AgeCheck.clock_text(_clock()), tr("%d 点") % _total)
+
+
+## 今のお客さんが来た時刻（0:00 からの分）
+func _clock() -> int:
+	var list: Array = CLOCK.get(_stage_id, CLOCK["konbini"])
+	return int(list[clampi(_index, 0, list.size() - 1)])
+
+
+func _is_age_check() -> bool:
+	return str(_cust.get("kind", "")) == "age_check"
+
+
+func _age_buttons() -> Array:
+	return [["id_check", ShopActions.label("id_check")], ["age_allow", ShopActions.label("age_allow")], ["age_refuse", ShopActions.label("age_refuse")]]
+
+
+## 年齢確認の判断（要件#61）: 入店OK か 退店をお願いするか。正しいかは must_leave で決まる
+func _age_outcome(allow: bool) -> String:
+	var must: bool = bool((_cust.get("age", {}) as Dictionary).get("must_leave", true))
+	if allow:
+		return "age_lax" if must else "age_ok"
+	return "age_refused" if must else "age_wrong"
 
 
 ## 要注意人物の見た目: 背が高く、派手な色、ヘッドホンかマスク
@@ -371,10 +541,20 @@ func _play_customer(my_run: int) -> void:
 	if _index >= 1 and not _wild_used and (randf() < WILD_CHANCE or (main.smoke and _index == 1)):
 		_wild = true
 		_wild_used = true
-	var data: Dictionary = await _prepare_customer()
+	# 年齢確認のお客さん（要件#61）: 18:00 以降のゲームセンター。自動テストでは4人目で必ず
+	var data: Dictionary = {}
+	if _stage_id == "arcade" and not _wild and _age_count < AGE_MAX and AgeCheck.limit_for(_clock()) > 0 \
+			and (randf() < AGE_CHANCE or (main.smoke and _index == 3)):
+		_age_count += 1
+		_source = "offline"
+		_session_id = ""
+		data = AgeCheck.make(_clock(), GameSettings.language)
+	else:
+		data = await _prepare_customer()
 	if my_run != _run:
 		return
 	_cust = data
+	_id_seen = false
 	_titles.append(str(_cust.get("title", "")))
 	if _wild:
 		_make_wild_look()
@@ -404,7 +584,12 @@ func _play_customer(my_run: int) -> void:
 	await main.spawn_customer(look)
 	if my_run != _run:
 		return
-	hud.set_actions(ShopActions.buttons(_stage_id, _cust, true))
+	if _is_age_check():
+		hud.set_actions(_age_buttons())
+		hud.show_banner(tr("年齢確認！"), UI.POP)
+		hud.set_comment(tr("今は %s。身分証で年齢を確かめよう。") % AgeCheck.clock_text(_clock()))
+	else:
+		hud.set_actions(ShopActions.buttons(_stage_id, _cust, true))
 	var speaker: String = tr("%s（%s）") % [str(_cust.get("title", tr("お客さん"))), str(_cust.get("name", ""))]
 	hud.set_memo(str(_cust.get("title", "")), str(_cust.get("memo", "")), str(_cust.get("demand", "")))
 	var opening: String = str(_cust.get("opening", "……"))
@@ -442,6 +627,15 @@ func _play_customer(my_run: int) -> void:
 		if reply.begins_with(ACTION_PREFIX):
 			# ---- 店の行動ボタン（要件#34）・台の調整（要件#37）
 			var id: String = reply.substr(ACTION_PREFIX.length())
+			if id == "age_allow" or id == "age_refuse":
+				main.close_machine_data()
+				outcome = _age_outcome(id == "age_allow")
+				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
+				var key: String = "yielded" if id == "age_allow" else "calm"
+				await _customer_line(speaker, Judge.line(_cust, key), "happy" if id == "age_allow" else "angry")
+				if my_run != _run:
+					return
+				break
 			var crane_cheat: bool = false
 			if ShopActions.is_minigame(id):
 				hud.set_status(tr("台を調整しています…"))
@@ -453,6 +647,8 @@ func _play_customer(my_run: int) -> void:
 				_crane_used = true
 				hud.set_actions(ShopActions.buttons(_stage_id, _cust, false))
 				id = "crane_won" if str(cr["result"]) == "won" else "crane_lost"
+				if id == "crane_won":
+					_crane_wins += 1
 				crane_cheat = bool(cr.get("cheat", false))
 				if crane_cheat:
 					_cost += CHEAT_COST
@@ -525,9 +721,23 @@ func _play_customer(my_run: int) -> void:
 			_change_mental(-15.0)
 	if (outcome == "yield" or outcome == "explode") and _mental <= 0.0:
 		outcome = "breakdown"
+	# 年齢確認のお客さんは、会話で決着したときも「残った／帰った」に読みかえる
+	if _is_age_check():
+		var must: bool = bool((_cust.get("age", {}) as Dictionary).get("must_leave", true))
+		match outcome:
+			"explode", "breakdown":
+				outcome = "age_left"
+			"yield":
+				outcome = "age_lax" if must else "age_ok"
+			"resolved":
+				outcome = "age_refused" if must else "age_wrong"
 	var points: int = 0
 	var mood: String = "happy"
-	if outcome == "breakdown":
+	if outcome.begins_with("age_"):
+		var res_age: Dictionary = _age_result(outcome)
+		points = int(res_age["points"])
+		mood = str(res_age["mood"])
+	elif outcome == "breakdown":
 		points = SCORE_BREAKDOWN
 		mood = "smug"
 		hud.show_banner(tr("心が折れた…") + "  %d" % points, Color("#ff8a6a"))
@@ -561,6 +771,9 @@ func _play_customer(my_run: int) -> void:
 	_total += points
 	_results.append({"title": str(_cust.get("title", "")), "outcome": outcome, "points": points, "turns": _turns})
 	_add_sales(outcome)
+	if outcome == "age_lax" and (randf() < POLICE_CHANCE) and not main.smoke:
+		await _police(my_run)
+		return
 	hud.set_actions([])
 	_update_top()
 	hud.set_status("")
@@ -629,6 +842,15 @@ func _smoke_autoplay(my_run: int) -> void:
 	var text: String = ""
 	var en: bool = GameSettings.language == "en"
 	# 台の調整（クレーンの客のとき、最初のターン）と、店の行動ボタン（3人目の最初のターン）も自動で試す
+	# 年齢確認（要件#61）: 身分証を見て、正しく判断する
+	if _is_age_check():
+		_on_action("id_check")
+		await _wait(0.8)
+		if my_run != _run or not _player_turn:
+			return
+		var must: bool = bool((_cust.get("age", {}) as Dictionary).get("must_leave", true))
+		_on_action("age_refuse" if must else "age_allow")
+		return
 	# 筐体のデータ（要件#57）を開いて閉じる（番は終わらない）
 	if typeof(_cust.get("spend", null)) == TYPE_DICTIONARY and not _data_seen:
 		_on_action(ShopActions.MACHINE_DATA)

@@ -19,7 +19,10 @@
 			"crane_stuck": "引っかかった景品をとる",
 			"machine_data": "筐体のデータを見る",
 			"crane_won": "台を調整した（取れた）",
-			"crane_lost": "台を調整した（取れなかった）"
+			"crane_lost": "台を調整した（取れなかった）",
+			"id_check": "身分証を見せてもらう",
+			"age_allow": "入店OK",
+			"age_refuse": "退店をお願いする"
 		},
 		"en": {
 			"discount": "Offer a discount",
@@ -32,7 +35,10 @@
 			"crane_stuck": "Free the stuck prize",
 			"machine_data": "Check machine data",
 			"crane_won": "Adjusted the machine (they won)",
-			"crane_lost": "Adjusted the machine (no luck)"
+			"crane_lost": "Adjusted the machine (no luck)",
+			"id_check": "Ask for ID",
+			"age_allow": "OK to stay",
+			"age_refuse": "Ask them to leave"
 		}
 	},
 	"effects": {
@@ -123,5 +129,6 @@
 	],
 	"info": [
 		"machine_data"
-	]
+	],
+	"_comment_age": "id_check / age_allow / age_refuse は年齢確認のお客さん（scripts/age_check.gd）専用。ゲームの中だけで判定し、サーバーには送らない（要件#61）。"
 }

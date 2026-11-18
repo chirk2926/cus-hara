@@ -389,10 +389,12 @@ func show_machine_data(cust: Dictionary) -> void:
 	panel.add_child(col)
 	col.add_child(UI.text(tr("筐体のデータ  サービス台 #5"), UI.S_SMALL, UI.LCD_ON, UI.F_DOT))
 	col.add_child(UI.rule(Color(UI.LCD_ON.r, UI.LCD_ON.g, UI.LCD_ON.b, 0.4), 1))
+	# 目標金額 = 景品原価 / ペイアウト率（要件#59）と、記録の投入額がどこまで来ているか
 	var rows: Array = [
 		[tr("お客さんの話"), tr("%s円") % CraneScript.yen(claimed)],
 		[tr("記録された投入額"), tr("%s円（%d プレイ）") % [CraneScript.yen(actual), actual / 100]],
-		[tr("1個あたりの目安"), tr("%s円（ペイアウト率 %d%%）") % [CraneScript.yen(expected), int(d.get("payout", 30))]],
+		[tr("払い出しの目標金額"), tr("%s円（ペイアウト率 %d%%）") % [CraneScript.yen(expected), int(d.get("payout", 30))]],
+		[tr("目標まで"), tr("到達（払い出してよい）") if actual >= expected else tr("あと %s円") % CraneScript.yen(expected - actual)],
 	]
 	for r in rows:
 		var row: HBoxContainer = UI.hbox(12)
@@ -401,6 +403,12 @@ func show_machine_data(cust: Dictionary) -> void:
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
 		row.add_child(UI.text(str(r[1]), UI.S_BODY, UI.LCD_ON, UI.F_DOT))
+	var bar = Paper.DotBar.new()
+	bar.segments = 20
+	bar.custom_minimum_size = Vector2(372, 12)
+	bar.value = 100.0 * float(actual) / float(maxi(expected, 1))
+	bar.color = UI.POP if actual >= expected else UI.LCD_ON
+	col.add_child(bar)
 	var verdict: String = ""
 	if actual < int(float(claimed) * 0.6):
 		verdict = tr("→ 話の金額より、記録がかなり少ない。記録をもとに落ち着いて伝えよう。")
@@ -413,6 +421,96 @@ func show_machine_data(cust: Dictionary) -> void:
 	close.focus_mode = Control.FOCUS_NONE
 	close.pressed.connect(close_machine_data)
 	col.add_child(close)
+
+
+## 年齢確認の身分証（要件#61）。お客さんが差し出した身分証を、カードの形で見せる。
+## プレイヤーは「公的か・顔写真があるか・顔が同じか・生年月日から何歳か」を自分で確かめる
+const AgeCheck = preload("res://scripts/age_check.gd")
+
+
+func show_id_card(cust: Dictionary) -> void:
+	close_machine_data()
+	var ag: Variant = cust.get("age", null)
+	if typeof(ag) != TYPE_DICTIONARY:
+		return
+	var a: Dictionary = ag
+	sfx.play("click", 1.1)
+	var en: bool = GameSettings.language == "en"
+	var panel: PanelContainer = UI.paper(UI.PAPER, 16, 5)
+	panel.custom_minimum_size = Vector2(460, 0)
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.offset_left = -230
+	panel.offset_right = 230
+	panel.offset_top = 88
+	panel.rotation_degrees = 0.6
+	_machine_panel = panel
+	_ui.add_child(panel)
+	var col: VBoxContainer = UI.vbox(8)
+	panel.add_child(col)
+	var today: Dictionary = a.get("today", Time.get_date_dict_from_system())
+	var date_text: String = ("%04d-%02d-%02d" % [int(today["year"]), int(today["month"]), int(today["day"])]) if en else ("%d年%d月%d日" % [int(today["year"]), int(today["month"]), int(today["day"])])
+	col.add_child(UI.text(tr("本日 %s  現在 %s") % [date_text, AgeCheck.clock_text(int(a.get("clock", 0)))], UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+	# カード
+	var card: PanelContainer = PanelContainer.new()
+	var t: String = str(a.get("type", ""))
+	var tint: Color = {"license": Color("#d8ecd0"), "mynumber": Color("#f3e3ef"), "passport": Color("#d6dcef"),
+		"student": Color("#fff3c8"), "commuter": Color("#dff2ff"), "insurance": Color("#f0f0e6")}.get(t, UI.PAPER)
+	var st: StyleBoxFlat = UI.flat_style(tint, 12, 8)
+	st.border_color = UI.INK_SOFT
+	st.set_border_width_all(2)
+	card.add_theme_stylebox_override("panel", st)
+	col.add_child(card)
+	var row: HBoxContainer = UI.hbox(14)
+	card.add_child(row)
+	if bool(a.get("has_photo", false)):
+		var photo = Paper.IdPhoto.new()
+		photo.look = a.get("photo", {})
+		row.add_child(photo)
+	else:
+		var none: Label = UI.text(tr("写真なし"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
+		none.custom_minimum_size = Vector2(84, 104)
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		none.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(none)
+	var info: VBoxContainer = UI.vbox(4)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(info)
+	info.add_child(UI.text(tr(AgeCheck.type_label(t)), UI.S_LEAD, UI.INK, UI.F_BOLD))
+	info.add_child(UI.text(str(a.get("name", "")), UI.S_BODY, UI.INK))
+	if bool(a.get("has_dob", false)):
+		info.add_child(UI.text(AgeCheck.dob_text(a.get("dob", {}), GameSettings.language), UI.S_BODY, UI.INK, UI.F_DOT))
+	match t:
+		"commuter":
+			info.add_child(UI.text(tr("通学 ハッピー駅 ⇔ パラダイス駅"), UI.S_SMALL, UI.INK_SOFT))
+		"student":
+			info.add_child(UI.text(tr("私立パラダイス学園 高等部"), UI.S_SMALL, UI.INK_SOFT))
+		"insurance":
+			info.add_child(UI.text(tr("被保険者証"), UI.S_SMALL, UI.INK_SOFT))
+	col.add_child(UI.para(tr("確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（%d歳未満は入店不可）") % int(a.get("limit", 18)), UI.S_SMALL, UI.INK_SOFT))
+	var close: Button = UI.link(tr("閉じる"), UI.S_SMALL)
+	close.focus_mode = Control.FOCUS_NONE
+	close.pressed.connect(close_machine_data)
+	col.add_child(close)
+
+
+## 警察（要件#61）。年齢確認をしないで入店不可の客を遊ばせていると来る
+const POLICE_LOOK: Dictionary = {"body_color": "#1d2a5a", "skin_color": "#eec39c", "hair_color": "#1d2a5a",
+	"hair": "cap", "build": "big", "accessory": "none", "height": 1.1}
+
+
+func police_visit() -> void:
+	manager_leave_now()
+	_manager = CustomerScript.new()
+	add_child(_manager)
+	_manager.call("setup", POLICE_LOOK)
+	var from: Vector3 = _world.call("get_customer_entrance")
+	var stand: Vector3 = _world.call("get_customer_stand")
+	_manager.position = from
+	_manager.call("enter", from, stand + Vector3(0.8, 0.0, -0.2))
+	await _manager.arrived
+	if _manager != null and is_instance_valid(_manager):
+		_manager.call("react", "angry")
 
 
 func close_machine_data() -> void:
@@ -995,6 +1093,16 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 			mark = tr("屈服")
 		elif outcome == "breakdown":
 			mark = tr("早退")
+		elif outcome == "age_ok":
+			mark = tr("年齢OK")
+		elif outcome == "age_refused" or outcome == "age_left":
+			mark = tr("退店")
+		elif outcome == "age_wrong":
+			mark = tr("確認ミス")
+		elif outcome == "age_lax":
+			mark = tr("確認不足")
+		elif outcome == "suspended":
+			mark = ""
 		_receipt_line(col, "%s  %s" % [str(res.get("title", "")), mark], "%+d" % int(res.get("points", 0)))
 	# 売上と店舗レビュー（要件#56）
 	var sm: Dictionary = _solo.summary
@@ -1007,6 +1115,19 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		var stars: float = float(sm.get("review", 3.0))
 		_receipt_line(col, tr("店舗レビュー"), "%s %.1f" % ["★".repeat(int(round(stars))) + "☆".repeat(5 - int(round(stars))), stars])
 		_receipt_line(col, "  " + tr("レビューボーナス"), "%+d" % int(sm.get("review_bonus", 0)), UI.S_SMALL)
+		if bool(sm.get("suspended", false)):
+			_receipt_line(col, tr("★ 営業停止処分"), "", UI.S_BODY, UI.SHU)
+		# お客様の声（要件#62）
+		var reviews: Array = sm.get("reviews", [])
+		if not reviews.is_empty():
+			_receipt_rule(col)
+			col.add_child(UI.text(tr("お客様の声"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
+			for rv in reviews:
+				var d: Dictionary = rv
+				var n: int = int(d.get("stars", 3))
+				var stars_l: Label = UI.text("★".repeat(n) + "☆".repeat(5 - n), UI.S_SMALL, UI.SHU if n >= 4 else UI.INK_SOFT, UI.F_DOT)
+				col.add_child(stars_l)
+				col.add_child(UI.para(tr("「%s」") % str(d.get("text", "")), UI.S_SMALL, UI.INK, UI.F_HAND))
 	_receipt_rule(col)
 	_receipt_line(col, tr("合計"), tr("%d 点") % total, UI.S_HEAD)
 	_receipt_line(col, tr("ランク"), "%s  %s" % [str(rank[1]), tr(str(rank[2]))], UI.S_BODY)
@@ -1416,6 +1537,11 @@ func _run_shots() -> void:
 			await _wait(0.4)
 			await _shot(dir, prefix + "arcade_4b_machine_data")
 			close_machine_data()
+			# 年齢確認の身分証（要件#61）
+			show_id_card(AgeCheck.make(22 * 60 + 30, GameSettings.language))
+			await _wait(0.4)
+			await _shot(dir, prefix + "arcade_4c_id_card")
+			close_machine_data()
 			# 確率設定で開く（要件#55）
 			GameSettings.crane_mode = "prob"
 			GameSettings.crane_payout = 20
@@ -1433,7 +1559,8 @@ func _run_shots() -> void:
 	display_anger = 0.0
 	_hud.visible = true
 	var cs: Array = ScenariosScript.customers("arcade")
-	_solo.summary = {"sales": 21400, "review": 3.6, "sales_bonus": 70, "review_bonus": 240, "payout": 25}
+	_solo.summary = {"sales": 21400, "review": 3.6, "sales_bonus": 70, "review_bonus": 240, "payout": 25,
+		"reviews": [{"stars": 5, "text": tr("店員さんが景品を取りやすくしてくれた！神対応！")}, {"stars": 2, "text": tr("クレーン、全然取れない。お金が溶けただけ。")}]}
 	_on_solo_finished("arcade", [
 		{"title": cs[0]["title"], "outcome": "resolved", "points": 1520, "turns": 3},
 		{"title": cs[1]["title"], "outcome": "explode", "points": -300, "turns": 2},

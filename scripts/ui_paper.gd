@@ -207,3 +207,59 @@ class DotBar extends Control:
 		for i in range(segments):
 			var r: Rect2 = Rect2(Vector2(float(i) * (w + gap), 0.0), Vector2(w, size.y))
 			draw_rect(r, color if i < lit else Color(1, 1, 1, 0.15))
+
+
+## 身分証の顔写真（要件#61）。お客さんの見た目（肌・髪の色と形・めがね）を2Dで描く。借り物の身分証は別人の顔になる
+class IdPhoto extends Control:
+	var look: Dictionary = {}:
+		set(v):
+			look = v
+			queue_redraw()
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		custom_minimum_size = Vector2(84, 104)
+
+	func _col(key: String, fallback: Color) -> Color:
+		return Color.from_string(str(look.get(key, "")), fallback)
+
+	func _draw() -> void:
+		var w: float = size.x
+		var h: float = size.y
+		draw_rect(Rect2(0, 0, w, h), Color("#cfe3f0"))
+		var skin: Color = _col("skin_color", Color("#f1c9a5"))
+		var hair: Color = _col("hair_color", Color("#333333"))
+		var body: Color = _col("body_color", Color("#3a5a8a"))
+		var cx: float = w * 0.5
+		# 肩
+		draw_circle(Vector2(cx, h + h * 0.18), w * 0.5, body)
+		# 首と顔
+		draw_rect(Rect2(cx - w * 0.08, h * 0.55, w * 0.16, h * 0.16), skin)
+		var face_c: Vector2 = Vector2(cx, h * 0.45)
+		var r: float = w * 0.27
+		var style: String = str(look.get("hair", "short"))
+		if style == "long":
+			draw_rect(Rect2(cx - r * 1.15, h * 0.32, r * 2.3, h * 0.42), hair)
+		draw_circle(face_c, r, skin)
+		match style:
+			"bald":
+				pass
+			"cap":
+				draw_rect(Rect2(cx - r * 1.05, face_c.y - r * 1.05, r * 2.1, r * 0.75), hair.darkened(0.2))
+				draw_rect(Rect2(cx - r * 0.2, face_c.y - r * 0.35, r * 1.5, r * 0.18), hair.darkened(0.35))
+			"perm":
+				for i in range(7):
+					var a: float = PI + float(i) / 6.0 * PI
+					draw_circle(face_c + Vector2(cos(a), sin(a) * 0.9) * r * 0.95, r * 0.32, hair)
+			_:
+				draw_circle(face_c + Vector2(0, -r * 0.35), r * 0.85, hair)
+				draw_rect(Rect2(cx - r * 0.8, face_c.y - r * 0.35, r * 1.6, r * 0.28), skin)
+		# 目・口
+		var ink: Color = Color("#24212b")
+		draw_circle(face_c + Vector2(-r * 0.38, r * 0.05), r * 0.09, ink)
+		draw_circle(face_c + Vector2(r * 0.38, r * 0.05), r * 0.09, ink)
+		draw_line(face_c + Vector2(-r * 0.25, r * 0.5), face_c + Vector2(r * 0.25, r * 0.5), ink, 2.0)
+		if str(look.get("accessory", "")) == "glasses":
+			draw_arc(face_c + Vector2(-r * 0.38, r * 0.05), r * 0.24, 0, TAU, 20, ink, 2.0)
+			draw_arc(face_c + Vector2(r * 0.38, r * 0.05), r * 0.24, 0, TAU, 20, ink, 2.0)
+			draw_line(face_c + Vector2(-r * 0.14, r * 0.05), face_c + Vector2(r * 0.14, r * 0.05), ink, 2.0)

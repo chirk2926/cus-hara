@@ -612,6 +612,182 @@
 					"dogeza": "yield"
 				},
 				"rare": true
+			},
+			{
+				"title": "The Points Card Fanatic",
+				"name": "Masako Tameda",
+				"look": {
+					"body_color": "#8a3a6a",
+					"skin_color": "#f3cfb0",
+					"hair_color": "#e0d6c8",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.92
+				},
+				"memo": "Forgot her points card at home and wants today's points added later. Rules don't allow adding points afterward, but if she's an app member, you can register right now and add the points.",
+				"opening": "Excuse me! No points just because I forgot my card? That's THREE points today! Add them later!",
+				"demand": "Points added later for the forgotten card, plus 10x points as an apology",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"app",
+					"register",
+					"right now",
+					"member",
+					"phone"
+				],
+				"yield_keywords": [
+					"add them later",
+					"I'll add them",
+					"10x",
+					"on the house"
+				],
+				"lines": {
+					"calm": [
+						"The app? ...The one my grandson installed?",
+						"If they go on right now, fine.",
+						"Oh, that was easy."
+					],
+					"angry": [
+						"Don't you dare belittle three points!",
+						"Rules, rules! Have you no heart?",
+						"Points are all about adding up!"
+					],
+					"neutral": [
+						"So, my points?",
+						"...Aren't you changing the subject?"
+					],
+					"demand": [
+						"Make it 10x and I'll forgive you!",
+						"Just add them later, how hard is that?"
+					],
+					"resolved": "Oh, they're in already. ...Next year I'll trade them for a gift.",
+					"explode": "Fine! I'm switching to the konbini next door!",
+					"yielded": "See? Never hurts to ask. Maybe I'll forget it again next time!"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Three-Bag Man",
+				"name": "Tsuyoshi Obukuro",
+				"look": {
+					"body_color": "#2a2a2a",
+					"skin_color": "#eac2a0",
+					"hair_color": "#111111",
+					"hair": "short",
+					"build": "big",
+					"accessory": "mask",
+					"height": 1.08
+				},
+				"memo": "Bought one bento and a tea and wants three plastic bags for free. Bags cost 3 yen each. You can't make them free, but you can sell as many as he wants or help pack his own bag.",
+				"opening": "One bento, three bags! Hot, cold, and the tea go separately! And you're CHARGING for bags? To a customer?",
+				"demand": "Three plastic bags for free",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"3 yen",
+					"charge",
+					"separate",
+					"pack",
+					"own bag",
+					"hot"
+				],
+				"yield_keywords": [
+					"for free",
+					"on the house",
+					"no charge",
+					"free of charge"
+				],
+				"lines": {
+					"calm": [
+						"...Three yen. Fine, I'll pay.",
+						"If you pack them separately, no complaints.",
+						"As long as hot and cold are apart."
+					],
+					"angry": [
+						"You're profiting off BAGS?!",
+						"The customer is king!",
+						"You don't get the weight of 3 yen!"
+					],
+					"neutral": [
+						"So, the bags?",
+						"Are you listening?"
+					],
+					"demand": [
+						"Three bags, free!",
+						"The store can pay for the bags!"
+					],
+					"resolved": "Perfect sorting. ...Not bad.",
+					"explode": "Forget it! I'll carry it by hand! ...Ow, hot!",
+					"yielded": "Heh, whine and the bags are free. Great store!"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Photo-Op Customer",
+				"name": "Baeko Morioka",
+				"look": {
+					"body_color": "#c9a227",
+					"skin_color": "#f6d6bb",
+					"hair_color": "#6a3a1a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.98
+				},
+				"memo": "Wants the lights dimmed and the line stopped so she can photograph a new dessert at the register. You can't change the lights or stop the line, but she's free to take the item to the bright spot by the entrance.",
+				"opening": "Wait! The shot's almost perfect! Stop the people behind me! And these lights aren't aesthetic, turn them off!",
+				"demand": "Turn off the store lights and stop the register line",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"entrance",
+					"bright",
+					"window",
+					"checkout",
+					"photo",
+					"spot"
+				],
+				"yield_keywords": [
+					"turn off the lights",
+					"stop the line",
+					"have them wait",
+					"dim them"
+				],
+				"lines": {
+					"calm": [
+						"By the entrance window? ...Natural light, true.",
+						"Oh, it does look better over here.",
+						"Okay, I'll pay first."
+					],
+					"angry": [
+						"This is THE moment!",
+						"You can't change one light?",
+						"My followers are waiting!"
+					],
+					"neutral": [
+						"Anyway, is this angle okay?",
+						"...And?"
+					],
+					"demand": [
+						"Stop the line already!",
+						"Lights off!"
+					],
+					"resolved": "Look, amazing shot! I'll tag your store!",
+					"explode": "Worst! I'm posting that this place isn't photogenic!",
+					"yielded": "Yay! It's like I rented the whole store!"
+				},
+				"actions": {
+					"discount": "bad",
+					"dogeza": "bad"
+				}
 			}
 		],
 		"arcade": [
@@ -1359,6 +1535,185 @@
 				},
 				"machine": "crane",
 				"spend": true
+			},
+			{
+				"title": "The Forgetful Medal Gentleman",
+				"name": "Azukinosuke Maita",
+				"look": {
+					"body_color": "#5a3a8a",
+					"skin_color": "#e8bc96",
+					"hair_color": "#9a9a9a",
+					"hair": "bald",
+					"build": "big",
+					"accessory": "glasses",
+					"height": 1.0
+				},
+				"memo": "Left without depositing his medals, and the next day they were gone from the machine. Medals collected at closing can't be returned, but with his member card you can check his deposit balance and give a few service medals.",
+				"opening": "The thousand medals I left here yesterday, where are they?! Those are MY medals! Return them at once!",
+				"demand": "All thousand forgotten medals returned",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"member card",
+					"deposit",
+					"balance",
+					"check",
+					"service medals",
+					"rules"
+				],
+				"yield_keywords": [
+					"return all",
+					"thousand medals back",
+					"we'll return them",
+					"give them back"
+				],
+				"lines": {
+					"calm": [
+						"Member card... ah, so my deposit is still there.",
+						"If some come back, that will do.",
+						"I shall deposit them next time."
+					],
+					"angry": [
+						"A THOUSAND medals!",
+						"Is this store a thief?!",
+						"Give me back my yesterday!"
+					],
+					"neutral": [
+						"And my medals?",
+						"...Hmm?"
+					],
+					"demand": [
+						"Return all thousand, every last one!",
+						"All of them!"
+					],
+					"resolved": "Indeed, my deposit remained. A gentleman deposits. Lesson learned.",
+					"explode": "I'll never return! ...Well, I'll be back tomorrow!",
+					"yielded": "A thousand medals back! Forgetting pays!"
+				},
+				"actions": {
+					"medal_return": "good",
+					"maintenance": "neutral"
+				},
+				"machine": "medal"
+			},
+			{
+				"title": "The Almost-Full-Combo Girl",
+				"name": "Riz Otowa",
+				"look": {
+					"body_color": "#2a8a8a",
+					"skin_color": "#f0c8a8",
+					"hair_color": "#ff6ab0",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.97
+				},
+				"memo": "Says the screen froze for a moment just before a full combo. Inspection logs show no fault, but you can run maintenance on the spot, and if it really freezes, one free credit is within the rules.",
+				"opening": "Hey! I was THREE notes from a full combo and the screen froze?! My record's gone?!",
+				"demand": "Record her score as a full combo",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"maintenance",
+					"check",
+					"inspect",
+					"look into",
+					"one credit"
+				],
+				"yield_keywords": [
+					"count it as a full combo",
+					"change the record",
+					"fix your score",
+					"certify"
+				],
+				"lines": {
+					"calm": [
+						"If you'll check it, okay...",
+						"It DID freeze, right?! Check it!",
+						"Next time I'm getting that full combo."
+					],
+					"angry": [
+						"THREE notes!",
+						"Give me my record back!",
+						"This machine is cursed!"
+					],
+					"neutral": [
+						"So, my full combo?",
+						"...Huh?"
+					],
+					"demand": [
+						"Just say it's a full combo!",
+						"Rewrite the score!"
+					],
+					"resolved": "...Played again and got the full combo! Thanks!",
+					"explode": "Forget it! I'll full combo at another arcade!",
+					"yielded": "Full combo on record! ...Somehow I'm not happy."
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "neutral"
+				},
+				"machine": "rhythm"
+			},
+			{
+				"title": "The No-Challengers Guy",
+				"name": "Kenta Taisen",
+				"look": {
+					"body_color": "#3a3a3a",
+					"skin_color": "#e8bf9a",
+					"hair_color": "#1a1a1a",
+					"hair": "cap",
+					"build": "normal",
+					"accessory": "none",
+					"height": 1.02
+				},
+				"memo": "Upset that a stranger challenged him from the opposite cabinet in a fighting game. Challenges are the store's standard setting and can't be turned off, but the screen and a posted sign say challenges are on, and you can point him to a CPU-only machine.",
+				"opening": "Hey! I was playing alone, nice and chill, and someone challenged me from across! And wrecked me! Ban challenges!",
+				"demand": "Ban challenges on this machine and refund the credits he lost",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"sign",
+					"another machine",
+					"CPU",
+					"challenges are on",
+					"setting",
+					"show you"
+				],
+				"yield_keywords": [
+					"ban challenges",
+					"refund",
+					"give you back",
+					"return your credits"
+				],
+				"lines": {
+					"calm": [
+						"There's a CPU machine? ...Should've said so.",
+						"The sign... yeah, there it is. Didn't read it.",
+						"Fine, I'll play over there."
+					],
+					"angry": [
+						"Give me back my peaceful time!",
+						"I got WRECKED!",
+						"Nobody told me about challengers!"
+					],
+					"neutral": [
+						"So what are you gonna do?",
+						"...Huh?"
+					],
+					"demand": [
+						"Ban challenges! Now!",
+						"Refund what I lost!"
+					],
+					"resolved": "CPU matches are relaxing. ...I'll train up and get my revenge.",
+					"explode": "Forget it! I'll play at home!",
+					"yielded": "Sweet, refunded! So losing is free if I complain!"
+				},
+				"actions": {
+					"maintenance": "neutral",
+					"credit": "yield"
+				},
+				"machine": "video"
 			}
 		]
 	}
