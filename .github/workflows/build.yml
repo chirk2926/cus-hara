@@ -79,6 +79,12 @@ jobs:
           timeout 300 godot --headless -- --smoke --source=offline --lang=ja --profile=solo_ja 2>&1 | tee smoke_offline.log
           grep -q "SMOKE OK" smoke_offline.log
 
+      - name: Solo smoke test (offline, Simplified Chinese)
+        run: |
+          set -o pipefail
+          timeout 300 godot --headless -- --smoke --source=offline --lang=zh --profile=solo_zh 2>&1 | tee smoke_zh.log
+          grep -q "SMOKE OK" smoke_zh.log
+
       - name: Solo smoke test (via the server, English)
         run: |
           set -o pipefail
@@ -133,7 +139,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libgl1-mesa-dri libvulkan1
           rm -rf docs/screenshots
-          for lang in ja en; do
+          for lang in ja en zh; do
             xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --resolution 1280x720 -- --shots --lang=$lang --profile=shots_$lang 2>&1 | tee shots_$lang.log || true
           done
           # 画面の大きさ・縦横比が違う環境（要件#44, #45）

@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.ts";
-import type { Lang } from "./lang.ts";
+import { type Lang, money } from "./lang.ts";
 
 export interface Look {
   body_color?: string;
@@ -81,8 +81,7 @@ export function machineOf(c: Customer): string {
 }
 
 function yen(n: number, lang: Lang): string {
-  const s = n.toLocaleString("en-US");
-  return lang === "ja" ? `${s}円` : `${s} yen`;
+  return money(n, lang);
 }
 
 function roundTo(n: number, step: number): number {
@@ -115,7 +114,7 @@ export function materializeSpend(c: Customer, payout: number, lang: Lang, rnd: (
   c.actions = { ...(c.actions ?? {}) };
   if (lie) {
     c.actions.credit = "yield";
-    const extra = lang === "ja" ? ["記録", "データ", "履歴", "実際"] : ["record", "data", "log", "actually"];
+    const extra = lang === "ja" ? ["記録", "データ", "履歴", "実際"] : lang === "zh" ? ["记录", "数据", "实际"] : ["record", "data", "log", "actually"];
     c.solution_keywords = [...(c.solution_keywords ?? []), ...extra];
   }
   return c;

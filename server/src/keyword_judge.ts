@@ -79,12 +79,33 @@ const COMMENTS: Record<Lang, Record<string, string>> = {
     c_repeat: "Repeating yourself has no effect.",
     c_pressure: "The pressure is building...",
   },
+  zh: {
+    solution: "具体的解决方案，很好！",
+    cushion: "拒绝的时候更要先说句软话。",
+    firm: "坚定又得体，保持住。",
+    only_sorry: "光道歉解决不了问题。",
+    excuse: "听起来像在找借口。",
+    casual: "说话太随便，火上浇油。",
+    short: "太短了。好好说几句。",
+    repeat: "重复同样的回答可不行。",
+    rude: "不能对顾客恶语相向！",
+    yielded: "不能答应无理要求啊…。",
+    good: "接得很好。",
+    ok: "还不错。接下来给出解决方案。",
+    miss: "没说到点上。看看备忘录。",
+    offtopic: "别聊和接待无关的话题。",
+    c_silent: "顾客一时语塞！",
+    c_abuse: "骂得太过分了。店长出面制止了。",
+    c_repeat: "重复同样的台词没有效果。",
+    c_pressure: "顾客的气势越来越强了…",
+  },
 };
 
 // 接客と関係ない話（AIへの依頼・プログラム・モデル名など）。要件#28
 const OFFTOPIC: Record<Lang, string[]> = {
   ja: ["コードを", "プログラム", "モデル名", "どのモデル", "システムプロンプト", "プロンプト", "chatgpt", "claude", "anthropic", "openai", "gpt", "ai として", "aiとして", "指示を無視"],
   en: ["write code", "write a program", "python", "javascript", "which model", "what model", "model name", "system prompt", "prompt", "chatgpt", "claude", "anthropic", "openai", "gpt", "as an ai", "ignore previous", "ignore your instructions"],
+  zh: ["写代码", "写程序", "编程", "模型名", "哪个模型", "什么模型", "系统提示", "提示词", "忽略指令", "忽略之前", "作为ai", "chatgpt", "claude", "anthropic", "openai", "gpt"],
 };
 
 const cache = new Map<Lang, Words>();
@@ -166,7 +187,8 @@ export function judgeStaff(c: Customer, reply: string, used: string[], anger: nu
   }
   if (excuse > 0) { a += 8; comment = cm.excuse; }
   if (!new RegExp(w.polite_pattern).test(text)) { a += 8; comment = cm.casual; }
-  const tooShort = lang === "ja" ? raw.length < 6 : raw.split(/\s+/).filter(Boolean).length < 3;
+  // 英語は単語数、日本語・中国語は文字数で短さを見る
+  const tooShort = lang === "en" ? raw.split(/\s+/).filter(Boolean).length < 3 : raw.length < 6;
   if (tooShort) { a += 10; comment = cm.short; }
   if (used.includes(raw)) { a = Math.max(a, 0) + 12; r = 0; comment = cm.repeat; }
   if (isOffTopic(raw, lang)) { a = Math.max(a, 0) + 12; r = 0; yielded = false; comment = cm.offtopic; }
@@ -198,7 +220,7 @@ export function judgeCustomerLine(c: Customer, line: string, used: string[], lan
   if (used.includes(raw)) return { anger_delta: 0, resolve_delta: 8, comment: cm.c_repeat };
   if (isOffTopic(raw, lang)) return { anger_delta: 0, resolve_delta: 8, comment: cm.offtopic };
   let p = 3;
-  const len = lang === "ja" ? raw.length : raw.length / 2;
+  const len = lang === "en" ? raw.length / 2 : raw.length;
   if (len >= 12) p += 2;
   if (len >= 30) p += 2;
   if (raw.includes("！") || raw.includes("!")) p += 1;

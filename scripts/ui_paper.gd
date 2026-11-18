@@ -263,3 +263,44 @@ class IdPhoto extends Control:
 			draw_arc(face_c + Vector2(-r * 0.38, r * 0.05), r * 0.24, 0, TAU, 20, ink, 2.0)
 			draw_arc(face_c + Vector2(r * 0.38, r * 0.05), r * 0.24, 0, TAU, 20, ink, 2.0)
 			draw_line(face_c + Vector2(-r * 0.14, r * 0.05), face_c + Vector2(r * 0.14, r * 0.05), ink, 2.0)
+
+
+## 液晶の走査線（台のサービス画面。要件#66）
+class Scanlines extends Control:
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var y: float = 0.0
+		while y < size.y:
+			draw_line(Vector2(0, y), Vector2(size.x, y), Color(0, 0, 0, 0.22), 1.0)
+			y += 3.0
+
+
+## タイムカード（シフトの結果。要件#70）。厚紙の色・上のパンチ穴・時刻の欄の赤い線
+class TimeCard extends PanelContainer:
+	const CARD: Color = Color("#f1e8cf")
+	const EDGE: Color = Color("#b9ab86")
+	const RED: Color = Color("#c8463c")
+
+	func _init() -> void:
+		var st: StyleBoxFlat = StyleBoxFlat.new()
+		st.bg_color = CARD
+		st.border_color = EDGE
+		st.set_border_width_all(2)
+		st.content_margin_left = 30
+		st.content_margin_right = 30
+		st.content_margin_top = 42
+		st.content_margin_bottom = 22
+		st.shadow_color = Color(0, 0, 0, 0.35)
+		st.shadow_size = 0
+		st.shadow_offset = Vector2(6, 6)
+		add_theme_stylebox_override("panel", st)
+
+	func _draw() -> void:
+		# 打刻機に差し込むためのパンチ穴と、上の切り欠き
+		draw_circle(Vector2(size.x * 0.5, 20), 8.0, Color(0, 0, 0, 0.55))
+		draw_rect(Rect2(size.x * 0.5 - 30, 0, 60, 6), Color(0, 0, 0, 0.25))
+		# 時刻の欄の赤い縦線
+		draw_line(Vector2(30 + 78, 120), Vector2(30 + 78, size.y - 150), Color(RED.r, RED.g, RED.b, 0.55), 1.5)
+

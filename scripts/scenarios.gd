@@ -64,13 +64,9 @@ static func _round_to(n: float, step: int) -> int:
 	return maxi(step, int(round(n / float(step))) * step)
 
 
+## 言語ごとのお金の表記（要件#71: 円 / ドル / 元）
 static func yen_text(n: int, lang: String) -> String:
-	var s: String = str(n)
-	var out: String = ""
-	while s.length() > 3:
-		out = "," + s.right(3) + out
-		s = s.left(s.length() - 3)
-	return (s + out) + ("円" if lang == "ja" else " yen")
+	return GameSettings.money_in(n, lang)
 
 
 ## 金額を決めて {spent} を置き換える。spend: {claimed, actual, expected, payout} を入れる（lie は内部用に _lie）
@@ -104,7 +100,7 @@ static func materialize_spend(c: Dictionary, payout: int, lang: String = "") -> 
 	if lie:
 		acts["credit"] = "yield"
 		var kw: Array = (c.get("solution_keywords", []) as Array).duplicate()
-		kw.append_array(["記録", "データ", "履歴", "実際"] if l == "ja" else ["record", "data", "log", "actually"])
+		kw.append_array({"ja": ["記録", "データ", "履歴", "実際"], "zh": ["记录", "数据", "实际"]}.get(l, ["record", "data", "log", "actually"]))
 		c["solution_keywords"] = kw
 	c["actions"] = acts
 	return c

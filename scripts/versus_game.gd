@@ -496,7 +496,7 @@ func _on_action(id: String) -> void:
 	# 筐体のデータは見るだけ（要件#57）
 	if id == ShopActions.MACHINE_DATA:
 		if state == "match" and main.mode == "versus":
-			main.show_machine_data(_card)
+			main.show_machine_data(_card, false)
 		return
 	if state != "match" or not _my_turn or _phase != "staff_turn" or main.mode != "versus":
 		return

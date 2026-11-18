@@ -12,7 +12,7 @@ import { type Player, playerById, recordMatch, recentPairCount } from "./db.ts";
 import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
-import type { Lang } from "./lang.ts";
+import { type Lang, pick } from "./lang.ts";
 import { isAllowed, judgeAction, actionLabel, actionAsStaffLine } from "./actions.ts";
 
 interface Seat {
@@ -233,7 +233,7 @@ export class Match {
       if (input.via === "timeout" || this.anger >= 100) {
         this.anger = 100;
         outcome = "explode";
-        this.broadcastJudged(0, 0, this.lang === "ja" ? "時間切れ！お客さんがキレた。" : "Time's up! The customer snapped.", "staff");
+        this.broadcastJudged(0, 0, pick(this.lang, { ja: "時間切れ！お客さんがキレた。", en: "Time's up! The customer snapped.", zh: "时间到！顾客发飙了。" }), "staff");
         break;
       }
       this.setPhase("judging", -1, 0);
@@ -260,7 +260,7 @@ export class Match {
       if (reply === "") {
         // 声が聞き取れなかった: 少し怒りが上がり、もう一度店員の番
         this.anger = clamp(this.anger + 5, 0, 100);
-        this.broadcastJudged(5, 0, this.lang === "ja" ? "よく聞き取れなかった…もう一度！" : "Didn't catch that... try again!", "staff");
+        this.broadcastJudged(5, 0, pick(this.lang, { ja: "よく聞き取れなかった…もう一度！", en: "Didn't catch that... try again!", zh: "没听清……再说一遍！" }), "staff");
         if (this.anger >= 100) { outcome = "explode"; break; }
         continue;
       }
@@ -290,7 +290,7 @@ export class Match {
       this.setPhase("judging", -1, 0);
       const line = await this.inputToText(customer, cin, "customer");
       if (this.finished) return null;
-      const shown = line !== "" ? line : this.lang === "ja" ? "……（言葉に詰まっている）" : "... (lost for words)";
+      const shown = line !== "" ? line : pick(this.lang, { ja: "……（言葉に詰まっている）", en: "... (lost for words)", zh: "……（说不出话来）" });
       history.push({ role: "customer", text: shown });
       this.broadcastLine("customer", customer, shown, cin.via);
       const cj = await this.judgeCustomer(card, line, usedCustomer, history, cin.via === "voice", customer);
@@ -371,7 +371,7 @@ export class Match {
       return (await transcribe(input.pcm, input.debugText, this.lang)).trim();
     } catch (e) {
       log("stt failed", String(e));
-      this.send(seat, { t: "notice", text: this.lang === "ja" ? "声を文字にできませんでした。もう一度話すか、文字で入力してください。" : "Couldn't make out your voice. Speak again or type your line." });
+      this.send(seat, { t: "notice", text: pick(this.lang, { ja: "声を文字にできませんでした。もう一度話すか、文字で入力してください。", en: "Couldn't make out your voice. Speak again or type your line.", zh: "没能识别你的声音。请再说一次，或用文字输入。" }) });
       void role;
       return "";
     }
@@ -438,7 +438,7 @@ export class Match {
       return;
     }
     if (bytes.length < 1600 || bytes.length > MAX_BYTES) {
-      this.send(seat, { t: "notice", text: this.lang === "ja" ? "声が短すぎるか長すぎます（0.1〜20秒）。" : "Voice clip is too short or too long (0.1–20 s)." });
+      this.send(seat, { t: "notice", text: pick(this.lang, { ja: "声が短すぎるか長すぎます（0.1〜20秒）。", en: "Voice clip is too short or too long (0.1–20 s).", zh: "语音太短或太长（0.1～20秒）。" }) });
       // 番は続いているので、入力できる状態に戻してもらう
       this.sendPhase();
       return;

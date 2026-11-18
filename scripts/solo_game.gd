@@ -178,7 +178,8 @@ func _finish_summary() -> void:
 	_total += sales_bonus + review_bonus
 	summary = {"sales": _sales, "review": review, "sales_bonus": sales_bonus, "review_bonus": review_bonus,
 		"payout": _payout if (_stage_id == "arcade" and GameSettings.crane_mode == "prob") else -1,
-		"suspended": _suspended, "reviews": _make_reviews()}
+		"suspended": _suspended, "reviews": _make_reviews(),
+		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 
 
 ## お客様の声（要件#62）: 高い評価と低い評価を1つずつ。どちらも当てはまらない・出ないこともある
@@ -292,7 +293,7 @@ func _police(my_run: int) -> void:
 	_suspended = true
 	_total += SCORE_SUSPENDED
 	_review += REVIEW_SUSPENDED
-	_results.append({"title": tr("営業停止"), "outcome": "suspended", "points": SCORE_SUSPENDED, "turns": 0})
+	_results.append({"title": tr("営業停止"), "outcome": "suspended", "points": SCORE_SUSPENDED, "turns": 0, "clock": _clock() + 20})
 	_update_top()
 	await _wait(2.6)
 	if my_run != _run:
@@ -319,7 +320,8 @@ func _add_sales(outcome: String) -> void:
 
 
 func _process(delta: float) -> void:
-	if not _active or not _player_turn or paused:
+	# 台の前に筐体のデータを見に行っている間は、怒りは止まる（要件#66）
+	if not _active or not _player_turn or paused or main.machine_view_open:
 		return
 	_anger = minf(100.0, _anger + _rate * delta)
 	_refresh(true)
@@ -443,9 +445,9 @@ func _maybe_manager_visit(my_run: int) -> void:
 	var kw: String = str(advice.get("keyword", ""))
 	var act: String = str(advice.get("action", ""))
 	if kw != "":
-		lines.append(tr("「%s」の方向で話してみろ。") % kw)
+		lines.append(tr("「%s」について具体的に伝えてみろ。") % kw)
 	if act != "":
-		lines.append(tr("「%s」も効くかもしれない。") % ShopActions.label(act))
+		lines.append(tr("「%s」ボタンも効くかもしれない。") % ShopActions.label(act))
 	if lines.is_empty():
 		lines.append(tr("メモの規定を確かめて、できることを具体的に伝えろ。"))
 	lines.append(tr("要求は飲むなよ。"))
@@ -794,7 +796,7 @@ func _play_customer(my_run: int) -> void:
 		points -= _cost
 		hud.set_comment(tr("行動の負担: -%d 点") % _cost)
 	_total += points
-	_results.append({"title": str(_cust.get("title", "")), "outcome": outcome, "points": points, "turns": _turns})
+	_results.append({"title": str(_cust.get("title", "")), "outcome": outcome, "points": points, "turns": _turns, "clock": _clock()})
 	_add_sales(outcome)
 	if outcome == "age_lax" and (randf() < POLICE_CHANCE) and not main.smoke:
 		await _police(my_run)
@@ -895,12 +897,14 @@ func _smoke_autoplay(my_run: int) -> void:
 		0:
 			var words: Array = keys.get("solution_keywords", [])
 			var w: String = str(words[_turns % words.size()]) if not words.is_empty() else "check"
-			if en:
+			if GameSettings.language == "zh":
+				text = "非常抱歉，我理解您的心情。请让我马上为您处理%s。（%d）" % [w, _turns]
+			elif en:
 				text = "I'm so sorry, I understand. Please let me %s for you right away, sir. (%d)" % [w, _turns]
 			else:
 				text = "申し訳ございません。お気持ちお察しいたします。すぐに%sの対応をいたします。（%d）" % [w, _turns]
 		1:
-			text = "Shut up and go away" if en else "うるさい、帰れ"
+			text = "Shut up and go away" if en else ("闭嘴，快走" if GameSettings.language == "zh" else "うるさい、帰れ")
 		2:
 			return   # 何もしない → 時間切れでブチギレ
 		_:

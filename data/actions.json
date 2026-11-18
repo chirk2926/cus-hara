@@ -43,6 +43,24 @@
 			"age_refuse": "Ask them to leave",
 			"sell_ok": "Sell it",
 			"sell_refuse": "Decline the sale"
+		},
+		"zh": {
+			"discount": "打折",
+			"dogeza": "下跪道歉",
+			"medal_return": "补偿游戏币",
+			"maintenance": "维护检查",
+			"credit": "补偿游戏次数",
+			"crane_adjust": "调整难度",
+			"crane_move": "把奖品移到好抓的位置",
+			"crane_stuck": "取出卡住的奖品",
+			"machine_data": "查看机台数据",
+			"crane_won": "调整了机台（抓到了）",
+			"crane_lost": "调整了机台（没抓到）",
+			"id_check": "请对方出示证件",
+			"age_allow": "可以入店",
+			"age_refuse": "请对方离店",
+			"sell_ok": "出售",
+			"sell_refuse": "拒绝出售"
 		}
 	},
 	"effects": {
@@ -94,6 +112,14 @@
 			"yield": "You caved to an unreasonable demand...",
 			"crane_won": "They won it! That worked.",
 			"crane_lost": "No luck... raising hopes made it worse."
+		},
+		"zh": {
+			"good": "这样处理就对了！",
+			"neutral": "现在说这个不相干啊…",
+			"bad": "适得其反了…",
+			"yield": "不能答应无理要求啊…。",
+			"crane_won": "抓到了！这招有效。",
+			"crane_lost": "没抓到…给了期待反而让对方更生气了。"
 		}
 	},
 	"default": {

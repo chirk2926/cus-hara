@@ -6,7 +6,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { config } from "./config.ts";
 import { type Customer, type StageId, spendFacts } from "./scenarios.ts";
 import { type Judgement, type CustomerLineJudgement, scriptedLine } from "./keyword_judge.ts";
-import type { Lang } from "./lang.ts";
+import { type Lang, pick } from "./lang.ts";
 
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
@@ -207,7 +207,8 @@ async function callJson<T>(system: string, user: string, schema: z.ZodType<T>): 
 
 const LANG_LINE: Record<Lang, string> = {
   ja: "",
-  en: "\n\n# 出力の言語\n出力するテキスト（呼び名・名前・メモ・セリフ・要求・コメント・キーワード）はすべて自然な英語で書く。舞台は日本の店のまま（円、おにぎり、おでんなどはそのまま使ってよい）。キーワードは小文字の短い英語にする。",
+  en: "\n\n# 出力の言語\n出力するテキスト（呼び名・名前・メモ・セリフ・要求・コメント・キーワード）はすべて自然な英語で書く。舞台は日本の店のまま（おにぎり、おでんなどはそのまま使ってよい）。お金はドルで書く（クレーンゲーム1回 = $1）。キーワードは小文字の短い英語にする。",
+  zh: "\n\n# 出力の言語\n出力するテキスト（呼び名・名前・メモ・セリフ・要求・コメント・キーワード）はすべて自然な簡体字中国語（中国大陸の言い方）で書く。舞台は日本の店のまま。お金は元で書く（クレーンゲーム1回 = 8元）。キーワードは2〜5文字の短い中国語にする。",
 };
 
 // AIの出力に、ゲームと関係ないもの（コード、AI・モデル名、指示文）が混ざっていないか。要件#28
@@ -271,7 +272,7 @@ export async function judgeStaffTurn(stage: StageId, c: Customer, history: Histo
       resolve_delta: 0,
       yielded: false,
       customer_reply: scriptedLine(c, "angry", lang),
-      comment: lang === "ja" ? "接客と関係ない話はやめよう。" : "Stay on the job, not off-topic chatter.",
+      comment: pick(lang, { ja: "接客と関係ない話はやめよう。", en: "Stay on the job, not off-topic chatter.", zh: "别聊和接待无关的话题。" }),
     };
   }
   return {
@@ -287,7 +288,7 @@ export async function judgeCustomerTurn(stage: StageId, c: Customer, history: Hi
   const user = `# 舞台\n${STAGE_TEXT[stage]}\n\n# お客さん役の人物設定\n呼び名: ${c.title}\n状況メモ: ${c.memo}\n不当な要求: ${c.demand}\n\n# ここまでの会話（最後の行が採点対象のお客さん役のセリフ${voice ? "。音声の文字起こし" : ""}）\n${historyText(history)}\n\n最後のお客さん役のセリフを採点してください。${LANG_LINE[lang]}`;
   const r = await callJson(VS_CUSTOMER_SYSTEM, user, CustomerLineSchema);
   if (leaksMeta(r.comment)) {
-    return { anger_delta: 0, resolve_delta: 8, comment: lang === "ja" ? "接客と関係ない話はやめよう。" : "Stay on the job, not off-topic chatter." };
+    return { anger_delta: 0, resolve_delta: 8, comment: pick(lang, { ja: "接客と関係ない話はやめよう。", en: "Stay on the job, not off-topic chatter.", zh: "别聊和接待无关的话题。" }) };
   }
   return {
     anger_delta: clamp(Math.round(r.anger_delta), 0, 12),

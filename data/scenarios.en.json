@@ -74,14 +74,14 @@
 					"accessory": "bag",
 					"height": 1.05
 				},
-				"memo": "Plastic bags cost 3 yen each, clearly posted at the register. Bags can't be free, but you can hand items over without a bag, and eco-bags are sold for 110 yen.",
+				"memo": "Plastic bags cost 3 cents each, clearly posted at the register. Bags can't be free, but you can hand items over without a bag, and eco-bags are sold for $1.10.",
 				"opening": "Excuse me?! Bags cost money?! I have 30,000 followers! Make it free or I'm SO posting about this!",
 				"demand": "Free bag, plus everything free as payment for 'promotion' to her followers",
 				"patience": 1.2,
 				"start_anger": 45,
 				"solution_keywords": [
-					"3 yen",
-					"three yen",
+					"3 cents",
+					"three cents",
 					"eco-bag",
 					"eco bag",
 					"without a bag",
@@ -97,7 +97,7 @@
 				],
 				"lines": {
 					"calm": [
-						"Hmm, so it's a rule. Fine, 3 yen is like, borderline acceptable.",
+						"Hmm, so it's a rule. Fine, 3 cents is like, borderline acceptable.",
 						"Okay, got it. Then give me ONE aesthetic bag.",
 						"Ugh, fine. But you'll remember me, right? Right?"
 					],
@@ -137,7 +137,7 @@
 				},
 				"memo": "His bento was microwaved for 2 minutes; he has a sensitive tongue and says it's too hot. A one-time exchange for a new bento is allowed.",
 				"opening": "This bento is scorching! What if I burn my tongue?! I'll bill you for my medical expenses!",
-				"demand": "Bento exchange plus 10,000 yen for emotional damages",
+				"demand": "Bento exchange plus $100 for emotional damages",
 				"patience": 0.9,
 				"start_anger": 38,
 				"solution_keywords": [
@@ -172,7 +172,7 @@
 						"Could you explain that a little more simply?"
 					],
 					"demand": [
-						"10,000 yen for damages! That's a bargain and you know it!",
+						"$100 for damages! That's a bargain and you know it!",
 						"My tongue hurts! Show your sincerity in cash!"
 					],
 					"resolved": "Thank you. ...Phew, perfect temperature. That's all I wanted.",
@@ -683,13 +683,13 @@
 					"accessory": "mask",
 					"height": 1.08
 				},
-				"memo": "Bought one bento and a tea and wants three plastic bags for free. Bags cost 3 yen each. You can't make them free, but you can sell as many as he wants or help pack his own bag.",
+				"memo": "Bought one bento and a tea and wants three plastic bags for free. Bags cost 3 cents each. You can't make them free, but you can sell as many as he wants or help pack his own bag.",
 				"opening": "One bento, three bags! Hot, cold, and the tea go separately! And you're CHARGING for bags? To a customer?",
 				"demand": "Three plastic bags for free",
 				"patience": 1.0,
 				"start_anger": 40,
 				"solution_keywords": [
-					"3 yen",
+					"3 cents",
 					"charge",
 					"separate",
 					"pack",
@@ -704,14 +704,14 @@
 				],
 				"lines": {
 					"calm": [
-						"...Three yen. Fine, I'll pay.",
+						"...Three cents. Fine, I'll pay.",
 						"If you pack them separately, no complaints.",
 						"As long as hot and cold are apart."
 					],
 					"angry": [
 						"You're profiting off BAGS?!",
 						"The customer is king!",
-						"You don't get the weight of 3 yen!"
+						"You don't get the weight of 3 cents!"
 					],
 					"neutral": [
 						"So, the bags?",
@@ -1392,7 +1392,7 @@
 					"angry": [
 						"THERE! It did it again! You saw that, right?!",
 						"Those eyes are saying 'you'll never win me.' I know that look!",
-						"I did NOT spend a thousand yen to be looked down on by a stuffed animal!"
+						"I did NOT spend ten bucks to be looked down on by a stuffed animal!"
 					],
 					"neutral": [
 						"...Never mind that, is it still looking at me?",

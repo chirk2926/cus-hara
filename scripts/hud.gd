@@ -59,7 +59,8 @@ var _voice_row: HBoxContainer
 var _voice_mode: bool = false
 var _input_on: bool = false
 var _blocked: bool = false   # 紙の画面（休憩・設定など）が上に開いている間は入力を受けない
-var _parts: Dictionary = {}   # チュートリアルで指し示す部品（get_part）
+var _parts: Dictionary = {}
+var _memo_scroll: ScrollContainer = null   # チュートリアルで指し示す部品（get_part）
 var _say_tween: Tween = null
 var _banner_tween: Tween = null
 var _delta_tween: Tween = null
@@ -206,14 +207,16 @@ func _build() -> void:
 	tag_row.add_child(menu)
 
 	# メモは残りの高さに収め、入りきらない分は切る（下の付箋は必ず見える。要件#44）
-	var memo_box: Control = Control.new()
-	memo_box.clip_contents = true
-	memo_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 入りきらないときは切らずにスクロールできる（要件#67: 長いメモが見切れて読めなかった）
+	var memo_box: ScrollContainer = ScrollContainer.new()
+	memo_box.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	memo_box.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	memo_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(memo_box)
+	_memo_scroll = memo_box
 	var memo = Paper.Memo.new()
 	_parts["memo"] = memo_box
-	memo.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	memo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	memo_box.add_child(memo)
 	var mb: VBoxContainer = UI.vbox(4)
 	memo.add_child(mb)
@@ -224,7 +227,6 @@ func _build() -> void:
 
 	mb.add_child(_memo_body)
 	_memo_demand = UI.para("", UI.S_SMALL, UI.SHU, UI.F_HAND)
-	_memo_demand.max_lines_visible = 3
 	mb.add_child(_memo_demand)
 
 	var note: PanelContainer = UI.paper(UI.POP, 12, 3)
@@ -320,6 +322,13 @@ func _fit_upper() -> void:
 
 
 func _process(delta: float) -> void:
+	# 入力できる間は、いつも記入欄に文字が入る状態にしておく（要件#68: 毎回クリックしなくてよい）
+	if _input_on and not _blocked and not _voice_mode and visible and _text_row.visible and _field.editable \
+			and not _field.has_focus():
+		var fo: Control = get_viewport().gui_get_focus_owner()
+		if fo == null or not (fo is LineEdit or fo is TextEdit or fo is SpinBox):
+			_field.grab_focus()
+			_field.caret_column = _field.text.length()
 	if _typing and sfx != null:
 		_blip -= delta
 		if _blip <= 0.0:
@@ -395,10 +404,12 @@ func set_top(shop_text: String, progress_text: String, score_text: String) -> vo
 
 
 func set_memo(title: String, body: String, demand: String) -> void:
+	if _memo_scroll != null:
+		_memo_scroll.scroll_vertical = 0
 	_memo_title.text = title
 	_memo_body.text = body
 	# 長いメモは文字を小さくして収める
-	var long_memo: bool = body.length() + demand.length() > (80 if GameSettings.language == "ja" else 200)
+	var long_memo: bool = body.length() + demand.length() > (200 if GameSettings.language == "en" else 80)
 	_memo_body.add_theme_font_size_override("font_size", UI.S_SMALL if long_memo else UI.S_BODY)
 	_memo_demand.text = (tr("※ 要求: ") + demand) if demand != "" else ""
 

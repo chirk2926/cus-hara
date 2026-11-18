@@ -80,6 +80,9 @@ var _sheet_is_lobby: bool = false
 
 func _ready() -> void:
 	randomize()
+	# すべての字体に中国語（簡体字）の予備を付ける（テーマ既定の字体も同じリソース）
+	for f in [UI.F_BODY, UI.F_BOLD, UI.F_HAND, UI.F_DOT, UI.F_SIGN]:
+		UI.font(f)
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	for a in args:
 		if a.begins_with("--lang="):
@@ -310,13 +313,20 @@ func enter_versus(stage_id: String) -> void:
 
 
 ## カメラを指定の位置へ動かす（台の調整のミニゲームなど）
+var _cam_tween: Tween = null
+
+
 func camera_to(pos: Vector3, target: Vector3, dur: float) -> void:
 	var from_pos: Vector3 = _camera.position
 	var from_target: Vector3 = _cam_override_target if _cam_override else CAMERA_TARGET
 	_cam_override = true
 	_cam_override_pos = from_pos
 	_cam_override_target = from_target
+	# 前のカメラの動き（戻る途中など）は止める。止めないと、終わりに「いつもの位置」に戻されてしまう
+	if _cam_tween != null and _cam_tween.is_valid():
+		_cam_tween.kill()
 	var tw: Tween = create_tween()
+	_cam_tween = tw
 	tw.set_parallel(true)
 	tw.tween_property(self, "_cam_override_pos", pos, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(self, "_cam_override_target", target, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -326,7 +336,10 @@ func camera_to(pos: Vector3, target: Vector3, dur: float) -> void:
 func camera_release(dur: float) -> void:
 	if not _cam_override:
 		return
+	if _cam_tween != null and _cam_tween.is_valid():
+		_cam_tween.kill()
 	var tw: Tween = create_tween()
+	_cam_tween = tw
 	tw.set_parallel(true)
 	tw.tween_property(self, "_cam_override_pos", CAMERA_POS, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(self, "_cam_override_target", CAMERA_TARGET, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -363,52 +376,112 @@ func run_crane_minigame(opts: Dictionary = {}) -> Dictionary:
 ## 筐体のデータ（要件#57）。「〇〇円使っても取れない」と言うお客さんの、本当の投入額を見せる。
 ## 嘘なら記録を示して話せばよく、本当で目安に近いなら景品を取りやすい位置に直すとよい。
 var _machine_panel: Control = null
+## 筐体のデータを見に、台の前まで行っている（1人用の怒りは止まる。要件#66）
+var machine_view_open: bool = false
+var _md_token: int = 0
 
 
-func show_machine_data(cust: Dictionary) -> void:
+## 筐体のデータ（要件#57, #59, #66）。台の前まで行き（台の調整と同じカメラ）、台のサービス画面として記録を見せる。
+## walk = false（対戦）のときは、カウンターのまま画面だけ出す
+func show_machine_data(cust: Dictionary, walk: bool = true) -> void:
 	close_machine_data()
 	var sp: Variant = cust.get("spend", null)
 	if typeof(sp) != TYPE_DICTIONARY:
 		return
-	var d: Dictionary = sp
+	_md_token += 1
+	var token: int = _md_token
+	var arcade = _world.call("get_arcade")
+	if walk and arcade != null:
+		var cr: Dictionary = arcade.get_service_crane()
+		if not cr.is_empty():
+			var front: Vector3 = (cr["root"] as Node3D).to_global(Vector3.ZERO)
+			machine_view_open = true
+			_hud.visible = false
+			sfx.play("door", 1.3)
+			camera_to(front + Vector3(0.55, 1.45, 1.05), front + Vector3(0.1, 0.95, 0.0), 0.7)
+			await get_tree().create_timer(0.7).timeout
+			if token != _md_token:
+				return
+	_build_service_screen(sp as Dictionary)
+
+
+## 台のサービス画面（黒い液晶・緑のドット文字・走査線）と、お客さんの話のメモ
+func _build_service_screen(d: Dictionary) -> void:
 	sfx.play("click", 1.2)
 	var claimed: int = int(d.get("claimed", 0))
 	var actual: int = int(d.get("actual", 0))
 	var expected: int = int(d.get("expected", 0))
-	var panel: PanelContainer = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UI.flat_style(UI.LCD_BG, 14, 2))
-	panel.custom_minimum_size = Vector2(400, 0)
-	panel.anchor_left = 0.5
-	panel.anchor_right = 0.5
-	panel.offset_left = -200
-	panel.offset_right = 200
-	panel.offset_top = 96
-	_machine_panel = panel
-	_ui.add_child(panel)
-	var col: VBoxContainer = UI.vbox(6)
-	panel.add_child(col)
-	col.add_child(UI.text(tr("筐体のデータ  サービス台 #5"), UI.S_SMALL, UI.LCD_ON, UI.F_DOT))
-	col.add_child(UI.rule(Color(UI.LCD_ON.r, UI.LCD_ON.g, UI.LCD_ON.b, 0.4), 1))
-	# 目標金額 = 景品原価 / ペイアウト率（要件#59）と、記録の投入額がどこまで来ているか
+	var payout: int = int(d.get("payout", 30))
+	var holder: Control = Control.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_machine_panel = holder
+	_ui.add_child(holder)
+	# 液晶のまわりの黒い枠（台の筐体）
+	var bezel: PanelContainer = PanelContainer.new()
+	var bst: StyleBoxFlat = UI.flat_style(Color("#232328"), 14, 10)
+	bst.border_color = Color("#3c3c44")
+	bst.set_border_width_all(3)
+	bezel.add_theme_stylebox_override("panel", bst)
+	bezel.anchor_left = 0.5
+	bezel.anchor_right = 0.5
+	bezel.offset_left = -270
+	bezel.offset_right = 270
+	bezel.offset_top = 70
+	holder.add_child(bezel)
+	var screen: PanelContainer = PanelContainer.new()
+	screen.add_theme_stylebox_override("panel", UI.flat_style(Color("#07140b"), 16, 2))
+	bezel.add_child(screen)
+	var col: VBoxContainer = UI.vbox(4)
+	screen.add_child(col)
+	var on: Color = Color("#7dff8a")
+	var dim: Color = Color("#3f8f4a")
+	col.add_child(UI.text("SERVICE MODE  ::  BOOKKEEPING", UI.S_SMALL, dim, UI.F_DOT))
+	col.add_child(UI.text("UNIT #05  CRANE-B   PRIZE COST %s" % GameSettings.money(CraneScript.PRIZE_COST), UI.S_SMALL, dim, UI.F_DOT))
+	col.add_child(UI.text("--------------------------------------", UI.S_SMALL, dim, UI.F_DOT))
 	var rows: Array = [
-		[tr("お客さんの話"), tr("%s円") % CraneScript.yen(claimed)],
-		[tr("記録された投入額"), tr("%s円（%d プレイ）") % [CraneScript.yen(actual), actual / 100]],
-		[tr("払い出しの目標金額"), tr("%s円（ペイアウト率 %d%%）") % [CraneScript.yen(expected), int(d.get("payout", 30))]],
-		[tr("目標まで"), tr("到達（払い出してよい）") if actual >= expected else tr("あと %s円") % CraneScript.yen(expected - actual)],
+		["01", "CREDIT IN", GameSettings.money(actual)],
+		["02", "PLAY COUNT", str(actual / 100)],
+		["03", "PAYOUT SET", "%d%%" % payout],
+		["04", "PAYOUT GOAL", GameSettings.money(expected)],
+		["05", "TO GOAL", "REACHED" if actual >= expected else GameSettings.money(expected - actual)],
 	]
 	for r in rows:
-		var row: HBoxContainer = UI.hbox(12)
+		var row: HBoxContainer = UI.hbox(10)
 		col.add_child(row)
-		var l: Label = UI.text(str(r[0]), UI.S_BODY, UI.LCD_ON, UI.F_DOT)
+		row.add_child(UI.text(str(r[0]), UI.S_BODY, dim, UI.F_DOT))
+		var l: Label = UI.text(str(r[1]), UI.S_BODY, on, UI.F_DOT)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
-		row.add_child(UI.text(str(r[1]), UI.S_BODY, UI.LCD_ON, UI.F_DOT))
+		row.add_child(UI.text(str(r[2]), UI.S_LEAD, on if str(r[0]) != "05" or actual < expected else UI.POP, UI.F_DOT))
+	col.add_child(UI.text("--------------------------------------", UI.S_SMALL, dim, UI.F_DOT))
 	var bar = Paper.DotBar.new()
-	bar.segments = 20
-	bar.custom_minimum_size = Vector2(372, 12)
+	bar.segments = 24
+	bar.custom_minimum_size = Vector2(470, 14)
 	bar.value = 100.0 * float(actual) / float(maxi(expected, 1))
-	bar.color = UI.POP if actual >= expected else UI.LCD_ON
+	bar.color = UI.POP if actual >= expected else on
 	col.add_child(bar)
+	col.add_child(UI.text("GOAL %3d%%" % int(round(minf(999.0, 100.0 * float(actual) / float(maxi(expected, 1))))), UI.S_SMALL, dim, UI.F_DOT))
+	var close: Button = UI.link("▶ EXIT  " + tr("カウンターに戻る"), UI.S_SMALL, on)
+	close.focus_mode = Control.FOCUS_NONE
+	close.pressed.connect(close_machine_data)
+	col.add_child(close)
+	# 走査線
+	var scan: Control = Paper.Scanlines.new()
+	screen.add_child(scan)
+	# お客さんの話と見立て（手書きのメモ）
+	var note: PanelContainer = UI.paper(UI.POP, 12, 3)
+	note.anchor_left = 0.5
+	note.anchor_right = 0.5
+	note.offset_left = 290
+	note.offset_right = 290 + 250
+	note.offset_top = 90
+	note.rotation_degrees = 2.0
+	holder.add_child(note)
+	var nb: VBoxContainer = UI.vbox(4)
+	note.add_child(nb)
+	nb.add_child(UI.text(tr("お客さんの話"), UI.S_SMALL, UI.INK_SOFT, UI.F_HAND))
+	nb.add_child(UI.text(GameSettings.money(claimed), UI.S_HEAD, UI.INK, UI.F_HAND))
 	var verdict: String = ""
 	if actual < int(float(claimed) * 0.6):
 		verdict = tr("→ 話の金額より、記録がかなり少ない。記録をもとに落ち着いて伝えよう。")
@@ -416,11 +489,9 @@ func show_machine_data(cust: Dictionary) -> void:
 		verdict = tr("→ 記録どおり。目安に近いので、景品を取りやすい位置に直してもいい頃。")
 	else:
 		verdict = tr("→ 記録どおり。ただ、まだ目安には届いていない。")
-	col.add_child(UI.para(verdict, UI.S_SMALL, UI.POP, UI.F_DOT))
-	var close: Button = UI.link(tr("閉じる"), UI.S_SMALL, UI.LCD_ON)
-	close.focus_mode = Control.FOCUS_NONE
-	close.pressed.connect(close_machine_data)
-	col.add_child(close)
+	var vl: Label = UI.para(verdict, UI.S_SMALL, UI.INK, UI.F_HAND)
+	vl.custom_minimum_size = Vector2(220, 0)
+	nb.add_child(vl)
 
 
 ## 年齢確認の身分証（要件#61）。お客さんが差し出した身分証を、カードの形で見せる。
@@ -517,9 +588,16 @@ func police_visit() -> void:
 
 
 func close_machine_data() -> void:
+	_md_token += 1
 	if _machine_panel != null and is_instance_valid(_machine_panel):
 		_machine_panel.queue_free()
 	_machine_panel = null
+	if machine_view_open:
+		# 台の前からカウンターに戻る
+		machine_view_open = false
+		camera_release(0.6)
+		if _in_game:
+			_hud.visible = true
 
 
 func _on_talk_started(duration: float) -> void:
@@ -769,7 +847,7 @@ func _show_licenses() -> void:
 # ---------------------------------------------------------------- 紙の画面（設定・遊び方・休憩・結果・ロビー）
 
 ## 暗幕の上に紙を1枚置く。align: "left" | "center" | "right"。戻り値は中身を入れる箱
-func _open_sheet(width: int, align: String = "center", receipt: bool = false) -> VBoxContainer:
+func _open_sheet(width: int, align: String = "center", receipt: bool = false, timecard: bool = false) -> VBoxContainer:
 	_close_sheet()
 	_sheet = Control.new()
 	_sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -789,7 +867,7 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false) ->
 	holder.add_child(row)
 	if align != "left":
 		row.add_child(UI.spacer())
-	var panel: PanelContainer = Paper.Receipt.new() if receipt else UI.paper(UI.PAPER, 28, 6)
+	var panel: PanelContainer = Paper.Receipt.new() if receipt else (Paper.TimeCard.new() if timecard else UI.paper(UI.PAPER, 28, 6))
 	panel.resized.connect(_fit_to_screen.bind(panel, true))
 	# コンテナは並べ直すたびに子の scale を 1 に戻すので、並べ直した後にもう一度縮める（レシートが画面からはみ出していた）
 	row.sort_children.connect(func() -> void:
@@ -803,7 +881,7 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false) ->
 	var col: VBoxContainer = UI.vbox(12)
 	panel.add_child(col)
 	_solo.paused = true
-	_sheet_is_receipt = receipt
+	_sheet_is_receipt = receipt or timecard
 	_sheet_is_lobby = false
 	if _hud != null:
 		_hud.set_blocked(true)
@@ -1077,81 +1155,153 @@ func _receipt_rule(col: VBoxContainer) -> void:
 	col.add_child(UI.text("- - - - - - - - - - - - - - - - - - - - - -", UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
 
 
+## シフトの結果（要件#70: レシートではなくタイムカード）。お客様の声は右の空いた所に付箋で
+const STAMP_INK: Color = Color("#4a3a8c")   # 打刻のインク（紫）
+
+
+func _outcome_mark(outcome: String) -> String:
+	match outcome:
+		"resolved":
+			return tr("納得")
+		"explode":
+			return tr("激怒")
+		"yield":
+			return tr("屈服")
+		"breakdown":
+			return tr("早退")
+		"age_ok":
+			return tr("年齢OK")
+		"age_refused", "age_left":
+			return tr("お断り")
+		"age_wrong":
+			return tr("確認ミス")
+		"age_lax":
+			return tr("確認不足")
+		"suspended":
+			return tr("営業停止")
+	return ""
+
+
+## タイムカードの1行: [打刻の時刻][お客さん][結果のハンコ][点]
+func _card_row(col: VBoxContainer, clock: String, title: String, mark: String, points: String, mark_color: Color) -> void:
+	var row: HBoxContainer = UI.hbox(10)
+	col.add_child(row)
+	var t: Label = UI.text(clock, UI.S_BODY, STAMP_INK, UI.F_DOT)
+	t.custom_minimum_size = Vector2(70, 0)
+	row.add_child(t)
+	var n: Label = UI.text(title, UI.S_BODY, UI.INK, UI.F_BODY)
+	n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	n.clip_text = true
+	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(n)
+	if mark != "":
+		var m: Label = UI.text(mark, UI.S_SMALL, mark_color, UI.F_BOLD)
+		m.custom_minimum_size = Vector2(76, 0)
+		m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var st: StyleBoxFlat = StyleBoxFlat.new()
+		st.bg_color = Color(0, 0, 0, 0)
+		st.border_color = mark_color
+		st.set_border_width_all(2)
+		st.set_corner_radius_all(3)
+		st.content_margin_left = 4
+		st.content_margin_right = 4
+		m.add_theme_stylebox_override("normal", st)
+		m.rotation_degrees = -3.0
+		row.add_child(m)
+	var p: Label = UI.text(points, UI.S_BODY, UI.INK, UI.F_DOT)
+	p.custom_minimum_size = Vector2(70, 0)
+	p.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(p)
+
+
 func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 	var is_best: bool = GameSettings.submit_score(stage_id, total)
 	var rank: Array = rank_for(total)
 	sfx.play("win" if total >= 2400 else "lose")
-	var col: VBoxContainer = _open_sheet(440, "center", true)
+	var col: VBoxContainer = _open_sheet(580, "center", false, true)
 	col.add_theme_constant_override("separation", 6)
-	var shop: Label = UI.text(tr(str(STAGES[stage_id]["name"])), UI.S_LEAD, UI.INK, UI.F_DOT)
-	shop.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(shop)
-	var date: Label = UI.text(Time.get_datetime_string_from_system(false, true) + "  " + tr("シフト明細"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
-	date.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(date)
-	_receipt_rule(col)
+	var sm: Dictionary = _solo.summary
+	# 見出し: TIME CARD ／ 店・氏名・日付
+	var head: HBoxContainer = UI.hbox(12)
+	col.add_child(head)
+	head.add_child(UI.text("TIME CARD", UI.S_HEAD, UI.INK, UI.F_SIGN))
+	head.add_child(UI.spacer())
+	var today: Dictionary = Time.get_date_dict_from_system()
+	head.add_child(UI.text("%04d.%02d.%02d" % [int(today["year"]), int(today["month"]), int(today["day"])], UI.S_BODY, STAMP_INK, UI.F_DOT))
+	var info: HBoxContainer = UI.hbox(16)
+	col.add_child(info)
+	info.add_child(UI.text(tr("店舗") + "  " + tr(str(STAGES[stage_id]["name"])), UI.S_SMALL, UI.INK_SOFT))
+	info.add_child(UI.spacer())
+	var pname: String = str(GameSettings.last_profile.get("name", GameSettings.player_name))
+	info.add_child(UI.text(tr("氏名") + "  " + (pname if pname != "" else tr("新人")), UI.S_SMALL, UI.INK_SOFT))
+	col.add_child(UI.rule(Paper.TimeCard.EDGE, 1))
+	# 出勤 → お客さんごとの打刻 → 退勤
+	var clock_in: int = int(sm.get("clock_in", 17 * 60))
+	var clock_out: int = int(sm.get("clock_out", 23 * 60))
+	_card_row(col, AgeCheck.clock_text(clock_in), tr("出勤"), "", "", UI.INK)
 	for r in results:
 		var res: Dictionary = r
 		var outcome: String = str(res.get("outcome", ""))
-		var mark: String = tr("納得")
-		if outcome == "explode":
-			mark = tr("激怒")
-		elif outcome == "yield":
-			mark = tr("屈服")
-		elif outcome == "breakdown":
-			mark = tr("早退")
-		elif outcome == "age_ok":
-			mark = tr("年齢OK")
-		elif outcome == "age_refused" or outcome == "age_left":
-			mark = tr("お断り")
-		elif outcome == "age_wrong":
-			mark = tr("確認ミス")
-		elif outcome == "age_lax":
-			mark = tr("確認不足")
-		elif outcome == "suspended":
-			mark = ""
-		_receipt_line(col, "%s  %s" % [str(res.get("title", "")), mark], "%+d" % int(res.get("points", 0)))
-	# 売上と店舗レビュー（要件#56）
-	var sm: Dictionary = _solo.summary
+		var good: bool = outcome in ["resolved", "age_ok", "age_refused"]
+		var color: Color = Color("#2f7a4a") if good else (Paper.TimeCard.RED if outcome in ["explode", "yield", "suspended", "age_lax", "breakdown"] else UI.INK_SOFT)
+		var clock: String = AgeCheck.clock_text(int(res.get("clock", clock_in))) if res.has("clock") else "--:--"
+		_card_row(col, clock, str(res.get("title", "")), _outcome_mark(outcome), "%+d" % int(res.get("points", 0)), color)
+	var suspended: bool = bool(sm.get("suspended", false))
+	_card_row(col, AgeCheck.clock_text(clock_out), tr("退勤"), tr("営業停止") if suspended else "", "", Paper.TimeCard.RED)
+	col.add_child(UI.rule(Paper.TimeCard.EDGE, 1))
+	# 売上・店舗レビュー（要件#56）
 	if not sm.is_empty():
-		_receipt_rule(col)
 		if int(sm.get("payout", -1)) > 0:
 			_receipt_line(col, tr("クレーンのペイアウト率"), "%d%%" % int(sm["payout"]), UI.S_SMALL, UI.INK_SOFT)
-		_receipt_line(col, tr("売上"), tr("%s円") % CraneScript.yen(int(sm.get("sales", 0))))
-		_receipt_line(col, "  " + tr("売上ボーナス"), "%+d" % int(sm.get("sales_bonus", 0)), UI.S_SMALL)
+		_receipt_line(col, tr("売上"), "%s   %+d" % [GameSettings.money(int(sm.get("sales", 0))), int(sm.get("sales_bonus", 0))], UI.S_BODY)
 		var stars: float = float(sm.get("review", 3.0))
-		_receipt_line(col, tr("店舗レビュー"), "%s %.1f" % ["★".repeat(int(round(stars))) + "☆".repeat(5 - int(round(stars))), stars])
-		_receipt_line(col, "  " + tr("レビューボーナス"), "%+d" % int(sm.get("review_bonus", 0)), UI.S_SMALL)
-		if bool(sm.get("suspended", false)):
-			_receipt_line(col, tr("★ 営業停止処分"), "", UI.S_BODY, UI.SHU)
-		# お客様の声（要件#62）
-		var reviews: Array = sm.get("reviews", [])
-		if not reviews.is_empty():
-			_receipt_rule(col)
-			col.add_child(UI.text(tr("お客様の声"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
-			for rv in reviews:
-				var d: Dictionary = rv
-				var n: int = int(d.get("stars", 3))
-				var stars_l: Label = UI.text("★".repeat(n) + "☆".repeat(5 - n), UI.S_SMALL, UI.SHU if n >= 4 else UI.INK_SOFT, UI.F_DOT)
-				col.add_child(stars_l)
-				col.add_child(UI.para(tr("「%s」") % str(d.get("text", "")), UI.S_SMALL, UI.INK, UI.F_HAND))
-	_receipt_rule(col)
-	_receipt_line(col, tr("合計"), tr("%d 点") % total, UI.S_HEAD)
-	_receipt_line(col, tr("ランク"), "%s  %s" % [str(rank[1]), tr(str(rank[2]))], UI.S_BODY)
+		_receipt_line(col, tr("店舗レビュー"), "%s %.1f   %+d" % ["★".repeat(int(round(stars))) + "☆".repeat(5 - int(round(stars))), stars, int(sm.get("review_bonus", 0))])
+	col.add_child(UI.rule(Paper.TimeCard.EDGE, 1))
+	var tot: HBoxContainer = UI.hbox(12)
+	col.add_child(tot)
+	tot.add_child(UI.text(tr("合計"), UI.S_LEAD, UI.INK, UI.F_BOLD))
+	tot.add_child(UI.spacer())
+	tot.add_child(UI.text(tr("%d 点") % total, UI.S_HEAD, STAMP_INK, UI.F_DOT))
+	var rk: HBoxContainer = UI.hbox(12)
+	col.add_child(rk)
+	rk.add_child(UI.text(tr("ランク") + "  %s  %s" % [str(rank[1]), tr(str(rank[2]))], UI.S_BODY, UI.INK))
+	rk.add_child(UI.spacer())
 	if is_best:
-		_receipt_line(col, tr("★ ハイスコア更新"), "", UI.S_BODY, UI.SHU)
-	_receipt_rule(col)
-	var thanks: Label = UI.text(tr("またのご来店をお待ちしております"), UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
-	thanks.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(thanks)
-	col.add_child(UI.gap(8))
+		rk.add_child(UI.text(tr("★ ハイスコア更新"), UI.S_BODY, UI.SHU, UI.F_BOLD))
+	col.add_child(UI.gap(6))
+	var btns: HBoxContainer = UI.hbox(20)
+	col.add_child(btns)
 	var again: Button = UI.primary(tr("もう一度シフトに入る"), UI.S_LEAD)
 	again.pressed.connect(_start_solo.bind(stage_id))
-	col.add_child(again)
+	btns.add_child(again)
 	var back: Button = UI.link(tr("タイトルへ戻る"), UI.S_BODY)
-	back.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	back.pressed.connect(_quit_to_title)
-	col.add_child(back)
+	btns.add_child(back)
+	# お客様の声（要件#62）は右の空いた所に付箋で
+	var reviews: Array = sm.get("reviews", [])
+	if not reviews.is_empty() and _sheet != null:
+		var side: VBoxContainer = UI.vbox(14)
+		side.anchor_left = 1.0
+		side.anchor_right = 1.0
+		side.offset_left = -300
+		side.offset_right = -28
+		side.offset_top = 120
+		_sheet.add_child(side)
+		side.add_child(UI.text(tr("お客様の声"), UI.S_LEAD, UI.PAPER, UI.F_SIGN))
+		var i: int = 0
+		for rv in reviews:
+			var d: Dictionary = rv
+			var n: int = int(d.get("stars", 3))
+			var note: PanelContainer = UI.paper(UI.POP if n >= 4 else UI.PAPER, 14, 4)
+			note.rotation_degrees = -2.0 if i % 2 == 0 else 1.5
+			side.add_child(note)
+			var nb: VBoxContainer = UI.vbox(4)
+			note.add_child(nb)
+			nb.add_child(UI.text("★".repeat(n) + "☆".repeat(5 - n), UI.S_BODY, UI.SHU if n >= 4 else UI.INK_SOFT, UI.F_DOT))
+			var tl: Label = UI.para(tr("「%s」") % str(d.get("text", "")), UI.S_SMALL, UI.INK, UI.F_HAND)
+			tl.custom_minimum_size = Vector2(230, 0)
+			nb.add_child(tl)
+			i += 1
 
 
 # ---------------------------------------------------------------- 対戦ロビー（バックヤードの掲示板）
@@ -1531,7 +1681,7 @@ func _run_shots() -> void:
 		await manager_enter()
 		manager_talk(3.0)
 		var kws: Array = cust.get("solution_keywords", [])
-		_hud.set_comment(tr("店長: ") + (tr("「%s」の方向で話してみろ。") % str(kws[0] if not kws.is_empty() else "")) + " " + tr("要求は飲むなよ。"))
+		_hud.set_comment(tr("店長: ") + (tr("「%s」について具体的に伝えてみろ。") % str(kws[0] if not kws.is_empty() else "")) + " " + tr("要求は飲むなよ。"))
 		await _wait(0.5)
 		await _shot(dir, prefix + s + "_3b_manager")
 		manager_leave_now()
@@ -1546,7 +1696,7 @@ func _run_shots() -> void:
 			# 台の調整のミニゲーム（要件#37）
 			_hud.visible = true
 			# 筐体のデータ（要件#57）
-			show_machine_data(cust)
+			await show_machine_data(cust)
 			await _wait(0.4)
 			await _shot(dir, prefix + "arcade_4b_machine_data")
 			close_machine_data()
@@ -1572,14 +1722,14 @@ func _run_shots() -> void:
 	display_anger = 0.0
 	_hud.visible = true
 	var cs: Array = ScenariosScript.customers("arcade")
-	_solo.summary = {"sales": 21400, "review": 3.6, "sales_bonus": 70, "review_bonus": 240, "payout": 25,
+	_solo.summary = {"sales": 21400, "review": 3.6, "sales_bonus": 70, "review_bonus": 240, "payout": 25, "clock_in": 1020, "clock_out": 1380,
 		"reviews": [{"stars": 5, "text": tr("店員さんが景品を取りやすくしてくれた！神対応！")}, {"stars": 2, "text": tr("クレーン、全然取れない。お金が溶けただけ。")}]}
 	_on_solo_finished("arcade", [
-		{"title": cs[0]["title"], "outcome": "resolved", "points": 1520, "turns": 3},
-		{"title": cs[1]["title"], "outcome": "explode", "points": -300, "turns": 2},
-		{"title": cs[5]["title"], "outcome": "resolved", "points": 1430, "turns": 4},
-		{"title": cs[4]["title"], "outcome": "yield", "points": -600, "turns": 1},
-	], 2050)
+		{"title": str(cs[0]["title"]).replace("{spent}", GameSettings.money(3500)), "outcome": "resolved", "points": 1520, "turns": 3, "clock": 1050},
+		{"title": cs[1]["title"], "outcome": "explode", "points": -300, "turns": 2, "clock": 1155},
+		{"title": cs[5]["title"], "outcome": "resolved", "points": 1430, "turns": 4, "clock": 1260},
+		{"title": tr("自称ハタチ") if GameSettings.language == "ja" else cs[4]["title"], "outcome": "age_refused", "points": 600, "turns": 1, "clock": 1350},
+	], 3250)
 	await _wait(0.6)
 	await _shot(dir, prefix + "05_result")
 	_close_sheet()

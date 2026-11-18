@@ -23,8 +23,14 @@ const SOURCES: Array = [
 	["offline", "AIを使わない（台本）"],
 ]
 
-## 表示言語。"ja" | "en"。初回は OS の言語から決める
-const LANGS: Array = [["ja", "日本語"], ["en", "English"]]
+## 表示言語。"ja" | "en" | "zh"（簡体字中国語。要件#71）。初回は OS の言語から決める
+const LANGS: Array = [["ja", "日本語"], ["en", "English"], ["zh", "简体中文"]]
+## 言語ごとのお金の単位（要件#71）。中身の計算はすべて円で、表示するときだけ換える。1プレイ = 100円 = 1ドル = 8元
+const CURRENCY: Dictionary = {
+	"ja": {"rate": 1.0, "prefix": "", "suffix": "円"},
+	"en": {"rate": 0.01, "prefix": "$", "suffix": ""},
+	"zh": {"rate": 0.08, "prefix": "", "suffix": "元"},
+}
 var language: String = ""
 var server_url: String = DEFAULT_SERVER_URL
 var token: String = ""
@@ -38,7 +44,7 @@ var bgm_volume: float = 0.5
 const ANSWER_TIMES: Array = [["slow", "ゆっくり（タイピングが苦手な人向け）"], ["normal", "ふつう"], ["fast", "はやい"]]
 const ANSWER_RATE: Dictionary = {"slow": 0.6, "normal": 1.0, "fast": 1.4}
 var answer_time: String = "normal"
-var fullscreen: bool = false
+var fullscreen: bool = true   # 既定はフルスクリーン（要件#69）
 ## 解像度（ウィンドウの大きさ）。"auto" = 画面に収まる一番大きいもの。どれを選んでも、画面（タスクバーを除く）より大きくはしない
 const RESOLUTIONS: Array = [
 	["auto", "自動（画面に合わせる）"],
@@ -76,7 +82,8 @@ func _ready() -> void:
 		if a.begins_with("--server="):
 			server_url = a.substr(9)
 	if language == "":
-		language = "ja" if OS.get_locale_language() == "ja" else "en"
+		var os_lang: String = OS.get_locale_language()
+		language = os_lang if os_lang in ["ja", "zh"] else "en"
 	_resolution_from_cmdline = OS.get_cmdline_args().has("--resolution")
 	apply_language()
 	apply_window()
@@ -117,7 +124,7 @@ func load_settings() -> void:
 	if cfg.load(_path()) != OK:
 		return
 	language = str(cfg.get_value("ui", "language", language))
-	if not ["ja", "en"].has(language):
+	if not ["ja", "en", "zh"].has(language):
 		language = ""
 	token = str(cfg.get_value("server", "token", ""))
 	player_name = str(cfg.get_value("server", "name", ""))
@@ -135,7 +142,7 @@ func load_settings() -> void:
 	if not ANSWER_RATE.has(answer_time):
 		answer_time = "normal"
 	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
-	fullscreen = bool(cfg.get_value("video", "fullscreen", false))
+	fullscreen = bool(cfg.get_value("video", "fullscreen", true))
 	resolution = str(cfg.get_value("video", "resolution", "auto"))
 	crane_mode = str(cfg.get_value("play", "crane_mode", "power"))
 	if crane_mode != "prob":
@@ -177,6 +184,10 @@ func apply_window() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
 	DisplayServer.window_set_min_size(MIN_WINDOW)
+	# テスト・スクリーンショットで大きさを指定したときは、ウィンドウのまま
+	if _resolution_from_cmdline:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		return
 	if fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 		return
@@ -233,6 +244,32 @@ func own_key_ready() -> bool:
 ## 店の売上・レビュー・「取れない」クレームの出やすさに効くペイアウト率。確率設定でないときは既定の 30%
 func effective_payout() -> int:
 	return crane_payout if crane_mode == "prob" else 30
+
+
+## 円の金額を、今の言語のお金の表記にする（例: 3500 → "3,500円" / "$35" / "280元"）
+func money(yen: int) -> String:
+	return money_in(yen, language)
+
+
+static func money_in(yen: int, lang: String) -> String:
+	var c: Dictionary = CURRENCY.get(lang, CURRENCY["ja"])
+	var v: float = float(yen) * float(c["rate"])
+	var neg: bool = v < 0.0
+	v = absf(v)
+	var whole: int = int(floor(v + 0.0001))
+	var cents: int = int(round((v - float(whole)) * 100.0))
+	if cents >= 100:
+		whole += 1
+		cents = 0
+	var s: String = str(whole)
+	var out: String = ""
+	while s.length() > 3:
+		out = "," + s.right(3) + out
+		s = s.left(s.length() - 3)
+	var num: String = s + out
+	if cents > 0:
+		num += ".%02d" % cents
+	return ("-" if neg else "") + str(c["prefix"]) + num + str(c["suffix"])
 
 
 func answer_rate() -> float:

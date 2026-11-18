@@ -402,5 +402,22 @@
 	"販売をお断りした": "Declined the sale",
 	"顔写真つきの公的な身分証で、20歳以上だった。売ってよかった。": "Public photo ID and 20 or older. Fine to sell.",
 	"お酒の年齢確認がきちんとしていて、安心できるコンビニ。": "They check ages properly for alcohol. A konbini you can trust.",
-	"免許証を見せたのに、お酒を売ってもらえなかった。": "I showed my driver's license and they still wouldn't sell me a beer."
+	"免許証を見せたのに、お酒を売ってもらえなかった。": "I showed my driver's license and they still wouldn't sell me a beer.",
+	"「%s」について具体的に伝えてみろ。": "Tell them specifically about \"%s\".",
+	"「%s」ボタンも効くかもしれない。": "The \"%s\" button might help too.",
+	"『%s』": "\"%s\"",
+	"ヒント: %sに触れて、できることを伝えよう。": "Hint: mention %s and tell them what we can do.",
+	"では、やってみよう。記入欄に返事を書いて Enter（または「返事をする」）。\nコツ: おわび＋気持ちを受け止める＋メモにある「できること」を具体的に。": "Now you try. Type a reply in the box and press Enter (or \"Reply\").\nTip: apologize + acknowledge their feelings + offer what the memo says we CAN do, specifically.",
+	"景品原価 %s / ペイアウト率": "Prize cost %s / Payout",
+	"＝ 1個あたり %s": "= %s per prize",
+	"カウンターに戻る": "Back to the counter",
+	"简体中文": "简体中文",
+	"円": "円",
+	"元": "元",
+	"店舗": "Shop",
+	"氏名": "Name",
+	"新人": "Rookie",
+	"出勤": "Clock in",
+	"退勤": "Clock out",
+	"自称ハタチ": "The \"Totally 20\" Kid"
 }

@@ -209,7 +209,7 @@ func _build_ui() -> void:
 		col.add_child(qb)
 		var row: HBoxContainer = UI.hbox(4)
 		qb.add_child(row)
-		row.add_child(UI.text(tr("景品原価 %s円 / ペイアウト率") % yen(PRIZE_COST), UI.S_SMALL, UI.INK, UI.F_DOT))
+		row.add_child(UI.text(tr("景品原価 %s / ペイアウト率") % GameSettings.money(PRIZE_COST), UI.S_SMALL, UI.INK, UI.F_DOT))
 		var spin: SpinBox = SpinBox.new()
 		spin.min_value = PAYOUT_MIN
 		spin.max_value = PAYOUT_MAX
@@ -260,7 +260,7 @@ func _refresh_ui() -> void:
 		var over: bool = _power > POWER_LIMIT and not _prob
 		_power_label.text = tr("アームの強さ: %d") % _power + ("  " + tr("（規定外…）") if over else "")
 		_power_label.add_theme_color_override("font_color", UI.SHU if over else UI.INK)
-		_cost_label.text = tr("＝ 1個あたり %s円") % yen(cost_per_prize(_payout))
+		_cost_label.text = tr("＝ 1個あたり %s") % GameSettings.money(cost_per_prize(_payout))
 	if _test_btn != null:
 		_test_btn.disabled = _tests_left <= 0 or _phase != "adjust"
 		if _test_label.text == "" or _tests_left == TEST_PLAYS:

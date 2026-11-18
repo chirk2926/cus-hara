@@ -69,6 +69,8 @@ exe にデータ（pck）を埋め込む設定なので、配るのは exe 1つ�
 | ペイアウト率の効き方（クレームの出やすさ・言う金額） | `server/src/scenarios.ts` の `spendWeight` / `materializeSpend` と、同じ決まりの `scripts/scenarios.gd`（両方そろえて直す） |
 | 確率設定の取れやすさ・テストプレイの回数 | `scripts/crane_minigame.gd` の `_win_chance` / `TEST_PLAYS` |
 | 売上・店舗レビューと点数のボーナス | `scripts/solo_game.gd` の `SALES_*` / `REVIEW_*` / `_finish_summary` |
+| 言語ごとのお金の単位・換算 | `scripts/game_settings.gd` の `CURRENCY` と `server/src/lang.ts` の `money`（両方そろえる） |
+| 言語を増やす | `game_settings.gd` の `LANGS`、`data/i18n/<lang>.json`、`data/scenarios.<lang>.json`、`judge_words.json`・`actions.json` の <lang>、`server/src/lang.ts` の `LANGS`、`tools/i18n.py` の `LANGS`。字体に無い文字は `ui_kit.gd` の予備の字体で補う |
 | チュートリアルの説明文・順番 | `scripts/tutorial.gd` の `_go`（文は `data/i18n/en.json` にも英訳を足す） |
 | 1人用の得点・ランクの境目 | `solo_game.gd` の `SCORE_*`、`main.gd` の `RANKS` |
 | キーワード判定の語 | `data/judge_words.json`（サーバーとクライアント共通） |

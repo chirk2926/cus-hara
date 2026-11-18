@@ -31,14 +31,23 @@ const F_BODY: String = "res://assets/fonts/NotoSansJP_500Medium.ttf"
 const F_BOLD: String = "res://assets/fonts/NotoSansJP_800ExtraBold.ttf"
 const F_HAND: String = "res://assets/fonts/YuseiMagic.ttf"        # 手書きの物（メモ・付箋・POP）
 const F_DOT: String = "res://assets/fonts/DotGothic16.ttf"         # 機械の表示（レジ・レシート）
-const F_SIGN: String = "res://assets/fonts/DelaGothicOne.ttf"      # 看板・ポスター・大きな判定
+const F_SIGN: String = "res://assets/fonts/DelaGothicOne.ttf"
+## 簡体字中国語の文字（日本語のフォントに無い字）を補う。すべてのフォントの予備にする（要件#71）
+const F_SC: String = "res://assets/fonts/NotoSansSC_500Medium.ttf"      # 看板・ポスター・大きな判定
 
 static var _fonts: Dictionary = {}
 
 
 static func font(path: String) -> Font:
 	if not _fonts.has(path):
-		_fonts[path] = load(path) as Font
+		var f: Font = load(path) as Font
+		if f != null and path != F_SC:
+			var sc: Font = load(F_SC) as Font
+			if sc != null and not f.fallbacks.has(sc):
+				var fb: Array[Font] = f.fallbacks.duplicate()
+				fb.append(sc)
+				f.fallbacks = fb
+		_fonts[path] = f
 	return _fonts[path]
 
 

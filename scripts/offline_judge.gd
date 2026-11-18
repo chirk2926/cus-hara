@@ -18,6 +18,13 @@ const COMMENTS: Dictionary = {
 		"yielded": "You caved to an unreasonable demand...", "good": "Good, you took it on board.", "ok": "Not bad. Now offer a solution.",
 		"miss": "That missed. Read the memo.", "offtopic": "Stay on the job, not off-topic chatter.",
 	},
+	"zh": {
+		"solution": "具体的解决方案，很好！", "cushion": "拒绝的时候更要先说句软话。", "firm": "坚定又得体，保持住。",
+		"only_sorry": "光道歉解决不了问题。", "excuse": "听起来像在找借口。", "casual": "说话太随便，火上浇油。",
+		"short": "太短了。好好说几句。", "repeat": "重复同样的回答可不行。", "rude": "不能对顾客恶语相向！",
+		"yielded": "不能答应无理要求啊…。", "good": "接得很好。", "ok": "还不错。接下来给出解决方案。",
+		"miss": "没说到点上。看看备忘录。", "offtopic": "别聊和接待无关的话题。",
+	},
 }
 
 ## 接客と関係ない話（AIへの依頼・プログラム・モデル名など）。要件#28
@@ -25,6 +32,7 @@ const OFFTOPIC: Array = [
 	"コードを", "プログラム", "モデル名", "どのモデル", "システムプロンプト", "プロンプト", "指示を無視", "aiとして", "ai として",
 	"write code", "write a program", "python", "javascript", "which model", "what model", "model name", "system prompt",
 	"prompt", "chatgpt", "claude", "anthropic", "openai", "gpt", "as an ai", "ignore previous", "ignore your instructions",
+	"写代码", "写程序", "编程", "模型名", "哪个模型", "什么模型", "系统提示", "提示词", "忽略指令", "忽略之前", "作为ai",
 ]
 
 static var _words: Dictionary = {}
@@ -150,8 +158,9 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 	if re.search(text) == null:
 		a += 8.0
 		comment = str(cm["casual"])
+	# 英語は単語数、日本語・中国語は文字数で短さを見る
 	var too_short: bool = raw.length() < 6
-	if lang != "ja":
+	if lang == "en":
 		too_short = raw.split(" ", false).size() < 3
 	if too_short:
 		a += 10.0

@@ -141,7 +141,7 @@ test("台の種類ごとのボタンと、ペイアウト率・筐体のデー�
   const truthRnd = [0.5, 0.9, 0.5];
   const c2 = materializeSpend(structuredClone(crane), 20, "en", () => truthRnd.shift() ?? 0.5);
   assert.ok(!c2.spend_data!.lie && c2.spend_data!.actual >= c2.spend_data!.claimed * 0.9);
-  assert.ok(c2.opening.includes("yen"));
+  assert.ok(c2.opening.includes("$"), "英語はドル（要件#71）");
   assert.equal(publicCustomer(c2).spend!.actual, c2.spend_data!.actual);
   // ペイアウト率が低いほど「取れない」クレームが増える
   const count = (p: number) => { let n = 0; for (let i = 0; i < 3000; i++) if (randomCustomer("arcade", [], "ja", false, p).spend) n++; return n; };
