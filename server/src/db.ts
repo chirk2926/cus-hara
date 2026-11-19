@@ -74,7 +74,178 @@ export function openDb(): DatabaseSync {
   if (!cols.some((c) => c.name === "tag")) db.exec("ALTER TABLE players ADD COLUMN tag TEXT NOT NULL DEFAULT ''");
   // 対戦のキャラクターの列（要件#84）
   if (!cols.some((c) => c.name === "avatar")) db.exec("ALTER TABLE players ADD COLUMN avatar TEXT NOT NULL DEFAULT ''");
+  // 利用停止・警告（要件#100。管理画面から）。banned_until: 0 = なし、-1 = 永久、それ以外はその時刻（ミリ秒）まで
+  for (const [col, def] of [["banned_until", "INTEGER NOT NULL DEFAULT 0"], ["versus_banned_until", "INTEGER NOT NULL DEFAULT 0"],
+    ["ban_reason", "TEXT NOT NULL DEFAULT ''"], ["warn_message", "TEXT NOT NULL DEFAULT ''"]] as const) {
+    if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE players ADD COLUMN ${col} ${def}`);
+  }
+  // 通報の対応状況（要件#100）
+  const rcols = db.prepare("PRAGMA table_info(reports)").all() as Array<{ name: string }>;
+  for (const [col, def] of [["status", "TEXT NOT NULL DEFAULT 'open'"], ["handled_at", "INTEGER NOT NULL DEFAULT 0"], ["handled_note", "TEXT NOT NULL DEFAULT ''"]] as const) {
+    if (!rcols.some((c) => c.name === col)) db.exec(`ALTER TABLE reports ADD COLUMN ${col} ${def}`);
+  }
+  db.exec(`
+    -- 通報された試合の会話（文字だけ。声は保存しない）。30日で消す（要件#100・プライバシーポリシー）
+    CREATE TABLE IF NOT EXISTS match_logs (
+      match_id TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL,
+      body TEXT NOT NULL
+    );
+    -- AI の使用量（日ごと・モデルごと）。料金の目安に使う
+    CREATE TABLE IF NOT EXISTS ai_usage (
+      day TEXT NOT NULL,
+      model TEXT NOT NULL,
+      calls INTEGER NOT NULL DEFAULT 0,
+      input INTEGER NOT NULL DEFAULT 0,
+      output INTEGER NOT NULL DEFAULT 0,
+      cache_read INTEGER NOT NULL DEFAULT 0,
+      cache_write INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, model)
+    );
+    -- お知らせ（タイトル画面に出す）
+    CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text_ja TEXT NOT NULL,
+      text_en TEXT NOT NULL DEFAULT '',
+      text_zh TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL
+    );
+    -- 管理画面で変えた設定（秘密の値は var/secrets.json に別に置く）
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    -- 管理画面の操作の記録（戻すときに使う）
+    CREATE TABLE IF NOT EXISTS admin_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      at INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      target TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '',
+      before_value TEXT NOT NULL DEFAULT '',
+      after_value TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_matches_created ON matches(created_at);
+  `);
   return db;
+}
+
+// ---------------------------------------------------------------- 利用停止・警告（要件#100）
+
+export interface Sanction {
+  bannedUntil: number;
+  versusBannedUntil: number;
+  reason: string;
+  warnMessage: string;
+}
+
+export function sanctionOf(id: string): Sanction {
+  const r = openDb().prepare("SELECT banned_until, versus_banned_until, ban_reason, warn_message FROM players WHERE id = ?").get(id) as
+    | { banned_until: number; versus_banned_until: number; ban_reason: string; warn_message: string }
+    | undefined;
+  return { bannedUntil: Number(r?.banned_until ?? 0), versusBannedUntil: Number(r?.versus_banned_until ?? 0), reason: r?.ban_reason ?? "", warnMessage: r?.warn_message ?? "" };
+}
+
+/** 今止められているか。until: 0 = なし、-1 = 永久 */
+export function isActiveBan(until: number, now = Date.now()): boolean {
+  return until === -1 || until > now;
+}
+
+export function setSanction(id: string, s: Partial<Sanction>): void {
+  const cur = sanctionOf(id);
+  const n = { ...cur, ...s };
+  openDb().prepare("UPDATE players SET banned_until = ?, versus_banned_until = ?, ban_reason = ?, warn_message = ? WHERE id = ?")
+    .run(n.bannedUntil, n.versusBannedUntil, n.reason.slice(0, 200), n.warnMessage.slice(0, 300), id);
+}
+
+// ---------------------------------------------------------------- 通報された試合の会話（要件#100）
+
+export const MATCH_LOG_DAYS = 30;
+
+export function saveMatchLog(matchId: string, body: unknown): void {
+  openDb().prepare("INSERT OR REPLACE INTO match_logs (match_id, created_at, body) VALUES (?, ?, ?)").run(matchId, Date.now(), JSON.stringify(body));
+}
+
+export function matchLog(matchId: string): unknown | null {
+  const r = openDb().prepare("SELECT body FROM match_logs WHERE match_id = ?").get(matchId) as { body: string } | undefined;
+  return r ? JSON.parse(r.body) : null;
+}
+
+/** 保存期間を過ぎた会話を消す。消した数を返す */
+export function purgeMatchLogs(now = Date.now()): number {
+  const r = openDb().prepare("DELETE FROM match_logs WHERE created_at < ?").run(now - MATCH_LOG_DAYS * 86_400_000);
+  return Number(r.changes);
+}
+
+// ---------------------------------------------------------------- AI の使用量（要件#100）
+
+export function addAiUsage(model: string, u: { input: number; output: number; cacheRead: number; cacheWrite: number }, now = new Date()): void {
+  const day = now.toISOString().slice(0, 10);
+  openDb()
+    .prepare(`INSERT INTO ai_usage (day, model, calls, input, output, cache_read, cache_write) VALUES (?, ?, 1, ?, ?, ?, ?)
+      ON CONFLICT(day, model) DO UPDATE SET calls = calls + 1, input = input + excluded.input, output = output + excluded.output,
+      cache_read = cache_read + excluded.cache_read, cache_write = cache_write + excluded.cache_write`)
+    .run(day, model, u.input, u.output, u.cacheRead, u.cacheWrite);
+}
+
+export function aiUsage(days: number): Array<{ day: string; model: string; calls: number; input: number; output: number; cache_read: number; cache_write: number }> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  return openDb().prepare("SELECT * FROM ai_usage WHERE day >= ? ORDER BY day DESC, model").all(since) as never;
+}
+
+// ---------------------------------------------------------------- お知らせ・設定・操作の記録（要件#100）
+
+export interface Announcement {
+  id: number;
+  text_ja: string;
+  text_en: string;
+  text_zh: string;
+  active: number;
+  created_at: number;
+}
+
+export function announcements(activeOnly: boolean): Announcement[] {
+  return openDb().prepare(`SELECT * FROM announcements ${activeOnly ? "WHERE active = 1" : ""} ORDER BY id DESC LIMIT 50`).all() as never;
+}
+
+export function addAnnouncement(ja: string, en: string, zh: string): number {
+  const r = openDb().prepare("INSERT INTO announcements (text_ja, text_en, text_zh, active, created_at) VALUES (?, ?, ?, 1, ?)").run(ja.slice(0, 300), en.slice(0, 300), zh.slice(0, 300), Date.now());
+  return Number(r.lastInsertRowid);
+}
+
+export function setAnnouncementActive(id: number, active: boolean): void {
+  openDb().prepare("UPDATE announcements SET active = ? WHERE id = ?").run(active ? 1 : 0, id);
+}
+
+export function deleteAnnouncement(id: number): void {
+  openDb().prepare("DELETE FROM announcements WHERE id = ?").run(id);
+}
+
+export function storedSettings(): Record<string, string> {
+  const rows = openDb().prepare("SELECT key, value FROM settings").all() as Array<{ key: string; value: string }>;
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+export function storeSetting(key: string, value: string | null): void {
+  if (value === null) openDb().prepare("DELETE FROM settings WHERE key = ?").run(key);
+  else openDb().prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run(key, value, Date.now());
+}
+
+export function adminLog(action: string, target: string, detail: string, before = "", after = ""): number {
+  const r = openDb().prepare("INSERT INTO admin_log (at, action, target, detail, before_value, after_value) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(Date.now(), action, target.slice(0, 200), detail.slice(0, 500), before.slice(0, 2000), after.slice(0, 2000));
+  return Number(r.lastInsertRowid);
+}
+
+export function adminLogs(limit: number): Array<{ id: number; at: number; action: string; target: string; detail: string; before_value: string; after_value: string }> {
+  return openDb().prepare("SELECT * FROM admin_log ORDER BY id DESC LIMIT ?").all(limit) as never;
+}
+
+export function adminLogById(id: number): { id: number; action: string; target: string; before_value: string; after_value: string } | undefined {
+  return openDb().prepare("SELECT * FROM admin_log WHERE id = ?").get(id) as never;
 }
 
 export function hashToken(token: string): string {

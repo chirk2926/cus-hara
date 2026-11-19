@@ -403,3 +403,30 @@ test("不適切な名前（要件#94）: 名前の変更は断り、ゲストを
   const ok = await api(srv.base, "POST", "/api/v1/me", { name: "バカ店長" }, g.body.token);
   assert.equal(ok.body.player.name, "バカ店長");
 });
+
+test("EOS のボイス（要件#100）: 部屋の ID を相手に渡し、両方つながったらサーバーは声を中継しない（文字起こしは続ける）", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "EOS声A");
+  const b = await guest(srv.base, srv.wsUrl, "EOS声B");
+  a.c.send({ t: "room_create", format: "voice" });
+  const room = await a.c.wait((m) => m.t === "room_created");
+  b.c.send({ t: "room_join", code: room.code });
+  const fa = await a.c.wait((m) => m.t === "match_found");
+  const fb = await b.c.wait((m) => m.t === "match_found");
+  const [host, guestC] = fa.voice_host ? [a, b] : [b, a];
+  assert.equal(fa.voice_host !== fb.voice_host, true, "部屋を作るのは片方だけ");
+  assert.equal(fa.voice_mode, "relay", "最初はサーバーの中継");
+  host.c.send({ t: "eos_voice", lobby_id: "lobby_123" });
+  const got = await guestC.c.wait((m) => m.t === "eos_voice");
+  assert.equal(got.lobby_id, "lobby_123");
+  host.c.send({ t: "eos_voice_ready", ok: true });
+  guestC.c.send({ t: "eos_voice_ready", ok: true });
+  assert.equal((await a.c.wait((m) => m.t === "voice_mode" && m.mode === "eos")).mode, "eos");
+  // ここからは autoplay（声で返す）。声は中継されず、文字起こしでセリフになる
+  const before = a.c.inbox.length + b.c.inbox.length;
+  autoplay(a.c, { voice: true }); autoplay(b.c, { voice: true });
+  await a.c.wait((m) => m.t === "match_end", 60000);
+  const after = [...a.c.inbox, ...b.c.inbox].slice(before);
+  assert.ok(!after.some((m) => m.t === "voice"), "EOS のときはサーバーから声を送らない");
+  assert.ok(a.c.inbox.some((m) => m.t === "line" && m.via === "voice"), "文字起こしは続く");
+  a.c.close(); b.c.close();
+});

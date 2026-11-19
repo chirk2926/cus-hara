@@ -271,6 +271,97 @@ func unlock_achievements(ids: Array) -> void:
 	ha.unlock_achievements_async(ids)
 
 
+# ---------------------------------------------------------------- 声の対戦のボイス（要件#100）
+## 声の対戦では、EOS のロビーのボイス（RTC）で相手に声を直接届ける。部屋は席 0 の人が作り、ID はゲームサーバーが相手に渡す。
+## 自分の番でボタンを押している間だけマイクを開ける（update_sending）。だめなら、ゲームサーバーが中継する（今までどおり）。
+
+var _voice_lobby = null
+
+
+## ボイスの部屋を作る。ID を返す（だめなら ""）
+func voice_host(display_name: String) -> String:
+	if not await ensure_ready(display_name):
+		return ""
+	_prepare_rtc()
+	var opts = _eos.Lobby.CreateLobbyOptions.new()
+	opts.bucket_id = "%s:voice" % GAME_TAG
+	opts.max_lobby_members = 2
+	opts.presence_enabled = false
+	opts.allow_invites = false
+	opts.enable_rtc_room = true
+	opts.enable_join_by_id = true
+	opts.permission_level = _eos.Lobby.LobbyPermissionLevel["JoinViaPresence"]
+	var lobby = await _node("HLobbies").create_lobby_async(opts)
+	if lobby == null:
+		return ""
+	_voice_lobby = lobby
+	return str(lobby.get("lobby_id"))
+
+
+## 相手が作ったボイスの部屋に入る
+func voice_join(lobby_id: String, display_name: String) -> bool:
+	if lobby_id == "" or not await ensure_ready(display_name):
+		return false
+	_prepare_rtc()
+	var lobby = await _node("HLobbies").join_by_id_async(lobby_id)
+	if lobby == null:
+		return false
+	_voice_lobby = lobby
+	return true
+
+
+## マイクは最初は閉じておく（自分の番でボタンを押したときだけ開ける）
+func _prepare_rtc() -> void:
+	var hl: Node = _node("HLobbies")
+	if hl != null:
+		hl.set("local_rtc_options", {"flags": int(_eos.RTC.JoinRoomFlags["EnableDataChannel"]), "local_audio_device_input_starts_muted": true})
+
+
+## ボイスの部屋につながって、相手もいるか
+func voice_connected() -> bool:
+	if _voice_lobby == null or not is_instance_valid(_voice_lobby):
+		return false
+	return bool(_voice_lobby.get("rtc_room_connected")) and (_voice_lobby.get("members") as Array).size() >= 2
+
+
+## 何秒か待って、つながったら true
+func voice_wait_connected(seconds: float) -> bool:
+	var t: float = 0.0
+	while t < seconds:
+		if voice_connected():
+			return true
+		await get_tree().create_timer(0.25).timeout
+		t += 0.25
+	return voice_connected()
+
+
+## マイクを開ける・閉じる（押して話す）
+func voice_set_talking(on: bool) -> void:
+	if _voice_lobby == null or not is_instance_valid(_voice_lobby):
+		return
+	var room: String = str(_voice_lobby.get("rtc_room_name"))
+	if room == "":
+		return
+	var opts = _eos.RTCAudio.UpdateSendingOptions.new()
+	opts.room_name = room
+	opts.audio_status = _eos.RTCAudio.AudioStatus["Enabled"] if on else _eos.RTCAudio.AudioStatus["Disabled"]
+	_eos.RTCAudio.RTCAudioInterface.update_sending(opts)
+
+
+func voice_leave() -> void:
+	if _voice_lobby == null:
+		return
+	var l = _voice_lobby
+	_voice_lobby = null
+	if not is_instance_valid(l):
+		return
+	voice_set_talking(false)
+	if bool(l.call("is_owner")):
+		l.destroy_async()
+	else:
+		l.leave_async()
+
+
 # ---------------------------------------------------------------- 後片付け
 
 ## 試合が始まったら（または、やめたら）ロビーを抜ける

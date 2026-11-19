@@ -71,6 +71,9 @@ var _ui: CanvasLayer = null
 var _title: Control = null
 var _sheet: Control = null
 var _server_label: Label = null
+var _notice_box: PanelContainer = null   # 運営からのお知らせ（要件#100）
+var _notice_text: Label = null
+var _warning_shown: bool = false
 var _player_card: Control = null
 var _version_label: Label = null
 var _bg_label: Label = null
@@ -1370,11 +1373,51 @@ func _check_server() -> void:
 	var res: Dictionary = await api.request("GET", "/api/v1/info", null, false)
 	if bool(res.get("ok", false)):
 		_server_info = res["body"]
-		await api.ensure_login()
+		var me: Dictionary = await api.ensure_login()
 		_sync_look()
+		# 利用停止・運営からの警告（要件#100）
+		if str(me.get("code", "")) == "banned":
+			_show_admin_message(tr("このアカウントは利用停止中です"), str(me.get("error", "")), false)
+		elif str(api.pending_warning) != "" and not _warning_shown:
+			_warning_shown = true
+			_show_admin_message(tr("運営からの警告"), str(api.pending_warning), true)
 	else:
 		_server_info = {"error": str(res.get("message", ""))}
 	_refresh_title()
+	_sync_eos_achievements()
+
+
+## EOS の実績（要件#100: Microsoft Store 版の実績）。起動したら EOS に（Epic アカウントが無ければ、この PC の ID で）ログインし、
+## 手に入れた称号をまとめて実績に記録する（オフラインで手に入れた分も、ここで追いつく。同じ実績を何度記録しても問題ない）
+var _eos_synced: bool = false
+
+
+func _sync_eos_achievements() -> void:
+	if _eos_synced or smoke or _versus == null or _versus.eos == null or not _versus.eos.available():
+		return
+	_eos_synced = true
+	if not await _versus.eos.ensure_ready(GameSettings.player_name):
+		_eos_synced = false
+		return
+	_versus.eos.unlock_achievements(GameSettings.unlocked_titles.duplicate())
+
+
+## 運営からの警告・利用停止の知らせ（要件#100）。警告は「わかりました」で既読にする
+func _show_admin_message(title: String, text: String, ack: bool) -> void:
+	if _sheet != null:
+		return
+	var col: VBoxContainer = _open_sheet(560, "center")
+	_sheet_title(col, title)
+	col.add_child(UI.para(text, UI.S_BODY, UI.INK))
+	if not ack:
+		col.add_child(UI.para(tr("対戦などオンラインの機能は使えません。1人用（AIを使わない台本）は遊べます。"), UI.S_SMALL, UI.INK_SOFT))
+	var ok: Button = UI.primary(tr("わかりました"), UI.S_BODY)
+	ok.pressed.connect(func() -> void:
+		_close_sheet()
+		if ack:
+			api.pending_warning = ""
+			api.request("POST", "/api/v1/me/ack_warning", {}))
+	col.add_child(ok)
 
 
 func _refresh_title() -> void:
@@ -1405,6 +1448,25 @@ func _refresh_title() -> void:
 			parts.append(tr("音声対戦あり"))
 		_server_label.text = "・".join(parts)
 		_server_label.add_theme_color_override("font_color", UI.LCD_ON)
+	_refresh_notices()
+
+
+## 運営からのお知らせ・メンテナンス（要件#100）
+func _refresh_notices() -> void:
+	if _notice_box == null or not is_instance_valid(_notice_box):
+		return
+	var lines: PackedStringArray = PackedStringArray()
+	if bool(_server_info.get("maintenance", false)):
+		var mm: String = str(_server_info.get("maintenance_message", ""))
+		lines.append(tr("【メンテナンス中】対戦はお休みしています。1人用は遊べます。") + ("\n" + mm if mm != "" and GameSettings.language == "ja" else ""))
+	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh"] else "ja"
+	for n in (_server_info.get("notices", []) as Array):
+		var t: String = str((n as Dictionary).get(lang, (n as Dictionary).get("ja", "")))
+		if t != "":
+			lines.append("・" + t)
+	_notice_box.visible = not lines.is_empty()
+	if not lines.is_empty():
+		_notice_text.text = tr("運営からのお知らせ") + "\n" + "\n".join(lines)
 
 
 ## タイトル: 店頭に貼られた求人ポスター
@@ -1530,6 +1592,23 @@ func _build_title() -> void:
 	_title.add_child(srv)
 	_server_label = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_DOT)
 	srv.add_child(_server_label)
+	# 右下: 運営からのお知らせ・メンテナンス（要件#100。管理画面から出す）。付箋を少し傾けて貼る
+	_notice_box = PanelContainer.new()
+	_notice_box.add_theme_stylebox_override("panel", UI.paper_style(UI.POP, 12, 0, 3))
+	_notice_box.anchor_left = 1.0
+	_notice_box.anchor_right = 1.0
+	_notice_box.anchor_top = 1.0
+	_notice_box.anchor_bottom = 1.0
+	_notice_box.offset_left = -380
+	_notice_box.offset_right = -24
+	_notice_box.offset_bottom = -44
+	_notice_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_notice_box.rotation_degrees = -1.2
+	_notice_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_notice_box.visible = false
+	_title.add_child(_notice_box)
+	_notice_text = UI.para("", UI.S_SMALL, UI.INK, UI.F_HAND)
+	_notice_box.add_child(_notice_text)
 	# 下の真ん中: いまの背景の名前（要件#86）
 	_bg_label = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_BOLD)
 	_bg_label.anchor_left = 0.5

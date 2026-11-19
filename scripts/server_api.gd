@@ -61,13 +61,20 @@ func request(method: String, path: String, body: Variant = null, auth: bool = tr
 
 
 ## ログインする（初回はゲストのアカウントを作る）。成功なら自分の情報、失敗なら {"error": "..."}
+## 運営からの警告（要件#100）。タイトル画面で見せて、既読を送る
+var pending_warning: String = ""
+
+
 func ensure_login() -> Dictionary:
 	if GameSettings.token != "":
 		var me: Dictionary = await request("GET", "/api/v1/me")
 		if bool(me.get("ok", false)):
 			var p: Dictionary = (me["body"] as Dictionary).get("player", {})
+			pending_warning = str((me["body"] as Dictionary).get("warning", ""))
 			_remember(p)
 			return p
+		if int(me.get("status", 0)) == 403:
+			return {"error": str(me.get("message", "")), "code": "banned"}
 		if int(me.get("status", 0)) != 401:
 			return {"error": str(me.get("message", ""))}
 		GameSettings.token = ""

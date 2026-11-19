@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>カスハラ防衛線 管理画面</title>
+<style>
+  /* 管理画面（要件#100）。このマシンの中だけで開く。色は docs/UI_GUIDE.md と同じ（紙・インク・朱） */
+  :root {
+    --paper: #f3eee3; --paper-dim: #d9d1c0; --ink: #24212b; --ink-soft: #6b6574; --shu: #d23f2f; --pop: #ffd23f; --ok: #2f8f5b;
+    --line: #c9c0ad;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e7e0d2; color: var(--ink); font: 15px/1.6 "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; background: var(--ink); color: var(--paper); }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: .04em; }
+  header .where { color: #b8f28a; font-size: 13px; }
+  header .spacer { flex: 1; }
+  header button { background: none; border: 1px solid #6b6574; color: var(--paper); padding: 4px 10px; cursor: pointer; }
+  nav { display: flex; flex-wrap: wrap; gap: 2px; padding: 12px 24px 0; border-bottom: 2px solid var(--ink); }
+  nav button { border: 2px solid var(--line); border-bottom: none; background: var(--paper-dim); color: var(--ink-soft); padding: 6px 14px; border-radius: 6px 2px 0 0; cursor: pointer; font: inherit; }
+  nav button.on { background: var(--paper); color: var(--ink); border-color: var(--ink); font-weight: 700; position: relative; top: 2px; }
+  nav .badge { background: var(--shu); color: #fff8f0; border-radius: 2px; padding: 0 6px; margin-left: 6px; font-size: 12px; }
+  main { padding: 20px 24px 60px; max-width: 1200px; }
+  section { display: none; }
+  section.on { display: block; }
+  .sheet { background: var(--paper); border-right: 4px solid rgba(36,33,43,.25); border-bottom: 4px solid rgba(36,33,43,.25); padding: 16px 20px; margin-bottom: 18px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h3 { font-size: 15px; margin: 16px 0 6px; color: var(--shu); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-soft); font-weight: 500; font-size: 13px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--ink-soft); }
+  .warn { color: var(--shu); font-weight: 700; }
+  .okc { color: var(--ok); font-weight: 700; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 24px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dotted var(--line); padding: 3px 0; }
+  .kv b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  button.act { border: 2px solid var(--shu); color: var(--shu); background: transparent; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 13px; border-radius: 4px; }
+  button.act:hover { background: var(--shu); color: var(--paper); }
+  button.main { border: none; background: var(--shu); color: #fff8f0; padding: 6px 16px; cursor: pointer; font: inherit; font-weight: 700; }
+  button.link { border: none; background: none; color: var(--ink); text-decoration: underline; cursor: pointer; font: inherit; padding: 0 4px; }
+  input, select, textarea { font: inherit; padding: 4px 6px; border: none; border-bottom: 2px solid var(--ink-soft); background: #fbf8f1; color: var(--ink); }
+  input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: var(--shu); }
+  textarea { width: 100%; min-height: 60px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+  .setting { display: grid; grid-template-columns: 280px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .setting .help { font-size: 12px; color: var(--ink-soft); }
+  .setting .restart { font-size: 12px; color: var(--shu); }
+  .msg { position: fixed; right: 20px; bottom: 20px; background: var(--ink); color: var(--paper); padding: 10px 16px; max-width: 440px; display: none; }
+  .msg.err { background: var(--shu); }
+  .log-line { padding: 4px 0; border-bottom: 1px dotted var(--line); }
+  .log-line .who { font-weight: 700; margin-right: 8px; }
+  #login { max-width: 420px; margin: 80px auto; }
+  .pill { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-size: 12px; margin-right: 4px; }
+  .pill.open { border-color: var(--shu); color: var(--shu); }
+  .bar { height: 8px; background: var(--paper-dim); position: relative; }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ok); }
+</style>
+</head>
+<body>
+<div id="login" class="sheet" style="display:none">
+  <h2>管理画面にログイン</h2>
+  <p class="muted">このページはサーバーのマシンの中（127.0.0.1）でだけ開けます。最初のパスワードはサーバーの <code>server/var/admin_initial_password.txt</code> にあります。</p>
+  <div class="row"><input id="pw" type="password" placeholder="パスワード" autocomplete="current-password" style="flex:1"><button class="main" id="loginBtn">ログイン</button></div>
+</div>
+<div id="app" style="display:none">
+  <header><h1>カスハラ防衛線 管理画面</h1><span class="where">127.0.0.1 だけ</span><span class="spacer"></span><span id="ver" class="muted"></span><button id="logout">ログアウト</button></header>
+  <nav id="tabs"></nav>
+  <main>
+    <section id="t-status"></section>
+    <section id="t-reports"></section>
+    <section id="t-players"></section>
+    <section id="t-matches"></section>
+    <section id="t-usage"></section>
+    <section id="t-notice"></section>
+    <section id="t-settings"></section>
+    <section id="t-audit"></section>
+    <section id="t-account"></section>
+  </main>
+</div>
+<div id="msg" class="msg"></div>
+<script src="/app.js"></script>
+</body>
+</html>

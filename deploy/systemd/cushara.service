@@ -1,0 +1,32 @@
+# カスハラ防衛線のゲームサーバー（docs/HOME_SERVER.md）。
+# 置き場所: /etc/systemd/system/cushara.service
+# User と WorkingDirectory は自分の環境に合わせて直す。
+[Unit]
+Description=Cushara game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cushara
+WorkingDirectory=/opt/cus-hara/server
+# 秘密の値（APIキーなど）はここに書かない。管理画面から入れる（server/var/secrets.json に保存される）
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=ADMIN_PORT=8790
+# Cloudflare Tunnel を通すので、本当のプレイヤーの IP は CF-Connecting-IP を使う
+Environment=TRUST_PROXY=1
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/main.ts
+# 管理画面の「サーバーを再起動」は、プロセスを終わらせて、ここで起動し直す
+Restart=always
+RestartSec=3
+# 守り: このサービスから見えるファイルを絞る
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/cus-hara/server/var
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

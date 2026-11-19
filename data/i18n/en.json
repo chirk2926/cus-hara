@@ -766,5 +766,14 @@
 	"補充口からメダルを入れた。払い出しが戻った。": "Poured medals in through the refill hatch. Payouts are back.",
 	"迷惑なお客さんに、落ち着いて声をかけよう（Enterで渡す）": "Calmly talk to the disruptive customer (Enter to send)",
 	"鍵を回す：緑のところで止める": "Turn the key: stop in the green",
-	"（筐体の前で対応した: %s）": "(Handled it at the machine: %s)"
+	"（筐体の前で対応した: %s）": "(Handled it at the machine: %s)",
+	"運営からのお知らせ": "News from the team",
+	"メンテナンス中のため、対戦はお休みしています。1人用は遊べます": "Versus is paused for maintenance. Solo play is still available.",
+	"対戦の利用を停止されています": "You are suspended from versus play.",
+	"このアカウントは利用停止中です": "This account is suspended",
+	"運営からの警告": "Warning from the team",
+	"対戦などオンラインの機能は使えません。1人用（AIを使わない台本）は遊べます。": "Online features like versus are unavailable. Solo play (scripted, no AI) still works.",
+	"わかりました": "Got it",
+	"【メンテナンス中】対戦はお休みしています。1人用は遊べます。": "[Maintenance] Versus is paused. Solo play is still available.",
+	"声は Epic のボイスで相手に届きます。": "Your voice reaches your opponent through Epic voice chat."
 }

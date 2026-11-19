@@ -17,6 +17,9 @@ const Shop = preload("res://scripts/shop.gd")
 
 ## サーバーのエラーコード → 画面の言葉（サーバーの文は日本語だけなので、ここで訳す）
 const ERROR_TEXT: Dictionary = {
+	"maintenance": "メンテナンス中のため、対戦はお休みしています。1人用は遊べます",
+	"versus_banned": "対戦の利用を停止されています",
+	"banned": "このアカウントは利用停止中です",
 	"bad_format": "対戦の形式（文字・音声）が正しくありません",
 	"voice_unavailable": "このサーバーは音声対戦に対応していません",
 	"busy": "もう相手を探しているか、部屋で待っています。先に「探すのをやめる」を押してください",
@@ -258,6 +261,9 @@ func _on_message(msg: Dictionary) -> void:
 			var shown: Dictionary = msg.duplicate()
 			if ERROR_TEXT.has(code):
 				shown["message"] = tr(str(ERROR_TEXT[code]))
+				# 運営が書いた理由・お知らせ（日本語）は、日本語のときだけ添える（要件#100）
+				if code in ["maintenance", "versus_banned", "banned"] and GameSettings.language == "ja" and str(msg.get("message", "")) != "":
+					shown["message"] = str(msg.get("message", ""))
 			lobby_event.emit("error", shown)
 			if _eos_flow != "" and state != "match":
 				_on_eos_failed(shown.get("message", ""))
@@ -269,6 +275,12 @@ func _on_message(msg: Dictionary) -> void:
 			_on_phase(msg)
 		"line":
 			_on_line(msg)
+		"eos_voice":
+			_join_eos_voice(str(msg.get("lobby_id", "")))
+		"voice_mode":
+			_voice_mode = str(msg.get("mode", "relay"))
+			if _voice_mode == "eos":
+				hud.set_comment(tr("声は Epic のボイスで相手に届きます。"))
 		"voice":
 			var secs: float = voice.play_base64(str(msg.get("audio", "")))
 			if secs > 0.0:
@@ -330,6 +342,9 @@ func _on_match_found(msg: Dictionary) -> void:
 	if voice_format and not voice.available():
 		hud.set_voice_mode(false)
 		hud.set_comment(tr("マイクが見つからないので、文字で入力します。"))
+	# 声は EOS のボイスで相手に届ける（要件#100）。部屋は席 0 が作る。だめならゲームサーバーの中継のまま
+	if voice_format and not resumed and bool(msg.get("voice_host", false)):
+		_start_eos_voice_host()
 
 
 func _on_round_start(msg: Dictionary) -> void:
@@ -521,6 +536,9 @@ func _leave_later(mood: String) -> void:
 
 
 func _on_match_end(msg: Dictionary) -> void:
+	_voice_mode = "relay"
+	if eos != null:
+		eos.voice_leave()
 	main.free_staff()
 	main.set_customer_view(false)
 	# 称号の記録（要件#79）
@@ -572,9 +590,41 @@ func _on_text(text: String) -> void:
 	hud.set_status(tr("送りました…"))
 
 
+# ---------------------------------------------------------------- EOS のボイス（要件#100）
+var _voice_mode: String = "relay"   # "eos" のとき、声は EOS で相手に届き、サーバーは中継しない
+
+
+func _eos_ok() -> bool:
+	return eos != null and eos.available() and not main.smoke
+
+
+func _start_eos_voice_host() -> void:
+	if not _eos_ok():
+		return
+	var id: String = await eos.voice_host(GameSettings.player_name)
+	if id == "" or state != "match":
+		return
+	api.send({"t": "eos_voice", "lobby_id": id})
+	var ok: bool = await eos.voice_wait_connected(15.0)
+	if state == "match":
+		api.send({"t": "eos_voice_ready", "ok": ok})
+
+
+func _join_eos_voice(lobby_id: String) -> void:
+	if not _eos_ok():
+		return
+	var ok: bool = await eos.voice_join(lobby_id, GameSettings.player_name)
+	if ok:
+		ok = await eos.voice_wait_connected(15.0)
+	if state == "match":
+		api.send({"t": "eos_voice_ready", "ok": ok})
+
+
 func _on_voice_start() -> void:
 	if state != "match" or not _my_turn:
 		return
+	if _voice_mode == "eos" and eos != null:
+		eos.voice_set_talking(true)
 	if not voice.start_recording():
 		hud.set_comment(tr("マイクを使えませんでした。文字で入力してください。"))
 		hud.set_voice_mode(false)
@@ -582,6 +632,8 @@ func _on_voice_start() -> void:
 
 
 func _on_voice_stop() -> void:
+	if _voice_mode == "eos" and eos != null:
+		eos.voice_set_talking(false)
 	if not voice.is_recording():
 		return
 	var bytes: PackedByteArray = voice.stop_recording()

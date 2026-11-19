@@ -1,5 +1,7 @@
 // 対戦1試合の進行。判定・時間・得点・レーティングはすべてサーバーが決める（クライアントは入力と表示だけ）。
 // ルールは docs/SPEC.md の 6節。
+import { runtime } from "./settings.ts";
+import { trackMatch, endMatch, markReported } from "./matchlogs.ts";
 import crypto from "node:crypto";
 import { config, scaled } from "./config.ts";
 import { type Customer, type StageId, STAGES, randomCustomer, publicCustomer } from "./scenarios.ts";
@@ -65,6 +67,8 @@ export class Match {
   private phaseStarted = 0;
   private phaseSeconds = 0;
   private transcript: Array<Record<string, unknown>> = [];
+  /** 試合全体の会話（通報されたときだけ保存する。要件#100） */
+  private fullLog: Array<Record<string, unknown>> = [];
 
   readonly kind: Kind;
   readonly format: Format;
@@ -141,7 +145,35 @@ export class Match {
       rounds: config.versus.rounds,
       you: publicPlayer(me.player, me.ratingBefore),
       opponent: publicPlayer(op.player, op.ratingBefore),
+      // 声の対戦は EOS のボイスで相手に届ける（要件#100）。部屋を作るのは席 0 の人。だめならサーバーが中継する
+      voice_host: this.format === "voice" && viewer === 0,
+      voice_mode: this.eosVoice ? "eos" : "relay",
     };
+  }
+
+  // ---------------------------------------------------------------- EOS のボイス（要件#100）
+  /** 両方が EOS のボイスの部屋につながった。声はサーバーで中継しない（文字起こしには使う） */
+  private eosVoice = false;
+  private eosReady: [boolean, boolean] = [false, false];
+
+  /** 席 0 が作った EOS のボイスの部屋の ID を、相手に渡す */
+  onEosVoiceRoom(seat: number, lobbyId: unknown): void {
+    if (this.format !== "voice" || seat !== 0 || typeof lobbyId !== "string") return;
+    const id = lobbyId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 128);
+    if (id === "") return;
+    this.send(1, { t: "eos_voice", lobby_id: id });
+  }
+
+  /** EOS のボイスの部屋につながった／切れた */
+  onEosVoiceReady(seat: number, ok: unknown): void {
+    if (this.format !== "voice") return;
+    this.eosReady[seat] = ok === true;
+    const next = this.eosReady[0] && this.eosReady[1];
+    if (next !== this.eosVoice) {
+      this.eosVoice = next;
+      for (const v of [0, 1]) this.send(v, { t: "voice_mode", mode: next ? "eos" : "relay" });
+      log("voice mode", this.id, next ? "eos" : "relay");
+    }
   }
 
   private roundStart(viewer: number): Record<string, unknown> {
@@ -455,6 +487,8 @@ export class Match {
   private broadcastLine(role: Role, seat: number, text: string, via: string): void {
     const entry = { role, text, via };
     this.transcript.push(entry);
+    this.fullLog.push({ round: this.round, role, by: this.seats[seat].player.id, name: this.seats[seat].player.name, text, via, at: Date.now() });
+    trackMatch(this.id, this.logBody());
     for (const v of [0, 1]) this.send(v, { t: "line", ...entry, by: this.who(seat, v) });
   }
 
@@ -498,9 +532,9 @@ export class Match {
       this.sendPhase();
       return;
     }
-    // 相手にはすぐ声を届ける（ボイスチャットとして聞こえる）
+    // 相手にはすぐ声を届ける（ボイスチャットとして聞こえる）。EOS のボイスで届いているときは、サーバーからは送らない（要件#100）
     const role = this.roleOf(seat);
-    this.send(1 - seat, { t: "voice", role, by: "opponent", audio: b64 });
+    if (!this.eosVoice) this.send(1 - seat, { t: "voice", role, by: "opponent", audio: b64 });
     const debug = config.sttProvider === "mock" && typeof debugText === "string" ? debugText : undefined;
     this.inputs[seat]++;
     this.resolveWaiting({ text: "", via: "voice", pcm: mulawToPcm16(new Uint8Array(bytes)), debugText: debug });
@@ -545,19 +579,20 @@ export class Match {
     const masked = pick(this.lang, { ja: "（不適切な発言のため表示しません）", en: "(Hidden: inappropriate remark)", zh: "（不当发言，已隐藏）" });
     const reason = REPORT_OF[m.category];
     addReport("system:moderation", this.seats[seat].player.id, this.id, reason, `auto(${m.by}) ${text.slice(0, 120)}`);
+    markReported(this.id);
     log("moderation", this.id, "seat", seat, m.category, m.by, "strike", this.strikes[seat]);
-    const left = MOD_MAX - this.strikes[seat];
+    const left = modMax() - this.strikes[seat];
     this.send(seat, {
       t: "warning",
       category: m.category,
       strikes: this.strikes[seat],
-      max: MOD_MAX,
+      max: modMax(),
       text: left > 0
         ? pick(this.lang, { ja: `警告: 不適切な発言です（${CATEGORY_JA[m.category]}）。あと${left}回で負けになります。`, en: `Warning: inappropriate remark (${m.category}). ${left} more and you lose.`, zh: `警告：不当发言（${m.category}）。再有${left}次将判负。` })
         : pick(this.lang, { ja: "不適切な発言が続いたため、負けになりました。", en: "Too many inappropriate remarks. You lose.", zh: "不当发言过多，判负。" }),
     });
     this.send(1 - seat, { t: "notice", text: pick(this.lang, { ja: "相手の不適切な発言を伏せました。", en: "An inappropriate remark from your opponent was hidden.", zh: "已隐藏对手的不当发言。" }) });
-    if (this.strikes[seat] >= MOD_MAX) this.forfeit(seat, "moderation");
+    if (this.strikes[seat] >= modMax()) this.forfeit(seat, "moderation");
     return masked;
   }
 
@@ -567,9 +602,18 @@ export class Match {
   }
 
   /** loser: 負けた（または途中で抜けた）側の席。-1 なら引き分け／記録しない */
+  private logBody(): Record<string, unknown> {
+    return {
+      match_id: this.id, kind: this.kind, format: this.format, stage: this.stage, lang: this.lang,
+      players: this.seats.map((s) => ({ id: s.player.id, name: s.player.name })), lines: this.fullLog,
+    };
+  }
+
   private finish(reason: string, loser: number, draw = false): void {
     if (this.finished) return;
     this.finished = true;
+    trackMatch(this.id, { ...this.logBody(), ended_reason: reason });
+    endMatch(this.id);
     if (this.waiting) {
       clearTimeout(this.waiting.timer);
       const w = this.waiting;
@@ -647,7 +691,8 @@ export class Match {
 }
 
 /** 不適切な発言で負けになる回数（要件#88） */
-const MOD_MAX = 3;
+/** 不適切な発言で負けになる回数（管理画面で変えられる。要件#100） */
+const modMax = () => runtime.modMax;
 const REPORT_OF: Record<ModerationCategory, "sexual" | "abuse" | "personal_info" | "other"> = {
   sexual: "sexual", hate: "abuse", threat: "abuse", personal_info: "personal_info", none: "other",
 };

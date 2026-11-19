@@ -2,11 +2,14 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { config } from "./config.ts";
+import { sanctionOf, isActiveBan, setSanction, announcements } from "./db.ts";
 import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar, setPlayerAvatar, addReport, playerById, REPORT_REASONS, type ReportReason, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
 import { moderate } from "./moderation.ts";
+import { runtime } from "./settings.ts";
+import { markReported } from "./matchlogs.ts";
 import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
@@ -68,8 +71,21 @@ setInterval(() => {
 }, 60_000).unref();
 
 function clientIp(req: http.IncomingMessage): string {
-  const fwd = req.headers["x-forwarded-for"];
-  if (typeof fwd === "string" && process.env.TRUST_PROXY === "1") return fwd.split(",")[0].trim();
+  return requestIp(req);
+}
+
+/**
+ * プレイヤーの本当の IP。前段のプロキシ（Cloudflare Tunnel など）を信じる設定（TRUST_PROXY=1）のときは、
+ * Cloudflare の CF-Connecting-IP、なければ X-Forwarded-For の先頭を使う（要件#100: Cloudflare Tunnel では、
+ * どのプレイヤーの接続も cloudflared（127.0.0.1）から来るため）
+ */
+export function requestIp(req: http.IncomingMessage): string {
+  if (process.env.TRUST_PROXY === "1") {
+    const cf = req.headers["cf-connecting-ip"];
+    if (typeof cf === "string" && cf !== "") return cf.trim();
+    const fwd = req.headers["x-forwarded-for"];
+    if (typeof fwd === "string" && fwd !== "") return fwd.split(",")[0].trim();
+  }
   return req.socket.remoteAddress ?? "unknown";
 }
 
@@ -94,7 +110,29 @@ export function authPlayer(header: string | undefined): Player {
   const m = /^Bearer (.+)$/.exec(header ?? "");
   const p = m ? playerByToken(m[1]) : null;
   if (!p) throw new HttpError(401, "unauthorized", "ログイン情報が無効です。ゲームを再起動してください");
+  // 利用停止（要件#100）
+  const b = banMessage(p.id);
+  if (b) throw new HttpError(403, "banned", b);
   return p;
+}
+
+/** 利用停止中なら、ゲームに出す説明（日本語。ゲームは code で訳す）。止められていなければ null */
+export function banMessage(id: string): string | null {
+  const s = sanctionOf(id);
+  if (!isActiveBan(s.bannedUntil)) return null;
+  const until = s.bannedUntil === -1 ? "無期限" : new Date(s.bannedUntil).toISOString().replace("T", " ").slice(0, 16) + " (UTC) まで";
+  return `このアカウントは利用停止中です（${until}）。理由: ${s.reason || "利用規約に反する行為"}`;
+}
+
+/** 対戦を始められないとき（メンテナンス中・対戦の利用停止）の [code, 説明]。始められるなら null */
+export function versusBlock(id: string): [string, string] | null {
+  if (runtime.maintenance) return ["maintenance", runtime.maintenanceMessage || "メンテナンス中のため、対戦はお休みしています。1人用は遊べます"];
+  const s = sanctionOf(id);
+  if (isActiveBan(s.versusBannedUntil)) {
+    const until = s.versusBannedUntil === -1 ? "無期限" : new Date(s.versusBannedUntil).toISOString().replace("T", " ").slice(0, 16) + " (UTC) まで";
+    return ["versus_banned", `対戦の利用を停止しています（${until}）。理由: ${s.reason || "利用規約に反する行為"}`];
+  }
+  return null;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -112,6 +150,10 @@ export function info(lobby: Lobby) {
     langs: LANGS,
     rules: { rounds: config.versus.rounds, opening_seconds: config.versus.openingSec, customer_seconds: config.versus.customerSec },
     online: lobby.stats(),
+    // お知らせとメンテナンス（要件#100。管理画面から）
+    maintenance: runtime.maintenance,
+    maintenance_message: runtime.maintenance ? runtime.maintenanceMessage : "",
+    notices: announcements(true).slice(0, 3).map((a) => ({ id: a.id, ja: a.text_ja, en: a.text_en || a.text_ja, zh: a.text_zh || a.text_en || a.text_ja })),
   };
 }
 
@@ -140,7 +182,16 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
   // ここから下はログインが必要
   const player = authPlayer(req.headers.authorization);
 
-  if (method === "GET" && p === "/api/v1/me") return { player: publicPlayer(player) };
+  if (method === "GET" && p === "/api/v1/me") {
+    // 運営からの警告（要件#100）。ゲームが表示したら ack を送る
+    const w = sanctionOf(player.id).warnMessage;
+    return { player: publicPlayer(player), warning: w };
+  }
+
+  if (method === "POST" && p === "/api/v1/me/ack_warning") {
+    setSanction(player.id, { warnMessage: "" });
+    return { ok: true };
+  }
 
   if (method === "POST" && p === "/api/v1/me") {
     const body = await readJson(req);
@@ -178,6 +229,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     const matchId = typeof body.match_id === "string" ? body.match_id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) : "";
     const note = typeof body.note === "string" ? body.note.replace(/[\u0000-\u001f\u007f<>]/g, " ").trim().slice(0, 200) : "";
     const saved = addReport(player.id, target, matchId, reason, note);
+    if (saved && matchId !== "") markReported(matchId);
     log("report", player.id, "->", target, reason, saved ? "saved" : "duplicate");
     return { ok: true, saved };
   }

@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { config } from "./config.ts";
+import { addAiUsage } from "./db.ts";
 import { type Customer, type StageId, spendFacts } from "./scenarios.ts";
 import { type Judgement, type CustomerLineJudgement, scriptedLine } from "./keyword_judge.ts";
 import { type Lang, pick } from "./lang.ts";
@@ -177,7 +178,21 @@ export function llmName(): string {
 }
 
 /** プロンプトのキャッシュの効き（要件#78）。読めた分・書いた分・ふつうの入力の合計（トークン） */
-export const cacheStats = { calls: 0, cacheRead: 0, cacheWrite: 0, input: 0 };
+export const cacheStats = { calls: 0, cacheRead: 0, cacheWrite: 0, input: 0, output: 0 };
+
+/** AI の使用量を日ごとに数える（管理画面の料金の目安。要件#100）。記録に失敗してもゲームは止めない */
+function recordUsage(model: string, u: { input: number; output: number; cacheRead: number; cacheWrite: number }): void {
+  try {
+    addAiUsage(model || "unknown", u);
+  } catch {
+    // DB がまだ開いていない（テスト）など
+  }
+}
+
+/** 管理画面で API キーやモデルを変えたとき、次の呼び出しから新しい設定を使う（要件#100） */
+export function resetLlmClient(): void {
+  client = null;
+}
 
 function getClient(): Anthropic {
   if (client === null) {
@@ -228,11 +243,13 @@ async function callJson<T>(system: string, userIn: string | UserPart[], schema: 
     if (e instanceof Anthropic.APIError) throw new LlmError(`AIサーバーのエラー（${e.status ?? "接続"}）`);
     throw e;
   }
-  const u = res.usage as unknown as { input_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
+  const u = res.usage as unknown as { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
   cacheStats.calls++;
   cacheStats.input += u.input_tokens ?? 0;
   cacheStats.cacheRead += u.cache_read_input_tokens ?? 0;
   cacheStats.cacheWrite += u.cache_creation_input_tokens ?? 0;
+  cacheStats.output += u.output_tokens ?? 0;
+  recordUsage(config.model, { input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0 });
   if (res.stop_reason === "refusal") throw new LlmError("AIが応答を控えました");
   if (res.stop_reason === "max_tokens") throw new LlmError("AIの応答が途中で切れました");
   for (const block of res.content) {
@@ -279,11 +296,14 @@ async function callOpenAiCompatible<T>(system: string, user: string, schema: z.Z
   if (!res.ok) throw new LlmError(`AIサーバーのエラー（${res.status}）`);
   const data = (await res.json()) as {
     choices?: Array<{ message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }>;
-    usage?: { prompt_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
+    usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
   };
   cacheStats.calls++;
   cacheStats.input += data.usage?.prompt_tokens ?? 0;
   cacheStats.cacheRead += data.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+  cacheStats.output += data.usage?.completion_tokens ?? 0;
+  const cached = data.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+  recordUsage(config.llmModel, { input: Math.max(0, (data.usage?.prompt_tokens ?? 0) - cached), output: data.usage?.completion_tokens ?? 0, cacheRead: cached, cacheWrite: 0 });
   const choice = data.choices?.[0];
   if (choice?.message?.refusal) throw new LlmError("AIが応答を控えました");
   if (choice?.finish_reason === "length") throw new LlmError("AIの応答が途中で切れました");
@@ -464,3 +484,9 @@ export async function moderateWithLlm(text: string): Promise<{ inappropriate: bo
   return { inappropriate: r.inappropriate, category: r.category };
 }
 
+
+/** 管理画面の「AIの接続を確かめる」（要件#100）。とても小さな呼び出しを1回だけする */
+export async function pingLlm(): Promise<string> {
+  const r = await callJson("あなたは接続確認の係です。指定の JSON だけを返します。", "ok を true にして返してください。", z.object({ ok: z.boolean() }));
+  return r.ok ? "ok" : "unexpected";
+}

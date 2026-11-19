@@ -1,5 +1,6 @@
 // WebSocket（/ws）。対戦のマッチング・部屋・試合のやりとり。
 // 接続したら最初に {"t":"auth","token":"..."} を送る。メッセージ一覧は docs/SERVER.md。
+import { requestIp, banMessage, versusBlock } from "./http.ts";
 import type http from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { playerByToken } from "./db.ts";
@@ -31,8 +32,7 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
   heartbeat.unref();
 
   wss.on("connection", (ws, req) => {
-    const fwd = req.headers["x-forwarded-for"];
-    const ip = typeof fwd === "string" && process.env.TRUST_PROXY === "1" ? fwd.split(",")[0].trim() : req.socket.remoteAddress ?? "unknown";
+    const ip = requestIp(req);
     // 1つのIPからの同時接続数と、接続の速さを制限する（要件#77: 接続を大量に開いて重くさせない）
     const open = perIp.get(ip) ?? 0;
     if (open >= config.wsPerIp || !allow(`wsconn:${ip}`, 60, 60_000)) {
@@ -85,8 +85,16 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           ws.close(4001, "unauthorized");
           return;
         }
+        const ban = banMessage(player.id);
+        if (ban) {
+          sendRaw({ t: "error", code: "banned", message: ban });
+          ws.close(4003, "banned");
+          return;
+        }
         clearTimeout(authTimer);
         conn = { player, lang: toLang(msg.lang), ip, send: sendRaw, close: (c, r) => ws.close(c, r) };
+        registerConn(conn);
+        ws.on("close", () => unregisterConn(conn!));
         const resumed = lobby.resume(conn);
         sendRaw({ t: "hello", player: publicPlayer(player), resumed });
         log("ws auth", player.name, resumed ? "(resumed)" : "");
@@ -99,20 +107,35 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           c.lang = toLang(msg.lang);
           break;
         case "queue":
-          lobby.enqueue(c, msg.format);
+        case "room_create":
+        case "room_join": {
+          // メンテナンス中・対戦の利用停止中は始められない（要件#100）
+          const blk = versusBlock(c.player.id);
+          if (blk) {
+            c.send({ t: "error", code: blk[0], message: blk[1] });
+            break;
+          }
+          if (t === "queue") lobby.enqueue(c, msg.format);
+          else if (t === "room_create") lobby.createRoom(c, msg.format, msg.answer_time, { ranked: msg.ranked, eos_lobby: msg.eos_lobby });
+          else lobby.joinRoom(c, msg.code);
           break;
+        }
         case "cancel":
           lobby.cancel(c);
-          break;
-        case "room_create":
-          lobby.createRoom(c, msg.format, msg.answer_time, { ranked: msg.ranked, eos_lobby: msg.eos_lobby });
-          break;
-        case "room_join":
-          lobby.joinRoom(c, msg.code);
           break;
         case "say": {
           const f = lobby.matchOf(c.player.id);
           f?.match.onSay(f.seat, msg.text);
+          break;
+        }
+        case "eos_voice": {
+          const f = lobby.matchOf(c.player.id);
+          f?.match.onEosVoiceRoom(f.seat, msg.lobby_id);
+          break;
+        }
+        case "eos_voice_ready": {
+          const f = lobby.matchOf(c.player.id);
+          f?.match.onEosVoiceReady(f.seat, msg.ok);
           break;
         }
         case "voice": {
@@ -144,4 +167,36 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
     ws.on("error", () => ws.terminate());
   });
   return wss;
+}
+
+// ---------------------------------------------------------------- つながっている人（管理画面の利用停止で切るため。要件#100）
+
+const live = new Map<string, Set<Conn>>();
+
+function registerConn(c: Conn): void {
+  const set = live.get(c.player.id) ?? new Set<Conn>();
+  set.add(c);
+  live.set(c.player.id, set);
+}
+
+function unregisterConn(c: Conn): void {
+  const set = live.get(c.player.id);
+  if (!set) return;
+  set.delete(c);
+  if (set.size === 0) live.delete(c.player.id);
+}
+
+/** そのプレイヤーの接続を切る（利用停止にしたとき） */
+export function kickPlayer(id: string, message: string): number {
+  const set = live.get(id);
+  if (!set) return 0;
+  for (const c of [...set]) {
+    c.send({ t: "error", code: "banned", message });
+    c.close(4003, "banned");
+  }
+  return set.size;
+}
+
+export function onlinePlayers(): number {
+  return live.size;
 }

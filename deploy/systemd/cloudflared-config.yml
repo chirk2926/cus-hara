@@ -1,0 +1,9 @@
+# Cloudflare Tunnel の設定の例（docs/HOME_SERVER.md）。置き場所: /etc/cloudflared/config.yml
+# ★ 向けるのはゲームのポート（8787）だけ。管理画面のポート（8790）は絶対に書かない。
+tunnel: <トンネルのID>
+credentials-file: /etc/cloudflared/<トンネルのID>.json
+
+ingress:
+  - hostname: game.example.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404
