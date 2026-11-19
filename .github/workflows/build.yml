@@ -118,7 +118,7 @@ jobs:
       - name: "Start the game server (no AI key, keyword judging, mock speech-to-text)"
         run: |
           cd server && npm ci
-          (LLM_MODE=offline STT_PROVIDER=mock ALLOW_SAME_IP_RANKED=1 TIME_SCALE=4 DB_PATH="$RUNNER_TEMP/ci.db" PORT=8787 \
+          (KONBINI_OPEN=1 LLM_MODE=offline STT_PROVIDER=mock ALLOW_SAME_IP_RANKED=1 TIME_SCALE=4 DB_PATH="$RUNNER_TEMP/ci.db" PORT=8787 \
             nohup npm start > "$RUNNER_TEMP/server.log" 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8787/healthz && break; sleep 1; done
           curl -sf http://127.0.0.1:8787/api/v1/info

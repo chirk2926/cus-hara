@@ -34,7 +34,7 @@ export const runtime = {
   maintenance: false,
   maintenanceMessage: "",
   /** コンビニを開けるか（要件#102: 準備ができるまで閉じておく）。閉じている間は対戦の舞台にも使わない */
-  konbiniOpen: false,
+  konbiniOpen: process.env.KONBINI_OPEN === "1",
   /** 不適切な発言で負けになる回数 */
   modMax: 3,
   /** AI の料金の目安（1M トークンあたりのドル）。モデル名 → [入力, 出力, キャッシュ読み, キャッシュ書き] */

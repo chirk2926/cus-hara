@@ -270,6 +270,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
   if (method === "POST" && p === "/api/v1/solo/start") {
     const body = await readJson(req);
     if (!isStage(body.stage)) throw new HttpError(400, "bad_stage", "ステージの指定が正しくありません");
+    if (!openStages().includes(body.stage)) throw new HttpError(403, "stage_closed", "この店はまだ準備中です");
     const lang = toLang(body.lang);
     // AIへの指示文に入るので、長さと文字を絞る（要件#77: 長い文や指示を混ぜられないように）
     const avoid = Array.isArray(body.avoid)

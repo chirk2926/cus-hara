@@ -486,8 +486,13 @@ test("コンビニは準備中（要件#102）: 閉じている間は info に�
   runtime.konbiniOpen = false;
   assert.deepEqual(openStages(), ["arcade"]);
   assert.deepEqual((await api(srv.base, "GET", "/api/v1/info")).body.open_stages, ["arcade"]);
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "閉店テスト" });
+  const closed = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, g.body.token);
+  assert.equal(closed.status, 403, "閉じている店の1人用はサーバーも断る");
+  assert.equal(closed.body.error.code, "stage_closed");
   runtime.konbiniOpen = true;
   assert.deepEqual([...openStages()].sort(), ["arcade", "konbini"]);
+  assert.equal((await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, g.body.token)).status, 200);
   runtime.konbiniOpen = before;
 });
 
