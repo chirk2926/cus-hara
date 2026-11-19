@@ -324,6 +324,8 @@ func _auto_reply(tries: int) -> String:
 	var w2: String = str(kws[(tries + 1) % kws.size()]) if not kws.is_empty() else ""
 	if GameSettings.language == "en":
 		return "I'm very sorry, I understand how you feel. Let me %s and %s for you right away, sir. (%d)" % [w1, w2, tries]
+	if GameSettings.language == "ko":
+		return "정말 죄송합니다. 마음 충분히 이해합니다. 바로 %s와 %s 대응해 드리겠습니다. (%d)" % [w1, w2, tries]
 	if GameSettings.language == "zh":
 		return "非常抱歉，我很理解您的心情。请让我马上为您处理%s和%s的事。（%d）" % [w1, w2, tries]
 	return "大変申し訳ございません。お気持ちお察しいたします。すぐに%sと%sの対応をいたします。（%d）" % [w1, w2, tries]

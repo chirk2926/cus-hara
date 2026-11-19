@@ -153,6 +153,7 @@ test("管理画面: 利用停止・対戦だけの停止・警告・メンテナ
   const n = info2.body.notices[0];
   assert.equal(n.title.ja, "新しい背景が出ました");
   assert.equal(n.title.zh, "New backdrops are out", "中国語が空なら英語");
+  assert.equal(n.title.ko, "New backdrops are out", "韓国語が空なら英語");
   assert.equal(n.body.en, "**10種類**の背景を追加しました", "英語の本文が空なら日本語");
   assert.equal(n.font, "hand");
   const imgRes = await fetch(srv.base + n.image);

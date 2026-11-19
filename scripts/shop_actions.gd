@@ -26,7 +26,7 @@ static func table() -> Dictionary:
 
 
 static func _lang() -> String:
-	return GameSettings.language if GameSettings.language in ["en", "zh"] else "ja"
+	return GameSettings.language if GameSettings.language in ["en", "zh", "ko"] else "ja"
 
 
 ## そのお客さんに出すボタン: [[id, 表示名], ...]。with_crane: ミニゲームのボタン（難易度の調整・景品の移動）を出すか（1人用のみ）

@@ -201,13 +201,13 @@ test("不適切な発言の検出（要件#94）: ある程度の暴言・英語
   assert.equal(keywordModeration("09012345678に電話して").category, "personal_info");
 });
 
-test("台本のお客さん（要件#98）: 3言語で数と順番がそろい、項目がそろっていて、解決の語を使った返事で納得が上がる", async () => {
+test("台本のお客さん（要件#98, #102）: 4言語で数と順番がそろい、項目がそろっていて、解決の語を使った返事で納得が上がる", async () => {
   const { allCustomers } = await import("../src/scenarios.ts");
   const { judgeStaff } = await import("../src/keyword_judge.ts");
   for (const stage of ["arcade", "konbini"] as const) {
     const ja = allCustomers(stage, "ja");
     assert.ok(ja.length >= (stage === "arcade" ? 29 : 21), `${stage}: ${ja.length}`);
-    for (const lang of ["ja", "en", "zh"] as const) {
+    for (const lang of ["ja", "en", "zh", "ko"] as const) {
       const list = allCustomers(stage, lang);
       assert.equal(list.length, ja.length, `${stage}/${lang} の数`);
       const titles = new Set<string>();
@@ -217,8 +217,8 @@ test("台本のお客さん（要件#98）: 3言語で数と順番がそろい�
         assert.equal(c.machine ?? "", ja[i].machine ?? "", `${stage}/${lang} #${i} の台の種類`);
         assert.ok((c.solution_keywords ?? []).length >= 4 && (c.yield_keywords ?? []).length >= 3, `${c.title} の語`);
         for (const k of ["calm", "angry", "neutral", "demand"]) assert.ok(((c as any).lines?.[k] ?? []).length > 0, `${c.title} の lines.${k}`);
-        const sep = lang === "en" ? " and " : "、";
-        const reply = (lang === "en" ? "I'm sorry for the trouble. " : lang === "zh" ? "非常抱歉。" : "申し訳ございません。") + (c.solution_keywords ?? []).slice(0, 2).join(sep) + (lang === "en" ? "." : "。");
+        const sep = lang === "en" ? " and " : lang === "ko" ? ", " : "、";
+        const reply = (lang === "en" ? "I'm sorry for the trouble. " : lang === "zh" ? "非常抱歉。" : lang === "ko" ? "불편을 드려 정말 죄송합니다. " : "申し訳ございません。") + (c.solution_keywords ?? []).slice(0, 2).join(sep) + (lang === "en" || lang === "ko" ? "." : "。");
         const j = judgeStaff(c, reply, [], c.start_anger, 0, lang);
         assert.ok(j.resolve_delta > 0 && !j.yielded, `${stage}/${lang} ${c.title}: 「${reply}」 → 納得 ${j.resolve_delta} 屈した ${j.yielded}`);
       }

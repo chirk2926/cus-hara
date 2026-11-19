@@ -468,8 +468,8 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     }
   }
   const noticeInput = () => ({
-    title_ja: str(body.title_ja, 80), title_en: str(body.title_en, 80), title_zh: str(body.title_zh, 80),
-    text_ja: str(body.text_ja, 4000), text_en: str(body.text_en, 4000), text_zh: str(body.text_zh, 4000),
+    title_ja: str(body.title_ja, 80), title_en: str(body.title_en, 80), title_zh: str(body.title_zh, 80), title_ko: str(body.title_ko, 80),
+    text_ja: str(body.text_ja, 4000), text_en: str(body.text_en, 4000), text_zh: str(body.text_zh, 4000), text_ko: str(body.text_ko, 4000),
     font: str(body.font, 10), image: str(body.image, 40),
   });
   if (method === "POST" && p === "/api/announcements") {

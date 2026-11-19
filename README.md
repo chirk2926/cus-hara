@@ -1,4 +1,4 @@
-# カスハラ防衛線 / Customer Harassment Defense Line
+# カスハラ防衛線 / Kasuhara Defense Line – Calm the Angry Customer
 
 理不尽なお客さんがキレる前に、言葉だけで切り抜ける接客サバイバルゲーム（Windows、Godot 4.5、簡易3D）。日本語・英語対応。
 

@@ -78,6 +78,15 @@ var _notice_list: VBoxContainer = null   # お知らせの見出し（押すと�
 var _warning_shown: bool = false
 var _player_card: Control = null
 var _version_label: Label = null
+var _stage_links: Dictionary = {}
+
+
+## その店で働けるか（要件#102）。コンビニは、ゲームサーバーが「開いている」と言ったときだけ（サーバーにつながらないときは閉じたまま）
+func stage_open(sid: String) -> bool:
+	if sid != "konbini" or smoke:
+		return true
+	var open: Variant = _server_info.get("open_stages", null)
+	return typeof(open) == TYPE_ARRAY and (open as Array).has(sid)
 var _bg_label: Label = null
 var _current_variant: String = "day"
 ## テスト版のデバッグパネルで切り替える1人用のイベント（要件#85）: wild / manager / age / police / anger_stop
@@ -660,7 +669,7 @@ func show_id_card(cust: Dictionary) -> void:
 	var col: VBoxContainer = UI.vbox(8)
 	panel.add_child(col)
 	var today: Dictionary = a.get("today", Time.get_date_dict_from_system())
-	var date_text: String = ("%04d-%02d-%02d" % [int(today["year"]), int(today["month"]), int(today["day"])]) if en else ("%d年%d月%d日" % [int(today["year"]), int(today["month"]), int(today["day"])])
+	var date_text: String = ("%04d-%02d-%02d" % [int(today["year"]), int(today["month"]), int(today["day"])]) if en else (("%d년 %d월 %d일" if GameSettings.language == "ko" else "%d年%d月%d日") % [int(today["year"]), int(today["month"]), int(today["day"])])
 	col.add_child(UI.text(tr("本日 %s  現在 %s") % [date_text, AgeCheck.clock_text(int(a.get("clock", 0)))], UI.S_SMALL, UI.INK_SOFT, UI.F_DOT))
 	# カード
 	var card: PanelContainer = PanelContainer.new()
@@ -1491,6 +1500,12 @@ func _show_admin_message(title: String, text: String, ack: bool) -> void:
 func _refresh_title() -> void:
 	if _server_label == null:
 		return
+	# 準備中の店（要件#102: コンビニはサーバーの管理画面で開けるまで閉じる）
+	for sid in _stage_links:
+		var link: Button = _stage_links[sid]
+		var open: bool = stage_open(str(sid))
+		link.disabled = not open
+		link.text = tr(str(STAGES[sid]["name"])) + ("　→" if open else "　" + tr("（準備中）"))
 	_build_player_card()
 	if _bg_label != null:
 		_bg_label.text = tr("背景: %s") % Shop.item_name(Shop.equipped_item("bg"))
@@ -1546,7 +1561,7 @@ func _refresh_notices() -> void:
 func _notice_lang(v: Variant) -> String:
 	if typeof(v) != TYPE_DICTIONARY:
 		return str(v)
-	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh"] else "ja"
+	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh", "ko"] else "ja"
 	var d: Dictionary = v
 	return str(d.get(lang, d.get("ja", "")))
 
@@ -1664,8 +1679,12 @@ func _build_title() -> void:
 	col.add_child(body)
 	var b: VBoxContainer = UI.vbox(4)
 	body.add_child(b)
-	var game_title: String = tr("カスハラ防衛線")
+	# 英語・中国語・韓国語の名前は「名前 – 副題」。副題は下に小さく（要件#102）
+	var title_parts: PackedStringArray = tr("カスハラ防衛線").split(" – ", false, 1)
+	var game_title: String = title_parts[0]
 	b.add_child(UI.para(game_title, UI.S_HUGE if game_title.length() <= 12 else UI.S_HEAD, UI.INK, UI.F_SIGN))
+	if title_parts.size() > 1:
+		b.add_child(UI.para(title_parts[1], UI.S_LEAD, UI.SHU, UI.F_SIGN))
 	b.add_child(UI.text(tr("時給：お客様の笑顔（たぶん）"), UI.S_BODY, UI.INK_SOFT, UI.F_HAND))
 	b.add_child(UI.gap(12))
 	var pick_row: HBoxContainer = UI.hbox(8)
@@ -1683,12 +1702,16 @@ func _build_title() -> void:
 	_hard_toggle.pressed.connect(_show_hardcore)
 	pick_row.add_child(_hard_toggle)
 	b.add_child(UI.rule(UI.INK, 2))
+	_stage_links.clear()
 	for sid in STAGE_ORDER:
 		var info: Dictionary = STAGES[sid]
 		var row: Button = UI.link(tr(str(info["name"])) + "　→", UI.S_LEAD)
 		var sid_s: String = str(sid)
-		row.pressed.connect(func() -> void: _start_solo(sid_s, _hard_on))
+		row.pressed.connect(func() -> void:
+			if stage_open(sid_s):
+				_start_solo(sid_s, _hard_on))
 		b.add_child(row)
+		_stage_links[sid_s] = row
 		b.add_child(UI.para(tr(str(info["desc"])), UI.S_SMALL, UI.INK_SOFT))
 		b.add_child(UI.rule(UI.PAPER_DIM, 1))
 	b.add_child(UI.gap(8))
@@ -1799,7 +1822,7 @@ func _build_title() -> void:
 	_title.add_child(_version_label)
 
 
-## 右上: 首から下げる社員証（要件#82, #86）。名前・称号・レート・メンタルランク・HP/KAS を、印刷の文字とハンコと手書きで
+## 右上: 首から下げる社員証（要件#82, #86）。名前・称号・レート・メンタルランク・HP/CUS を、印刷の文字とハンコと手書きで
 func _build_player_card() -> void:
 	if _player_card != null and is_instance_valid(_player_card):
 		_player_card.queue_free()
@@ -1930,7 +1953,7 @@ func _build_player_card() -> void:
 	var wrow: HBoxContainer = UI.hbox(10)
 	bc.add_child(wrow)
 	wrow.add_child(UI.text("%s HP" % _num(GameSettings.hp_points), UI.S_BODY, Color("#b0611b"), UI.F_DOT))
-	wrow.add_child(UI.text("%s KAS" % _num(GameSettings.kas_points), UI.S_BODY, Color("#a0257e"), UI.F_DOT))
+	wrow.add_child(UI.text("%s CUS" % _num(GameSettings.kas_points), UI.S_BODY, Color("#a0257e"), UI.F_DOT))
 	wrow.add_child(UI.spacer())
 	var bars: HBoxContainer = UI.hbox(1)
 	bars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -2017,20 +2040,20 @@ var _shop_tab: String = "gacha"   # gacha / tag / chara / exchange
 func _show_shop() -> void:
 	sfx.play("click")
 	var col: VBoxContainer = _open_sheet(980, "center")
-	# 見出しと手持ち（HP はコイン、KAS はお札。要件#86: お金の違いがわかるように）
+	# 見出しと手持ち（HP はコイン、CUS はお札。要件#86: お金の違いがわかるように）
 	var head: HBoxContainer = UI.hbox(14)
 	col.add_child(head)
 	head.add_child(UI.text(tr("ショップ"), UI.S_HEAD, UI.INK, UI.F_SIGN))
 	head.add_child(UI.spacer())
 	head.add_child(_money_chip("HP", GameSettings.hp_points, tr("ハラスメントポイント"), true))
-	head.add_child(_money_chip("KAS", GameSettings.kas_points, tr("カスタマーポイント"), false))
+	head.add_child(_money_chip("CUS", GameSettings.kas_points, tr("カスポイント"), false))
 	var body: HBoxContainer = UI.hbox(16)
 	col.add_child(body)
 	# 左: 売り場の案内（大きなボタン）
 	var nav: VBoxContainer = UI.vbox(8)
 	nav.custom_minimum_size = Vector2(210, 0)
 	body.add_child(nav)
-	for tb in [["gacha", "背景ガチャ", "タイトルの背景が出る"], ["tag", "名札", "枠・名前の色・スタンプ"], ["chara", "キャラクター", "対戦で見える自分の姿"], ["exchange", "両替機", "KAS を HP に替える"]]:
+	for tb in [["gacha", "背景ガチャ", "タイトルの背景が出る"], ["tag", "名札", "枠・名前の色・スタンプ"], ["chara", "キャラクター", "対戦で見える自分の姿"], ["exchange", "両替機", "CUS を HP に替える"]]:
 		var tid: String = str(tb[0])
 		var on: bool = tid == _shop_tab
 		var btn: Button = Button.new()
@@ -2068,7 +2091,7 @@ func _show_shop() -> void:
 			_shop_items(area, _shop_tab)
 
 
-## 手持ちのお金（HP はコイン、KAS はお札の形。要件#90: 「<アイコン>16,300 HP（ハラスメントポイント）」の形）
+## 手持ちのお金（HP はコイン、CUS はお札の形。要件#90: 「<アイコン>16,300 HP（ハラスメントポイント）」の形）
 var _wallet_labels: Dictionary = {}
 
 
@@ -2083,7 +2106,7 @@ func _money_chip(label: String, value: int, note: String, coin: bool) -> Control
 	icon.add_theme_stylebox_override("panel", st)
 	icon.custom_minimum_size = Vector2(26, 26) if coin else Vector2(40, 22)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var mark: Label = UI.text("HP" if coin else "KAS", 10, Color("#6b4a0a") if coin else Color("#24402a"), UI.F_BOLD)
+	var mark: Label = UI.text("HP" if coin else "CUS", 10, Color("#6b4a0a") if coin else Color("#24402a"), UI.F_BOLD)
 	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon.add_child(mark)
@@ -2163,7 +2186,7 @@ func _shop_item(it: Dictionary) -> Control:
 	top.add_child(UI.text(Shop.item_name(it), UI.S_BODY, UI.INK, UI.F_BOLD))
 	top.add_child(UI.spacer())
 	if int(it.get("hp", 0)) <= 0 and int(it.get("kas", 0)) > 0:
-		top.add_child(UI.text(tr("KAS限定"), UI.S_SMALL, Color("#b0258a"), UI.F_BOLD))
+		top.add_child(UI.text(tr("CUS限定"), UI.S_SMALL, Color("#b0258a"), UI.F_BOLD))
 	var pname: String = str(GameSettings.last_profile.get("name", GameSettings.player_name))
 	if pname == "":
 		pname = tr("新人")
@@ -2196,7 +2219,7 @@ func _shop_item(it: Dictionary) -> Control:
 			var price: int = int(it.get(cur, 0))
 			if price <= 0:
 				continue
-			var cur_name: String = "HP" if cur == "hp" else "KAS"
+			var cur_name: String = "HP" if cur == "hp" else "CUS"
 			var wallet: int = GameSettings.hp_points if cur == "hp" else GameSettings.kas_points
 			# 値札の形のボタン（要件#96）。枠つきの角丸ボタンを並べない
 			var tag: Paper.PriceTag = Paper.PriceTag.new(tr("%s %s で買う") % [_num(price), cur_name], UI.S_SMALL)
@@ -2230,8 +2253,8 @@ func _shop_gacha(col: VBoxContainer) -> void:
 		var ten: bool = bool(spec[1])
 		var price: int = Shop.gacha_price(cur, ten)
 		var wallet: int = GameSettings.kas_points if cur == "kas" else GameSettings.hp_points
-		var label: String = (tr("10連") if ten else tr("1回")) + "  %s %s" % [_num(price), "KAS" if cur == "kas" else "HP"]
-		# 主役は「KAS の10連」だけ（1画面に主役は1つ。要件#96）。ほかは値札
+		var label: String = (tr("10連") if ten else tr("1回")) + "  %s %s" % [_num(price), "CUS" if cur == "kas" else "HP"]
+		# 主役は「CUS の10連」だけ（1画面に主役は1つ。要件#96）。ほかは値札
 		var holder: Control = null
 		var b: Button = null
 		if cur == "kas" and ten:
@@ -2392,7 +2415,7 @@ func _show_gacha_result(res: Array) -> void:
 		await get_tree().create_timer(0.22 if res.size() > 1 else 0.4).timeout
 
 
-## KAS → HP の両替機（要件#84）。お札（KAS）を入れるとコイン（HP）が出てくる。逆はできない
+## CUS → HP の両替機（要件#84）。お札（CUS）を入れるとコイン（HP）が出てくる。逆はできない
 func _shop_exchange(col: VBoxContainer) -> void:
 	var rate: int = Shop.hp_per_kas()
 	var wrap: Control = Control.new()
@@ -2422,10 +2445,10 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	var lcd: PanelContainer = PanelContainer.new()
 	lcd.add_theme_stylebox_override("panel", UI.flat_style(Color("#1d2b1d"), 8, 4))
 	mc.add_child(lcd)
-	var lcd_t: Label = UI.text("KAS 1 → HP %d   KAS %s" % [rate, _num(GameSettings.kas_points)], UI.S_BODY, UI.LCD_ON, UI.F_DOT)
+	var lcd_t: Label = UI.text("CUS 1 → HP %d   CUS %s" % [rate, _num(GameSettings.kas_points)], UI.S_BODY, UI.LCD_ON, UI.F_DOT)
 	lcd.add_child(lcd_t)
 	# お札の入れ口
-	mc.add_child(UI.text(tr("お札（KAS）を入れてください"), UI.S_SMALL, UI.PAPER_DIM))
+	mc.add_child(UI.text(tr("お札（CUS）を入れてください"), UI.S_SMALL, UI.PAPER_DIM))
 	var slot: ColorRect = ColorRect.new()
 	slot.color = Color("#111215")
 	slot.custom_minimum_size = Vector2(0, 10)
@@ -2450,7 +2473,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	var amounts: Array = [10, 50, 100, GameSettings.kas_points]
 	for i in range(amounts.size()):
 		var kas: int = int(amounts[i])
-		var label: String = (tr("全部") + " " if i == amounts.size() - 1 else "") + "KAS %s" % _num(kas)
+		var label: String = (tr("全部") + " " if i == amounts.size() - 1 else "") + "CUS %s" % _num(kas)
 		var bill: Button = Button.new()
 		bill.text = label
 		bill.add_theme_font_override("font", UI.font(UI.F_DOT))
@@ -2469,7 +2492,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 			if not Shop.exchange(kas):
 				return
 			sfx.play("good", 1.3)
-			lcd_t.text = "KAS 1 → HP %d   KAS %s" % [rate, _num(GameSettings.kas_points)]
+			lcd_t.text = "CUS 1 → HP %d   CUS %s" % [rate, _num(GameSettings.kas_points)]
 			out.text = "+%s HP" % _num(kas * rate)
 			_refresh_wallet()
 			_exchange_manager_check()
@@ -2496,7 +2519,7 @@ func _shop_exchange(col: VBoxContainer) -> void:
 	var p2: VBoxContainer = UI.vbox(2)
 	pop2.add_child(p2)
 	p2.add_child(UI.text(tr("お札→コインのみ"), UI.S_BODY, UI.SHU, UI.F_HAND))
-	var p2t: Label = UI.para(tr("HP を KAS には戻せません"), UI.S_SMALL, UI.INK, UI.F_HAND)
+	var p2t: Label = UI.para(tr("HP を CUS には戻せません"), UI.S_SMALL, UI.INK, UI.F_HAND)
 	p2t.custom_minimum_size = Vector2(130, 0)
 	p2.add_child(p2t)
 
@@ -2550,7 +2573,7 @@ func _drop_coins(parent: Control, n: int) -> void:
 
 ## 使うものを変えた後: 背景はすぐ変え、名札の飾り・キャラクターはサーバーに送る（対戦の相手に見える）
 func _after_equip(cat: String) -> void:
-	_refresh_title()   # 後ろの STAFF CARD（HP/KAS・名札）もすぐ新しくする
+	_refresh_title()   # 後ろの STAFF CARD（HP/CUS・名札）もすぐ新しくする
 	if cat == "bg":
 		var bd: Dictionary = Shop.backdrop()
 		set_stage(str(bd["stage"]), str(bd["variant"]))
@@ -2925,6 +2948,9 @@ func _show_hardcore() -> void:
 		b.add_theme_stylebox_override("hover", sh)
 		b.add_theme_stylebox_override("pressed", sh)
 		b.pressed.connect(func() -> void: _start_solo(sid_s, true))
+		if not stage_open(sid_s):
+			b.disabled = true
+			b.text = tr(str(STAGES[sid_s]["name"])) + "\n" + tr("（準備中）")
 		left.add_child(b)
 	# ハードコアの称号
 	var right: VBoxContainer = UI.vbox(6)
@@ -2964,11 +2990,12 @@ func _show_licenses() -> void:
 	var body: VBoxContainer = UI.vbox(8)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(body)
+	body.add_child(UI.text(tr("カスハラ防衛線") + "  © 2026 medal", UI.S_LEAD, UI.INK, UI.F_BOLD))
 	body.add_child(UI.text("Godot Engine", UI.S_LEAD, UI.INK, UI.F_BOLD))
 	body.add_child(UI.para(tr("このゲームは Godot Engine で作られています。") + " https://godotengine.org/license", UI.S_SMALL, UI.INK_SOFT))
 	body.add_child(UI.para(Engine.get_license_text(), UI.S_SMALL, UI.INK))
 	body.add_child(UI.text(tr("フォント"), UI.S_LEAD, UI.INK, UI.F_BOLD))
-	body.add_child(UI.para("Noto Sans JP (c) Google / Adobe, Yusei Magic (c) The Yusei Magic Project Authors, DotGothic16 (c) The DotGothic16 Project Authors, Dela Gothic One (c) The Dela Gothic Project Authors — SIL Open Font License 1.1", UI.S_SMALL, UI.INK))
+	body.add_child(UI.para("Noto Sans JP, Noto Sans SC, Noto Sans KR (c) Google / Adobe, Yusei Magic (c) The Yusei Magic Project Authors, DotGothic16 (c) The DotGothic16 Project Authors, Dela Gothic One (c) The Dela Gothic Project Authors — SIL Open Font License 1.1", UI.S_SMALL, UI.INK))
 	body.add_child(UI.text(tr("エンジンに含まれるライブラリ"), UI.S_LEAD, UI.INK, UI.F_BOLD))
 	var parts: PackedStringArray = PackedStringArray()
 	for info in Engine.get_copyright_info():
@@ -3301,7 +3328,7 @@ func _confirm_resign(step: int) -> void:
 	var col: VBoxContainer = _open_sheet(520, "center")
 	_sheet_title(col, tr("退職届") if step == 1 else tr("本当に退職しますか？"))
 	if step == 1:
-		col.add_child(UI.para(tr("退職すると、このパソコンに保存した記録・称号・HP/KAS・持ち物・キャラクター・設定がすべて消えます。元には戻せません。"), UI.S_BODY, UI.INK))
+		col.add_child(UI.para(tr("退職すると、このパソコンに保存した記録・称号・HP/CUS・持ち物・キャラクター・設定がすべて消えます。元には戻せません。"), UI.S_BODY, UI.INK))
 		col.add_child(UI.para(tr("ゲームサーバーにあるあなたのアカウント（名前・レート・同意の記録・通報の記録・保存された会話）も消します。"), UI.S_SMALL, UI.INK_SOFT))
 	else:
 		col.add_child(UI.para(tr("最後の確認です。すべてのデータを消して、新人からやり直します。"), UI.S_BODY, UI.SHU))
@@ -3510,7 +3537,7 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		_receipt_line(col, tr("売上"), "%s   %+d" % [GameSettings.money(int(sm.get("sales", 0))), int(sm.get("sales_bonus", 0))], UI.S_BODY)
 		var stars: float = float(sm.get("review", 3.0))
 		_receipt_line(col, tr("店舗レビュー"), "%s %.1f   %+d" % ["★".repeat(int(round(stars))) + "☆".repeat(5 - int(round(stars))), stars, int(sm.get("review_bonus", 0))])
-		# 給与（要件#82）: オフラインは HP、オンラインは KAS
+		# 給与（要件#82）: オフラインは HP、オンラインは CUS
 		if sm.has("pay"):
 			_receipt_line(col, tr("給与"), Shop.pay_text(sm["pay"]), UI.S_BODY, STAMP_INK)
 	col.add_child(UI.rule(Paper.TimeCard.EDGE, 1))
@@ -3860,7 +3887,7 @@ func _on_versus_finished(summary: Dictionary) -> void:
 	else:
 		_receipt_line(col, tr("フレンド対戦"), tr("レート変動なし"))
 	if int(summary.get("pay_kas", 0)) > 0:
-		_receipt_line(col, tr("給与"), "+%d KAS" % int(summary["pay_kas"]), UI.S_BODY)
+		_receipt_line(col, tr("給与"), "+%d CUS" % int(summary["pay_kas"]), UI.S_BODY)
 	_receipt_rule(col)
 	col.add_child(UI.gap(8))
 	var again: Button = UI.primary(tr("もう一戦"), UI.S_LEAD)

@@ -5,6 +5,7 @@ import { trackMatch, endMatch, markReported } from "./matchlogs.ts";
 import crypto from "node:crypto";
 import { config, scaled } from "./config.ts";
 import { type Customer, type StageId, STAGES, randomCustomer, publicCustomer } from "./scenarios.ts";
+import { openStages } from "./stages.ts";
 import { judgeStaff, judgeCustomerLine } from "./keyword_judge.ts";
 import { llmEnabled, generateCustomer, judgeStaffTurn, judgeCustomerTurn, type HistoryEntry } from "./llm.ts";
 import { sttEnabled, transcribe } from "./stt.ts";
@@ -45,7 +46,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 export class Match {
   readonly id = crypto.randomUUID();
-  readonly stage: StageId = STAGES[Math.floor(Math.random() * STAGES.length)];
+  readonly stage: StageId = pickStage();
   readonly seats: [Seat, Seat];
   finished = false;
   onEnd: ((m: Match) => void) | null = null;
@@ -278,7 +279,7 @@ export class Match {
         this.anger = 100;
         outcome = "explode";
         timedOut = true;
-        this.broadcastJudged(0, 0, pick(this.lang, { ja: "時間切れ！お客さんがキレた。", en: "Time's up! The customer snapped.", zh: "时间到！顾客发飙了。" }), "staff");
+        this.broadcastJudged(0, 0, pick(this.lang, { ja: "時間切れ！お客さんがキレた。", en: "Time's up! The customer snapped.", zh: "时间到！顾客发飙了。", ko: "시간 초과! 손님이 폭발했다." }), "staff");
         break;
       }
       this.setPhase("judging", -1, 0);
@@ -305,7 +306,7 @@ export class Match {
       if (reply === "") {
         // 声が聞き取れなかった: 少し怒りが上がり、もう一度店員の番
         this.anger = clamp(this.anger + 5, 0, 100);
-        this.broadcastJudged(5, 0, pick(this.lang, { ja: "よく聞き取れなかった…もう一度！", en: "Didn't catch that... try again!", zh: "没听清……再说一遍！" }), "staff");
+        this.broadcastJudged(5, 0, pick(this.lang, { ja: "よく聞き取れなかった…もう一度！", en: "Didn't catch that... try again!", zh: "没听清……再说一遍！", ko: "잘 안 들렸어… 한 번 더!" }), "staff");
         if (this.anger >= 100) { outcome = "explode"; break; }
         continue;
       }
@@ -329,7 +330,7 @@ export class Match {
         history.push({ role: "staff", text: masked });
         this.broadcastLine("staff", staff, masked, input.via);
         this.anger = clamp(this.anger + 25, 0, 100);
-        this.broadcastJudged(25, 0, pick(this.lang, { ja: "不適切な発言。お客さんが激怒した。", en: "Inappropriate remark. The customer is furious.", zh: "不当发言。顾客暴怒了。" }), "staff");
+        this.broadcastJudged(25, 0, pick(this.lang, { ja: "不適切な発言。お客さんが激怒した。", en: "Inappropriate remark. The customer is furious.", zh: "不当发言。顾客暴怒了。", ko: "부적절한 발언. 손님이 격노했다." }), "staff");
         if (this.anger >= 100) { outcome = "explode"; break; }
         await sleep(config.versus.pauseAfterLineMs);
         if (this.finished) return null;
@@ -358,7 +359,7 @@ export class Match {
       this.setPhase("judging", -1, 0);
       const line = await this.inputToText(customer, cin, "customer");
       if (this.finished) return null;
-      let shown = line !== "" ? line : pick(this.lang, { ja: "……（言葉に詰まっている）", en: "... (lost for words)", zh: "……（说不出话来）" });
+      let shown = line !== "" ? line : pick(this.lang, { ja: "……（言葉に詰まっている）", en: "... (lost for words)", zh: "……（说不出话来）", ko: "……(말문이 막혔다)" });
       // 不適切な発言の確かめ方は店員の番と同じ（キーワード → AI の採点と一緒に。要件#88, #93）
       const ckw = line !== "" ? keywordModeration(line) : { flagged: false, category: "none" as ModerationCategory };
       let cflag: ModerationCategory = ckw.flagged ? ckw.category : "none";
@@ -376,7 +377,7 @@ export class Match {
         shown = this.strike(customer, cflag, ckw.flagged ? "keyword" : "ai", line);
         if (this.finished) return null;
         history.push({ role: "customer", text: shown });
-        cj = { anger_delta: 0, resolve_delta: 15, comment: pick(this.lang, { ja: "不適切な発言。店員側に有利になった。", en: "Inappropriate remark. Advantage to the clerk.", zh: "不当发言。对店员有利。" }) };
+        cj = { anger_delta: 0, resolve_delta: 15, comment: pick(this.lang, { ja: "不適切な発言。店員側に有利になった。", en: "Inappropriate remark. Advantage to the clerk.", zh: "不当发言。对店员有利。", ko: "부적절한 발언. 직원 쪽이 유리해졌다." }) };
       }
       this.broadcastLine("customer", customer, shown, cin.via);
       if (line !== "") usedCustomer.push(line);
@@ -456,7 +457,7 @@ export class Match {
       return (await transcribe(input.pcm, input.debugText, this.lang)).trim();
     } catch (e) {
       log("stt failed", String(e));
-      this.send(seat, { t: "notice", text: pick(this.lang, { ja: "声を文字にできませんでした。もう一度話すか、文字で入力してください。", en: "Couldn't make out your voice. Speak again or type your line.", zh: "没能识别你的声音。请再说一次，或用文字输入。" }) });
+      this.send(seat, { t: "notice", text: pick(this.lang, { ja: "声を文字にできませんでした。もう一度話すか、文字で入力してください。", en: "Couldn't make out your voice. Speak again or type your line.", zh: "没能识别你的声音。请再说一次，或用文字输入。", ko: "목소리를 글자로 바꾸지 못했습니다. 다시 말하거나 글자로 입력하세요." }) });
       void role;
       return "";
     }
@@ -527,7 +528,7 @@ export class Match {
       return;
     }
     if (bytes.length < 1600 || bytes.length > MAX_BYTES) {
-      this.send(seat, { t: "notice", text: pick(this.lang, { ja: "声が短すぎるか長すぎます（0.1〜20秒）。", en: "Voice clip is too short or too long (0.1–20 s).", zh: "语音太短或太长（0.1～20秒）。" }) });
+      this.send(seat, { t: "notice", text: pick(this.lang, { ja: "声が短すぎるか長すぎます（0.1〜20秒）。", en: "Voice clip is too short or too long (0.1–20 s).", zh: "语音太短或太长（0.1～20秒）。", ko: "음성이 너무 짧거나 깁니다 (0.1~20초)." }) });
       // 番は続いているので、入力できる状態に戻してもらう
       this.sendPhase();
       return;
@@ -576,7 +577,7 @@ export class Match {
   private strike(seat: number, category: ModerationCategory, by: string, text: string): string {
     const m = { category, by };
     this.strikes[seat]++;
-    const masked = pick(this.lang, { ja: "（不適切な発言のため表示しません）", en: "(Hidden: inappropriate remark)", zh: "（不当发言，已隐藏）" });
+    const masked = pick(this.lang, { ja: "（不適切な発言のため表示しません）", en: "(Hidden: inappropriate remark)", zh: "（不当发言，已隐藏）", ko: "(부적절한 발언이라 표시하지 않습니다)" });
     const reason = REPORT_OF[m.category];
     addReport("system:moderation", this.seats[seat].player.id, this.id, reason, `auto(${m.by}) ${text.slice(0, 120)}`);
     markReported(this.id);
@@ -588,10 +589,10 @@ export class Match {
       strikes: this.strikes[seat],
       max: modMax(),
       text: left > 0
-        ? pick(this.lang, { ja: `警告: 不適切な発言です（${CATEGORY_JA[m.category]}）。あと${left}回で負けになります。`, en: `Warning: inappropriate remark (${m.category}). ${left} more and you lose.`, zh: `警告：不当发言（${m.category}）。再有${left}次将判负。` })
-        : pick(this.lang, { ja: "不適切な発言が続いたため、負けになりました。", en: "Too many inappropriate remarks. You lose.", zh: "不当发言过多，判负。" }),
+        ? pick(this.lang, { ja: `警告: 不適切な発言です（${CATEGORY_JA[m.category]}）。あと${left}回で負けになります。`, en: `Warning: inappropriate remark (${m.category}). ${left} more and you lose.`, zh: `警告：不当发言（${m.category}）。再有${left}次将判负。`, ko: `경고: 부적절한 발언입니다 (${m.category}). ${left}번 더 하면 패배합니다.` })
+        : pick(this.lang, { ja: "不適切な発言が続いたため、負けになりました。", en: "Too many inappropriate remarks. You lose.", zh: "不当发言过多，判负。", ko: "부적절한 발언이 계속되어 패배했습니다." }),
     });
-    this.send(1 - seat, { t: "notice", text: pick(this.lang, { ja: "相手の不適切な発言を伏せました。", en: "An inappropriate remark from your opponent was hidden.", zh: "已隐藏对手的不当发言。" }) });
+    this.send(1 - seat, { t: "notice", text: pick(this.lang, { ja: "相手の不適切な発言を伏せました。", en: "An inappropriate remark from your opponent was hidden.", zh: "已隐藏对手的不当发言。", ko: "상대의 부적절한 발언을 가렸습니다." }) });
     if (this.strikes[seat] >= modMax()) this.forfeit(seat, "moderation");
     return masked;
   }
@@ -700,3 +701,9 @@ const CATEGORY_JA: Record<ModerationCategory, string> = {
   sexual: "性的な内容", hate: "差別・ひどい暴言", threat: "脅し", personal_info: "個人情報", none: "その他",
 };
 
+/** 対戦の舞台は、開いている店から選ぶ（要件#102: コンビニは準備中の間は使わない） */
+function pickStage(): StageId {
+  const open = openStages();
+  const list = open.length > 0 ? open : [...STAGES];
+  return list[Math.floor(Math.random() * list.length)];
+}

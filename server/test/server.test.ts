@@ -468,8 +468,8 @@ test("退職（要件#101）: サーバーのアカウントと通報を消し�
   a.c.close(); b.c.close();
 });
 
-test("プライバシーポリシー（要件#101）: 3言語で配り、同意の内容（30日・声は保存しない）が書いてある", async () => {
-  for (const [lang, word] of [["ja", "30日"], ["en", "30 days"], ["zh", "30天"]] as const) {
+test("プライバシーポリシー（要件#101, #102）: 4言語で配り、同意の内容（30日・声は保存しない）が書いてある", async () => {
+  for (const [lang, word] of [["ja", "30日"], ["en", "30 days"], ["zh", "30天"], ["ko", "30일"]] as const) {
     const r = await fetch(`${srv.base}/privacy?lang=${lang}`);
     assert.equal(r.status, 200);
     assert.match(r.headers.get("content-type") ?? "", /text\/html/);
@@ -477,4 +477,35 @@ test("プライバシーポリシー（要件#101）: 3言語で配り、同意�
     assert.ok(t.includes(word), `${lang}: ${word}`);
   }
   assert.equal((await fetch(`${srv.base}/privacy?lang=../../etc`)).status, 200, "変な言語は日本語にする");
+});
+
+test("コンビニは準備中（要件#102）: 閉じている間は info に出さず、対戦の舞台はゲームセンターだけ。開けると両方", async () => {
+  const { runtime } = await import("../src/settings.ts");
+  const { openStages } = await import("../src/stages.ts");
+  const before = runtime.konbiniOpen;
+  runtime.konbiniOpen = false;
+  assert.deepEqual(openStages(), ["arcade"]);
+  assert.deepEqual((await api(srv.base, "GET", "/api/v1/info")).body.open_stages, ["arcade"]);
+  runtime.konbiniOpen = true;
+  assert.deepEqual([...openStages()].sort(), ["arcade", "konbini"]);
+  runtime.konbiniOpen = before;
+});
+
+test("韓国語（要件#102）: お金はウォン、店長の一言・行動の名前・台本が韓国語", async () => {
+  const { money, toLang, pick } = await import("../src/lang.ts");
+  assert.equal(toLang("ko"), "ko");
+  assert.equal(money(100, "ko"), "1,000원");
+  assert.equal(pick("ko", { ja: "あ", en: "a" }), "a", "韓国語が無ければ英語");
+  const { judgeStaff } = await import("../src/keyword_judge.ts");
+  const { allCustomers } = await import("../src/scenarios.ts");
+  const c = allCustomers("arcade", "ko")[0];
+  assert.match(c.title, /[가-힣]/);
+  const j = judgeStaff(c, "닥쳐, 꺼져", [], 40, 0, "ko");
+  assert.ok(j.anger_delta > 0, "폭언は怒りが上がる");
+  assert.match(j.comment, /[가-힣]/, "店長の一言も韓国語");
+  const { keywordModeration } = await import("../src/moderation.ts");
+  assert.equal(keywordModeration("바보 같은 직원").category, "none", "軽い暴言は通す");
+  assert.equal(keywordModeration("보지 마세요").category, "none", "「見ないで」を誤検知しない");
+  assert.equal(keywordModeration("01012345678로 전화해").category, "personal_info", "韓国の携帯番号");
+  assert.equal(keywordModeration("죽여버린다").category, "hate");
 });

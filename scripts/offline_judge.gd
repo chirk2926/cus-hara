@@ -28,6 +28,14 @@ const COMMENTS: Dictionary = {
 		"miss": "没说到点上。看看备忘录。", "offtopic": "别聊和接待无关的话题。",
 		"specific": "提到了备忘录里的内容，不错。再具体一点。",
 	},
+	"ko": {
+		"solution": "구체적인 해결책. 좋아!", "cushion": "거절할 때일수록 부드러운 한마디를 먼저.", "firm": "정중하지만 단호하게. 그대로 가.",
+		"only_sorry": "사과만으로는 해결 안 돼.", "excuse": "변명처럼 들려.", "casual": "말투가 너무 가벼워. 예의를 지켜.",
+		"short": "너무 짧아. 조금 더 말해 봐.", "repeat": "같은 답을 반복하지 마.", "rude": "손님에게 폭언은 절대 안 돼!",
+		"yielded": "무리한 요구에 굴복했어...", "good": "좋아, 잘 받아 줬어.", "ok": "나쁘지 않아. 이제 해결책을.",
+		"miss": "안 먹혔어. 메모를 읽어 봐.", "offtopic": "접객과 관계없는 이야기는 그만.",
+		"specific": "메모 내용을 짚은 건 좋아. 한 걸음 더 구체적으로.",
+	},
 }
 
 ## 接客と関係ない話（AIへの依頼・プログラム・モデル名など）。要件#28
@@ -36,14 +44,17 @@ const OFFTOPIC: Array = [
 	"write code", "write a program", "python", "javascript", "which model", "what model", "model name", "system prompt",
 	"prompt", "chatgpt", "claude", "anthropic", "openai", "gpt", "as an ai", "ignore previous", "ignore your instructions",
 	"写代码", "写程序", "编程", "模型名", "哪个模型", "什么模型", "系统提示", "提示词", "忽略指令", "忽略之前", "作为ai",
+	"코드 짜", "코드를 짜", "코드 작성", "프로그래밍", "모델 이름", "어떤 모델", "무슨 모델", "시스템 프롬프트", "프롬프트", "지시를 무시", "ai로서",
 ]
 
 static var _words: Dictionary = {}
 
 
 ## 今の言語の配列から1つ選ぶ
-static func pick_lang(ja: Array, en: Array, zh: Array) -> String:
+static func pick_lang(ja: Array, en: Array, zh: Array, ko: Array = []) -> String:
 	var l: String = _lang()
+	if l == "ko":
+		return _pick(ko if not ko.is_empty() else en)
 	return _pick(en if l == "en" else (zh if l == "zh" else ja))
 
 
@@ -130,6 +141,8 @@ static func _tokens(text: String, lang: String) -> Dictionary:
 		return out
 	if lang == "zh":
 		re.compile("[\\x{4E00}-\\x{9FFF}]{2,}")
+	elif lang == "ko":
+		re.compile("[\\x{AC00}-\\x{D7A3}]{2,}")
 	else:
 		re.compile("[\\x{4E00}-\\x{9FFF}\\x{30A0}-\\x{30FF}]{2,}")
 	for m in re.search_all(text):

@@ -23,7 +23,7 @@ const WORDS = JSON.parse(fs.readFileSync(path.join(path.dirname(config.scenarios
 const SEXUAL: string[] = WORDS.sexual;
 const HATE: string[] = WORDS.hate;
 /** 個人情報らしいもの（電話番号・メールアドレス）。金額（「1000000円」など）は拾わないよう、区切りつきの番号か携帯の11けただけ */
-const PHONE = /(?<!\d)0\d{1,4}[-ー－ ]\d{1,4}[-ー－ ]\d{3,4}(?!\d)|(?<!\d)0[5789]0\d{8}(?!\d)|\+\d{1,3}[- ]?\d{2,4}[- ]?\d{3,4}[- ]?\d{3,4}/;
+const PHONE = /(?<!\d)0\d{1,4}[-ー－ ]\d{1,4}[-ー－ ]\d{3,4}(?!\d)|(?<!\d)0[5789]0\d{8}(?!\d)|(?<!\d)01[016789]\d{7,8}(?!\d)|\+\d{1,3}[- ]?\d{2,4}[- ]?\d{3,4}[- ]?\d{3,4}/;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.]+/;
 
 function normalize(text: string): string {

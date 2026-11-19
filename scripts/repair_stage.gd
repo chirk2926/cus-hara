@@ -114,7 +114,7 @@ func _build_medal_repair(problem: String) -> void:
 	var side: Node3D = _node(m, Vector3(0.601, 0.75, 0.15))
 	parts["hatch"] = side
 	_box(side, Vector3(0.02, 0.16, 0.22), Vector3(0.0, 0.0, -0.11), _mat(Color(0.95, 0.75, 0.25), 0.3, 0.3, 0.8))
-	_label(m, "補充口" if GameSettings.language == "ja" else ("补充口" if GameSettings.language == "zh" else "REFILL"), Vector3(0.62, 0.9, 0.05), 40, Color(1.0, 0.95, 0.8), 0.003, 90.0)
+	_label(m, "補充口" if GameSettings.language == "ja" else ("补充口" if GameSettings.language == "zh" else ("보충구" if GameSettings.language == "ko" else "REFILL")), Vector3(0.62, 0.9, 0.05), 40, Color(1.0, 0.95, 0.8), 0.003, 90.0)
 	cam_pos = Vector3(0.35, 1.25, 1.6)
 	cam_look = Vector3(0.0, 0.8, 0.0)
 
@@ -175,9 +175,9 @@ func _build_video_talk(problem: String) -> void:
 	p.call("set_anger", 0.7)
 	parts["offender"] = p
 	if problem == "slam":
-		_rage_label = _label(self, "ドンッ！" if GameSettings.language == "ja" else ("咚！" if GameSettings.language == "zh" else "BANG!"), Vector3(0.8, 2.0, -1.9), 90, Color(1.0, 0.85, 0.2))
+		_rage_label = _label(self, "ドンッ！" if GameSettings.language == "ja" else ("咚！" if GameSettings.language == "zh" else ("쾅!" if GameSettings.language == "ko" else "BANG!")), Vector3(0.8, 2.0, -1.9), 90, Color(1.0, 0.85, 0.2))
 	else:
-		_rage_label = _label(self, "うおおおっ！" if GameSettings.language == "ja" else ("哇啊啊！" if GameSettings.language == "zh" else "WOOOO!"), Vector3(0.7, 2.05, -1.8), 90, Color(1.0, 0.45, 0.3))
+		_rage_label = _label(self, "うおおおっ！" if GameSettings.language == "ja" else ("哇啊啊！" if GameSettings.language == "zh" else ("우오오오!" if GameSettings.language == "ko" else "WOOOO!")), Vector3(0.7, 2.05, -1.8), 90, Color(1.0, 0.45, 0.3))
 	cam_pos = Vector3(0.0, 1.55, 0.6)
 	cam_look = Vector3(0.0, 1.35, -1.5)
 

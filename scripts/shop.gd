@@ -1,14 +1,14 @@
 extends RefCounted
-## ショップ（要件#82）。品物は data/shop.json。持ち物・使っているもの・HP/KAS は GameSettings に保存する。
+## ショップ（要件#82）。品物は data/shop.json。持ち物・使っているもの・HP/CUS は GameSettings に保存する。
 ##
 ## お金（給与）:
 ##   HP（ハラスメントポイント）: オフライン（台本・キーワード判定）のシフトの売上の一部
-##   KAS（カスタマーポイント）: オンライン（サーバー・自分のAIキー）のシフトの売上の一部と、対戦の給与。HP より価値が高い
+##   CUS（カスポイント）: オンライン（サーバー・自分のAIキー）のシフトの売上の一部と、対戦の給与。HP より価値が高い
 ##   売上がマイナスでも減らない。
 ## 品物: 背景（タイトルの背景の店と時間帯）・名札の枠・名前の色・スタンプ。
-##   値段は hp と kas の2つ（0 はその通貨では買えない）。KAS でしか買えないものもある。
+##   値段は hp と kas の2つ（0 はその通貨では買えない）。CUS でしか買えないものもある。
 ## 名札の飾り（枠・名前の色・スタンプ）はサーバーに送り、対戦の相手にも見える（見た目だけ）。
-## 要件#84: 背景はガチャ（KAS か HP。HP は高め。1回と10連=11回）。KAS は HP に両替できる（1 KAS = 3 HP、逆はできない）。
+## 要件#84: 背景はガチャ（CUS か HP。HP は高め。1回と10連=11回）。CUS は HP に両替できる（1 CUS = 3 HP、逆はできない）。
 ## 対戦のキャラクター（客役は私服、店員役は制服）。髪型・髪の色・私服・制服・小物はショップの品物。
 
 const UI = preload("res://scripts/ui_kit.gd")
@@ -124,7 +124,7 @@ static func backdrop() -> Dictionary:
 	return {"stage": str(it.get("stage", "arcade")), "variant": str(it.get("variant", "day"))}
 
 
-## シフトの給与。オンラインなら KAS、オフラインなら HP。売上がマイナスでも減らない。もらった分を返す
+## シフトの給与。オンラインなら CUS、オフラインなら HP。売上がマイナスでも減らない。もらった分を返す
 static func pay_shift(sales: int, online: bool) -> Dictionary:
 	var pay: Dictionary = data().get("pay", {})
 	var s: float = float(maxi(0, sales))
@@ -137,7 +137,7 @@ static func pay_shift(sales: int, online: bool) -> Dictionary:
 	return {"hp": h, "kas": 0}
 
 
-## 対戦の給与（KAS）
+## 対戦の給与（CUS）
 static func pay_versus(won: bool) -> int:
 	var pay: Dictionary = data().get("pay", {})
 	var k: int = int(pay.get("kas_versus_win" if won else "kas_versus_lose", 0))
@@ -148,7 +148,7 @@ static func pay_versus(won: bool) -> int:
 static func pay_text(paid: Dictionary) -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	if int(paid.get("kas", 0)) > 0:
-		parts.append("+%d KAS" % int(paid["kas"]))
+		parts.append("+%d CUS" % int(paid["kas"]))
 	if int(paid.get("hp", 0)) > 0:
 		parts.append("+%d HP" % int(paid["hp"]))
 	return " ".join(parts) if not parts.is_empty() else "+0"
@@ -230,7 +230,7 @@ static func hp_per_kas() -> int:
 	return int((data().get("exchange", {}) as Dictionary).get("hp_per_kas", 3))
 
 
-## KAS を HP にする（逆はできない）。できたら true
+## CUS を HP にする（逆はできない）。できたら true
 static func exchange(kas: int) -> bool:
 	if kas <= 0 or kas > GameSettings.kas_points:
 		return false

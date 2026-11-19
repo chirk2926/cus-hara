@@ -23,6 +23,7 @@ const TYPES: Dictionary = {
 }
 
 const NAMES_JA: Array = ["若葉 蓮", "中野 陽太", "春川 みゆ", "大森 颯", "早瀬 ひなた", "石田 光", "三好 奏", "北村 莉子"]
+const NAMES_KO: Array = ["와카바 렌", "나카노 요타", "하루카와 미유", "오모리 하야테", "하야세 히나타", "이시다 히카루", "미요시 카나데", "기타무라 리코"]
 const NAMES_EN: Array = ["Ren Wakaba", "Yota Nakano", "Miyu Harukawa", "Hayate Omori", "Hinata Hayase", "Hikaru Ishida", "Kanade Miyoshi", "Riko Kitamura"]
 
 
@@ -79,15 +80,19 @@ static func dob_text(dob: Dictionary, lang: String) -> String:
 		return "%d年%d月%d日生" % [int(dob["year"]), int(dob["month"]), int(dob["day"])]
 	if lang == "zh":
 		return "%d年%d月%d日出生" % [int(dob["year"]), int(dob["month"]), int(dob["day"])]
+	if lang == "ko":
+		return "%d년 %d월 %d일생" % [int(dob["year"]), int(dob["month"]), int(dob["day"])]
 	return "Born %04d-%02d-%02d" % [int(dob["year"]), int(dob["month"]), int(dob["day"])]
 
 
-## 言語ごとの文言を選ぶ（en / zh 以外は日本語）
-static func _tr(lang: String, ja: Variant, en: Variant, zh: Variant) -> Variant:
+## 言語ごとの文言を選ぶ（en / zh / ko 以外は日本語。ko が無ければ英語）
+static func _tr(lang: String, ja: Variant, en: Variant, zh: Variant, ko: Variant = null) -> Variant:
 	if lang == "en":
 		return en
 	if lang == "zh":
 		return zh
+	if lang == "ko":
+		return ko if ko != null else en
 	return ja
 
 
@@ -108,6 +113,7 @@ static func _pick(weights: Dictionary) -> String:
 static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dictionary:
 	var en: bool = lang == "en"
 	var zh: bool = lang == "zh"
+	var ko: bool = lang == "ko"
 	var konbini: bool = mode == "konbini"
 	var today: Dictionary = Time.get_date_dict_from_system()
 	var limit: int = 20 if konbini else maxi(limit_for(clock_min), 16)
@@ -150,15 +156,17 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		photo["hair"] = "perm" if str(look["hair"]) != "perm" else "short"
 		photo["accessory"] = "none" if str(look["accessory"]) == "glasses" else "glasses"
 		photo["skin_color"] = "#d9a57e" if str(look["skin_color"]) != "#d9a57e" else "#f5d3b5"
-	var names: Array = NAMES_EN if en else NAMES_JA
+	var names: Array = NAMES_EN if en else (NAMES_KO if ko else NAMES_JA)
 	var who: String = str(names[randi() % names.size()])
 	# 借り物の身分証は、同じ名字の年上の家族のもの
 	var shown_name: String = who
 	if not face_match:
-		shown_name = ("Kenji " + who.split(" ")[1]) if en else (who.split(" ")[0] + " 健二")
+		shown_name = ("Kenji " + who.split(" ")[1]) if en else (who.split(" ")[0] + (" 겐지" if ko else " 健二"))
 	var clock: String = clock_text(clock_min)
 	var rule: String = ""
-	if zh:
+	if ko:
+		rule = "지금은 %s. %d세 미만 손님은 머무를 수 없다(18:00 이후 16세 미만, 22:00 이후 18세 미만). 나이는 얼굴 사진과 생년월일이 있는 신분증(운전면허증·마이넘버 카드·여권·학생증)으로만 확인한다. 정기권은 얼굴 사진도 생년월일도 없고, 건강보험증은 얼굴 사진이 없어서 쓸 수 없다. 사진이 본인과 다른 신분증도 안 된다." % [clock, limit]
+	elif zh:
 		rule = "现在是 %s。未满%d岁的顾客不能入店（18:00以后未满16岁、22:00以后未满18岁不可入店）。年龄只能用带有照片和出生日期的证件（驾照、个人编号卡、护照、学生证）来确认。月票没有照片和出生日期，健康保险证没有照片，都不能用。照片与本人不符的证件也不行。" % [clock, limit]
 	elif en:
 		rule = "It's %s. Under-%d customers may not stay (after 18:00 under-16, after 22:00 under-18). Check age only with an ID showing a face photo and date of birth (driver's license, My Number card, passport, student ID). Commuter passes have neither; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either." % [clock, limit]
@@ -170,16 +178,21 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 	var titles_en: Array = ["The Suspiciously Young Regular", "The Grown-Up-Looking Student", "The \"Totally 20\" Kid", "The Just-One-More Kid"]
 	var openings_zh: Array = ["诶，还能玩吧？就再玩一次！", "为什么要我走？我已经是大人了！", "年龄确认？喏，给你看这个就行了吧？", "朋友在等我，就再给我10分钟吧，拜托了！"]
 	var titles_zh: Array = ["年龄可疑的常客", "长得成熟的学生", "自称二十岁", "再玩一次的客人"]
-	var demand: String = str(_tr(lang, "身分証をきちんと見せずに遊び続けること", "Keep playing without showing a proper ID", "不出示正规证件就继续玩"))
+	var openings_ko: Array = ["어, 아직 놀 수 있죠? 딱 한 판만!", "왜 나가야 해요? 저 이제 어른인데!", "연령 확인? 자, 이거 보여 주면 되죠?", "친구가 기다려서 그래요, 10분만 더요!"]
+	var titles_ko: Array = ["나이가 수상한 단골", "어른스러워 보이는 학생", "자칭 스무 살", "딱 한 판만 손님"]
+	var demand: String = str(_tr(lang, "身分証をきちんと見せずに遊び続けること", "Keep playing without showing a proper ID", "不出示正规证件就继续玩", "신분증을 제대로 보여 주지 않고 계속 노는 것"))
 	var item: String = ""
 	if konbini:
 		# お酒・たばこ（実在の銘柄は出さない）
 		var items_ja: Array = ["缶ビール", "缶チューハイ", "たばこ", "ワンカップの日本酒"]
 		var items_en: Array = ["a can of beer", "a can of chu-hi", "a pack of cigarettes", "a cup of sake"]
 		var items_zh: Array = ["一罐啤酒", "一罐烧酒苏打", "一包香烟", "一杯日本酒"]
+		var items_ko: Array = ["캔맥주", "캔 츄하이", "담배", "컵 사케"]
 		var k: int = randi() % 4
-		item = str(_tr(lang, items_ja[k], items_en[k], items_zh[k]))
-		if zh:
+		item = str(_tr(lang, items_ja[k], items_en[k], items_zh[k], items_ko[k]))
+		if ko:
+			rule = "%s를(을) 사려고 한다. 술·담배는 시간과 상관없이 20세 미만에게 팔 수 없다. 나이는 얼굴 사진과 생년월일이 있는 신분증(운전면허증·마이넘버 카드·여권·학생증)으로만 확인한다. 정기권은 얼굴 사진도 생년월일도 없고, 건강보험증은 얼굴 사진이 없어서 쓸 수 없다. 사진이 본인과 다른 신분증도 안 된다. 계산대 화면의 「20세 이상」을 누른 것만으로는 확인이 되지 않는다." % item
+		elif zh:
 			rule = "想买%s。无论什么时间，酒和烟都不能卖给未满20岁的人。年龄只能用带有照片和出生日期的证件（驾照、个人编号卡、护照、学生证）来确认。月票没有照片和出生日期，健康保险证没有照片，都不能用。照片与本人不符的证件也不行。只在收银台屏幕上按“已满20岁”不算确认。" % item
 		elif en:
 			rule = "Wants to buy %s. Alcohol and tobacco can't be sold to anyone under 20, at any hour. Check age only with an ID showing a face photo and date of birth (driver's license, My Number card, passport, student ID). Commuter passes have neither; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either. Pressing \"I'm 20 or older\" on the register screen alone isn't proof." % item
@@ -191,8 +204,10 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		titles_en = ["The Young-Looking Customer", "The Kid in a Hurry", "The \"Totally Employed\" Guy", "The Never-Been-Carded Customer"]
 		openings_zh = ["请给我%s。……诶，年龄确认？看不出来吗？" % item, "我都在屏幕上按了“已满20岁”，这样就行了吧？", "%s，再要个袋子。我赶时间。" % item, "年龄确认？平时从来没人查过我啊？"]
 		titles_zh = ["看着很年轻的顾客", "赶时间的年轻人", "自称上班族", "从没被查过年龄的客人"]
-		demand = str(_tr(lang, "身分証をきちんと見せずに%sを買うこと" % item, "Buy %s without showing a proper ID" % item, "不出示正规证件就买%s" % item))
-	var opening: String = str((_tr(lang, openings_ja, openings_en, openings_zh) as Array)[randi() % 4])
+		openings_ko = ["%s 주세요. ……네? 연령 확인? 보면 알잖아요." % item, "화면에 「20세 이상입니다」 눌렀으니까 됐죠?", "%s랑 봉투도 주세요. 급해서요." % item, "연령 확인 같은 거 평소엔 안 하던데요?"]
+		titles_ko = ["어려 보이는 손님", "서두르는 젊은이", "자칭 직장인", "연령 확인을 받아 본 적 없는 손님"]
+		demand = str(_tr(lang, "身分証をきちんと見せずに%sを買うこと" % item, "Buy %s without showing a proper ID" % item, "不出示正规证件就买%s" % item, "신분증을 제대로 보여 주지 않고 %s 사기" % item))
+	var opening: String = str((_tr(lang, openings_ja, openings_en, openings_zh, openings_ko) as Array)[randi() % 4])
 	# 「別の身分証を見せて」と言われたとき（要件#86）: 使えない身分証を出したお客さんは、半分の確率で本人の公的な身分証も持っている
 	var alt: Dictionary = {}
 	if not verifiable and randf() < 0.5:
@@ -201,7 +216,7 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 			"shown_age": age_on(real_dob, today), "name": who, "photo": look.duplicate()}
 	return {
 		"kind": "age_check",
-		"title": str((_tr(lang, titles_ja, titles_en, titles_zh) as Array)[randi() % 4]),
+		"title": str((_tr(lang, titles_ja, titles_en, titles_zh, titles_ko) as Array)[randi() % 4]),
 		"name": who,
 		"look": look,
 		"memo": rule,
@@ -210,16 +225,16 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		"patience": 1.0,
 		"start_anger": 30,
 		"machine": "none",
-		"solution_keywords": _tr(lang, ["身分証", "年齢", "確認", "顔写真", "規則", "条例"], ["ID", "identification", "age", "check", "photo", "rules"], ["证件", "身份证", "年龄", "确认", "照片", "规定"]),
-		"yield_keywords": _tr(lang, ["今回だけ", "大丈夫です", "どうぞ遊んで"], ["no problem, go ahead", "just this once", "it's fine"], ["就这一次", "没问题", "请便", "通融"]),
+		"solution_keywords": _tr(lang, ["身分証", "年齢", "確認", "顔写真", "規則", "条例"], ["ID", "identification", "age", "check", "photo", "rules"], ["证件", "身份证", "年龄", "确认", "照片", "规定"], ["신분증", "나이", "연령", "확인", "사진", "규정", "규칙"]),
+		"yield_keywords": _tr(lang, ["今回だけ", "大丈夫です", "どうぞ遊んで"], ["no problem, go ahead", "just this once", "it's fine"], ["就这一次", "没问题", "请便", "通融"], ["이번만", "괜찮아요", "그냥 노세요", "봐 드릴게요"]),
 		"lines": {
-			"calm": _tr(lang, ["……わかったよ。", "はいはい、見せればいいんでしょ。", "決まりなら、しょうがないか。"], ["...Okay, okay. I get it.", "Fine, I'll show you.", "Rules are rules, huh."], ["……知道了。", "好啦好啦，给你看就是了。", "既然是规定，那也没办法。"]),
-			"angry": _tr(lang, ["ちょっとくらいいいじゃん！", "ほかの店はいけたのに！", "厳しすぎでしょ！"], ["Come on, just let it slide!", "Everyone else lets me in!", "You're so strict!"], ["通融一下又怎么了！", "别的店都让了！", "也太严了吧！"]),
-			"neutral": _tr(lang, ["……で、遊んでいいの？", "え？"], ["...So can I play or not?", "Huh?"], ["……所以，能玩吗？", "诶？"]),
-			"demand": (_tr(lang, ["いいから売ってよ！", "買うまで帰らないからね！"], ["Just sell it to me!", "I'm not leaving without it!"], ["别废话，卖给我！", "不买到我就不走！"]) if konbini else _tr(lang, ["遊ばせてよ！", "帰らないからね！"], ["Just let me play!", "I'm not leaving!"], ["让我玩嘛！", "我不走！"])),
-			"resolved": _tr(lang, "……わかった、帰るよ。ごめんなさい。", "Okay... I'll go home. Sorry.", "……知道了，我回去。对不起。"),
-			"explode": _tr(lang, "もういい！帰る！", "Ugh, fine! I'm out!", "算了！我走了！"),
-			"yielded": _tr(lang, "やった、ラッキー！", "Yes! Lucky!", "太好了，运气真好！"),
+			"calm": _tr(lang, ["……わかったよ。", "はいはい、見せればいいんでしょ。", "決まりなら、しょうがないか。"], ["...Okay, okay. I get it.", "Fine, I'll show you.", "Rules are rules, huh."], ["……知道了。", "好啦好啦，给你看就是了。", "既然是规定，那也没办法。"], ["……알았어요.", "네네, 보여 주면 되잖아요.", "규칙이면 어쩔 수 없지."]),
+			"angry": _tr(lang, ["ちょっとくらいいいじゃん！", "ほかの店はいけたのに！", "厳しすぎでしょ！"], ["Come on, just let it slide!", "Everyone else lets me in!", "You're so strict!"], ["通融一下又怎么了！", "别的店都让了！", "也太严了吧！"], ["좀 봐주면 안 돼요?!", "다른 가게는 됐는데!", "너무 깐깐하잖아요!"]),
+			"neutral": _tr(lang, ["……で、遊んでいいの？", "え？"], ["...So can I play or not?", "Huh?"], ["……所以，能玩吗？", "诶？"], ["……그래서, 놀아도 돼요?", "네?"]),
+			"demand": (_tr(lang, ["いいから売ってよ！", "買うまで帰らないからね！"], ["Just sell it to me!", "I'm not leaving without it!"], ["别废话，卖给我！", "不买到我就不走！"], ["됐으니까 팔아 줘요!", "살 때까지 안 갈 거예요!"]) if konbini else _tr(lang, ["遊ばせてよ！", "帰らないからね！"], ["Just let me play!", "I'm not leaving!"], ["让我玩嘛！", "我不走！"], ["놀게 해 줘요!", "안 갈 거예요!"])),
+			"resolved": _tr(lang, "……わかった、帰るよ。ごめんなさい。", "Okay... I'll go home. Sorry.", "……知道了，我回去。对不起。", "……알았어요, 갈게요. 죄송해요."),
+			"explode": _tr(lang, "もういい！帰る！", "Ugh, fine! I'm out!", "算了！我走了！", "됐어! 갈래!"),
+			"yielded": _tr(lang, "やった、ラッキー！", "Yes! Lucky!", "太好了，运气真好！", "앗싸, 운 좋다!"),
 		},
 		"age": {"mode": mode, "item": item, "limit": limit, "clock": clock_min, "type": id_type, "public": bool(t["public"]), "has_photo": bool(t["photo"]),
 			"has_dob": bool(t["dob"]), "face_match": face_match, "dob": shown_dob, "shown_age": shown_age,

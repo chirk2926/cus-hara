@@ -100,7 +100,7 @@ static func materialize_spend(c: Dictionary, payout: int, lang: String = "") -> 
 	if lie:
 		acts["credit"] = "yield"
 		var kw: Array = (c.get("solution_keywords", []) as Array).duplicate()
-		kw.append_array({"ja": ["記録", "データ", "履歴", "実際"], "zh": ["记录", "数据", "实际"]}.get(l, ["record", "data", "log", "actually"]))
+		kw.append_array({"ja": ["記録", "データ", "履歴", "実際"], "zh": ["记录", "数据", "实际"], "ko": ["기록", "데이터", "실제"]}.get(l, ["record", "data", "log", "actually"]))
 		c["solution_keywords"] = kw
 	c["actions"] = acts
 	return c

@@ -91,6 +91,34 @@
 			"video_connector": "重新插好按钮的接头",
 			"go_check": "去看看情况",
 			"cab_open": "打开机台"
+		},
+		"ko": {
+			"discount": "할인 제안",
+			"dogeza": "무릎 꿇고 사과",
+			"medal_return": "메달 보상",
+			"maintenance": "점검하기",
+			"credit": "크레딧 보상",
+			"crane_adjust": "난이도 조정",
+			"crane_move": "경품을 가까이 옮기기",
+			"crane_stuck": "걸린 경품 빼기",
+			"machine_data": "기계 데이터 확인",
+			"crane_won": "기계를 조정했다 (뽑았다)",
+			"crane_lost": "기계를 조정했다 (못 뽑았다)",
+			"id_check": "신분증 요청",
+			"age_allow": "입장 OK",
+			"age_refuse": "나가 달라고 하기",
+			"sell_ok": "판매하기",
+			"sell_refuse": "판매 거절",
+			"ask_other_id": "다른 신분증 요청",
+			"repair_visit": "기계 보러 가기",
+			"medal_hit": "배출 레일 두드리기",
+			"medal_rail": "배출 레일 분해해서 고치기",
+			"medal_refill": "메달 보충",
+			"medal_repair": "추첨기 수리",
+			"video_check": "버튼 확인",
+			"video_connector": "버튼 커넥터 다시 꽂기",
+			"go_check": "상황 보러 가기",
+			"cab_open": "기계 열기"
 		}
 	},
 	"effects": {
@@ -174,6 +202,17 @@
 			"hit": "修好了，但规定上不推荐靠敲打来修。",
 			"partial": "不错，但光这样解决不了问题。",
 			"fixed": "修好了！困扰客人的原因消除了。"
+		},
+		"ko": {
+			"good": "좋은 대응이야!",
+			"neutral": "요점이 좀 어긋났어...",
+			"bad": "역효과였어...",
+			"yield": "무리한 요구에 굴복했어...",
+			"crane_won": "뽑았다! 잘 통했어.",
+			"crane_lost": "못 뽑았네... 기대하게 해서 더 나빠졌어.",
+			"hit": "고쳐졌지만, 기계를 두드리는 건 규정상 권장되지 않아.",
+			"partial": "나쁘지 않지만 그것만으로는 해결 안 돼.",
+			"fixed": "고쳤다! 문제의 원인이 없어졌어."
 		}
 	},
 	"default": {

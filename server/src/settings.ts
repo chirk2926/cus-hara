@@ -33,6 +33,8 @@ export interface SettingDef {
 export const runtime = {
   maintenance: false,
   maintenanceMessage: "",
+  /** コンビニを開けるか（要件#102: 準備ができるまで閉じておく）。閉じている間は対戦の舞台にも使わない */
+  konbiniOpen: false,
   /** 不適切な発言で負けになる回数 */
   modMax: 3,
   /** AI の料金の目安（1M トークンあたりのドル）。モデル名 → [入力, 出力, キャッシュ読み, キャッシュ書き] */
@@ -85,6 +87,7 @@ export const SETTINGS: SettingDef[] = [
   { key: "match.anyoneAfterSec", group: "マッチング", label: "誰とでも組むまでの秒数", help: "", type: "number", min: 0, max: 600, path: "match.anyoneAfterSec" },
   // 運営
   { key: "maintenance", group: "運営", label: "メンテナンス中（対戦を止める）", help: "オンの間はマッチング・部屋づくりを受け付けない。1人用は遊べる", type: "bool", path: "runtime.maintenance" },
+  { key: "konbiniOpen", group: "運営", label: "コンビニを開ける", help: "オフの間は、ゲームのコンビニが「準備中」になり、対戦の舞台もゲームセンターだけになる", type: "bool", path: "runtime.konbiniOpen" },
   { key: "maintenanceMessage", group: "運営", label: "メンテナンス中のお知らせ", help: "ゲームのタイトル画面と、対戦を始めようとした人に出す", type: "text", path: "runtime.maintenanceMessage" },
   { key: "monthlyBudgetUsd", group: "運営", label: "AI料金の目安の上限（ドル/月）", help: "超えそうなら管理画面に警告。0 = 見ない", type: "number", min: 0, max: 1000000, path: "runtime.monthlyBudgetUsd" },
   { key: "aiPrices", group: "運営", label: "AIの料金表（1Mトークンあたりのドル）", help: "{\"モデル名\": [入力, 出力, キャッシュ読み, キャッシュ書き]}。Anthropic の料金ページで確かめて直す", type: "text", path: "runtime.aiPrices" },

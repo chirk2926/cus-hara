@@ -266,8 +266,8 @@ async function loadUsage(el) {
 // ---------------------------------------------------------------- お知らせ・メンテナンス
 
 const FONT_LABELS = { body: "本文（ふつう）", hand: "手書き", dot: "ドット文字", sign: "看板（極太）" };
-const LANGS = [["ja", "日本語"], ["en", "English"], ["zh", "中文"]];
-const emptyNotice = () => ({ id: 0, title_ja: "", title_en: "", title_zh: "", text_ja: "", text_en: "", text_zh: "", font: "body", image: "" });
+const LANGS = [["ja", "日本語"], ["en", "English"], ["zh", "中文"], ["ko", "한국어"]];
+const emptyNotice = () => ({ id: 0, title_ja: "", title_en: "", title_zh: "", title_ko: "", text_ja: "", text_en: "", text_zh: "", text_ko: "", font: "body", image: "" });
 let noticeDraft = emptyNotice();
 let noticeLang = "ja";
 
@@ -387,7 +387,7 @@ async function loadNotice(el) {
     h("div", { class: "sheet" }, h("h2", {}, "出したお知らせ"),
       h("table", {}, a.announcements.map((x) => h("tr", {}, h("td", {}, fmtTime(x.created_at)),
         h("td", {}, h("b", {}, x.title_ja || "（見出しなし）"), h("div", { class: "muted" }, (x.text_ja || "").slice(0, 80)),
-          h("div", { class: "muted" }, `${FONT_LABELS[x.font] || x.font}${x.image ? "・画像あり" : ""}${x.title_en || x.text_en ? "・EN" : ""}${x.title_zh || x.text_zh ? "・中" : ""}`)),
+          h("div", { class: "muted" }, `${FONT_LABELS[x.font] || x.font}${x.image ? "・画像あり" : ""}${x.title_en || x.text_en ? "・EN" : ""}${x.title_zh || x.text_zh ? "・中" : ""}${x.title_ko || x.text_ko ? "・韓" : ""}`)),
         h("td", {}, x.active ? h("span", { class: "okc" }, "出している") : h("span", { class: "muted" }, "下げた")),
         h("td", {}, h("button", { class: "act", onclick: () => { noticeDraft = { ...emptyNotice(), ...x }; noticeLang = "ja"; show("notice"); } }, "直す"), " ",
           h("button", { class: "act", onclick: async () => { await api("POST", `/api/announcements/${x.id}`, { active: !x.active }); show("notice"); } }, x.active ? "下げる" : "出す"), " ",

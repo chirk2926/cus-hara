@@ -108,12 +108,34 @@ const COMMENTS: Record<Lang, Record<string, string>> = {
     c_repeat: "重复同样的台词没有效果。",
     c_pressure: "顾客的气势越来越强了…",
   },
+  ko: {
+    solution: "구체적인 해결책. 좋아!",
+    cushion: "거절할 때일수록 부드러운 한마디를 먼저.",
+    firm: "정중하지만 단호하게. 그대로 가.",
+    only_sorry: "사과만으로는 해결 안 돼.",
+    excuse: "변명처럼 들려.",
+    casual: "말투가 너무 가벼워. 예의를 지켜.",
+    short: "너무 짧아. 조금 더 말해 봐.",
+    repeat: "같은 답을 반복하지 마.",
+    rude: "손님에게 폭언은 절대 안 돼!",
+    yielded: "무리한 요구에 굴복했어...",
+    good: "좋아, 잘 받아 줬어.",
+    ok: "나쁘지 않아. 이제 해결책을.",
+    miss: "안 먹혔어. 메모를 읽어 봐.",
+    specific: "메모 내용을 짚은 건 좋아. 한 걸음 더 구체적으로.",
+    offtopic: "접객과 관계없는 이야기는 그만.",
+    c_silent: "손님이 말문이 막혔다!",
+    c_abuse: "도를 넘은 폭언. 점장이 말리러 왔다.",
+    c_repeat: "같은 대사의 반복은 효과가 없다.",
+    c_pressure: "손님의 압박이 강해졌다…",
+  },
 };
 
 // 接客と関係ない話（AIへの依頼・プログラム・モデル名など）。要件#28
 const OFFTOPIC: Record<Lang, string[]> = {
   ja: ["コードを", "プログラム", "モデル名", "どのモデル", "システムプロンプト", "プロンプト", "chatgpt", "claude", "anthropic", "openai", "gpt", "ai として", "aiとして", "指示を無視"],
   en: ["write code", "write a program", "python", "javascript", "which model", "what model", "model name", "system prompt", "prompt", "chatgpt", "claude", "anthropic", "openai", "gpt", "as an ai", "ignore previous", "ignore your instructions"],
+  ko: ["코드 짜", "코드를 짜", "코드 작성", "프로그램 짜", "프로그래밍", "모델 이름", "어떤 모델", "무슨 모델", "시스템 프롬프트", "프롬프트", "지시를 무시", "이전 지시", "ai로서", "chatgpt", "claude", "anthropic", "openai", "gpt"],
   zh: ["写代码", "写程序", "编程", "模型名", "哪个模型", "什么模型", "系统提示", "提示词", "忽略指令", "忽略之前", "作为ai", "chatgpt", "claude", "anthropic", "openai", "gpt"],
 };
 
@@ -163,14 +185,14 @@ export function clauses(text: string, lang: Lang): string[] {
   return text.replace(re, "|").split("|").filter((x) => x !== "");
 }
 
-/** 中身のある語のかたまり: 日本語は漢字・カタカナ、中国語は漢字の2文字の並び、英語は4文字以上の単語 */
+/** 中身のある語のかたまり: 日本語は漢字・カタカナ、中国語は漢字、韓国語はハングルの2文字の並び、英語は4文字以上の単語 */
 export function tokens(text: string, lang: Lang): Set<string> {
   const out = new Set<string>();
   if (lang === "en") {
     for (const m of text.toLowerCase().matchAll(/[a-z]{4,}/g)) out.add(m[0]);
     return out;
   }
-  const re = lang === "zh" ? /[\u4E00-\u9FFF]{2,}/g : /[\u4E00-\u9FFF\u30A0-\u30FF]{2,}/g;
+  const re = lang === "zh" ? /[\u4E00-\u9FFF]{2,}/g : lang === "ko" ? /[\uAC00-\uD7A3]{2,}/g : /[\u4E00-\u9FFF\u30A0-\u30FF]{2,}/g;
   for (const m of text.matchAll(re)) {
     const run = m[0];
     for (let i = 0; i < run.length - 1; i++) out.add(run.slice(i, i + 2));

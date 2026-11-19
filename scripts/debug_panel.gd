@@ -81,8 +81,8 @@ func _build() -> void:
 	scroll.add_child(_list)
 
 	_section("お金")
-	_row([["+1,000 HP", func() -> void: _money(1000, 0)], ["+1,000 KAS", func() -> void: _money(0, 1000)], ["+10,000 KAS", func() -> void: _money(0, 10000)]])
-	_row([["HP・KAS を 0 に", func() -> void:
+	_row([["+1,000 HP", func() -> void: _money(1000, 0)], ["+1,000 CUS", func() -> void: _money(0, 1000)], ["+10,000 CUS", func() -> void: _money(0, 10000)]])
+	_row([["HP・CUS を 0 に", func() -> void:
 		GameSettings.hp_points = 0
 		GameSettings.kas_points = 0
 		_saved()]])
@@ -178,7 +178,7 @@ func _refresh_info() -> void:
 	for k in main.debug:
 		if bool(main.debug[k]):
 			flags.append(str(k))
-	_info.text = "セーブ: %s\nサーバー: %s\n1人用の判定: %s\nHP %d / KAS %d / メンタル %d / 称号 %d\nイベント: %s" % [
+	_info.text = "セーブ: %s\nサーバー: %s\n1人用の判定: %s\nHP %d / CUS %d / メンタル %d / 称号 %d\nイベント: %s" % [
 		GameSettings._path(), GameSettings.server_url, GameSettings.solo_source, GameSettings.hp_points, GameSettings.kas_points,
 		GameSettings.mental_rank(), GameSettings.unlocked_titles.size(), ", ".join(flags) if not flags.is_empty() else "なし"]
 

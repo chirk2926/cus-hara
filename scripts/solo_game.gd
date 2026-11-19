@@ -256,7 +256,7 @@ func _finish_summary() -> void:
 		"suspended": _suspended, "reviews": _make_reviews(), "offline": _offline_used or GameSettings.solo_source == "offline",
 		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 	_track_shift(review)
-	# 給与（要件#82）: オフラインは HP、オンラインは KAS。売上がマイナスでも減らない
+	# 給与（要件#82）: オフラインは HP、オンラインは CUS。売上がマイナスでも減らない
 	summary["pay"] = Shop.pay_shift(int(float(_sales) * (HARD_REWARD_MUL if hardcore else 1.0)), not bool(summary["offline"]))
 	summary["hardcore"] = hardcore
 	if hardcore:
@@ -616,7 +616,7 @@ func _deodorize(speaker: String) -> void:
 		hud.show_delta(25, 0)
 		hud.set_comment(tr("バレた！お客さんが気を悪くした。"))
 		main.set_stink(false)
-		var line: String = str(Judge.pick_lang(["ちょっと！今、何かけたでしょ！？失礼にもほどがある！", "……今の、消臭剤だよね？"], ["Hey! Did you just spray something at me?! How rude!", "...Was that air freshener?"], ["喂！你刚才喷了什么！？太失礼了吧！", "……刚才那是除臭剂吧？"]))
+		var line: String = str(Judge.pick_lang(["ちょっと！今、何かけたでしょ！？失礼にもほどがある！", "……今の、消臭剤だよね？"], ["Hey! Did you just spray something at me?! How rude!", "...Was that air freshener?"], ["喂！你刚才喷了什么！？太失礼了吧！", "……刚才那是除臭剂吧？"], ["잠깐! 방금 뭐 뿌렸죠?! 실례도 정도가 있지!", "……방금 그거, 탈취제죠?"]))
 		log_lines.append({"role": "customer", "text": line})
 		await _customer_line(speaker, line, "angry")
 	else:
@@ -632,14 +632,14 @@ func _deodorize(speaker: String) -> void:
 
 func _smell_talk(reply: String) -> String:
 	var t: String = reply.to_lower()
-	for w in ["臭", "くさ", "におう", "におい", "匂う", "smell", "stink", "b.o.", "臭味", "有味"]:
+	for w in ["臭", "くさ", "におう", "におい", "匂う", "smell", "stink", "b.o.", "臭味", "有味", "냄새", "악취", "구린", "구려"]:
 		if t.find(w) >= 0:
 			# 「においがこもって」「換気」のような言い方は遠回し
-			for soft in ["換気", "こもって", "空調", "ventilat", "通风"]:
+			for soft in ["換気", "こもって", "空調", "ventilat", "通风", "환기", "공기", "에어컨"]:
 				if t.find(soft) >= 0:
 					return "hint"
 			return "direct"
-	for w2 in ["換気", "空調", "エアコン", "暑い", "汗", "タオル", "シャワー", "ventilat", "air conditioning", "hot today", "towel", "shower", "通风", "空调", "毛巾", "天热", "出汗"]:
+	for w2 in ["換気", "空調", "エアコン", "暑い", "汗", "タオル", "シャワー", "ventilat", "air conditioning", "hot today", "towel", "shower", "通风", "空调", "毛巾", "天热", "出汗", "환기", "에어컨", "덥", "땀", "수건", "샤워"]:
 		if t.find(w2) >= 0:
 			return "hint"
 	return ""
@@ -648,14 +648,14 @@ func _smell_talk(reply: String) -> String:
 ## 金額を言ってしまったか（数字＋円・ドル・元、など）
 func _says_amount(reply: String) -> bool:
 	var re: RegEx = RegEx.new()
-	re.compile("[0-9０-９][0-9０-９,，.]*\\s*(円|えん|yen|ドル|dollars?|\\$|元|块|千|万)|[\\$¥￥][0-9０-９]")
+	re.compile("[0-9０-９][0-9０-９,，.]*\\s*(円|えん|yen|ドル|dollars?|\\$|元|块|千|万|원|천|만)|[\\$¥￥][0-9０-９]")
 	return re.search(reply.to_lower()) != null
 
 
 ## 景品だけが目当てか（土下座・返金・タダなど、ほかのものも求めていない）
 func _prize_only() -> bool:
 	var d: String = str(_cust.get("demand", "")).to_lower()
-	for w in ["土下座", "返金", "返せ", "タダ", "無料", "謝罪", "補償", "お金", "金を", "もう1", "もう一", "kneel", "refund", "free", "money", "compens", "another", "apolog", "下跪", "退款", "免费", "钱", "赔", "再给", "道歉"]:
+	for w in ["土下座", "返金", "返せ", "タダ", "無料", "謝罪", "補償", "お金", "金を", "もう1", "もう一", "kneel", "refund", "free", "money", "compens", "another", "apolog", "下跪", "退款", "免费", "钱", "赔", "再给", "道歉", "무릎", "환불", "공짜", "무료", "돈", "보상", "사과", "한 번 더", "한번 더"]:
 		if d.find(w) >= 0:
 			return false
 	return true
@@ -713,7 +713,7 @@ func _age_buttons() -> Array:
 
 ## 「別の身分証を見せて」と言った・押した（要件#86）。持っていれば本人の使える身分証を出し、なければ「持ってない」
 func _wants_other_id(reply: String) -> bool:
-	var words: Array = ["別の身分証", "他の身分証", "ほかの身分証", "別のもの", "免許証", "マイナンバー", "パスポート", "another id", "other id", "different id", "license", "passport", "其他证件", "别的证件", "驾照", "护照"]
+	var words: Array = ["別の身分証", "他の身分証", "ほかの身分証", "別のもの", "免許証", "マイナンバー", "パスポート", "another id", "other id", "different id", "license", "passport", "其他证件", "别的证件", "驾照", "护照", "다른 신분증", "다른 거", "면허증", "마이넘버", "여권"]
 	var t: String = reply.to_lower()
 	for w in words:
 		if t.find(str(w)) >= 0:
@@ -729,7 +729,7 @@ func _ask_other_id(speaker: String) -> void:
 		_anger = minf(100.0, _anger + 8.0)
 		_refresh(false)
 		hud.show_delta(8, 0)
-		var no: String = str(Judge.pick_lang(["えー、なんでよ。それでいいでしょ？", "めんどくさいなあ……さっきの見たでしょ。", "は？疑ってるの？"], ["Ugh, why? That one's fine, right?", "What a hassle... you already saw it.", "What, you don't believe me?"], ["诶，为什么啊。那个不就行了？", "真麻烦……刚才不是看过了吗。", "啊？你怀疑我？"]))
+		var no: String = str(Judge.pick_lang(["えー、なんでよ。それでいいでしょ？", "めんどくさいなあ……さっきの見たでしょ。", "は？疑ってるの？"], ["Ugh, why? That one's fine, right?", "What a hassle... you already saw it.", "What, you don't believe me?"], ["诶，为什么啊。那个不就行了？", "真麻烦……刚才不是看过了吗。", "啊？你怀疑我？"], ["에이, 왜요. 그걸로 되잖아요?", "귀찮게…… 아까 봤잖아요.", "네? 의심하는 거예요?"]))
 		if not hardcore:
 			hud.set_comment(tr("しぶっている。ていねいに、もう一度お願いしてみよう。"))
 		log_lines.append({"role": "customer", "text": no})
@@ -743,14 +743,14 @@ func _ask_other_id(speaker: String) -> void:
 		for k in alt:
 			ag[k] = alt[k]
 		ag["must_leave"] = int(ag.get("shown_age", 0)) < int(ag.get("limit", 18))
-		line = str(Judge.pick_lang(["……じゃあ、これでいい？", "……はい、これ。", "あ、こっちならあるけど。"], ["...Fine, will this do?", "...Here.", "Oh, I've got this one."], ["……那这个行吧？", "……给。", "啊，这个倒是有。"]))
+		line = str(Judge.pick_lang(["……じゃあ、これでいい？", "……はい、これ。", "あ、こっちならあるけど。"], ["...Fine, will this do?", "...Here.", "Oh, I've got this one."], ["……那这个行吧？", "……给。", "啊，这个倒是有。"], ["……그럼 이거면 돼요?", "……자, 여기요.", "아, 이건 있는데."]))
 		main.show_id_card(_cust)
 		if not hardcore:
 			hud.set_comment(tr("別の身分証が出てきた。もう一度、種類・顔写真・生年月日を確かめよう。"))
 	else:
 		ag["must_leave"] = true
 		ag["no_id"] = true
-		line = str(Judge.pick_lang(["え、ほかのは持ってないけど……", "そんなの持ち歩いてないよ。", "……それしかない。"], ["Uh, I don't have anything else...", "I don't carry that around.", "...That's all I've got."], ["诶，我没带别的……", "谁随身带那个啊。", "……就只有这个。"]))
+		line = str(Judge.pick_lang(["え、ほかのは持ってないけど……", "そんなの持ち歩いてないよ。", "……それしかない。"], ["Uh, I don't have anything else...", "I don't carry that around.", "...That's all I've got."], ["诶，我没带别的……", "谁随身带那个啊。", "……就只有这个。"], ["어, 다른 건 없는데……", "그런 거 안 들고 다녀요.", "……그것밖에 없어요."]))
 		if not hardcore:
 			hud.set_comment(tr("顔写真と生年月日のある身分証がないなら、年齢は確かめられない。退店をお願いしよう。"))
 	_cust["age"] = ag
@@ -771,7 +771,7 @@ func _offender(problem: String) -> Dictionary:
 			var d: Variant = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				_offenders = d
-	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh"] else "ja"
+	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh", "ko"] else "ja"
 	var byp: Dictionary = _offenders.get(problem, {})
 	return (byp.get(lang, byp.get("ja", {})) as Dictionary).duplicate(true)
 
@@ -885,11 +885,13 @@ func _resist_line() -> String:
 		return str(Judge.pick_lang(
 			["えー、1本だけでいいんだけど……ダメ？", "いや、ほんとに大人なんだって。ちょっとだけ見逃してよ。", "……マジで？ほかの店じゃ普通に買えたけど。"],
 			["Aw, just one... Really, no?", "Come on, I really am an adult. Just let it slide this once.", "...Seriously? Other stores sell it to me."],
-			["诶，就买一个……不行吗？", "我真的是大人啦。就通融一下嘛。", "……真的假的？别的店都能买的。"]))
+			["诶，就买一个……不行吗？", "我真的是大人啦。就通融一下嘛。", "……真的假的？别的店都能买的。"],
+			["에이, 하나만인데…… 안 돼요?", "진짜 어른이라니까요. 한 번만 봐줘요.", "……진짜요? 다른 가게에선 그냥 샀는데."]))
 	return str(Judge.pick_lang(
 		["えー、あと1回だけ！ほんとに1回だけだから！", "ちょっと待って、今いいとこなんだって……", "……え、もう？友だちまだ来てないんだけど。"],
 		["Aw, just one more round! Really, just one!", "Wait, I'm right in the middle of something good...", "...Already? My friends aren't even here yet."],
-		["诶，再玩一次！真的就一次！", "等一下，现在正玩到关键时候……", "……啊，这就要走？我朋友还没来呢。"]))
+		["诶，再玩一次！真的就一次！", "等一下，现在正玩到关键时候……", "……啊，这就要走？我朋友还没来呢。"],
+		["에이, 한 판만 더! 진짜 딱 한 판!", "잠깐만요, 지금 좋은 데란 말이에요……", "……네, 벌써요? 친구 아직 안 왔는데."]))
 
 
 ## 年齢確認の種類: "arcade"（夜の入店）| "konbini"（お酒・たばこ。要件#63）
@@ -1640,18 +1642,20 @@ func _smoke_autoplay(my_run: int) -> void:
 			var w: String = str(words[_turns % words.size()]) if not words.is_empty() else "check"
 			if GameSettings.language == "zh":
 				text = "非常抱歉，我理解您的心情。请让我马上为您处理%s。（%d）" % [w, _turns]
+			elif GameSettings.language == "ko":
+				text = "정말 죄송합니다. 마음 충분히 이해합니다. 바로 %s 대응해 드리겠습니다. (%d)" % [w, _turns]
 			elif en:
 				text = "I'm so sorry, I understand. Please let me %s for you right away, sir. (%d)" % [w, _turns]
 			else:
 				text = "申し訳ございません。お気持ちお察しいたします。すぐに%sの対応をいたします。（%d）" % [w, _turns]
 		1:
-			text = "Shut up and go away" if en else ("闭嘴，快走" if GameSettings.language == "zh" else "うるさい、帰れ")
+			text = "Shut up and go away" if en else ("闭嘴，快走" if GameSettings.language == "zh" else ("닥치고 꺼져" if GameSettings.language == "ko" else "うるさい、帰れ"))
 		2:
 			return   # 何もしない → 時間切れでブチギレ
 		_:
 			var ys: Array = keys.get("yield_keywords", [])
 			var y: String = str(ys[0]) if not ys.is_empty() else ("for free" if en else "無料")
-			text = ("Okay sir, please take %s." % y) if en else ("分かりました、%sです。" % y)
+			text = ("Okay sir, please take %s." % y) if en else (("알겠습니다, %s 해 드릴게요." % y) if GameSettings.language == "ko" else ("分かりました、%sです。" % y))
 	_on_reply(text)
 
 # ---------------------------------------------------------------- 称号の記録（要件#79）

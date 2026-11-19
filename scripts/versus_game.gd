@@ -559,7 +559,7 @@ func _on_match_end(msg: Dictionary) -> void:
 	var pl: Variant = msg.get("player", null)
 	if typeof(pl) == TYPE_DICTIONARY:
 		GameSettings.last_profile = pl
-	# 給与（要件#82）: 対戦は KAS
+	# 給与（要件#82）: 対戦は CUS
 	msg["pay_kas"] = Shop.pay_versus(str(msg.get("result", "")) == "win")
 	msg["new_titles"] = Titles.check()
 	GameSettings.save_settings()
@@ -675,10 +675,12 @@ func _smoke_autoplay() -> void:
 		var w: String = str(words[n % words.size()]) if not words.is_empty() else ("check" if en else "確認")
 		if en:
 			text = "I'm so sorry, I understand. Please let me %s right away, sir. (%d)" % [w, n]
+		elif GameSettings.language == "ko":
+			text = "정말 죄송합니다. 마음 충분히 이해합니다. 바로 %s 대응해 드리겠습니다. (%d)" % [w, n]
 		else:
 			text = "申し訳ございません。お気持ちお察しいたします。すぐに%sの対応をいたします。（%d）" % [w, n]
 	else:
-		text = ("Get me the manager! I'm a regular here, this is unacceptable! (%d)" % n) if en else ("責任者を出せ！こっちは客だぞ！どうしてくれるんだ！（%d）" % n)
+		text = ("Get me the manager! I'm a regular here, this is unacceptable! (%d)" % n) if en else ("책임자 불러! 난 단골이야, 이건 말도 안 돼! (%d)" % n) if GameSettings.language == "ko" else ("責任者を出せ！こっちは客だぞ！どうしてくれるんだ！（%d）" % n)
 	if str(_match.get("format", "text")) == "voice":
 		_send_voice(VoiceScript.test_tone(1.0), text)
 	else:

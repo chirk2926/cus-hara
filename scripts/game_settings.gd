@@ -23,13 +23,14 @@ const SOURCES: Array = [
 	["offline", "AIを使わない（台本）"],
 ]
 
-## 表示言語。"ja" | "en" | "zh"（簡体字中国語。要件#71）。初回は OS の言語から決める
-const LANGS: Array = [["ja", "日本語"], ["en", "English"], ["zh", "简体中文"]]
+## 表示言語。"ja" | "en" | "zh"（簡体字中国語。要件#71） | "ko"（韓国語。要件#102）。初回は OS の言語から決める
+const LANGS: Array = [["ja", "日本語"], ["en", "English"], ["zh", "简体中文"], ["ko", "한국어"]]
 ## 言語ごとのお金の単位（要件#71）。中身の計算はすべて円で、表示するときだけ換える。1プレイ = 100円 = 1ドル = 8元
 const CURRENCY: Dictionary = {
 	"ja": {"rate": 1.0, "prefix": "", "suffix": "円"},
 	"en": {"rate": 0.01, "prefix": "$", "suffix": ""},
 	"zh": {"rate": 0.08, "prefix": "", "suffix": "元"},
+	"ko": {"rate": 10.0, "prefix": "", "suffix": "원"},   # 1プレイ = 1,000원（要件#102）
 }
 var language: String = ""
 var server_url: String = DEFAULT_SERVER_URL
@@ -98,7 +99,7 @@ var mental_xp: int = 0
 var stats: Dictionary = {}
 var unlocked_titles: Array = []
 var equipped_title: String = ""
-## ショップ（要件#82）: HP（ハラスメントポイント・オフラインの給与）と KAS（カスタマーポイント・オンラインの給与）、
+## ショップ（要件#82）: HP（ハラスメントポイント・オフラインの給与）と CUS（カスポイント・オンラインの給与）、
 ## 持っているもの（"カテゴリ:ID"）、使っているもの（カテゴリ → ID）
 var hp_points: int = 0
 var kas_points: int = 0
@@ -144,7 +145,7 @@ func _ready() -> void:
 			server_url = a.substr(9)
 	if language == "":
 		var os_lang: String = OS.get_locale_language()
-		language = os_lang if os_lang in ["ja", "zh"] else "en"
+		language = os_lang if os_lang in ["ja", "zh", "ko"] else "en"
 	_resolution_from_cmdline = OS.get_cmdline_args().has("--resolution")
 	_finish_migration()
 	apply_language()
@@ -169,6 +170,9 @@ func apply_language() -> void:
 				TranslationServer.add_translation(tr_res)
 				_translations.append(tr_res)
 	TranslationServer.set_locale(language)
+	# ウィンドウの名前も表示の言語で（要件#102）
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_title(TranslationServer.translate("カスハラ防衛線"))
 
 
 var _translations: Array = []
@@ -193,7 +197,7 @@ func load_settings() -> void:
 	if cfg.load(_path()) != OK:
 		return
 	language = str(cfg.get_value("ui", "language", language))
-	if not ["ja", "en", "zh"].has(language):
+	if not ["ja", "en", "zh", "ko"].has(language):
 		language = ""
 	token = str(cfg.get_value("server", "token", ""))
 	player_name = str(cfg.get_value("server", "name", ""))

@@ -86,6 +86,7 @@ export function judgeAction(c: Customer, id: string, anger: number, resolve: num
 /** AIに渡す、スタッフの行動の説明（会話の履歴に入れる） */
 export function actionAsStaffLine(id: string, lang: Lang): string {
   if (lang === "zh") return `（行动：${actionLabel(id, "zh")}）`;
+  if (lang === "ko") return `(행동: ${actionLabel(id, "ko")})`;
   return lang === "ja" ? `（行動: ${actionLabel(id, "ja")}）` : `(Action: ${actionLabel(id, "en")})`;
 }
 

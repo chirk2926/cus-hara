@@ -6,12 +6,14 @@
 			"name": {
 				"ja": "見習い店員",
 				"en": "Rookie Clerk",
-				"zh": "见习店员"
+				"zh": "见习店员",
+				"ko": "신입 직원"
 			},
 			"desc": {
 				"ja": "チュートリアル（新人研修）を最後まで受けた",
 				"en": "Finished the tutorial (new-hire training)",
-				"zh": "完成了教程（新人培训）"
+				"zh": "完成了教程（新人培训）",
+				"ko": "튜토리얼(신입 연수)을 마쳤다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -23,12 +25,14 @@
 			"name": {
 				"ja": "はじめての納得",
 				"en": "First Win-Over",
-				"zh": "初次认同"
+				"zh": "初次认同",
+				"ko": "첫 납득"
 			},
 			"desc": {
 				"ja": "お客さんを初めて納得させた",
 				"en": "Won over a customer for the first time",
-				"zh": "第一次让顾客认同"
+				"zh": "第一次让顾客认同",
+				"ko": "처음으로 손님을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -40,12 +44,14 @@
 			"name": {
 				"ja": "聞き上手",
 				"en": "Good Listener",
-				"zh": "倾听达人"
+				"zh": "倾听达人",
+				"ko": "잘 들어 주는 사람"
 			},
 			"desc": {
 				"ja": "納得させたお客さん 10人",
 				"en": "Won over 10 customers",
-				"zh": "让10位顾客认同"
+				"zh": "让10位顾客认同",
+				"ko": "손님 10명을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -57,12 +63,14 @@
 			"name": {
 				"ja": "なだめ職人",
 				"en": "Master Soother",
-				"zh": "安抚匠人"
+				"zh": "安抚匠人",
+				"ko": "달래기의 달인"
 			},
 			"desc": {
 				"ja": "納得させたお客さん 50人",
 				"en": "Won over 50 customers",
-				"zh": "让50位顾客认同"
+				"zh": "让50位顾客认同",
+				"ko": "손님 50명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -74,12 +82,14 @@
 			"name": {
 				"ja": "クレーム処理班",
 				"en": "Complaint Squad",
-				"zh": "投诉处理组"
+				"zh": "投诉处理组",
+				"ko": "클레임 처리반"
 			},
 			"desc": {
 				"ja": "納得させたお客さん 100人",
 				"en": "Won over 100 customers",
-				"zh": "让100位顾客认同"
+				"zh": "让100位顾客认同",
+				"ko": "손님 100명을 납득시켰다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -91,12 +101,14 @@
 			"name": {
 				"ja": "伝説の接客人",
 				"en": "Legendary Clerk",
-				"zh": "传说中的店员"
+				"zh": "传说中的店员",
+				"ko": "전설의 직원"
 			},
 			"desc": {
 				"ja": "納得させたお客さん 300人",
 				"en": "Won over 300 customers",
-				"zh": "让300位顾客认同"
+				"zh": "让300位顾客认同",
+				"ko": "손님 300명을 납득시켰다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -108,12 +120,14 @@
 			"name": {
 				"ja": "一言で鎮める者",
 				"en": "One-Line Wonder",
-				"zh": "一句话平息"
+				"zh": "一句话平息",
+				"ko": "한마디의 기적"
 			},
 			"desc": {
 				"ja": "1回目の返事でお客さんを納得させた",
 				"en": "Won over a customer with your first reply",
-				"zh": "第一句回复就让顾客认同"
+				"zh": "第一句回复就让顾客认同",
+				"ko": "첫 답변으로 손님을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -125,12 +139,14 @@
 			"name": {
 				"ja": "神対応",
 				"en": "Godlike Service",
-				"zh": "神级服务"
+				"zh": "神级服务",
+				"ko": "신급 접객"
 			},
 			"desc": {
 				"ja": "怒り 20 以下のまま納得させた",
 				"en": "Won over a customer while keeping anger at 20 or below",
-				"zh": "怒气保持在20以下让顾客认同"
+				"zh": "怒气保持在20以下让顾客认同",
+				"ko": "분노를 20 이하로 유지한 채 손님을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -142,12 +158,14 @@
 			"name": {
 				"ja": "ギリギリの説得",
 				"en": "Clutch Save",
-				"zh": "绝地说服"
+				"zh": "绝地说服",
+				"ko": "막판 역전"
 			},
 			"desc": {
 				"ja": "怒り 90 以上から納得させた",
 				"en": "Won over a customer from anger 90 or above",
-				"zh": "从怒气90以上让顾客认同"
+				"zh": "从怒气90以上让顾客认同",
+				"ko": "분노 90 이상에서 손님을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -159,12 +177,14 @@
 			"name": {
 				"ja": "丁寧語の鬼",
 				"en": "Politeness Demon",
-				"zh": "敬语狂魔"
+				"zh": "敬语狂魔",
+				"ko": "정중함의 귀신"
 			},
 			"desc": {
 				"ja": "1シフトで一度もタメ口・暴言と言われなかった（4人とも）",
 				"en": "Never called rude or abusive in a shift (all 4 customers)",
-				"zh": "一个班次中从未被说没礼貌或出言不逊（4人全部）"
+				"zh": "一个班次中从未被说没礼貌或出言不逊（4人全部）",
+				"ko": "한 시프트 동안(손님 4명) 한 번도 무례·폭언 지적을 받지 않았다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -176,12 +196,14 @@
 			"name": {
 				"ja": "断る勇気",
 				"en": "Dares to Say No",
-				"zh": "敢于说不"
+				"zh": "敢于说不",
+				"ko": "안 되는 건 안 된다"
 			},
 			"desc": {
 				"ja": "不当な要求をはっきり断って納得させた 10回",
 				"en": "Firmly refused an unfair demand and won them over 10 times",
-				"zh": "明确拒绝无理要求并让顾客认同10次"
+				"zh": "明确拒绝无理要求并让顾客认同10次",
+				"ko": "무리한 요구를 단호히 거절하고 납득시킨 것이 10번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -193,12 +215,14 @@
 			"name": {
 				"ja": "揺るがぬ規定",
 				"en": "Rules Are Rules",
-				"zh": "规定不动摇"
+				"zh": "规定不动摇",
+				"ko": "규칙은 규칙"
 			},
 			"desc": {
 				"ja": "1シフトで一度も屈服しなかった 10回",
 				"en": "Finished a shift without caving in 10 times",
-				"zh": "一个班次中从未屈服，达成10次"
+				"zh": "一个班次中从未屈服，达成10次",
+				"ko": "굴복하지 않고 시프트를 마친 것이 10번"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -210,12 +234,14 @@
 			"name": {
 				"ja": "皆勤賞",
 				"en": "Perfect Attendance",
-				"zh": "全勤奖"
+				"zh": "全勤奖",
+				"ko": "개근상"
 			},
 			"desc": {
 				"ja": "シフトを 30回 最後まで勤めた",
 				"en": "Finished 30 shifts",
-				"zh": "完成30个班次"
+				"zh": "完成30个班次",
+				"ko": "시프트를 30번 마쳤다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -227,12 +253,14 @@
 			"name": {
 				"ja": "店の顔",
 				"en": "Face of the Store",
-				"zh": "门店招牌"
+				"zh": "门店招牌",
+				"ko": "가게의 얼굴"
 			},
 			"desc": {
 				"ja": "シフトを 100回 最後まで勤めた",
 				"en": "Finished 100 shifts",
-				"zh": "完成100个班次"
+				"zh": "完成100个班次",
+				"ko": "시프트를 100번 마쳤다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -244,12 +272,14 @@
 			"name": {
 				"ja": "パーフェクトシフト",
 				"en": "Perfect Shift",
-				"zh": "完美班次"
+				"zh": "完美班次",
+				"ko": "퍼펙트 시프트"
 			},
 			"desc": {
 				"ja": "1シフトの4人全員を納得させた",
 				"en": "Won over all 4 customers in one shift",
-				"zh": "一个班次中让4位顾客全部认同"
+				"zh": "一个班次中让4位顾客全部认同",
+				"ko": "한 시프트에서 손님 4명을 모두 납득시켰다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -261,12 +291,14 @@
 			"name": {
 				"ja": "連続パーフェクト",
 				"en": "Perfect Streak",
-				"zh": "连续完美"
+				"zh": "连续完美",
+				"ko": "퍼펙트 연속"
 			},
 			"desc": {
 				"ja": "パーフェクトシフトを 2回続けた",
 				"en": "Got a Perfect Shift 2 times in a row",
-				"zh": "连续2次完美班次"
+				"zh": "连续2次完美班次",
+				"ko": "퍼펙트 시프트를 2번 연속 달성했다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -278,12 +310,14 @@
 			"name": {
 				"ja": "謝罪のプロ",
 				"en": "Sorry Pro",
-				"zh": "道歉专家"
+				"zh": "道歉专家",
+				"ko": "사과의 프로"
 			},
 			"desc": {
 				"ja": "謝罪の言葉を使った返事 100回",
 				"en": "Made 100 replies with an apology",
-				"zh": "使用道歉用语回复100次"
+				"zh": "使用道歉用语回复100次",
+				"ko": "사과가 들어간 답변을 100번 했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -295,12 +329,14 @@
 			"name": {
 				"ja": "共感の人",
 				"en": "Empath",
-				"zh": "共情之人"
+				"zh": "共情之人",
+				"ko": "공감 능력자"
 			},
 			"desc": {
 				"ja": "気持ちを受け止める言葉を使った返事 100回",
 				"en": "Made 100 replies acknowledging feelings",
-				"zh": "使用体谅心情的话语回复100次"
+				"zh": "使用体谅心情的话语回复100次",
+				"ko": "기분을 받아 주는 답변을 100번 했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -312,12 +348,14 @@
 			"name": {
 				"ja": "質問上手",
 				"en": "Question Master",
-				"zh": "提问高手"
+				"zh": "提问高手",
+				"ko": "질문의 달인"
 			},
 			"desc": {
 				"ja": "ていねいな質問で話を聞いた 30回",
 				"en": "Listened with polite questions 30 times",
-				"zh": "用礼貌的提问倾听顾客30次"
+				"zh": "用礼貌的提问倾听顾客30次",
+				"ko": "정중한 질문으로 30번 이야기를 들었다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -329,12 +367,14 @@
 			"name": {
 				"ja": "メモ読みの達人",
 				"en": "Memo Reader",
-				"zh": "备忘达人"
+				"zh": "备忘达人",
+				"ko": "메모를 읽는 사람"
 			},
 			"desc": {
 				"ja": "引き継ぎメモの中身に触れた返事 50回",
 				"en": "Made 50 replies citing the handover memo",
-				"zh": "提及交接备忘内容的回复50次"
+				"zh": "提及交接备忘内容的回复50次",
+				"ko": "인수인계 메모를 근거로 한 답변을 50번 했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -346,12 +386,14 @@
 			"name": {
 				"ja": "火に油",
 				"en": "Fuel on the Fire",
-				"zh": "火上浇油"
+				"zh": "火上浇油",
+				"ko": "불난 집에 부채질"
 			},
 			"desc": {
 				"ja": "お客さんを初めてブチギレさせた",
 				"en": "Made a customer snap for the first time",
-				"zh": "第一次让顾客发飙"
+				"zh": "第一次让顾客发飙",
+				"ko": "처음으로 손님을 폭발시켰다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -363,12 +405,14 @@
 			"name": {
 				"ja": "炎上請負人",
 				"en": "Flame Contractor",
-				"zh": "专业点火"
+				"zh": "专业点火",
+				"ko": "폭발 청부업자"
 			},
 			"desc": {
 				"ja": "ブチギレさせたお客さん 30人",
 				"en": "Made 30 customers snap",
-				"zh": "让30位顾客发飙"
+				"zh": "让30位顾客发飙",
+				"ko": "손님 30명을 폭발시켰다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -380,12 +424,14 @@
 			"name": {
 				"ja": "時間切れの人",
 				"en": "Overthinker",
-				"zh": "想太多的人"
+				"zh": "想太多的人",
+				"ko": "생각이 너무 많아"
 			},
 			"desc": {
 				"ja": "考えすぎて時間切れでブチギレさせた 10回",
 				"en": "Made a customer snap by running out of time 10 times",
-				"zh": "想太久超时导致顾客发飙10次"
+				"zh": "想太久超时导致顾客发飙10次",
+				"ko": "시간이 다 돼서 손님을 폭발시킨 것이 10번"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -397,12 +443,14 @@
 			"name": {
 				"ja": "ゴネ得の店",
 				"en": "Squeaky Wheel Store",
-				"zh": "会闹的有糖吃"
+				"zh": "会闹的有糖吃",
+				"ko": "떼쓰면 되는 가게"
 			},
 			"desc": {
 				"ja": "不当な要求に初めて屈した",
 				"en": "Gave in to an unfair demand for the first time",
-				"zh": "第一次向无理要求低头"
+				"zh": "第一次向无理要求低头",
+				"ko": "처음으로 무리한 요구에 굴복했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -414,12 +462,14 @@
 			"name": {
 				"ja": "何でも言うこと聞く人",
 				"en": "Total Pushover",
-				"zh": "有求必应"
+				"zh": "有求必应",
+				"ko": "완전 호구"
 			},
 			"desc": {
 				"ja": "屈服 20回",
 				"en": "Caved in 20 times",
-				"zh": "屈服20次"
+				"zh": "屈服20次",
+				"ko": "20번 굴복했다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -431,12 +481,14 @@
 			"name": {
 				"ja": "土下座の達人",
 				"en": "Kneeling Expert",
-				"zh": "下跪达人"
+				"zh": "下跪达人",
+				"ko": "무릎 꿇기 전문가"
 			},
 			"desc": {
 				"ja": "土下座 10回",
 				"en": "Kneeled and bowed 10 times",
-				"zh": "下跪道歉10次"
+				"zh": "下跪道歉10次",
+				"ko": "무릎 꿇고 사과를 10번 했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -448,12 +500,14 @@
 			"name": {
 				"ja": "土下座マスター",
 				"en": "Kneeling Master",
-				"zh": "下跪大师"
+				"zh": "下跪大师",
+				"ko": "무릎 꿇기의 달인"
 			},
 			"desc": {
 				"ja": "土下座 50回",
 				"en": "Kneeled and bowed 50 times",
-				"zh": "下跪道歉50次"
+				"zh": "下跪道歉50次",
+				"ko": "무릎 꿇고 사과를 50번 했다"
 			},
 			"rarity": 3,
 			"joke": true,
@@ -465,12 +519,14 @@
 			"name": {
 				"ja": "早退常習犯",
 				"en": "Early Leaver",
-				"zh": "早退惯犯"
+				"zh": "早退惯犯",
+				"ko": "조퇴 상습범"
 			},
 			"desc": {
 				"ja": "メンタルが折れて早退 5回",
 				"en": "Went home early from mental breakdown 5 times",
-				"zh": "心态崩溃早退5次"
+				"zh": "心态崩溃早退5次",
+				"ko": "멘탈 붕괴로 조퇴한 것이 5번"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -482,12 +538,14 @@
 			"name": {
 				"ja": "オウム返し",
 				"en": "Parrot",
-				"zh": "复读机"
+				"zh": "复读机",
+				"ko": "앵무새"
 			},
 			"desc": {
 				"ja": "同じ返事のくり返しと言われた 10回",
 				"en": "Told you were repeating yourself 10 times",
-				"zh": "被说重复同样的回复10次"
+				"zh": "被说重复同样的回复10次",
+				"ko": "같은 말만 한다는 지적을 10번 받았다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -499,12 +557,14 @@
 			"name": {
 				"ja": "言い訳名人",
 				"en": "Excuse Artist",
-				"zh": "找借口大师"
+				"zh": "找借口大师",
+				"ko": "변명의 예술가"
 			},
 			"desc": {
 				"ja": "言い訳に聞こえると言われた 20回",
 				"en": "Told you sounded like you were making excuses 20 times",
-				"zh": "被说像在找借口20次"
+				"zh": "被说像在找借口20次",
+				"ko": "변명 같다는 지적을 20번 받았다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -516,12 +576,14 @@
 			"name": {
 				"ja": "口が悪い店員",
 				"en": "Potty Mouth",
-				"zh": "嘴臭店员"
+				"zh": "嘴臭店员",
+				"ko": "입이 험한 사람"
 			},
 			"desc": {
 				"ja": "お客さんに暴言を言ってしまった 5回",
 				"en": "Said something abusive to a customer 5 times",
-				"zh": "对顾客出言不逊5次"
+				"zh": "对顾客出言不逊5次",
+				"ko": "손님에게 폭언을 5번 했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -533,12 +595,14 @@
 			"name": {
 				"ja": "話がそれる人",
 				"en": "Off on a Tangent",
-				"zh": "跑题达人"
+				"zh": "跑题达人",
+				"ko": "삼천포"
 			},
 			"desc": {
 				"ja": "接客と関係ない話をした 5回",
 				"en": "Talked about things unrelated to service 5 times",
-				"zh": "说了与接待无关的话5次"
+				"zh": "说了与接待无关的话5次",
+				"ko": "접객과 관계없는 이야기를 5번 했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -550,12 +614,14 @@
 			"name": {
 				"ja": "★1の店",
 				"en": "One-Star Store",
-				"zh": "一星店"
+				"zh": "一星店",
+				"ko": "별 하나짜리 가게"
 			},
 			"desc": {
 				"ja": "店舗レビュー ★1.0 のシフト",
 				"en": "Got a ★1.0 store review in a shift",
-				"zh": "某个班次的店铺评价为★1.0"
+				"zh": "某个班次的店铺评价为★1.0",
+				"ko": "시프트에서 가게 리뷰 ★1.0을 받았다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -567,12 +633,14 @@
 			"name": {
 				"ja": "全滅シフト",
 				"en": "Total Wipeout",
-				"zh": "全军覆没"
+				"zh": "全军覆没",
+				"ko": "전멸"
 			},
 			"desc": {
 				"ja": "1シフトの4人全員をブチギレさせた",
 				"en": "Made all 4 customers snap in one shift",
-				"zh": "一个班次中让4位顾客全部发飙"
+				"zh": "一个班次中让4位顾客全部发飙",
+				"ko": "한 시프트에서 손님 4명을 모두 폭발시켰다"
 			},
 			"rarity": 3,
 			"joke": true,
@@ -584,12 +652,14 @@
 			"name": {
 				"ja": "割引しすぎ",
 				"en": "Discount Addict",
-				"zh": "折扣打太多"
+				"zh": "折扣打太多",
+				"ko": "할인 중독"
 			},
 			"desc": {
 				"ja": "1シフトで割引 3回以上",
 				"en": "Gave 3 or more discounts in one shift",
-				"zh": "一个班次中打折3次以上"
+				"zh": "一个班次中打折3次以上",
+				"ko": "한 시프트에서 할인을 3번 이상 했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -601,12 +671,14 @@
 			"name": {
 				"ja": "コンビニ新人",
 				"en": "Konbini Rookie",
-				"zh": "便利店新人"
+				"zh": "便利店新人",
+				"ko": "편의점 신입"
 			},
 			"desc": {
 				"ja": "コンビニのシフトを初めて最後まで勤めた",
 				"en": "Finished a konbini shift for the first time",
-				"zh": "第一次完成便利店班次"
+				"zh": "第一次完成便利店班次",
+				"ko": "처음으로 편의점 시프트를 마쳤다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -618,12 +690,14 @@
 			"name": {
 				"ja": "コンビニの守護者",
 				"en": "Konbini Guardian",
-				"zh": "便利店守护者"
+				"zh": "便利店守护者",
+				"ko": "편의점의 수호자"
 			},
 			"desc": {
 				"ja": "コンビニで納得させたお客さん 50人",
 				"en": "Won over 50 customers at the konbini",
-				"zh": "在便利店让50位顾客认同"
+				"zh": "在便利店让50位顾客认同",
+				"ko": "편의점에서 손님 50명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -635,12 +709,14 @@
 			"name": {
 				"ja": "24時間戦士",
 				"en": "24/7 Warrior",
-				"zh": "24小时战士"
+				"zh": "24小时战士",
+				"ko": "24시간 전사"
 			},
 			"desc": {
 				"ja": "コンビニのシフト 30回",
 				"en": "Finished 30 konbini shifts",
-				"zh": "完成30个便利店班次"
+				"zh": "完成30个便利店班次",
+				"ko": "편의점 시프트를 30번 마쳤다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -652,12 +728,14 @@
 			"name": {
 				"ja": "お箸係",
 				"en": "Chopstick Duty",
-				"zh": "筷子专员"
+				"zh": "筷子专员",
+				"ko": "젓가락 담당"
 			},
 			"desc": {
 				"ja": "「説教好きの常連」を納得させた",
 				"en": "Won over \"The Lecturing Regular\"",
-				"zh": "让“说教常客”认同"
+				"zh": "让“说教常客”认同",
+				"ko": "「설교하는 단골」을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -669,12 +747,14 @@
 			"name": {
 				"ja": "おでん番長",
 				"en": "Oden Boss",
-				"zh": "关东煮老大"
+				"zh": "关东煮老大",
+				"ko": "어묵 대장"
 			},
 			"desc": {
 				"ja": "「おでん大根おじさん」を納得させた",
 				"en": "Won over \"Oden Daikon Uncle\"",
-				"zh": "让“关东煮萝卜大叔”认同"
+				"zh": "让“关东煮萝卜大叔”认同",
+				"ko": "「어묵 무 아저씨」를 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -686,12 +766,14 @@
 			"name": {
 				"ja": "袋のプロ",
 				"en": "Bagging Pro",
-				"zh": "装袋专家"
+				"zh": "装袋专家",
+				"ko": "봉투 담기의 프로"
 			},
 			"desc": {
 				"ja": "「レジ袋三枚男」を納得させた",
 				"en": "Won over \"The Three-Bag Man\"",
-				"zh": "让“三个袋子男”认同"
+				"zh": "让“三个袋子男”认同",
+				"ko": "「봉투 세 장 남자」를 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -703,12 +785,14 @@
 			"name": {
 				"ja": "ポイント管理人",
 				"en": "Points Keeper",
-				"zh": "积分管家"
+				"zh": "积分管家",
+				"ko": "포인트 지킴이"
 			},
 			"desc": {
 				"ja": "「ポイントカードの鬼」を納得させた",
 				"en": "Won over \"The Points Card Fanatic\"",
-				"zh": "让“积分卡狂魔”认同"
+				"zh": "让“积分卡狂魔”认同",
+				"ko": "「포인트 카드 광」을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -720,12 +804,14 @@
 			"name": {
 				"ja": "映えの案内人",
 				"en": "Insta Guide",
-				"zh": "出片向导"
+				"zh": "出片向导",
+				"ko": "인스타 가이드"
 			},
 			"desc": {
 				"ja": "「映え待ちの客」を納得させた",
 				"en": "Won over \"The Photo-Op Customer\"",
-				"zh": "让“等出片的顾客”认同"
+				"zh": "让“等出片的顾客”认同",
+				"ko": "「인증샷 손님」을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -737,12 +823,14 @@
 			"name": {
 				"ja": "酔いざまし係",
 				"en": "Sober-Upper",
-				"zh": "醒酒专员"
+				"zh": "醒酒专员",
+				"ko": "술 깨우는 사람"
 			},
 			"desc": {
 				"ja": "「酔っ払い会社員」を納得させた",
 				"en": "Won over \"The Tipsy Salaryman\"",
-				"zh": "让“醉酒上班族”认同"
+				"zh": "让“醉酒上班族”认同",
+				"ko": "「취한 회사원」을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -754,12 +842,14 @@
 			"name": {
 				"ja": "コンビニ全制覇",
 				"en": "Konbini Conqueror",
-				"zh": "便利店全制霸"
+				"zh": "便利店全制霸",
+				"ko": "편의점 정복자"
 			},
 			"desc": {
 				"ja": "コンビニの台本のお客さん全員を一度ずつ納得させた",
 				"en": "Won over every konbini script customer at least once",
-				"zh": "让便利店剧本中的所有顾客各认同一次"
+				"zh": "让便利店剧本中的所有顾客各认同一次",
+				"ko": "편의점의 대본 손님을 모두 한 번 이상 납득시켰다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -771,12 +861,14 @@
 			"name": {
 				"ja": "ゲーセン新人",
 				"en": "Arcade Rookie",
-				"zh": "游戏厅新人"
+				"zh": "游戏厅新人",
+				"ko": "게임센터 신입"
 			},
 			"desc": {
 				"ja": "ゲームセンターのシフトを初めて最後まで勤めた",
 				"en": "Finished an arcade shift for the first time",
-				"zh": "第一次完成游戏厅班次"
+				"zh": "第一次完成游戏厅班次",
+				"ko": "처음으로 게임센터 시프트를 마쳤다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -788,12 +880,14 @@
 			"name": {
 				"ja": "夜のゲーセン番",
 				"en": "Night Arcade Keeper",
-				"zh": "夜班游戏厅"
+				"zh": "夜班游戏厅",
+				"ko": "밤의 게임센터 지킴이"
 			},
 			"desc": {
 				"ja": "ゲームセンターのシフト 30回",
 				"en": "Finished 30 arcade shifts",
-				"zh": "完成30个游戏厅班次"
+				"zh": "完成30个游戏厅班次",
+				"ko": "게임센터 시프트를 30번 마쳤다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -805,12 +899,14 @@
 			"name": {
 				"ja": "アームの調律師",
 				"en": "Claw Tuner",
-				"zh": "爪子调音师"
+				"zh": "爪子调音师",
+				"ko": "집게 조율사"
 			},
 			"desc": {
 				"ja": "台の調整でお客さんに景品を取らせた 10回",
 				"en": "Let customers win a prize by adjusting the machine 10 times",
-				"zh": "通过调整机台让顾客抓到奖品10次"
+				"zh": "通过调整机台让顾客抓到奖品10次",
+				"ko": "기계를 조정해서 손님이 경품을 뽑게 한 것이 10번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -822,12 +918,14 @@
 			"name": {
 				"ja": "クレーンの神",
 				"en": "Crane God",
-				"zh": "抓娃娃之神"
+				"zh": "抓娃娃之神",
+				"ko": "인형뽑기의 신"
 			},
 			"desc": {
 				"ja": "台の調整でお客さんに景品を取らせた 50回",
 				"en": "Let customers win a prize by adjusting the machine 50 times",
-				"zh": "通过调整机台让顾客抓到奖品50次"
+				"zh": "通过调整机台让顾客抓到奖品50次",
+				"ko": "기계를 조정해서 손님이 경품을 뽑게 한 것이 50번"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -839,12 +937,14 @@
 			"name": {
 				"ja": "置き直しの名人",
 				"en": "Prize Placement Pro",
-				"zh": "摆位高手"
+				"zh": "摆位高手",
+				"ko": "경품 배치의 프로"
 			},
 			"desc": {
 				"ja": "「景品を取りやすい位置へ」で取らせた 10回",
 				"en": "Let customers win via \"Move the prize closer\" 10 times",
-				"zh": "通过“把奖品挪到好抓的位置”让顾客抓到10次"
+				"zh": "通过“把奖品挪到好抓的位置”让顾客抓到10次",
+				"ko": "「경품을 가까이 옮기기」로 손님이 뽑게 한 것이 10번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -856,12 +956,14 @@
 			"name": {
 				"ja": "しれっと強化",
 				"en": "Sneaky Buff",
-				"zh": "偷偷加强"
+				"zh": "偷偷加强",
+				"ko": "몰래 버프"
 			},
 			"desc": {
 				"ja": "アームの強さを規定外にした",
 				"en": "Set the claw strength outside store rules",
-				"zh": "把爪力调到规定范围之外"
+				"zh": "把爪力调到规定范围之外",
+				"ko": "가게 규칙을 넘는 집게 힘으로 설정했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -873,12 +975,14 @@
 			"name": {
 				"ja": "テストプレイヤー",
 				"en": "Test Player",
-				"zh": "试玩员"
+				"zh": "试玩员",
+				"ko": "테스트 플레이어"
 			},
 			"desc": {
 				"ja": "テストプレイ 20回",
 				"en": "Test played 20 times",
-				"zh": "试玩20次"
+				"zh": "试玩20次",
+				"ko": "테스트 플레이를 20번 했다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -890,12 +994,14 @@
 			"name": {
 				"ja": "確率の支配者",
 				"en": "Lord of Odds",
-				"zh": "概率主宰"
+				"zh": "概率主宰",
+				"ko": "확률의 지배자"
 			},
 			"desc": {
 				"ja": "確率設定でシフトを 10回 勤めた",
 				"en": "Finished 10 shifts using the probability setting",
-				"zh": "使用概率设定完成10个班次"
+				"zh": "使用概率设定完成10个班次",
+				"ko": "확률 설정으로 시프트를 10번 마쳤다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -907,12 +1013,14 @@
 			"name": {
 				"ja": "良心的な店",
 				"en": "Generous Store",
-				"zh": "良心店"
+				"zh": "良心店",
+				"ko": "인심 좋은 가게"
 			},
 			"desc": {
 				"ja": "ペイアウト率 60%以上でシフトを最後まで勤めた",
 				"en": "Finished a shift with a payout rate of 60% or more",
-				"zh": "以60%以上的出奖率完成班次"
+				"zh": "以60%以上的出奖率完成班次",
+				"ko": "페이아웃률 60% 이상으로 시프트를 마쳤다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -924,12 +1032,14 @@
 			"name": {
 				"ja": "渋い店",
 				"en": "Stingy Store",
-				"zh": "抠门店"
+				"zh": "抠门店",
+				"ko": "짠돌이 가게"
 			},
 			"desc": {
 				"ja": "ペイアウト率 10%でシフトを最後まで勤めた",
 				"en": "Finished a shift with a payout rate of 10%",
-				"zh": "以10%的出奖率完成班次"
+				"zh": "以10%的出奖率完成班次",
+				"ko": "페이아웃률 10%로 시프트를 마쳤다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -941,12 +1051,14 @@
 			"name": {
 				"ja": "帳簿の番人",
 				"en": "Ledger Keeper",
-				"zh": "账本守护者"
+				"zh": "账本守护者",
+				"ko": "장부 관리인"
 			},
 			"desc": {
 				"ja": "筐体のデータを見た 20回",
 				"en": "Checked machine data 20 times",
-				"zh": "查看机台数据20次"
+				"zh": "查看机台数据20次",
+				"ko": "기계 데이터를 20번 확인했다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -958,12 +1070,14 @@
 			"name": {
 				"ja": "嘘を見抜く者",
 				"en": "Lie Detector",
-				"zh": "识破谎言"
+				"zh": "识破谎言",
+				"ko": "거짓말 탐지기"
 			},
 			"desc": {
 				"ja": "「〇〇円使った」の嘘を、記録をもとに話して納得させた 10回",
 				"en": "Won over customers lying about how much they spent by citing the record 10 times",
-				"zh": "识破“花了〇〇元”的谎言，根据记录说明并让顾客认同10次"
+				"zh": "识破“花了〇〇元”的谎言，根据记录说明并让顾客认同10次",
+				"ko": "쓴 돈을 속인 손님을 기록을 근거로 납득시킨 것이 10번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -975,12 +1089,14 @@
 			"name": {
 				"ja": "払い出しの判断",
 				"en": "Payout Judge",
-				"zh": "出奖判断"
+				"zh": "出奖判断",
+				"ko": "페이아웃 판정관"
 			},
 			"desc": {
 				"ja": "目標金額に届いていた客に景品を取らせた 5回",
 				"en": "Let a customer who reached the target amount win a prize 5 times",
-				"zh": "让达到目标金额的顾客抓到奖品5次"
+				"zh": "让达到目标金额的顾客抓到奖品5次",
+				"ko": "목표 금액에 도달한 손님이 경품을 뽑게 한 것이 5번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -992,12 +1108,14 @@
 			"name": {
 				"ja": "メダルの番人",
 				"en": "Medal Keeper",
-				"zh": "推币机守护者"
+				"zh": "推币机守护者",
+				"ko": "메달 지킴이"
 			},
 			"desc": {
 				"ja": "メダルの台のお客さんを納得させた 20人",
 				"en": "Won over 20 medal game customers",
-				"zh": "让20位推币机顾客认同"
+				"zh": "让20位推币机顾客认同",
+				"ko": "메달 게임 손님 20명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1009,12 +1127,14 @@
 			"name": {
 				"ja": "音ゲーの守り人",
 				"en": "Rhythm Guardian",
-				"zh": "音游守护者"
+				"zh": "音游守护者",
+				"ko": "리듬의 수호자"
 			},
 			"desc": {
 				"ja": "音楽ゲームの台のお客さんを納得させた 20人",
 				"en": "Won over 20 rhythm game customers",
-				"zh": "让20位音乐游戏顾客认同"
+				"zh": "让20位音乐游戏顾客认同",
+				"ko": "리듬 게임 손님 20명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1026,12 +1146,14 @@
 			"name": {
 				"ja": "格ゲーの仲裁人",
 				"en": "Fight Referee",
-				"zh": "格斗仲裁人"
+				"zh": "格斗仲裁人",
+				"ko": "대전의 심판"
 			},
 			"desc": {
 				"ja": "ビデオゲームの台のお客さんを納得させた 20人",
 				"en": "Won over 20 video game customers",
-				"zh": "让20位电子游戏顾客认同"
+				"zh": "让20位电子游戏顾客认同",
+				"ko": "비디오 게임 손님 20명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1043,12 +1165,14 @@
 			"name": {
 				"ja": "引っかかり救出隊",
 				"en": "Stuck-Prize Rescue",
-				"zh": "卡奖救援队"
+				"zh": "卡奖救援队",
+				"ko": "걸린 경품 구조대"
 			},
 			"desc": {
 				"ja": "「引っかかった景品をとる」で納得させた 5回",
 				"en": "Won over customers via \"Free the stuck prize\" 5 times",
-				"zh": "通过“取出卡住的奖品”让顾客认同5次"
+				"zh": "通过“取出卡住的奖品”让顾客认同5次",
+				"ko": "「걸린 경품 빼기」로 손님을 납득시킨 것이 5번"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1060,12 +1184,14 @@
 			"name": {
 				"ja": "売上の鬼",
 				"en": "Sales Demon",
-				"zh": "营业额狂魔"
+				"zh": "营业额狂魔",
+				"ko": "매출의 귀신"
 			},
 			"desc": {
 				"ja": "1シフトの売上が 30,000円（相当）以上",
 				"en": "Made $300 or more in sales in one shift",
-				"zh": "一个班次的营业额达到2,400元以上"
+				"zh": "一个班次的营业额达到2,400元以上",
+				"ko": "한 시프트에서 매출 30만 원 이상"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1077,12 +1203,14 @@
 			"name": {
 				"ja": "星5の店",
 				"en": "Five-Star Store",
-				"zh": "五星店"
+				"zh": "五星店",
+				"ko": "별 다섯 가게"
 			},
 			"desc": {
 				"ja": "店舗レビュー ★5.0 のシフト",
 				"en": "Got a ★5.0 store review in a shift",
-				"zh": "某个班次的店铺评价为★5.0"
+				"zh": "某个班次的店铺评价为★5.0",
+				"ko": "시프트에서 가게 리뷰 ★5.0을 받았다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -1094,12 +1222,14 @@
 			"name": {
 				"ja": "ゲーセン全制覇",
 				"en": "Arcade Conqueror",
-				"zh": "游戏厅全制霸"
+				"zh": "游戏厅全制霸",
+				"ko": "게임센터 정복자"
 			},
 			"desc": {
 				"ja": "ゲームセンターの台本のお客さん全員を一度ずつ納得させた",
 				"en": "Won over every arcade script customer at least once",
-				"zh": "让游戏厅剧本中的所有顾客各认同一次"
+				"zh": "让游戏厅剧本中的所有顾客各认同一次",
+				"ko": "게임센터의 대본 손님을 모두 한 번 이상 납득시켰다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1111,12 +1241,14 @@
 			"name": {
 				"ja": "身分証チェッカー",
 				"en": "ID Checker",
-				"zh": "证件检查员"
+				"zh": "证件检查员",
+				"ko": "신분증 확인원"
 			},
 			"desc": {
 				"ja": "年齢確認を正しく判断した 10回",
 				"en": "Judged an age check correctly 10 times",
-				"zh": "正确判断年龄确认10次"
+				"zh": "正确判断年龄确认10次",
+				"ko": "연령 확인을 10번 올바르게 판단했다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1128,12 +1260,14 @@
 			"name": {
 				"ja": "年齢確認の鬼",
 				"en": "Age Check Demon",
-				"zh": "年龄确认狂魔"
+				"zh": "年龄确认狂魔",
+				"ko": "연령 확인의 귀신"
 			},
 			"desc": {
 				"ja": "年齢確認を正しく判断した 50回",
 				"en": "Judged an age check correctly 50 times",
-				"zh": "正确判断年龄确认50次"
+				"zh": "正确判断年龄确认50次",
+				"ko": "연령 확인을 50번 올바르게 판단했다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1145,12 +1279,14 @@
 			"name": {
 				"ja": "定期券は通しません",
 				"en": "Passes Don't Pass",
-				"zh": "月票不算数"
+				"zh": "月票不算数",
+				"ko": "정기권은 안 돼요"
 			},
 			"desc": {
 				"ja": "定期券を出したお客さんを正しく断った 5回",
 				"en": "Correctly refused a customer who showed a commuter pass 5 times",
-				"zh": "正确拒绝出示月票的顾客5次"
+				"zh": "正确拒绝出示月票的顾客5次",
+				"ko": "정기권을 보여 준 손님을 올바르게 거절한 것이 5번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1162,12 +1298,14 @@
 			"name": {
 				"ja": "顔認証いらず",
 				"en": "Human Face ID",
-				"zh": "肉眼人脸识别"
+				"zh": "肉眼人脸识别",
+				"ko": "인간 얼굴 인식"
 			},
 			"desc": {
 				"ja": "顔の違う身分証を見破った 5回",
 				"en": "Spotted an ID with someone else's face 5 times",
-				"zh": "识破照片不符的证件5次"
+				"zh": "识破照片不符的证件5次",
+				"ko": "다른 사람 얼굴의 신분증을 5번 간파했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1179,12 +1317,14 @@
 			"name": {
 				"ja": "お酒の門番",
 				"en": "Liquor Gatekeeper",
-				"zh": "酒类守门人"
+				"zh": "酒类守门人",
+				"ko": "술 판매의 문지기"
 			},
 			"desc": {
 				"ja": "コンビニの年齢確認（お酒・たばこ）を正しく判断した 20回",
 				"en": "Judged a konbini age check (alcohol/tobacco) correctly 20 times",
-				"zh": "正确判断便利店的年龄确认（酒类·香烟）20次"
+				"zh": "正确判断便利店的年龄确认（酒类·香烟）20次",
+				"ko": "편의점의 연령 확인(술·담배)을 20번 올바르게 판단했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1196,12 +1336,14 @@
 			"name": {
 				"ja": "夜10時の番人",
 				"en": "10 PM Watchman",
-				"zh": "晚十点守门人"
+				"zh": "晚十点守门人",
+				"ko": "밤 10시의 파수꾼"
 			},
 			"desc": {
 				"ja": "22時以降の年齢確認を正しく判断した 20回",
 				"en": "Judged an age check after 10 PM correctly 20 times",
-				"zh": "正确判断22点以后的年龄确认20次"
+				"zh": "正确判断22点以后的年龄确认20次",
+				"ko": "밤 10시 이후의 연령 확인을 20번 올바르게 판단했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1213,12 +1355,14 @@
 			"name": {
 				"ja": "疑いすぎ",
 				"en": "Too Suspicious",
-				"zh": "疑心太重"
+				"zh": "疑心太重",
+				"ko": "의심이 너무 많아"
 			},
 			"desc": {
 				"ja": "入れてよい大人を帰してしまった 5回",
 				"en": "Turned away adults who were allowed in 5 times",
-				"zh": "把可以入场的成年人赶走5次"
+				"zh": "把可以入场的成年人赶走5次",
+				"ko": "있어도 되는 어른을 돌려보낸 것이 5번"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -1230,12 +1374,14 @@
 			"name": {
 				"ja": "警察沙汰",
 				"en": "Police Matter",
-				"zh": "惊动警察"
+				"zh": "惊动警察",
+				"ko": "경찰 신세"
 			},
 			"desc": {
 				"ja": "警察が来て営業停止になった",
 				"en": "Got shut down by police",
-				"zh": "警察上门，被停业整顿"
+				"zh": "警察上门，被停业整顿",
+				"ko": "경찰에게 영업 정지를 당했다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1247,12 +1393,14 @@
 			"name": {
 				"ja": "常連の警察",
 				"en": "Police Regular",
-				"zh": "警局常客"
+				"zh": "警局常客",
+				"ko": "경찰의 단골"
 			},
 			"desc": {
 				"ja": "営業停止 3回",
 				"en": "Got shut down by police 3 times",
-				"zh": "被停业整顿3次"
+				"zh": "被停业整顿3次",
+				"ko": "경찰에게 영업 정지를 3번 당했다"
 			},
 			"rarity": 3,
 			"joke": true,
@@ -1264,12 +1412,14 @@
 			"name": {
 				"ja": "無傷の夜",
 				"en": "Flawless Night",
-				"zh": "无伤之夜"
+				"zh": "无伤之夜",
+				"ko": "완벽한 밤"
 			},
 			"desc": {
 				"ja": "年齢確認が2人来たシフトを、両方正しく判断して勤め上げた",
 				"en": "Finished a shift with 2 age checks, judging both correctly",
-				"zh": "在有2位年龄确认顾客的班次中全部正确判断并完成班次"
+				"zh": "在有2位年龄确认顾客的班次中全部正确判断并完成班次",
+				"ko": "연령 확인이 2번 있던 시프트에서 둘 다 올바르게 판단했다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1281,12 +1431,14 @@
 			"name": {
 				"ja": "要注意人物と遭遇",
 				"en": "Wild Encounter",
-				"zh": "遭遇危险人物"
+				"zh": "遭遇危险人物",
+				"ko": "요주의 조우"
 			},
 			"desc": {
 				"ja": "要注意人物に初めて会った",
 				"en": "Met a wild customer for the first time",
-				"zh": "第一次遇到危险人物"
+				"zh": "第一次遇到危险人物",
+				"ko": "처음으로 요주의 인물을 만났다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1298,12 +1450,14 @@
 			"name": {
 				"ja": "猛獣使い",
 				"en": "Beast Tamer",
-				"zh": "驯兽师"
+				"zh": "驯兽师",
+				"ko": "맹수 조련사"
 			},
 			"desc": {
 				"ja": "要注意人物を納得させた 5回",
 				"en": "Won over wild customers 5 times",
-				"zh": "让危险人物认同5次"
+				"zh": "让危险人物认同5次",
+				"ko": "요주의 인물을 5번 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1315,12 +1469,14 @@
 			"name": {
 				"ja": "奇人の友",
 				"en": "Friend of Weirdos",
-				"zh": "怪人之友"
+				"zh": "怪人之友",
+				"ko": "괴짜들의 친구"
 			},
 			"desc": {
 				"ja": "要注意人物を納得させた 20回",
 				"en": "Won over wild customers 20 times",
-				"zh": "让危险人物认同20次"
+				"zh": "让危险人物认同20次",
+				"ko": "요주의 인물을 20번 납득시켰다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1332,12 +1488,14 @@
 			"name": {
 				"ja": "店長のお気に入り",
 				"en": "Manager's Pet",
-				"zh": "店长的宠儿"
+				"zh": "店长的宠儿",
+				"ko": "점장의 총애"
 			},
 			"desc": {
 				"ja": "店長がアドバイスに来た 10回",
 				"en": "The manager came to give advice 10 times",
-				"zh": "店长来给建议10次"
+				"zh": "店长来给建议10次",
+				"ko": "점장이 조언하러 온 것이 10번"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1349,12 +1507,14 @@
 			"name": {
 				"ja": "店長いらず",
 				"en": "Who Needs a Manager",
-				"zh": "不需要店长"
+				"zh": "不需要店长",
+				"ko": "점장 따위 필요 없어"
 			},
 			"desc": {
 				"ja": "店長が来ずに、パーフェクトシフト",
 				"en": "Got a Perfect Shift without the manager showing up",
-				"zh": "店长没来的情况下达成完美班次"
+				"zh": "店长没来的情况下达成完美班次",
+				"ko": "점장이 오지 않고 퍼펙트 시프트를 달성했다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1366,12 +1526,14 @@
 			"name": {
 				"ja": "ネタ枠キラー",
 				"en": "Joke Slayer",
-				"zh": "搞笑克星"
+				"zh": "搞笑克星",
+				"ko": "개그 슬레이어"
 			},
 			"desc": {
 				"ja": "ネタ枠のお客さんを納得させた 10人",
 				"en": "Won over 10 joke customers",
-				"zh": "让10位搞笑顾客认同"
+				"zh": "让10位搞笑顾客认同",
+				"ko": "개그 손님 10명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1383,12 +1545,14 @@
 			"name": {
 				"ja": "豆腐メンタル卒業",
 				"en": "No More Tofu Heart",
-				"zh": "告别玻璃心"
+				"zh": "告别玻璃心",
+				"ko": "두부 멘탈 졸업"
 			},
 			"desc": {
 				"ja": "メンタルランク 5 になった",
 				"en": "Reached Mental Rank 5",
-				"zh": "心态等级达到5"
+				"zh": "心态等级达到5",
+				"ko": "멘탈 랭크 5에 도달했다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1400,12 +1564,14 @@
 			"name": {
 				"ja": "まずまずの心",
 				"en": "Steady Heart",
-				"zh": "心态还行"
+				"zh": "心态还行",
+				"ko": "안정된 마음"
 			},
 			"desc": {
 				"ja": "メンタルランク 10 になった",
 				"en": "Reached Mental Rank 10",
-				"zh": "心态等级达到10"
+				"zh": "心态等级达到10",
+				"ko": "멘탈 랭크 10에 도달했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1417,12 +1583,14 @@
 			"name": {
 				"ja": "鋼の心の持ち主",
 				"en": "Heart of Steel",
-				"zh": "钢铁之心"
+				"zh": "钢铁之心",
+				"ko": "강철 멘탈"
 			},
 			"desc": {
 				"ja": "メンタルランク 18 になった",
 				"en": "Reached Mental Rank 18",
-				"zh": "心态等级达到18"
+				"zh": "心态等级达到18",
+				"ko": "멘탈 랭크 18에 도달했다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -1434,12 +1602,14 @@
 			"name": {
 				"ja": "悟りを開いた店員",
 				"en": "Enlightened Clerk",
-				"zh": "顿悟的店员"
+				"zh": "顿悟的店员",
+				"ko": "해탈한 직원"
 			},
 			"desc": {
 				"ja": "メンタルランク 20（悟り）",
 				"en": "Reached Mental Rank 20 (Enlightened)",
-				"zh": "心态等级达到20（大彻大悟）"
+				"zh": "心态等级达到20（大彻大悟）",
+				"ko": "멘탈 랭크 20(해탈)에 도달했다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -1451,12 +1621,14 @@
 			"name": {
 				"ja": "折れても立つ",
 				"en": "Broken but Standing",
-				"zh": "越挫越勇"
+				"zh": "越挫越勇",
+				"ko": "무너져도 서 있다"
 			},
 			"desc": {
 				"ja": "メンタル 10 以下からシフトを最後まで勤めた",
 				"en": "Finished a shift after dropping to mental 10 or below",
-				"zh": "心态降到10以下仍完成班次"
+				"zh": "心态降到10以下仍完成班次",
+				"ko": "멘탈 10 이하로 떨어진 뒤에도 시프트를 마쳤다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1468,12 +1640,14 @@
 			"name": {
 				"ja": "対戦デビュー",
 				"en": "Versus Debut",
-				"zh": "对战出道"
+				"zh": "对战出道",
+				"ko": "대전 데뷔"
 			},
 			"desc": {
 				"ja": "対戦を初めて最後まで遊んだ",
 				"en": "Finished a versus match for the first time",
-				"zh": "第一次完成对战"
+				"zh": "第一次完成对战",
+				"ko": "처음으로 대전을 마쳤다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1485,12 +1659,14 @@
 			"name": {
 				"ja": "初勝利",
 				"en": "First Victory",
-				"zh": "首胜"
+				"zh": "首胜",
+				"ko": "첫 승리"
 			},
 			"desc": {
 				"ja": "対戦で初めて勝った",
 				"en": "Won a versus match for the first time",
-				"zh": "第一次在对战中获胜"
+				"zh": "第一次在对战中获胜",
+				"ko": "처음으로 대전에서 이겼다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1502,12 +1678,14 @@
 			"name": {
 				"ja": "連勝街道",
 				"en": "Win Streak",
-				"zh": "连胜之路"
+				"zh": "连胜之路",
+				"ko": "연승"
 			},
 			"desc": {
 				"ja": "対戦で 5連勝",
 				"en": "Won 5 versus matches in a row",
-				"zh": "对战5连胜"
+				"zh": "对战5连胜",
+				"ko": "대전에서 5연승했다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1519,12 +1697,14 @@
 			"name": {
 				"ja": "対戦の常連",
 				"en": "Versus Regular",
-				"zh": "对战常客"
+				"zh": "对战常客",
+				"ko": "대전 단골"
 			},
 			"desc": {
 				"ja": "対戦を 50回",
 				"en": "Played 50 versus matches",
-				"zh": "进行50次对战"
+				"zh": "进行50次对战",
+				"ko": "대전을 50번 했다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1536,12 +1716,14 @@
 			"name": {
 				"ja": "百戦錬磨",
 				"en": "Battle-Hardened",
-				"zh": "百战老将"
+				"zh": "百战老将",
+				"ko": "백전노장"
 			},
 			"desc": {
 				"ja": "対戦で 100勝",
 				"en": "Won 100 versus matches",
-				"zh": "对战胜利100次"
+				"zh": "对战胜利100次",
+				"ko": "대전에서 100번 이겼다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -1553,12 +1735,14 @@
 			"name": {
 				"ja": "石の心",
 				"en": "Heart of Stone",
-				"zh": "石头之心"
+				"zh": "石头之心",
+				"ko": "돌의 마음"
 			},
 			"desc": {
 				"ja": "対戦のメンタル（素材）が「石」以上",
 				"en": "Reached versus mental (material) \"Stone\" or higher",
-				"zh": "对战心态（材质）达到“石头”以上"
+				"zh": "对战心态（材质）达到“石头”以上",
+				"ko": "대전 멘탈(재질) 「돌」 이상에 도달했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1570,12 +1754,14 @@
 			"name": {
 				"ja": "鋼鉄の対戦者",
 				"en": "Steel Contender",
-				"zh": "钢铁对战者"
+				"zh": "钢铁对战者",
+				"ko": "강철의 도전자"
 			},
 			"desc": {
 				"ja": "対戦のメンタル（素材）が「鋼鉄」以上",
 				"en": "Reached versus mental (material) \"Steel\" or higher",
-				"zh": "对战心态（材质）达到“钢铁”以上"
+				"zh": "对战心态（材质）达到“钢铁”以上",
+				"ko": "대전 멘탈(재질) 「강철」 이상에 도달했다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1587,12 +1773,14 @@
 			"name": {
 				"ja": "アダマンタイトの心",
 				"en": "Adamantite Heart",
-				"zh": "精金之心"
+				"zh": "精金之心",
+				"ko": "아다만타이트의 마음"
 			},
 			"desc": {
 				"ja": "対戦のメンタル（素材）が「アダマンタイト」",
 				"en": "Reached versus mental (material) \"Adamantite\"",
-				"zh": "对战心态（材质）达到“精金”"
+				"zh": "对战心态（材质）达到“精金”",
+				"ko": "대전 멘탈(재질) 「아다만타이트」에 도달했다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -1604,12 +1792,14 @@
 			"name": {
 				"ja": "最強のクレーマー",
 				"en": "Ultimate Complainer",
-				"zh": "最强投诉者"
+				"zh": "最强投诉者",
+				"ko": "최강의 진상"
 			},
 			"desc": {
 				"ja": "対戦で客役として勝ったラウンド 20回",
 				"en": "Won 20 versus rounds as the customer",
-				"zh": "在对战中以顾客身份赢得20回合"
+				"zh": "在对战中以顾客身份赢得20回合",
+				"ko": "대전에서 손님 역으로 20라운드 이겼다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1621,12 +1811,14 @@
 			"name": {
 				"ja": "鉄壁の店員",
 				"en": "Iron Wall Clerk",
-				"zh": "铁壁店员"
+				"zh": "铁壁店员",
+				"ko": "철벽의 직원"
 			},
 			"desc": {
 				"ja": "対戦で店員役として勝ったラウンド 20回",
 				"en": "Won 20 versus rounds as the clerk",
-				"zh": "在对战中以店员身份赢得20回合"
+				"zh": "在对战中以店员身份赢得20回合",
+				"ko": "대전에서 직원 역으로 20라운드 이겼다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -1638,12 +1830,14 @@
 			"name": {
 				"ja": "声で勝負",
 				"en": "Voice Battler",
-				"zh": "用声音一决胜负"
+				"zh": "用声音一决胜负",
+				"ko": "목소리 배틀러"
 			},
 			"desc": {
 				"ja": "声の対戦を 10回",
 				"en": "Played 10 voice versus matches",
-				"zh": "进行10次语音对战"
+				"zh": "进行10次语音对战",
+				"ko": "음성 대전을 10번 했다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1655,12 +1849,14 @@
 			"name": {
 				"ja": "国際派店員",
 				"en": "Global Clerk",
-				"zh": "国际派店员"
+				"zh": "国际派店员",
+				"ko": "글로벌 직원"
 			},
 			"desc": {
-				"ja": "英語か中国語でシフトを最後まで勤めた",
-				"en": "Finished a shift in English or Chinese",
-				"zh": "用英语或中文完成班次"
+				"ja": "日本語以外の言語でシフトを最後まで勤めた",
+				"en": "Finished a shift in a language other than Japanese",
+				"zh": "用日语以外的语言完成班次",
+				"ko": "일본어가 아닌 언어로 시프트를 마쳤다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1672,12 +1868,14 @@
 			"name": {
 				"ja": "三か国語の店員",
 				"en": "Trilingual Clerk",
-				"zh": "三语店员"
+				"zh": "三语店员",
+				"ko": "3개 국어 직원"
 			},
 			"desc": {
-				"ja": "日本語・英語・中国語の3つでシフトを最後まで勤めた",
-				"en": "Finished shifts in all 3 languages: Japanese, English and Chinese",
-				"zh": "用日语、英语、中文三种语言分别完成班次"
+				"ja": "3つ以上の言語でシフトを最後まで勤めた",
+				"en": "Finished shifts in 3 or more languages",
+				"zh": "用3种以上的语言分别完成班次",
+				"ko": "3개 이상의 언어로 시프트를 마쳤다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -1689,12 +1887,14 @@
 			"name": {
 				"ja": "称号コレクター",
 				"en": "Title Collector",
-				"zh": "称号收藏家"
+				"zh": "称号收藏家",
+				"ko": "칭호 수집가"
 			},
 			"desc": {
 				"ja": "称号を 50個 集めた",
 				"en": "Collected 50 titles",
-				"zh": "收集50个称号"
+				"zh": "收集50个称号",
+				"ko": "칭호를 50개 모았다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -1706,12 +1906,14 @@
 			"name": {
 				"ja": "謝りすぎて逆に怒られた人",
 				"en": "Sorry Isn't Enough",
-				"zh": "道歉过头反被骂"
+				"zh": "道歉过头反被骂",
+				"ko": "사과만으론 부족해"
 			},
 			"desc": {
 				"ja": "謝るだけの返事で「謝るだけじゃ解決しない」と言われた 10回",
 				"en": "Told \"sorry alone won't fix this\" after apology-only replies 10 times",
-				"zh": "只道歉的回复被说“光道歉解决不了问题”10次"
+				"zh": "只道歉的回复被说“光道歉解决不了问题”10次",
+				"ko": "사과뿐인 답변으로 \"사과만으로는 해결 안 돼\"라는 말을 10번 들었다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1723,12 +1925,14 @@
 			"name": {
 				"ja": "土下座で解決した奇跡の人",
 				"en": "Miracle of the Dogeza",
-				"zh": "下跪解决的奇迹"
+				"zh": "下跪解决的奇迹",
+				"ko": "도게자의 기적"
 			},
 			"desc": {
 				"ja": "土下座が「正解」だった（効果が good の客に土下座した）",
 				"en": "A dogeza was the right answer (used on a customer it works on)",
-				"zh": "下跪是“正确答案”（对下跪有效的顾客下跪）"
+				"zh": "下跪是“正确答案”（对下跪有效的顾客下跪）",
+				"ko": "도게자가 정답이었다 (통하는 손님에게 썼다)"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1740,12 +1944,14 @@
 			"name": {
 				"ja": "0.2秒の店員",
 				"en": "The 0.2-Second Clerk",
-				"zh": "0.2秒店员"
+				"zh": "0.2秒店员",
+				"ko": "0.2초 직원"
 			},
 			"desc": {
 				"ja": "3文字以下の返事を送った 10回",
 				"en": "Sent replies of 3 characters or fewer 10 times",
-				"zh": "发送3个字以内的回复10次"
+				"zh": "发送3个字以内的回复10次",
+				"ko": "3글자 이하의 답변을 10번 보냈다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -1757,12 +1963,14 @@
 			"name": {
 				"ja": "AIに頼る店員",
 				"en": "Relies on AI",
-				"zh": "依赖AI的店员"
+				"zh": "依赖AI的店员",
+				"ko": "AI 의존"
 			},
 			"desc": {
 				"ja": "接客と関係ない話（コードを書いて、など）をした 20回",
 				"en": "Went off-topic (\"write me some code\", etc.) 20 times",
-				"zh": "说了与接待无关的话（如“帮我写代码”）20次"
+				"zh": "说了与接待无关的话（如“帮我写代码”）20次",
+				"ko": "엉뚱한 부탁(\"코드 짜 줘\" 등)을 20번 했다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1774,12 +1982,14 @@
 			"name": {
 				"ja": "自分でも何を言っているか分からない",
 				"en": "Not Sure What I'm Saying",
-				"zh": "自己都不知道在说什么"
+				"zh": "自己都不知道在说什么",
+				"ko": "무슨 말인지 나도 몰라"
 			},
 			"desc": {
 				"ja": "何の言葉にも当てはまらない返事で怒らせた 20回",
 				"en": "Angered customers with replies that matched nothing 20 times",
-				"zh": "用毫无对应的回复惹怒顾客20次"
+				"zh": "用毫无对应的回复惹怒顾客20次",
+				"ko": "아무것도 해당하지 않는 답변으로 손님을 화나게 한 것이 20번"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1791,12 +2001,14 @@
 			"name": {
 				"ja": "クレーマーに好かれる店",
 				"en": "Complainer Magnet",
-				"zh": "招投诉者喜欢的店"
+				"zh": "招投诉者喜欢的店",
+				"ko": "진상 자석"
 			},
 			"desc": {
 				"ja": "同じシフトに要注意人物と「〇〇円使った」客が両方来た",
 				"en": "Had a person of interest and a \"spent X\" customer in the same shift",
-				"zh": "同一班次里既来了重点人物，又来了“花了多少钱”的顾客"
+				"zh": "同一班次里既来了重点人物，又来了“花了多少钱”的顾客",
+				"ko": "한 시프트에 요주의 인물과 \"X원 썼다\" 손님이 둘 다 왔다"
 			},
 			"rarity": 3,
 			"joke": true,
@@ -1808,12 +2020,14 @@
 			"name": {
 				"ja": "景品より先に心が落ちた",
 				"en": "Heart Dropped Before the Prize",
-				"zh": "奖品没掉心先掉"
+				"zh": "奖品没掉心先掉",
+				"ko": "경품보다 먼저 마음이 떨어졌다"
 			},
 			"desc": {
 				"ja": "台の調整で取らせられず、そのままブチギレさせた 5回",
 				"en": "Adjusted the machine, the customer still lost, and blew up 5 times",
-				"zh": "调整机台后仍没让顾客夹到，直接暴怒5次"
+				"zh": "调整机台后仍没让顾客夹到，直接暴怒5次",
+				"ko": "기계를 조정했는데도 손님이 못 뽑고 폭발한 것이 5번"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1825,12 +2039,14 @@
 			"name": {
 				"ja": "全部タダにする店長代理",
 				"en": "Acting Manager of Freebies",
-				"zh": "全部免费的代理店长"
+				"zh": "全部免费的代理店长",
+				"ko": "서비스 대리 점장"
 			},
 			"desc": {
 				"ja": "1シフトでクレジット補填・メダル補填・割引を合わせて 4回",
 				"en": "Gave 4 credit refunds, medal refunds or discounts combined in one shift",
-				"zh": "一个班次中补偿点数、补偿代币和打折合计4次"
+				"zh": "一个班次中补偿点数、补偿代币和打折合计4次",
+				"ko": "한 시프트에서 크레딧 보상·메달 보상·할인을 합쳐서 4번 했다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1842,12 +2058,14 @@
 			"name": {
 				"ja": "規定は破るためにある",
 				"en": "Rules Are Made to Be Broken",
-				"zh": "规定就是用来打破的"
+				"zh": "规定就是用来打破的",
+				"ko": "규칙은 깨라고 있는 것"
 			},
 			"desc": {
 				"ja": "アームの強さを最大（10）にした",
 				"en": "Set the arm strength to max (10)",
-				"zh": "把爪力调到最大（10）"
+				"zh": "把爪力调到最大（10）",
+				"ko": "집게 힘을 최대(10)로 설정했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -1859,12 +2077,14 @@
 			"name": {
 				"ja": "警察と顔なじみ",
 				"en": "On a First-Name Basis with the Police",
-				"zh": "和警察混熟了"
+				"zh": "和警察混熟了",
+				"ko": "경찰과 친구 사이"
 			},
 			"desc": {
 				"ja": "営業停止 10回",
 				"en": "Had the store suspended 10 times",
-				"zh": "被停业10次"
+				"zh": "被停业10次",
+				"ko": "가게가 영업 정지를 10번 당했다"
 			},
 			"rarity": 4,
 			"joke": true,
@@ -1876,12 +2096,14 @@
 			"name": {
 				"ja": "映え写真に写り込んだ",
 				"en": "Photobombed",
-				"zh": "闯进了网红照"
+				"zh": "闯进了网红照",
+				"ko": "사진에 찍혔다"
 			},
 			"desc": {
 				"ja": "「映え待ちの客」をブチギレさせた",
 				"en": "Made \"The Photo-Op Customer\" explode",
-				"zh": "让“等出片的顾客”暴怒"
+				"zh": "让“等出片的顾客”暴怒",
+				"ko": "「인증샷 손님」을 폭발시켰다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -1893,12 +2115,14 @@
 			"name": {
 				"ja": "袋をタダにした男",
 				"en": "Free Bags for Him",
-				"zh": "让袋子免费的人"
+				"zh": "让袋子免费的人",
+				"ko": "그 사람에게만 봉투 공짜"
 			},
 			"desc": {
 				"ja": "「レジ袋三枚男」に屈した",
 				"en": "Gave in to \"The Three-Bag Man\"",
-				"zh": "向“三个袋子男”屈服"
+				"zh": "向“三个袋子男”屈服",
+				"ko": "「봉투 세 장 남자」에게 굴복했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -1910,12 +2134,14 @@
 			"name": {
 				"ja": "ぬいぐるみと和解",
 				"en": "Made Peace with the Plushie",
-				"zh": "与玩偶和解"
+				"zh": "与玩偶和解",
+				"ko": "인형과 화해"
 			},
 			"desc": {
 				"ja": "「ぬいぐるみに見下され男」を納得させた",
 				"en": "Satisfied \"Stared Down by a Plushie\"",
-				"zh": "让“被玩偶鄙视男”满意"
+				"zh": "让“被玩偶鄙视男”满意",
+				"ko": "「인형에게 노려보임」을 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1927,12 +2153,14 @@
 			"name": {
 				"ja": "終電の守り人",
 				"en": "Guardian of the Last Train",
-				"zh": "末班车的守护者"
+				"zh": "末班车的守护者",
+				"ko": "막차의 수호자"
 			},
 			"desc": {
 				"ja": "「楽しすぎ被害者」を納得させた",
 				"en": "Satisfied \"Victim of Too Much Fun\"",
-				"zh": "让“玩太嗨受害者”满意"
+				"zh": "让“玩太嗨受害者”满意",
+				"ko": "「너무 즐거웠던 피해자」를 납득시켰다"
 			},
 			"rarity": 1,
 			"joke": false,
@@ -1944,12 +2172,14 @@
 			"name": {
 				"ja": "研修を3回受けた新人",
 				"en": "Took Training Three Times",
-				"zh": "培训了3次的新人"
+				"zh": "培训了3次的新人",
+				"ko": "연수 세 번"
 			},
 			"desc": {
 				"ja": "新人研修を 3回 受けた",
 				"en": "Completed the new-hire training 3 times",
-				"zh": "完成新人培训3次"
+				"zh": "完成新人培训3次",
+				"ko": "신입 연수를 3번 마쳤다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1961,12 +2191,14 @@
 			"name": {
 				"ja": "休憩しすぎ",
 				"en": "Too Many Breaks",
-				"zh": "休息过多"
+				"zh": "休息过多",
+				"ko": "쉬는 시간이 너무 많아"
 			},
 			"desc": {
 				"ja": "シフト中の休憩（一時停止） 30回",
 				"en": "Paused during shifts 30 times",
-				"zh": "班次中暂停30次"
+				"zh": "班次中暂停30次",
+				"ko": "시프트 중에 일시 정지를 30번 했다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -1978,12 +2210,14 @@
 			"name": {
 				"ja": "二度見の店員",
 				"en": "The Double-Take Clerk",
-				"zh": "看两遍的店员"
+				"zh": "看两遍的店员",
+				"ko": "다시 보는 직원"
 			},
 			"desc": {
 				"ja": "同じお客さんで筐体のデータを 3回以上 見た",
 				"en": "Checked the machine data 3+ times for the same customer",
-				"zh": "对同一位顾客查看机台数据3次以上"
+				"zh": "对同一位顾客查看机台数据3次以上",
+				"ko": "같은 손님에게 기계 데이터를 3번 이상 확인했다"
 			},
 			"rarity": 1,
 			"joke": true,
@@ -1995,12 +2229,14 @@
 			"name": {
 				"ja": "年齢確認の圧が強い",
 				"en": "Intense ID Checker",
-				"zh": "年龄确认压迫感强"
+				"zh": "年龄确认压迫感强",
+				"ko": "빡빡한 신분증 확인"
 			},
 			"desc": {
 				"ja": "1シフトで年齢確認の客を2人とも帰した（両方正解）",
 				"en": "Turned away both age-check customers in a shift (both correct)",
-				"zh": "一个班次中年龄确认的两位顾客都请回了（都正确）"
+				"zh": "一个班次中年龄确认的两位顾客都请回了（都正确）",
+				"ko": "한 시프트의 연령 확인 손님을 둘 다 돌려보냈다 (둘 다 정답)"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -2012,12 +2248,14 @@
 			"name": {
 				"ja": "メンタル100%の男",
 				"en": "100% Mental",
-				"zh": "心态100%的人"
+				"zh": "心态100%的人",
+				"ko": "멘탈 100%"
 			},
 			"desc": {
 				"ja": "メンタルが一度も減らずにシフトを勤め上げた",
 				"en": "Finished a shift without losing any mental",
-				"zh": "心态一次都没减少就完成了班次"
+				"zh": "心态一次都没减少就完成了班次",
+				"ko": "멘탈이 하나도 줄지 않고 시프트를 마쳤다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -2029,12 +2267,14 @@
 			"name": {
 				"ja": "深夜テンション",
 				"en": "Late-Night High",
-				"zh": "深夜亢奋"
+				"zh": "深夜亢奋",
+				"ko": "심야의 하이 텐션"
 			},
 			"desc": {
 				"ja": "23時台のお客さんを 20人 納得させた",
 				"en": "Satisfied 20 customers in the 11 p.m. hour",
-				"zh": "让23点档的顾客满意20人"
+				"zh": "让23点档的顾客满意20人",
+				"ko": "밤 11시대에 손님 20명을 납득시켰다"
 			},
 			"rarity": 2,
 			"joke": false,
@@ -2046,12 +2286,14 @@
 			"name": {
 				"ja": "店長より店長",
 				"en": "More Manager Than the Manager",
-				"zh": "比店长还店长"
+				"zh": "比店长还店长",
+				"ko": "점장보다 점장"
 			},
 			"desc": {
 				"ja": "店長が来たのに、その後でブチギレさせた",
 				"en": "The manager came by, and a customer still exploded afterwards",
-				"zh": "店长来过之后，仍让顾客暴怒"
+				"zh": "店长来过之后，仍让顾客暴怒",
+				"ko": "점장이 왔는데도 그 뒤에 손님이 폭발했다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -2063,12 +2305,14 @@
 			"name": {
 				"ja": "客役のほうが向いている",
 				"en": "Born to Be the Customer",
-				"zh": "更适合当顾客"
+				"zh": "更适合当顾客",
+				"ko": "타고난 손님"
 			},
 			"desc": {
 				"ja": "対戦で客役の勝ちが店員役の勝ちの2倍以上（各10回以上）",
 				"en": "Won 2x+ as many customer rounds as staff rounds (10+ each)",
-				"zh": "对战中顾客身份胜场是店员身份的2倍以上（各10次以上）"
+				"zh": "对战中顾客身份胜场是店员身份的2倍以上（各10次以上）",
+				"ko": "손님 역 승리가 직원 역 승리의 2배 이상 (각 10번 이상)"
 			},
 			"rarity": 3,
 			"joke": true,
@@ -2080,12 +2324,14 @@
 			"name": {
 				"ja": "無言の圧",
 				"en": "Silent Pressure",
-				"zh": "无声的压力"
+				"zh": "无声的压力",
+				"ko": "침묵의 압박"
 			},
 			"desc": {
 				"ja": "対戦の客役で、返事が無いまま（時間切れ）勝った 5回",
 				"en": "Won as the customer while the staff never replied (timeout) 5 times",
-				"zh": "对战以顾客身份在对方无回复（超时）时获胜5次"
+				"zh": "对战以顾客身份在对方无回复（超时）时获胜5次",
+				"ko": "직원이 한 번도 답하지 못해(시간 초과) 손님 역으로 이긴 것이 5번"
 			},
 			"rarity": 3,
 			"joke": true,
@@ -2097,12 +2343,14 @@
 			"name": {
 				"ja": "円・ドル・元の両替所",
 				"en": "Currency Exchange",
-				"zh": "日元美元人民币兑换所"
+				"zh": "日元美元人民币兑换所",
+				"ko": "환전소"
 			},
 			"desc": {
-				"ja": "3つの言語すべてで「〇〇円使った」客の嘘を見破った",
-				"en": "Caught a \"spent X\" lie in all 3 languages",
-				"zh": "在3种语言中都识破了“花了多少钱”的谎言"
+				"ja": "3つ以上の言語で「〇〇円使った」客の嘘を見破った",
+				"en": "Caught a \"spent X\" lie in 3 or more languages",
+				"zh": "在3种以上的语言中识破了“花了多少钱”的谎言",
+				"ko": "3개 이상의 언어로 \"X원 썼다\" 거짓말을 간파했다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2114,12 +2362,14 @@
 			"name": {
 				"ja": "称号を気にする人",
 				"en": "Title Conscious",
-				"zh": "在意称号的人"
+				"zh": "在意称号的人",
+				"ko": "칭호에 진심"
 			},
 			"desc": {
 				"ja": "つける称号を 30回 変えた",
 				"en": "Changed your equipped title 30 times",
-				"zh": "更换佩戴的称号30次"
+				"zh": "更换佩戴的称号30次",
+				"ko": "장착한 칭호를 30번 바꿨다"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -2131,12 +2381,14 @@
 			"name": {
 				"ja": "不動の聖人",
 				"en": "Unshakable Saint",
-				"zh": "不动的圣人"
+				"zh": "不动的圣人",
+				"ko": "흔들림 없는 성자"
 			},
 			"desc": {
 				"ja": "パーフェクトシフトを 10回 続けた",
 				"en": "10 perfect shifts in a row",
-				"zh": "连续10次完美班次"
+				"zh": "连续10次完美班次",
+				"ko": "퍼펙트 시프트 10연속"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2148,12 +2400,14 @@
 			"name": {
 				"ja": "千人斬り（接客）",
 				"en": "A Thousand Served",
-				"zh": "接待千人斩"
+				"zh": "接待千人斩",
+				"ko": "천 명 접객"
 			},
 			"desc": {
 				"ja": "納得させたお客さん 1,000人",
 				"en": "Satisfied 1,000 customers",
-				"zh": "让1,000位顾客满意"
+				"zh": "让1,000位顾客满意",
+				"ko": "손님 1,000명을 납득시켰다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2165,12 +2419,14 @@
 			"name": {
 				"ja": "怒りゼロの奇跡",
 				"en": "Miracle of Zero Anger",
-				"zh": "零怒气的奇迹"
+				"zh": "零怒气的奇迹",
+				"ko": "분노 제로의 기적"
 			},
 			"desc": {
 				"ja": "1シフトの4人全員を、怒り 20 以下のまま納得させた",
 				"en": "Satisfied all 4 customers in a shift with anger at 20 or less",
-				"zh": "一个班次的4位顾客全部在怒气20以下时满意"
+				"zh": "一个班次的4位顾客全部在怒气20以下时满意",
+				"ko": "한 시프트에서 분노 20 이하로 손님 4명을 모두 납득시켰다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2182,12 +2438,14 @@
 			"name": {
 				"ja": "一言の神",
 				"en": "God of One Word",
-				"zh": "一句话之神"
+				"zh": "一句话之神",
+				"ko": "한마디의 신"
 			},
 			"desc": {
 				"ja": "1シフトの4人全員を、1回目の返事で納得させた",
 				"en": "Satisfied all 4 customers in a shift with the first reply",
-				"zh": "一个班次的4位顾客全部用第一句回复就满意"
+				"zh": "一个班次的4位顾客全部用第一句回复就满意",
+				"ko": "한 시프트에서 손님 4명을 모두 첫 답변으로 납득시켰다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2199,12 +2457,14 @@
 			"name": {
 				"ja": "年齢確認の生き字引",
 				"en": "Walking ID Encyclopedia",
-				"zh": "年龄确认活字典"
+				"zh": "年龄确认活字典",
+				"ko": "걸어 다니는 신분증 백과"
 			},
 			"desc": {
 				"ja": "年齢確認を 200回 連続で正しく判断した",
 				"en": "Judged age checks correctly 200 times in a row",
-				"zh": "连续200次正确判断年龄确认"
+				"zh": "连续200次正确判断年龄确认",
+				"ko": "연령 확인을 200번 연속 올바르게 판단했다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2216,12 +2476,14 @@
 			"name": {
 				"ja": "夜の帝王",
 				"en": "Emperor of the Night",
-				"zh": "夜之帝王"
+				"zh": "夜之帝王",
+				"ko": "밤의 황제"
 			},
 			"desc": {
 				"ja": "22時以降に来たお客さん（年齢確認を含む）を 100人連続で 帰らせず・怒らせず対応した",
 				"en": "Handled 100 customers after 10 p.m. (incl. age checks) in a row without yielding or angering",
-				"zh": "连续100位22点后的顾客（含年龄确认）未屈服、未惹怒"
+				"zh": "连续100位22点后的顾客（含年龄确认）未屈服、未惹怒",
+				"ko": "밤 10시 이후의 손님(연령 확인 포함) 100명을 연속으로 굴복도 폭발도 없이 대응했다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2233,12 +2495,14 @@
 			"name": {
 				"ja": "景品の錬金術師",
 				"en": "Prize Alchemist",
-				"zh": "奖品炼金术师"
+				"zh": "奖品炼金术师",
+				"ko": "경품 연금술사"
 			},
 			"desc": {
 				"ja": "確率設定・ペイアウト率 10% の台で、お客さんに景品を取らせた 10回",
 				"en": "Let customers win a prize on a 10% payout machine 10 times",
-				"zh": "在概率设定·出奖率10%的机台让顾客夹到奖品10次"
+				"zh": "在概率设定·出奖率10%的机台让顾客夹到奖品10次",
+				"ko": "페이아웃 10%의 기계에서 손님이 경품을 뽑게 한 것이 10번"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2250,12 +2514,14 @@
 			"name": {
 				"ja": "完全無欠の店",
 				"en": "Flawless Store",
-				"zh": "完美无缺的店"
+				"zh": "完美无缺的店",
+				"ko": "무결점 가게"
 			},
 			"desc": {
 				"ja": "店舗レビュー ★5.0 のシフトを 10回",
 				"en": "10 shifts with a ★5.0 store review",
-				"zh": "店铺评价★5.0的班次10次"
+				"zh": "店铺评价★5.0的班次10次",
+				"ko": "가게 리뷰 ★5.0인 시프트가 10번"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2267,12 +2533,14 @@
 			"name": {
 				"ja": "売上の神",
 				"en": "God of Sales",
-				"zh": "销售之神"
+				"zh": "销售之神",
+				"ko": "매출의 신"
 			},
 			"desc": {
 				"ja": "1シフトの売上が 50,000円（相当）以上",
 				"en": "Sales of ¥50,000 (equivalent) or more in one shift",
-				"zh": "一个班次的销售额达到50,000日元（等值）以上"
+				"zh": "一个班次的销售额达到50,000日元（等值）以上",
+				"ko": "한 시프트에서 매출 50만 원(환산) 이상"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2284,12 +2552,14 @@
 			"name": {
 				"ja": "嘘発見器",
 				"en": "Lie Detector",
-				"zh": "测谎仪"
+				"zh": "测谎仪",
+				"ko": "거짓말 판별사"
 			},
 			"desc": {
 				"ja": "「〇〇円使った」の嘘を 50回 見破って納得させた",
 				"en": "Caught 50 \"spent X\" lies and satisfied the customer",
-				"zh": "识破“花了多少钱”的谎言并让顾客满意50次"
+				"zh": "识破“花了多少钱”的谎言并让顾客满意50次",
+				"ko": "\"X원 썼다\" 거짓말을 50번 간파하고 납득시켰다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2301,12 +2571,14 @@
 			"name": {
 				"ja": "要注意人物ハンター",
 				"en": "Person-of-Interest Hunter",
-				"zh": "重点人物猎人"
+				"zh": "重点人物猎人",
+				"ko": "요주의 인물 사냥꾼"
 			},
 			"desc": {
 				"ja": "要注意人物を 50回 納得させた",
 				"en": "Satisfied persons of interest 50 times",
-				"zh": "让重点人物满意50次"
+				"zh": "让重点人物满意50次",
+				"ko": "요주의 인물을 50번 납득시켰다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2318,12 +2590,14 @@
 			"name": {
 				"ja": "全員と和解した店員",
 				"en": "Made Peace with Everyone",
-				"zh": "与所有人和解的店员"
+				"zh": "与所有人和解的店员",
+				"ko": "모두와 화해"
 			},
 			"desc": {
 				"ja": "台本のお客さん全員（コンビニ・ゲームセンター）を納得させた",
 				"en": "Satisfied every scripted customer (konbini and arcade)",
-				"zh": "让剧本中的所有顾客（便利店和游戏厅）满意"
+				"zh": "让剧本中的所有顾客（便利店和游戏厅）满意",
+				"ko": "대본 손님(편의점·게임센터) 전원을 납득시켰다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2335,12 +2609,14 @@
 			"name": {
 				"ja": "全員を怒らせた店員",
 				"en": "Made Everyone Explode",
-				"zh": "惹怒所有人的店员"
+				"zh": "惹怒所有人的店员",
+				"ko": "모두를 폭발시켰다"
 			},
 			"desc": {
 				"ja": "台本のお客さん全員をブチギレさせた",
 				"en": "Made every scripted customer explode",
-				"zh": "让剧本中的所有顾客暴怒"
+				"zh": "让剧本中的所有顾客暴怒",
+				"ko": "대본 손님 전원을 폭발시켰다"
 			},
 			"rarity": 5,
 			"joke": true,
@@ -2352,12 +2628,14 @@
 			"name": {
 				"ja": "無敗の対戦者",
 				"en": "Undefeated",
-				"zh": "不败的对战者"
+				"zh": "不败的对战者",
+				"ko": "무패"
 			},
 			"desc": {
 				"ja": "対戦で 20連勝",
 				"en": "20 versus wins in a row",
-				"zh": "对战20连胜"
+				"zh": "对战20连胜",
+				"ko": "대전 20연승"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2369,12 +2647,14 @@
 			"name": {
 				"ja": "千戦錬磨",
 				"en": "A Thousand Battles",
-				"zh": "千战磨炼"
+				"zh": "千战磨炼",
+				"ko": "천 번의 대전"
 			},
 			"desc": {
 				"ja": "対戦で 1,000戦",
 				"en": "Played 1,000 versus matches",
-				"zh": "进行1,000场对战"
+				"zh": "进行1,000场对战",
+				"ko": "대전을 1,000번 했다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2386,12 +2666,14 @@
 			"name": {
 				"ja": "レート2000",
 				"en": "Rating 2000",
-				"zh": "等级分2000"
+				"zh": "等级分2000",
+				"ko": "레이팅 2000"
 			},
 			"desc": {
 				"ja": "対戦のレーティング 2000 以上",
 				"en": "Versus rating of 2000 or higher",
-				"zh": "对战等级分达到2000以上"
+				"zh": "对战等级分达到2000以上",
+				"ko": "대전 레이팅 2000 이상"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2403,12 +2685,14 @@
 			"name": {
 				"ja": "客役の帝王",
 				"en": "Emperor of Customers",
-				"zh": "顾客之帝王"
+				"zh": "顾客之帝王",
+				"ko": "손님의 제왕"
 			},
 			"desc": {
 				"ja": "対戦の客役でラウンド 100勝",
 				"en": "Won 100 versus rounds as the customer",
-				"zh": "以顾客身份赢得100个对战回合"
+				"zh": "以顾客身份赢得100个对战回合",
+				"ko": "대전에서 손님 역으로 100라운드 이겼다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2420,12 +2704,14 @@
 			"name": {
 				"ja": "店員役の帝王",
 				"en": "Emperor of Staff",
-				"zh": "店员之帝王"
+				"zh": "店员之帝王",
+				"ko": "직원의 제왕"
 			},
 			"desc": {
 				"ja": "対戦の店員役でラウンド 100勝",
 				"en": "Won 100 versus rounds as the staff",
-				"zh": "以店员身份赢得100个对战回合"
+				"zh": "以店员身份赢得100个对战回合",
+				"ko": "대전에서 직원 역으로 100라운드 이겼다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2437,12 +2723,14 @@
 			"name": {
 				"ja": "悟りの先へ",
 				"en": "Beyond Enlightenment",
-				"zh": "超越开悟"
+				"zh": "超越开悟",
+				"ko": "해탈 그 너머"
 			},
 			"desc": {
 				"ja": "メンタルランク 20 になってから、さらにシフトを 100回",
 				"en": "Worked 100 more shifts after reaching mental rank 20",
-				"zh": "心态等级达到20后再完成100个班次"
+				"zh": "心态等级达到20后再完成100个班次",
+				"ko": "멘탈 랭크 20에 도달한 뒤 시프트를 100번 더 했다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2454,12 +2742,14 @@
 			"name": {
 				"ja": "一度も屈しない",
 				"en": "Never Gives In",
-				"zh": "从不屈服"
+				"zh": "从不屈服",
+				"ko": "절대 굴복하지 않는다"
 			},
 			"desc": {
 				"ja": "屈服せずにシフトを 50回 続けた",
 				"en": "50 shifts in a row without yielding",
-				"zh": "连续50个班次没有屈服"
+				"zh": "连续50个班次没有屈服",
+				"ko": "굴복하지 않은 시프트 50연속"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2471,12 +2761,14 @@
 			"name": {
 				"ja": "鉄のメンタル",
 				"en": "Iron Mental",
-				"zh": "钢铁心态"
+				"zh": "钢铁心态",
+				"ko": "강철 멘탈"
 			},
 			"desc": {
 				"ja": "メンタルが一度も減らないシフトを 10回",
 				"en": "10 shifts without losing any mental",
-				"zh": "心态完全没减少的班次10次"
+				"zh": "心态完全没减少的班次10次",
+				"ko": "멘탈이 줄지 않은 시프트가 10번"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2488,12 +2780,14 @@
 			"name": {
 				"ja": "ペイアウト率の哲学者",
 				"en": "Payout Philosopher",
-				"zh": "出奖率哲学家"
+				"zh": "出奖率哲学家",
+				"ko": "페이아웃 철학자"
 			},
 			"desc": {
 				"ja": "ペイアウト率 10〜80% のすべての10%刻み（8通り）でシフトを勤め上げた",
 				"en": "Finished shifts at every payout from 10% to 80% in 10% steps (8 settings)",
-				"zh": "在10%到80%每隔10%的全部出奖率（8种）下完成班次"
+				"zh": "在10%到80%每隔10%的全部出奖率（8种）下完成班次",
+				"ko": "페이아웃 10%부터 80%까지 10% 간격으로 모두(8가지) 시프트를 마쳤다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2505,12 +2799,14 @@
 			"name": {
 				"ja": "パーフェクト・ナイト",
 				"en": "Perfect Night",
-				"zh": "完美之夜"
+				"zh": "完美之夜",
+				"ko": "퍼펙트 나이트"
 			},
 			"desc": {
 				"ja": "年齢確認が2人来て、ほかの2人も納得させたパーフェクトシフト",
 				"en": "A perfect shift with 2 age checks and the other 2 customers satisfied",
-				"zh": "来了2位年龄确认顾客、另外2位也满意的完美班次"
+				"zh": "来了2位年龄确认顾客、另外2位也满意的完美班次",
+				"ko": "연령 확인 2번과 나머지 손님 2명 납득으로 퍼펙트 시프트"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2522,12 +2818,14 @@
 			"name": {
 				"ja": "称号マスター",
 				"en": "Title Master",
-				"zh": "称号大师"
+				"zh": "称号大师",
+				"ko": "칭호 마스터"
 			},
 			"desc": {
 				"ja": "称号を 100個 集めた",
 				"en": "Collected 100 titles",
-				"zh": "收集100个称号"
+				"zh": "收集100个称号",
+				"ko": "칭호를 100개 모았다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2538,13 +2836,15 @@
 			"id": "t150",
 			"name": {
 				"ja": "カスハラ防衛線の伝説",
-				"en": "Legend of the Defense Line",
-				"zh": "客诉防卫线的传说"
+				"en": "Legend of the Kasuhara Defense Line",
+				"zh": "顾客骚扰防线的传说",
+				"ko": "카스하라 방어선의 전설"
 			},
 			"desc": {
 				"ja": "ほかの称号をすべて集めた",
 				"en": "Collected every other title",
-				"zh": "收集了其他所有称号"
+				"zh": "收集了其他所有称号",
+				"ko": "다른 칭호를 전부 모았다"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2556,12 +2856,14 @@
 			"name": {
 				"ja": "社員モード入門",
 				"en": "Employee mode Rookie",
-				"zh": "正式员工模式入门"
+				"zh": "正式员工模式入门",
+				"ko": "정직원 모드 신입"
 			},
 			"desc": {
 				"ja": "社員モードでシフトを最後まで勤めた",
 				"en": "Finished a shift in Employee mode",
-				"zh": "在正式员工模式模式下完成了一个班次"
+				"zh": "在正式员工模式模式下完成了一个班次",
+				"ko": "정직원 모드로 시프트를 마쳤다"
 			},
 			"rarity": 3,
 			"joke": false,
@@ -2573,12 +2875,14 @@
 			"name": {
 				"ja": "修羅場の常連",
 				"en": "Regular of Carnage",
-				"zh": "修罗场常客"
+				"zh": "修罗场常客",
+				"ko": "지옥의 단골"
 			},
 			"desc": {
 				"ja": "社員モードでシフトを 30回 勤めた",
 				"en": "Finished 30 shifts in Employee mode",
-				"zh": "在正式员工模式模式下完成30个班次"
+				"zh": "在正式员工模式模式下完成30个班次",
+				"ko": "정직원 모드로 시프트를 30번 마쳤다"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2590,12 +2894,14 @@
 			"name": {
 				"ja": "地獄のパーフェクト",
 				"en": "Perfect in Hell",
-				"zh": "地狱完美"
+				"zh": "地狱完美",
+				"ko": "지옥의 퍼펙트"
 			},
 			"desc": {
 				"ja": "社員モードでパーフェクトシフト",
 				"en": "A perfect shift in Employee mode",
-				"zh": "在正式员工模式模式下完成完美班次"
+				"zh": "在正式员工模式模式下完成完美班次",
+				"ko": "정직원 모드에서 퍼펙트 시프트"
 			},
 			"rarity": 5,
 			"joke": false,
@@ -2607,12 +2913,14 @@
 			"name": {
 				"ja": "鋼の背骨",
 				"en": "Spine of Steel",
-				"zh": "钢铁脊梁"
+				"zh": "钢铁脊梁",
+				"ko": "강철의 의지"
 			},
 			"desc": {
 				"ja": "社員モードで屈服なしのシフトを 10回",
 				"en": "10 Employee mode shifts without giving in",
-				"zh": "正式员工模式模式下10个班次从未屈服"
+				"zh": "正式员工模式模式下10个班次从未屈服",
+				"ko": "정직원 모드에서 굴복하지 않은 시프트 10번"
 			},
 			"rarity": 4,
 			"joke": false,
@@ -2624,12 +2932,14 @@
 			"name": {
 				"ja": "社員モードの頂点",
 				"en": "Employee mode Summit",
-				"zh": "正式员工模式之巅"
+				"zh": "正式员工模式之巅",
+				"ko": "정직원 모드의 정점"
 			},
 			"desc": {
 				"ja": "社員モードの1シフトで 9,000点 以上",
 				"en": "9,000+ points in one Employee mode shift",
-				"zh": "正式员工模式模式单个班次9,000分以上"
+				"zh": "正式员工模式模式单个班次9,000分以上",
+				"ko": "정직원 모드 한 시프트에서 9,000점 이상"
 			},
 			"rarity": 5,
 			"joke": false,

@@ -84,11 +84,11 @@ func _economy() -> void:
 	GameSettings.kas_points = 1000
 	GameSettings.owned_items = []
 	GameSettings.equipped_items = {}
-	check("exchange 100 KAS", Shop.exchange(100) and GameSettings.kas_points == 900 and GameSettings.hp_points == 300, "hp=%d kas=%d" % [GameSettings.hp_points, GameSettings.kas_points])
+	check("exchange 100 CUS", Shop.exchange(100) and GameSettings.kas_points == 900 and GameSettings.hp_points == 300, "hp=%d kas=%d" % [GameSettings.hp_points, GameSettings.kas_points])
 	check("exchange refuses more than owned", not Shop.exchange(5000))
 	check("buy wooden frame with HP", Shop.buy("frame", "wood", "hp") and GameSettings.hp_points == 100 and Shop.owns("frame", "wood"))
 	check("cannot buy backdrop directly", not Shop.buy("bg", "bg_medal", "kas"))
-	check("cannot buy KAS-only item with HP", not Shop.buy("frame", "platinum", "hp"))
+	check("cannot buy CUS-only item with HP", not Shop.buy("frame", "platinum", "hp"))
 	GameSettings.kas_points = 2000
 	var res: Array = Shop.gacha_pull("kas", true)
 	check("10-pull gives 11", res.size() == 11, str(res.size()))

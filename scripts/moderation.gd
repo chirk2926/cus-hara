@@ -33,7 +33,7 @@ static func _load() -> void:
 	if _words.is_empty():
 		_words = {"sexual": PackedStringArray(), "hate": PackedStringArray()}
 		_ascii = {"sexual": [], "hate": []}
-	_phone = RegEx.create_from_string("(?<!\\d)0\\d{1,4}[-ー－ ]\\d{1,4}[-ー－ ]\\d{3,4}(?!\\d)|(?<!\\d)0[5789]0\\d{8}(?!\\d)|\\+\\d{1,3}[- ]?\\d{2,4}[- ]?\\d{3,4}[- ]?\\d{3,4}")
+	_phone = RegEx.create_from_string("(?<!\\d)0\\d{1,4}[-ー－ ]\\d{1,4}[-ー－ ]\\d{3,4}(?!\\d)|(?<!\\d)0[5789]0\\d{8}(?!\\d)|(?<!\\d)01[016789]\\d{7,8}(?!\\d)|\\+\\d{1,3}[- ]?\\d{2,4}[- ]?\\d{3,4}[- ]?\\d{3,4}")
 	_email = RegEx.create_from_string("[\\w.+-]+@[\\w-]+\\.[\\w.]+")
 
 

@@ -1,16 +1,18 @@
-# Microsoft Store の掲載に使うもの（要件#100）
+# Microsoft Store の掲載に使うもの（要件#100, #102）
 
 パートナーセンター（https://partner.microsoft.com/dashboard）で入力するものの下書きです。〔〕の中は依頼者が決めて書きかえてください。
-ストア用の画像は CI が描いた `docs/store/`（1920×1080、日本語・英語・中国語）を使います。パッケージ（MSIX）は CI の成果物 `CusHara-msix`（docs/MAINTENANCE.md 7節）。
+ストア用の画像は CI が描いた `docs/store/`（1920×1080、日本語・英語・中国語・韓国語）を使います。
+**コンビニは今「準備中」で閉じています（要件#102）。** コンビニを閉じたまま出すなら、紹介文の「コンビニ」の部分を消すか「近日公開」にしてください（管理画面の 設定 → 運営 → 「コンビニを開ける」で開けられます）。パッケージ（MSIX）は CI の成果物 `CusHara-msix`（docs/MAINTENANCE.md 7節）。
 
 ## 1. 基本の情報
 | 項目 | 入れるもの |
 |---|---|
-| アプリ名（予約） | カスハラ防衛線 ／ 英語: Customer Harassment Defense Line ／ 中国語: 客诉防卫线 |
+| 発行者の表示名 | medal（著作権表示は © 2026 medal） |
+| アプリ名（予約） | カスハラ防衛線 ／ 英語: Kasuhara Defense Line – Calm the Angry Customer ／ 中国語: 顾客骚扰防线 – 安抚愤怒的顾客 ／ 韓国語: 카스하라 방어선 – 화난 손님 달래기 |
 | カテゴリ | ゲーム → シミュレーション（サブ: カジュアル・パーティ） |
-| 価格 | 〔無料〕（ゲーム内の通貨 HP・KAS はゲームの中だけのもので、お金では買えない） |
+| 価格 | 〔無料〕（ゲーム内の通貨 HP・CUS はゲームの中だけのもので、お金では買えない） |
 | アプリ内購入 | なし |
-| プライバシーポリシーの URL | `https://〔ゲームサーバーのドメイン〕/privacy`（英語は `?lang=en`、中国語は `?lang=zh`。ゲームサーバーが配る） |
+| プライバシーポリシーの URL | `https://〔ゲームサーバーのドメイン〕/privacy`（英語は `?lang=en`、中国語は `?lang=zh`、韓国語は `?lang=ko`。ゲームサーバーが配る） |
 | サポートの連絡先 | 〔連絡先メールアドレス〕 |
 | 必要なもの | Windows 10 / 11（64ビット）、キーボード。マイクは声の対戦のときだけ |
 | 機能の宣言（Capabilities） | インターネット（クライアント）、マイク（声の対戦） |
@@ -31,7 +33,7 @@
 - クレーンゲームの台の調整、メダルゲームの筐体の修理などのミニゲーム
 - オンライン対戦: 店員役とお客さん役に分かれて、文字か声で言い合う（ランクマッチ・フレンド対戦）
 - 155個の称号、メンタルランク、背景ガチャ、キャラクターの着せかえ（ゲーム内のポイントだけ。お金はかかりません）
-- 日本語・英語・中国語（簡体字）
+- 日本語・英語・中国語（簡体字）・韓国語
 
 ※ 対戦の発言は、不適切な内容のチェックとAIの判定に使います（初めての対戦の前に確認します）。
 
@@ -50,7 +52,7 @@ Type any reply you like. An AI plays the customer and scores your wording, empat
 - Mini-games: adjust crane machines, open up and repair medal-game cabinets
 - Online versus: one plays the clerk, one plays the customer, arguing by text or voice (ranked and friend matches)
 - 155 titles, mental rank, backdrop gacha and character dress-up (in-game points only, no real money)
-- Japanese, English and Simplified Chinese
+- Japanese, English, Simplified Chinese and Korean
 
 Note: remarks in versus matches are checked for inappropriate content and scored by AI (you'll be asked before your first match).
 
@@ -69,11 +71,30 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 - 小游戏：调整抓娃娃机、打开并修理推币机
 - 在线对战：一人扮演店员、一人扮演顾客，用文字或语音对决（排位赛、好友对战）
 - 155个称号、心理等级、背景扭蛋、角色换装（只用游戏内点数，无需真实货币）
-- 日语、英语、简体中文
+- 日语、英语、简体中文、韩语
 
 注：对战中的发言会用于检查不当内容和AI评分（首次对战前会请你确认）。
 
 **关键词**: 接待, 投诉, AI, 对话, 打字, 对战, 模拟
+
+### 한국어
+**짧은 설명**
+무리한 클레임에 말로 맞서라. AI가 손님을 연기하는 접객 게임.
+
+**설명**
+편의점과 게임센터에서 일하는 신입 직원이 되어, 차례차례 찾아오는 "조금 무리한 손님"을 자신의 말로 응대하는 게임입니다.
+답변은 키보드로 자유롭게 입력. AI가 손님을 연기하고, 당신의 말투·공감·해결책을 채점합니다. 사과만 해도, 시키는 대로 다 해도 안 됩니다. 가게 규칙을 지키면서 손님이 납득하고 돌아가게 하세요.
+
+- AI가 연기하는, 매번 다른 손님 (개그 손님·수다쟁이·화장실 위치만 묻는 사람도)
+- 연령 확인, 환전기, 메달 걸림, 기계를 치는 손님… 있을 법한 문제에 가게 행동으로 대응
+- 인형뽑기 기계 조정, 메달 게임기 수리 등의 미니게임
+- 온라인 대전: 직원 역과 손님 역으로 나뉘어 글자나 목소리로 언쟁 (랭크 매치·친구 대전)
+- 칭호 155개, 멘탈 랭크, 배경 뽑기, 캐릭터 꾸미기 (게임 내 포인트만. 현금은 들지 않습니다)
+- 일본어·영어·중국어(간체)·한국어
+
+※ 대전의 발언은 부적절한 내용 확인과 AI 채점에 사용됩니다 (첫 대전 전에 확인합니다).
+
+**키워드**: 접객, 클레임, AI, 대화, 타자, 대전, 시뮬레이션
 
 ## 3. 画像
 | 種類 | 大きさ | ファイル |
@@ -96,7 +117,7 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 | 薬物・アルコール・たばこ | あり（言及のみ） | コンビニの年齢確認で、お酒・たばこを買おうとするお客さんが出る（使う描写はない） |
 | ギャンブル（本物のお金） | なし | |
 | ギャンブルを模したもの | なし（※） | メダルゲームの台・スロットの見た目はあるが、賭けて遊ぶ場面はない。メダルは換金も景品交換もできない（ゲーム内でも明記） |
-| ゲーム内の購入（本物のお金） | なし | ガチャは、ゲーム内のポイント（HP・KAS）だけ。お金では買えない |
+| ゲーム内の購入（本物のお金） | なし | ガチャは、ゲーム内のポイント（HP・CUS）だけ。お金では買えない |
 | ランダムなアイテム（ガチャ） | あり（ゲーム内のポイントのみ） | 背景ガチャ。本物のお金は使わない |
 | ユーザーどうしの交流 | あり | オンライン対戦で、文字・声でやりとりする。不適切な発言の自動チェック・通報・利用停止がある |
 | 位置情報の共有 | なし | |
@@ -108,7 +129,7 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 
 ## 5. 審査に出す前の確認
 - [ ] パッケージの Identity（`MSIX_IDENTITY_NAME`・`MSIX_PUBLISHER`）を、パートナーセンターの「製品 ID」の値にした（GitHub の Variables。docs/MAINTENANCE.md 7節）
-- [ ] プライバシーポリシーの〔運営者名〕〔連絡先〕を書きかえ、ゲームサーバーで公開した（`server/public/privacy.*.html`）
+- [ ] プライバシーポリシーの〔連絡先〕を書きかえ（運営者名は medal に設定済み）、ゲームサーバーで公開した（`server/public/privacy.*.html`）
 - [ ] ゲームの既定のサーバーの URL を、公開するドメインにした
 - [ ] EOS の開発者ポータルに、実績 t001〜t155 を登録した（docs/HANDOVER.md 4b）。本番の ID は `config/eos.local.cfg`（リポジトリに入れない）
 - [ ] 審査用のメモ: 「オンライン対戦の確認には、2台で同時にランクマッチに並ぶか、フレンド対戦の部屋コードを使ってください。1人用はサーバーなしでも遊べます」

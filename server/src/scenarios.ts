@@ -118,7 +118,7 @@ export function materializeSpend(c: Customer, payout: number, lang: Lang, rnd: (
   c.actions = { ...(c.actions ?? {}) };
   if (lie) {
     c.actions.credit = "yield";
-    const extra = lang === "ja" ? ["記録", "データ", "履歴", "実際"] : lang === "zh" ? ["记录", "数据", "实际"] : ["record", "data", "log", "actually"];
+    const extra = lang === "ja" ? ["記録", "データ", "履歴", "実際"] : lang === "zh" ? ["记录", "数据", "实际"] : lang === "ko" ? ["기록", "데이터", "실제"] : ["record", "data", "log", "actually"];
     c.solution_keywords = [...(c.solution_keywords ?? []), ...extra];
   }
   return c;

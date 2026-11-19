@@ -9,6 +9,7 @@ import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, c
 import { judgeStaff } from "./keyword_judge.ts";
 import { moderate } from "./moderation.ts";
 import { runtime } from "./settings.ts";
+import { openStages } from "./stages.ts";
 import { markReported } from "./matchlogs.ts";
 import { readNoticeImage } from "./notices.ts";
 import fs from "node:fs";
@@ -158,12 +159,13 @@ export function info(lobby: Lobby) {
     online: lobby.stats(),
     // お知らせとメンテナンス（要件#100。管理画面から）
     maintenance: runtime.maintenance,
+    open_stages: openStages(),
     maintenance_message: runtime.maintenance ? runtime.maintenanceMessage : "",
     // 言語ごとの見出しと本文（Markdown）。その言語が空なら英語 → 日本語の順で使う
     notices: announcements(true).slice(0, 5).map((a) => ({
       id: a.id,
-      title: { ja: a.title_ja, en: a.title_en || a.title_ja, zh: a.title_zh || a.title_en || a.title_ja },
-      body: { ja: a.text_ja, en: a.text_en || a.text_ja, zh: a.text_zh || a.text_en || a.text_ja },
+      title: { ja: a.title_ja, en: a.title_en || a.title_ja, zh: a.title_zh || a.title_en || a.title_ja, ko: a.title_ko || a.title_en || a.title_ja },
+      body: { ja: a.text_ja, en: a.text_en || a.text_ja, zh: a.text_zh || a.text_en || a.text_ja, ko: a.text_ko || a.text_en || a.text_ja },
       font: a.font,
       image: a.image ? `/api/v1/notice_image/${a.image}` : "",
       at: a.created_at,
@@ -406,7 +408,7 @@ export function createHttpServer(lobby: Lobby): http.Server {
     const url = new URL(req.url ?? "/", "http://localhost");
     // プライバシーポリシー（要件#101）。/privacy?lang=ja|en|zh
     if (req.method === "GET" && (url.pathname === "/privacy" || url.pathname === "/privacy/")) {
-      const lang = ["ja", "en", "zh"].includes(url.searchParams.get("lang") ?? "") ? url.searchParams.get("lang") : "ja";
+      const lang = ["ja", "en", "zh", "ko"].includes(url.searchParams.get("lang") ?? "") ? url.searchParams.get("lang") : "ja";
       try {
         const html = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", `privacy.${lang}.html`), "utf-8");
         res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff",

@@ -85,7 +85,7 @@
 - 音声対戦の文字起こしをどこで行うか（自前の whisper サーバー／有料の文字起こしAPI）。費用と精度が変わる。
 - サーバーのAIモデル。既定は `claude-haiku-5-5`（要件#33）。品質を上げたいときは環境変数 `CLAUDE_MODEL` で変えられる。
 - 難易度（要件#49）: 怒りの上がる速さを下げた（1人用 1.25→0.8、対戦 1.1→0.75）。実際に遊んで、まだ難しい／簡単すぎるなら、`solo_game.gd` の `BASE_ANGER_RATE` と `server/src/config.ts` の `baseAngerRate` を調整する。
-- ゲーム名「カスハラ防衛線」（英語名 Customer Harassment Defense Line）、店名、ランク名は仮の案。
+- ゲーム名「カスハラ防衛線」（英語名 Kasuhara Defense Line – Calm the Angry Customer）、店名、ランク名は仮の案。
 
 ## 4b. 依頼者にお願いしたいこと（EOS。要件#48, #50）
 

@@ -325,10 +325,11 @@ const LANG_LINE: Record<Lang, string> = {
   ja: "",
   en: "\n\n# 出力の言語\n出力するテキスト（呼び名・名前・メモ・セリフ・要求・コメント・キーワード）はすべて自然な英語で書く。舞台は日本の店のまま（おにぎり、おでんなどはそのまま使ってよい）。お金はドルで書く（クレーンゲーム1回 = $1）。キーワードは小文字の短い英語にする。",
   zh: "\n\n# 出力の言語\n出力するテキスト（呼び名・名前・メモ・セリフ・要求・コメント・キーワード）はすべて自然な簡体字中国語（中国大陸の言い方）で書く。舞台は日本の店のまま。お金は元で書く（クレーンゲーム1回 = 8元）。キーワードは2〜5文字の短い中国語にする。",
+  ko: "\n\n# 出力の言語\n出力するテキスト（呼び名・名前・メモ・セリフ・要求・コメント・キーワード）はすべて自然な韓国語（ハングル。丁寧語・ため口はキャラクターに合わせる）で書く。舞台は日本の店のまま（おにぎり、おでんなどは韓国語の言い方でよい）。お金はウォンで書く（クレーンゲーム1回 = 1,000원）。キーワードは2〜6文字の短い韓国語の語幹にする（例: 확인, 교환, 환불）。",
 };
 
 // AIの出力に、ゲームと関係ないもの（コード、AI・モデル名、指示文）が混ざっていないか。要件#28
-const LEAK = /```|<\/?[a-z]+[^>]*>|https?:\/\/|\bclaude\b|anthropic|openai|chat\s?gpt|\bgpt-?\d|language model|\bllm\b|as an ai|system prompt|言語モデル|システムプロンプト|プロンプト|AIアシスタント|\bdef\s+\w+\(|function\s*\w*\(|console\.log|import\s+\w+\s+from|#include/i;
+const LEAK = /```|<\/?[a-z]+[^>]*>|https?:\/\/|\bclaude\b|anthropic|openai|chat\s?gpt|\bgpt-?\d|language model|\bllm\b|as an ai|system prompt|言語モデル|システムプロンプト|プロンプト|AIアシスタント|언어 모델|프롬프트|AI 어시스턴트|\bdef\s+\w+\(|function\s*\w*\(|console\.log|import\s+\w+\s+from|#include/i;
 
 export function leaksMeta(text: string): boolean {
   return LEAK.test(text);
@@ -431,7 +432,7 @@ export async function judgeStaffTurn(stage: StageId, c: Customer, history: Histo
       resolve_delta: 0,
       yielded: false,
       customer_reply: scriptedLine(c, "angry", lang),
-      comment: pick(lang, { ja: "接客と関係ない話はやめよう。", en: "Stay on the job, not off-topic chatter.", zh: "别聊和接待无关的话题。" }),
+      comment: pick(lang, { ja: "接客と関係ない話はやめよう。", en: "Stay on the job, not off-topic chatter.", zh: "别聊和接待无关的话题。", ko: "접객과 관계없는 이야기는 그만." }),
       flag: r.flag,
     };
   }
@@ -453,7 +454,7 @@ export async function judgeCustomerTurn(stage: StageId, c: Customer, history: Hi
   ];
   const r = await callJson(VS_CUSTOMER_SYSTEM, user, CustomerLineSchema);
   if (leaksMeta(r.comment)) {
-    return { anger_delta: 0, resolve_delta: 8, flag: r.flag, comment: pick(lang, { ja: "接客と関係ない話はやめよう。", en: "Stay on the job, not off-topic chatter.", zh: "别聊和接待无关的话题。" }) };
+    return { anger_delta: 0, resolve_delta: 8, flag: r.flag, comment: pick(lang, { ja: "接客と関係ない話はやめよう。", en: "Stay on the job, not off-topic chatter.", zh: "别聊和接待无关的话题。", ko: "접객과 관계없는 이야기는 그만." }) };
   }
   return {
     anger_delta: clamp(Math.round(r.anger_delta), 0, 12),

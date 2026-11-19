@@ -478,7 +478,8 @@ func set_actions(items: Array) -> void:
 func set_comment(t: String) -> void:
 	_note.text = t
 	var n: int = t.length()
-	var long_at: int = 40 if TranslationServer.get_locale().begins_with("ja") or TranslationServer.get_locale().begins_with("zh") else 90
+	var loc: String = TranslationServer.get_locale()
+	var long_at: int = 40 if loc.begins_with("ja") or loc.begins_with("zh") or loc.begins_with("ko") else 90
 	_note.add_theme_font_size_override("font_size", UI.S_BODY if n <= long_at else (UI.S_SMALL if n <= long_at * 2 else UI.S_SMALL - 2))
 	# 高さ: 字の大きさと幅から行の数を見積もり、5行ぶんまで伸ばす。それ以上はスクロール（要件#90: 1行ぶんしかなく切れていた）
 	var fs: float = float(_note.get_theme_font_size("font_size"))

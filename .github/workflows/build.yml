@@ -138,6 +138,12 @@ jobs:
           timeout 300 godot --headless -- --smoke --source=offline --lang=zh --profile=solo_zh --test 2>&1 | tee smoke_zh.log
           grep -q "SMOKE OK" smoke_zh.log
 
+      - name: Solo smoke test (offline, Korean)
+        run: |
+          set -o pipefail
+          timeout 300 godot --headless -- --smoke --source=offline --lang=ko --profile=solo_ko 2>&1 | tee smoke_ko.log
+          grep -q "SMOKE OK" smoke_ko.log
+
       - name: Solo smoke test (via the server, English)
         run: |
           set -o pipefail
@@ -169,6 +175,8 @@ jobs:
           set -o pipefail
           timeout 420 godot --headless -- --qa --source=offline --lang=ja --profile=qa_ja 2>&1 | tee qa_ja.log
           grep -q "QA OK" qa_ja.log
+          timeout 420 godot --headless -- --qa --source=offline --lang=ko --profile=qa_ko 2>&1 | tee qa_ko.log
+          grep -q "QA OK" qa_ko.log
 
       - name: Fail on script errors
         if: always()
@@ -239,7 +247,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libgl1-mesa-dri libvulkan1
           rm -rf docs/screenshots
-          for lang in ja en zh; do
+          for lang in ja en zh ko; do
             xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 godot --resolution 1280x720 -- --shots --lang=$lang --profile=shots_$lang 2>&1 | tee shots_$lang.log || true
           done
           # 画面の大きさ・縦横比が違う環境（要件#44, #45）
@@ -248,7 +256,7 @@ jobs:
           # Microsoft Store 用（1920×1080。要件#100）: 撮った中から見せたい画面だけを docs/store/ に
           rm -rf docs/store build/store_shots
           mkdir -p docs/store
-          for lang in ja en zh; do
+          for lang in ja en zh ko; do
             xvfb-run -a -s "-screen 0 1920x1080x24" timeout 900 godot --resolution 1920x1080 -- --shots --lang=$lang --shot-tag=store --profile=shots_store_$lang 2>&1 | tee shots_store_$lang.log || true
             n=1
             for s in 01_title konbini_1_play arcade_2_angry konbini_3c_id_card arcade_5_crane_adjust 10_versus_customer_view 06b_titles 06g_avatar_maker; do
@@ -301,7 +309,7 @@ jobs:
       # 本番の値は、リポジトリの Settings → Variables に登録する（パートナーセンターの「製品 ID」に表示される値）
       MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME || 'CusHara.Dev' }}
       MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER || 'CN=CusHaraDev' }}
-      MSIX_PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY || 'CusHara Dev' }}
+      MSIX_PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY || 'medal' }}
       MSIX_VERSION: ${{ vars.MSIX_VERSION || '0.2.0.0' }}
     steps:
       - uses: actions/checkout@v4

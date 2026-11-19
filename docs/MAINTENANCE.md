@@ -70,7 +70,7 @@ exe にデータ（pck）を埋め込む設定なので、配るのは exe 1つ�
 
 | やりたいこと | 触る場所 |
 |---|---|
-| 台本のお客さんを増やす・直す | `data/scenarios.json` と `data/scenarios.en.json`（同じ順番で両方。形は SPEC 4節） |
+| 台本のお客さんを増やす・直す | `data/scenarios.json` と `data/scenarios.en.json`・`.zh.json`・`.ko.json`（同じ順番で全部。形は SPEC 4節） |
 | 1人用の難易度（怒りの上がる速さ） | `solo_game.gd` の `BASE_ANGER_RATE` / `RATE_STEP`、各お客さんの `patience` |
 | ゲームセンターの台ごとのボタン | `data/actions.json` の `machines`（ボタン）・`labels`（表示名）・`default`（効果）。お客さんの `machine` と `actions` |
 | ペイアウト率の効き方（クレームの出やすさ・言う金額） | `server/src/scenarios.ts` の `spendWeight` / `materializeSpend` と、同じ決まりの `scripts/scenarios.gd`（両方そろえて直す） |
@@ -181,14 +181,18 @@ python3 tools/i18n.py check
 python3 tools/i18n.py missing en
 ```
 
-- 台本は `data/scenarios.json`（日本語）と `data/scenarios.en.json`（英語）。**お客さんの順番と見た目の値をそろえる**こと（サーバーのテストが項目の有無を検査する）。
+- 台本は `data/scenarios.json`（日本語）と `data/scenarios.<言語>.json`（英語・中国語・韓国語）。**お客さんの順番と見た目の値をそろえる**こと（サーバーのテストが項目の有無を検査する）。
 - 判定の語は `data/judge_words.json` の `ja` / `en`。店長の一言の文言は `server/src/keyword_judge.ts` と `scripts/offline_judge.gd` の `COMMENTS`。
 
 ### 言語を増やす
 1. `data/i18n/<言語>.json` を作る（`python3 tools/i18n.py missing <言語>` で空の一覧が作れる）。`tools/i18n.py` の `LANGS` に足す。
 2. `data/scenarios.<言語>.json` と `data/judge_words.json` の `<言語>` を作る。
 3. サーバー: `server/src/lang.ts` の `LANGS`、`keyword_judge.ts` の `COMMENTS` と `OFFTOPIC`、`llm.ts` の `LANG_LINE` に足す。
-4. クライアント: `game_settings.gd` の `LANGS`、`offline_judge.gd` の `COMMENTS`、`llm_client.gd` の言語指定に足す。
+4. クライアント: `game_settings.gd` の `LANGS`・`CURRENCY`、`offline_judge.gd` の `COMMENTS`・`OFFTOPIC`、`llm_client.gd` の言語指定に足す。言語ごとのセリフを持つ所（`age_check.gd` の `_tr`、`solo_game.gd` の `Judge.pick_lang`・`_smell_talk`・`_wants_other_id` など、`repair_stage.gd` の看板）にも足す。`grep -n '"zh"' scripts/*.gd server/src/*.ts` で探せる。
+5. 言語ごとの項目を持つデータ（`data/titles.json`・`data/shop.json`・`data/actions.json`・`data/offenders.json`）にその言語を足す。
+6. その言語の字がフォントに無ければ、`assets/fonts/` にフォントを置いて `ui_kit.gd` の予備に足す（韓国語は `F_KR`）。
+7. プライバシーポリシー: `tools/privacy_gen.py` に足して `python3 tools/privacy_gen.py server/public`。サーバーの `/privacy` と、お知らせ（`db.ts` の `title_<言語>`・`text_<言語>`、`admin/app.js` の `LANGS`）にも足す。
+（韓国語は要件#102 でこの手順で足した）
 
 ## 10. ライセンス（詳しくは ENGINE.md）
 
