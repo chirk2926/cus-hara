@@ -69,6 +69,8 @@ const GEN_SYSTEM: String = """あなたはコミカルな接客ゲーム「カ�
 
 # 守ること
 - クレームには小さな「一理」があり、正当な解決策（交換・規定内の返金・説明・確認など）が存在すること。
+- 「用件の種類」が質問・世間話のときは、怒っていなくてもよい（困っている・あせっている・話したいだけ、など）。それでも「不当な要求」には、店が応じてはいけない小さな無茶（例: トイレまで手をつないで連れて行け、仕事を止めて二時間話を聞け）を入れ、正しい対応（場所の案内・相づちを打ってやさしく区切る など）を状況メモに書く。
+- 似た人物・似た用件を続けない。「すでに登場した人物」と同じ題材（返金・取れない・態度が悪い など）は避ける。
 - トーンは誇張されたコメディ。笑える理不尽さにする。
 - 差別的表現・性的表現・実在の企業名や人物名・生々しい暴力の脅しは使わない。
 - 出力は指定されたJSONのみ。
@@ -163,6 +165,38 @@ func _supports_fallback(model: String) -> bool:
 	return model.begins_with("claude-opus-5") or model.begins_with("claude-sonnet-5-5") or model.begins_with("claude-fable-5")
 
 
+## お客さんの用件の種類（要件#98: 同じようなクレームばかりにしない）。[重み, 説明]
+const REQUEST_KINDS: Dictionary = {
+	"arcade": [
+		[5.0, "定番のクレーム（台・景品・遊び方への不満）"],
+		[3.0, "ゲームセンターで実際によくある困りごと（両替機・音量・空調・混雑・席取り・忘れ物・景品の箱の傷・充電・トイレや喫煙所の場所など。毎回ちがうものを選ぶ）"],
+		[2.0, "場所や決まりの質問から始まり、ちょっと無茶なお願いになる（トイレ・喫煙所・駐車場・ATM・Wi-Fi・年齢制限など）"],
+		[1.5, "世間話・長話（天気・昔のゲーセン・家族自慢など）で店員の仕事を止めてしまう人。悪気はないが要求が大きい"],
+		[1.5, "思わず笑う突飛な用件（ぬいぐるみと結婚したい、アームに名前をつけたい、など。例と同じものは避けて新しく考える）"],
+	],
+	"konbini": [
+		[5.0, "定番のクレーム（商品・会計・接客への不満）"],
+		[3.0, "コンビニで実際によくある困りごと（レジ袋・温め・ポイント・宅配便・公共料金の支払い・Wi-Fi・トイレ・灰皿・品切れなど。毎回ちがうものを選ぶ）"],
+		[2.0, "場所や決まりの質問から始まり、ちょっと無茶なお願いになる（トイレ・ATM・喫煙所・コピー機・取り置きなど）"],
+		[1.5, "世間話・長話（天気・孫自慢・雨宿りなど）でレジの列を止めてしまう人。悪気はないが要求が大きい"],
+		[1.5, "思わず笑う突飛な用件（肉まんに名前をつけて取り置きさせる、おでんの汁だけほしい、など。例と同じものは避けて新しく考える）"],
+	],
+}
+
+
+static func _pick_kind(stage_id: String) -> String:
+	var list: Array = REQUEST_KINDS.get(stage_id, REQUEST_KINDS["arcade"])
+	var total: float = 0.0
+	for it in list:
+		total += float(it[0])
+	var r: float = randf() * total
+	for it in list:
+		r -= float(it[0])
+		if r <= 0.0:
+			return str(it[1])
+	return str(list[0][1])
+
+
 ## お客さんを1人生成する。avoid_titles: 直近に出た人物（重複回避）
 func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false, spend: bool = false) -> Dictionary:
 	var persona: String = str(PERSONALITIES[randi() % PERSONALITIES.size()])
@@ -170,6 +204,9 @@ func generate_customer(stage_id: String, avoid_titles: Array, wild: bool = false
 		# 要注意人物のイベント（要件#52）。病気や障害を連想させる描写はさせない
 		persona = "ネタ枠・要注意人物（言動が突拍子もなく、理屈が独特すぎて会話がかみ合わない、完全にコメディの人物。病気や障害を連想させる描写はしない）"
 	var user_text: String = "舞台: %s\n人物の方向性: %s\n" % [str(STAGE_TEXT.get(stage_id, STAGE_TEXT["konbini"])), persona]
+	# 用件の種類（要件#98。サーバーの REQUEST_KINDS と同じ）。「〇〇円使った」・要注意人物のときはそれぞれの決まりを優先
+	if not spend and not wild:
+		user_text += "用件の種類: %s\n" % _pick_kind(stage_id)
 	if not avoid_titles.is_empty():
 		user_text += "すでに登場した人物（似た人物・似たクレームは避ける）: %s\n" % ", ".join(PackedStringArray(avoid_titles))
 	if spend and stage_id == "arcade":

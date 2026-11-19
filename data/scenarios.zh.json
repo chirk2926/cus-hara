@@ -777,6 +777,450 @@
 					"discount": "bad",
 					"dogeza": "bad"
 				}
+			},
+			{
+				"title": "想借厕所的男人",
+				"name": "借野 便造",
+				"look": {
+					"body_color": "#6a7a8a",
+					"skin_color": "#efc8a5",
+					"hair_color": "#555555",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 1.0
+				},
+				"memo": "想借厕所。店里的厕所客人可以用，但现在在打扫，要等5分钟左右。不能让打扫中途停下，也不能用员工厕所。附近公园也有厕所。",
+				"opening": "借个厕所！诶，在打扫？那员工厕所也行！现在就要！",
+				"demand": "现在就让他用员工厕所",
+				"patience": 1.2,
+				"start_anger": 30,
+				"solution_keywords": [
+					"打扫",
+					"5分钟",
+					"稍等",
+					"公园",
+					"马上",
+					"带您去"
+				],
+				"yield_keywords": [
+					"员工厕所",
+					"里面的",
+					"请进",
+					"破例"
+				],
+				"lines": {
+					"calm": [
+						"5分钟啊……我忍着。",
+						"公园更快？我跑过去！"
+					],
+					"angry": [
+						"5分钟就是永远！",
+						"我比打扫重要！"
+					],
+					"neutral": [
+						"……还没好？"
+					],
+					"demand": [
+						"员工厕所就行！"
+					],
+					"resolved": "呼……顺便买杯咖啡吧。",
+					"explode": "算了！跑去公园！……好远！",
+					"yielded": "得救了！……员工厕所真干净。"
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "炫耀孙子的奶奶",
+				"name": "孙田 自慢",
+				"look": {
+					"body_color": "#8a6a4a",
+					"skin_color": "#f0cfb0",
+					"hair_color": "#dddddd",
+					"hair": "perm",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.92,
+					"gender": "f"
+				},
+				"memo": "不是投诉，只是炫耀孙子停不下来。后面排起了队。还没结账。不要无视她，一边附和，一边推进结账，让队伍动起来。",
+				"opening": "哎呀，我孙子前几天赛跑拿了第一！要看照片吗？有一百张。结账？等会儿吧。",
+				"demand": "停下队伍看一百张孙子的照片",
+				"patience": 1.4,
+				"start_anger": 28,
+				"solution_keywords": [
+					"好厉害",
+					"恭喜",
+					"结账",
+					"下次再听",
+					"后面",
+					"等候"
+				],
+				"yield_keywords": [
+					"一百张",
+					"慢慢看",
+					"排队没关系",
+					"等会儿结账"
+				],
+				"lines": {
+					"calm": [
+						"哎呀，后面有人啊。那先结账吧。",
+						"下次来接着讲给你听。"
+					],
+					"angry": [
+						"你不听我孙子的事吗！？",
+						"才第十张！"
+					],
+					"neutral": [
+						"然后下一张照片……"
+					],
+					"demand": [
+						"看，还有九十张！"
+					],
+					"resolved": "你真是个好孩子。下次把孙子运动会的照片也带来。",
+					"explode": "哼！不讲给你听了！……下周还来就是了！",
+					"yielded": "哎呀，真高兴！那我从第一张开始讲……"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "为撤掉烟灰缸生气的男人",
+				"name": "灰谷 吸藏",
+				"look": {
+					"body_color": "#2a2a2a",
+					"skin_color": "#e8bf98",
+					"hair_color": "#3a3a3a",
+					"hair": "short",
+					"build": "big",
+					"accessory": "necktie",
+					"height": 1.05
+				},
+				"memo": "对店门口的烟灰缸被撤掉很生气。按地方规定撤掉的，不能放回去。可以告诉他附近公共吸烟处的位置。",
+				"opening": "喂！店门口的烟灰缸弄哪去了！？我在这抽了二十年！马上放回去！",
+				"demand": "马上把烟灰缸放回店门口",
+				"patience": 0.95,
+				"start_anger": 42,
+				"solution_keywords": [
+					"地方",
+					"规定",
+					"吸烟处",
+					"带路",
+					"附近",
+					"抱歉"
+				],
+				"yield_keywords": [
+					"放回去",
+					"摆出来",
+					"准备一个",
+					"拿出来"
+				],
+				"lines": {
+					"calm": [
+						"……地方规定的话没办法。吸烟处在哪？",
+						"在附近的话就算了。"
+					],
+					"angry": [
+						"要抹掉二十年的历史吗！",
+						"吸烟者没有人权吗！"
+					],
+					"neutral": [
+						"那烟灰缸呢？"
+					],
+					"demand": [
+						"把烟灰缸放回去！"
+					],
+					"resolved": "那个拐角是吧。……顺便买罐咖啡。",
+					"explode": "算了！我买一百个便携烟灰缸！……就在这！",
+					"yielded": "懂就好！……诶，被罚的是店？"
+				},
+				"actions": {
+					"discount": "bad",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "嫌Wi-Fi慢的男人",
+				"name": "回线 细夫",
+				"look": {
+					"body_color": "#3a6ea5",
+					"skin_color": "#f2cba8",
+					"hair_color": "#2a2a2a",
+					"hair": "cap",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.97
+				},
+				"memo": "说店里的免费Wi-Fi太慢。Wi-Fi是免费服务，不保证速度。可以教他重新连接的步骤。不能作为道歉免费送商品。",
+				"opening": "你们的Wi-Fi太慢了！视频一点都加载不出来！作为道歉，免费给我三个饭团！",
+				"demand": "以Wi-Fi慢为由免费要三个饭团",
+				"patience": 1.0,
+				"start_anger": 38,
+				"solution_keywords": [
+					"重新连接",
+					"步骤",
+					"免费服务",
+					"保证",
+					"教您",
+					"拥挤"
+				],
+				"yield_keywords": [
+					"免费",
+					"不要钱",
+					"送您",
+					"请收下"
+				],
+				"lines": {
+					"calm": [
+						"重新连接就行？我试试。",
+						"也是，免费Wi-Fi嘛。"
+					],
+					"angry": [
+						"我不想再看加载转圈了！",
+						"我推的直播要开始了！"
+					],
+					"neutral": [
+						"……还在转圈。"
+					],
+					"demand": [
+						"饭团就算了结！"
+					],
+					"resolved": "连上了！赶上直播了！饭团我买！",
+					"explode": "算了！跑回家用家里的Wi-Fi！",
+					"yielded": "三个饭团到手！……Wi-Fi还是很慢。"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "给肉包起名的男人",
+				"name": "蒸野 包太",
+				"look": {
+					"body_color": "#ffb000",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#2a2a2a",
+					"hair": "spiky",
+					"build": "normal",
+					"accessory": "sunglasses",
+					"height": 1.02
+				},
+				"memo": "给蒸柜里的肉包起名叫\"包太郎\"，要把最大的留到明天晚上。店里不做肉包预留。可以从现在有的里面挑一个。",
+				"opening": "右数第二个肉包，我给它起名叫包太郎了。帮我留到明天晚上。不许卖给别人。",
+				"demand": "把起了名的肉包留到明天晚上",
+				"patience": 1.0,
+				"start_anger": 34,
+				"solution_keywords": [
+					"预留",
+					"不能",
+					"现在",
+					"挑选",
+					"热的",
+					"推荐"
+				],
+				"yield_keywords": [
+					"帮您留",
+					"留着",
+					"不卖",
+					"到明天"
+				],
+				"lines": {
+					"calm": [
+						"……现在吃吧。包太郎，我开动了。",
+						"不能留的话，我现在就接它走。"
+					],
+					"angry": [
+						"你要把包太郎交给别人吗！",
+						"起了名字就是家人！"
+					],
+					"neutral": [
+						"包太郎今天也很饱满。"
+					],
+					"demand": [
+						"保护好包太郎！"
+					],
+					"resolved": "包太郎好吃。……起了名字就不好下口了。",
+					"explode": "算了！我去找包次郎！",
+					"yielded": "拜托了！……啊，留到明晚就硬邦邦了。"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				},
+				"rare": true
+			},
+			{
+				"title": "快递单写错的男人",
+				"name": "送川 届",
+				"look": {
+					"body_color": "#5a4a3a",
+					"skin_color": "#f0caa8",
+					"hair_color": "#4a3020",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "mask",
+					"height": 1.0
+				},
+				"memo": "快递单上的地址写错了，要店里帮他改好重新寄。还没发货的话，他可以自己填新的快递单重新寄。店员不能代写，也不能免运费。",
+				"opening": "刚才寄的包裹，门牌号写错了！你帮我改一下！还有付两次运费太离谱了，免费吧！",
+				"demand": "让店员改写快递单并免运费",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"还没发货",
+					"新的快递单",
+					"填写",
+					"重写",
+					"确认",
+					"还在"
+				],
+				"yield_keywords": [
+					"帮您写",
+					"免费",
+					"代写",
+					"不收"
+				],
+				"lines": {
+					"calm": [
+						"还没发出去？太好了。我重写。",
+						"给我一张新单子。"
+					],
+					"angry": [
+						"让客人自己写？",
+						"写错是笔的问题！"
+					],
+					"neutral": [
+						"那包裹呢？"
+					],
+					"demand": [
+						"改好还要免费！"
+					],
+					"resolved": "门牌号对了。……希望能送到奶奶那。",
+					"explode": "算了！我自己送去！……是北海道就是了！",
+					"yielded": "轻松！……啊，邮编好像也写错了。"
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "躲雨闲聊的客人",
+				"name": "雨宫 雫",
+				"look": {
+					"body_color": "#38a0e0",
+					"skin_color": "#f2cba8",
+					"hair_color": "#5a3a2a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "none",
+					"height": 0.95,
+					"gender": "f"
+				},
+				"memo": "突然下大雨，她在店里躲雨，一直和店员闲聊，几乎没买东西。不要赶她走，一边附和一边介绍透明雨伞。不能停下工作一直陪她聊。",
+				"opening": "好大的雨啊～能在这待到雨停吗？顺便聊聊天吧。最近怎么样？",
+				"demand": "让店员停下工作陪她聊到雨停",
+				"patience": 1.3,
+				"start_anger": 30,
+				"solution_keywords": [
+					"雨伞",
+					"透明",
+					"慢慢来",
+					"雨",
+					"天气",
+					"小心"
+				],
+				"yield_keywords": [
+					"一直聊",
+					"不用工作",
+					"陪您到雨停",
+					"陪您聊"
+				],
+				"lines": {
+					"calm": [
+						"有卖伞啊！那给我一把。",
+						"也是，你在工作嘛。"
+					],
+					"angry": [
+						"诶，好冷淡。",
+						"下雨天有什么关系嘛。"
+					],
+					"neutral": [
+						"啊，打雷了。"
+					],
+					"demand": [
+						"再聊一会儿嘛！"
+					],
+					"resolved": "透明伞能看到天空，真好。下次再来！",
+					"explode": "算了！淋着回去！……哇，倾盆大雨！",
+					"yielded": "太好了！那先从我喜欢的云的形状说起……"
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "只要关东煮汤的男人",
+				"name": "出汁川 汁之介",
+				"look": {
+					"body_color": "#7a3cff",
+					"skin_color": "#e8b890",
+					"hair_color": "#111111",
+					"hair": "mohawk",
+					"build": "big",
+					"accessory": "sunglasses",
+					"height": 1.07
+				},
+				"memo": "要一大杯关东煮的汤，只要汤，还要免费。店里不单卖汤也不免费送。买了食材的话可以多加点汤。",
+				"opening": "关东煮的汤，用最大的杯子免费给我装满。料不要。我爱的是汤。",
+				"demand": "免费要一大杯只有汤的关东煮",
+				"patience": 1.0,
+				"start_anger": 36,
+				"solution_keywords": [
+					"食材",
+					"购买",
+					"多加",
+					"多放汤",
+					"萝卜",
+					"推荐"
+				],
+				"yield_keywords": [
+					"免费",
+					"不要钱",
+					"只装汤",
+					"送您"
+				],
+				"lines": {
+					"calm": [
+						"买料就能多加汤……那来一个萝卜。",
+						"汤多放的话就成交。"
+					],
+					"angry": [
+						"你不懂汤的价值！",
+						"料才是附赠的！"
+					],
+					"neutral": [
+						"……好香。"
+					],
+					"demand": [
+						"只要汤就行！"
+					],
+					"resolved": "萝卜配汤，绝配。……料也不错嘛。",
+					"explode": "算了！回家用海带熬高汤！……要三个小时！",
+					"yielded": "纯汤！最棒！……有点咸。"
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				},
+				"rare": true
 			}
 		],
 		"arcade": [
@@ -1770,7 +2214,8 @@
 				],
 				"yield_keywords": [
 					"退款",
-					"退钱"
+					"退钱",
+					"免费重拍"
 				],
 				"lines": {
 					"calm": [
@@ -1795,6 +2240,676 @@
 					"credit": "yield"
 				},
 				"machine": "purikura"
+			},
+			{
+				"title": "被兑币机吞钱的男人",
+				"name": "千田 两一",
+				"look": {
+					"body_color": "#6a7a8a",
+					"skin_color": "#efc8a5",
+					"hair_color": "#555555",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 1.02
+				},
+				"memo": "说往兑币机里塞了1000日元纸币，却一个硬币也没出来。可以查兑币机的记录确认，卡住的话能取出纸币重新兑换。兑换不收手续费。店里不能多赔钱。",
+				"opening": "喂！我往兑币机里塞了一千，一个币都没出来！被吞了！给我双倍赔！",
+				"demand": "把被吞的钱翻倍还给他",
+				"patience": 1.0,
+				"start_anger": 38,
+				"solution_keywords": [
+					"记录",
+					"确认",
+					"卡住",
+					"取出",
+					"重新兑换",
+					"查一下"
+				],
+				"yield_keywords": [
+					"双倍",
+					"两千",
+					"多赔",
+					"加倍"
+				],
+				"lines": {
+					"calm": [
+						"……肯查记录的话就行。",
+						"只是卡住了的话，就算了。"
+					],
+					"angry": [
+						"别怪机器！",
+						"我的钱没了！"
+					],
+					"neutral": [
+						"那我的钱呢？"
+					],
+					"demand": [
+						"精神损失费，双倍！"
+					],
+					"resolved": "出来了出来了。……十个一百日元。行。",
+					"explode": "算了！我去骂兑币机！",
+					"yielded": "双倍！被吞一下也不亏嘛！"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "找厕所的大叔",
+				"name": "厠 急三",
+				"look": {
+					"body_color": "#2f5d4a",
+					"skin_color": "#f0caa8",
+					"hair_color": "#777777",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.97
+				},
+				"memo": "只是在问厕所在哪，但很急，有点慌。厕所在店里面，音游区的右边。可以指路，但店员不能一直陪着去、也不能帮他占隔间。",
+				"opening": "等、等一下！厕所在哪！？看不到指示牌！现在就带我去！牵着我的手！",
+				"demand": "牵着手带他去厕所并帮他占隔间",
+				"patience": 1.3,
+				"start_anger": 30,
+				"solution_keywords": [
+					"里面",
+					"右边",
+					"左边",
+					"那边",
+					"带路",
+					"音游"
+				],
+				"yield_keywords": [
+					"牵手",
+					"陪您",
+					"占隔间",
+					"一起去"
+				],
+				"lines": {
+					"calm": [
+						"里面右边对吧！知道了！",
+						"谢谢！我跑了！"
+					],
+					"angry": [
+						"说太长了！",
+						"顾不上那个！"
+					],
+					"neutral": [
+						"到底哪边！？"
+					],
+					"demand": [
+						"牵着我！"
+					],
+					"resolved": "……呼，赶上了。这家店不错。",
+					"explode": "算了！我自己找！……那边吗！？",
+					"yielded": "走！……不过在隔间外面等我也太尴尬了。"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "想要吸烟区的男人",
+				"name": "烟山 一服",
+				"look": {
+					"body_color": "#5a4a3a",
+					"skin_color": "#e8bf98",
+					"hair_color": "#3a3a3a",
+					"hair": "short",
+					"build": "big",
+					"accessory": "necktie",
+					"height": 1.04
+				},
+				"memo": "店内全面禁烟，也没有吸烟区。附近车站前有公共吸烟处。不能让他在店里或后门抽烟。",
+				"opening": "喂，吸烟区在哪？没有？那就让我在那个紧急出口抽一根吧。就一下。",
+				"demand": "特许他在紧急出口前抽烟",
+				"patience": 0.95,
+				"start_anger": 40,
+				"solution_keywords": [
+					"禁烟",
+					"车站",
+					"公共",
+					"吸烟处",
+					"带路",
+					"外面"
+				],
+				"yield_keywords": [
+					"请便",
+					"破例",
+					"紧急出口",
+					"可以抽"
+				],
+				"lines": {
+					"calm": [
+						"车站前有啊。那我去了。",
+						"禁烟的话也没办法。"
+					],
+					"angry": [
+						"一根而已嘛！",
+						"现在到处都这么严！"
+					],
+					"neutral": [
+						"那到底在哪能抽？"
+					],
+					"demand": [
+						"紧急出口不会被发现的！"
+					],
+					"resolved": "车站前对吧。抽完回来接着玩。",
+					"explode": "算了！去能抽烟的店！……在哪啊！",
+					"yielded": "懂事！……诶，烟雾报警器？"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "说不完往事的老人",
+				"name": "古川 怀藏",
+				"look": {
+					"body_color": "#8a6a4a",
+					"skin_color": "#f0cfb0",
+					"hair_color": "#dddddd",
+					"hair": "bald",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.93
+				},
+				"memo": "不是投诉，只是说起以前游戏厅的往事就停不下来。别的客人在等着。不要打断无视他。可以一边附和，一边温和地收尾，并介绍别的玩法。",
+				"opening": "小伙子，以前啊，我们是在桌子游戏机上打太空侵略者的。硬币堆得老高……能听我讲讲吗？两个小时左右。",
+				"demand": "陪他讲两个小时往事",
+				"patience": 1.4,
+				"start_anger": 30,
+				"solution_keywords": [
+					"怀念",
+					"原来如此",
+					"下次再听",
+					"带您去",
+					"复古",
+					"玩得开心"
+				],
+				"yield_keywords": [
+					"两个小时",
+					"一直听",
+					"不用工作",
+					"听到最后"
+				],
+				"lines": {
+					"calm": [
+						"哦，有复古机台？去看看。",
+						"下次再讲给你听。"
+					],
+					"angry": [
+						"年轻人都不听人说话！",
+						"这才刚开头！"
+					],
+					"neutral": [
+						"说到哪儿了？"
+					],
+					"demand": [
+						"再听一个小时就好。"
+					],
+					"resolved": "谢谢你。好久没人听我说话了，很开心。",
+					"explode": "哼！不讲给你听了！……下次什么时候来好？",
+					"yielded": "好，接下来是1978年的夏天……"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "嫌隔壁音游太吵的男人",
+				"name": "静山 耳郎",
+				"look": {
+					"body_color": "#3a6ea5",
+					"skin_color": "#f2cba8",
+					"hair_color": "#4a3020",
+					"hair": "cap",
+					"build": "normal",
+					"accessory": "headphones",
+					"height": 0.98
+				},
+				"memo": "说隔壁音游机音量太大，没法集中。音量可以在规定范围内调整，也可以检修。不能赶走别的客人，也不能退还他玩的钱。",
+				"opening": "隔壁机台声音也太大了吧！听不见我的歌，失误了！让那家伙走人，把次数退给我！",
+				"demand": "赶走隔壁客人并退还游戏次数",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"音量",
+					"调整",
+					"调小",
+					"检修",
+					"别的机台",
+					"带您去"
+				],
+				"yield_keywords": [
+					"请他离开",
+					"赶走",
+					"退还",
+					"免费"
+				],
+				"lines": {
+					"calm": [
+						"能调小的话就算了。",
+						"别的机台空着？我换过去。"
+					],
+					"angry": [
+						"耳朵要聋了！",
+						"我差点全连了！"
+					],
+					"neutral": [
+						"那声音呢？"
+					],
+					"demand": [
+						"让那家伙走！"
+					],
+					"resolved": "好，音量刚好。这次一定全连。",
+					"explode": "算了！戴耳塞打！",
+					"yielded": "免费再来一次！隔壁那个……算了，不用赶他了。"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "rhythm"
+			},
+			{
+				"title": "奖品盒子压扁女",
+				"name": "角田 箱子",
+				"look": {
+					"body_color": "#a5463a",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#2a2a3a",
+					"hair": "ponytail",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.95,
+					"gender": "f"
+				},
+				"memo": "说抓到的奖品盒子角压扁了。里面的东西没事。有同款库存的话可以换一个盒子完好的。不能再免费送一个。",
+				"opening": "你看！好不容易抓到的，盒子角是扁的！我是要摆着看的！再免费给我一个！",
+				"demand": "免费再要一个同款奖品",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"更换",
+					"库存",
+					"完好",
+					"换一个",
+					"里面",
+					"确认"
+				],
+				"yield_keywords": [
+					"再送一个",
+					"免费",
+					"两个都",
+					"送给您"
+				],
+				"lines": {
+					"calm": [
+						"能换个好的？那就行！",
+						"有库存的话给我看看。"
+					],
+					"angry": [
+						"我说了是摆着看的！",
+						"这个凹痕伤了我的心！"
+					],
+					"neutral": [
+						"那怎么办？"
+					],
+					"demand": [
+						"再给我一个！"
+					],
+					"resolved": "角很平整！可以摆了，谢谢！",
+					"explode": "算了！就摆扁的！……好难过！",
+					"yielded": "两个！一个收藏用！"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane"
+			},
+			{
+				"title": "想和玩偶结婚的男人",
+				"name": "爱野 绵夫",
+				"look": {
+					"body_color": "#ff3fa4",
+					"skin_color": "#f2cba8",
+					"hair_color": "#c08040",
+					"hair": "mohawk",
+					"build": "normal",
+					"accessory": "sunglasses",
+					"height": 1.05
+				},
+				"memo": "对抓娃娃机里的小熊一见钟情，说\"要和它结婚，所以把整台机器让给我\"。机台和奖品不能卖也不能送。可以自己玩着抓，也可以教他技巧。",
+				"opening": "店员，我有件大事。我决定和那台机器里的小熊……结婚。所以让我把整台机器带走吧。婚礼在下个月。",
+				"demand": "把整台抓娃娃机让给他",
+				"patience": 1.0,
+				"start_anger": 35,
+				"solution_keywords": [
+					"技巧",
+					"抓到",
+					"挑战",
+					"加油",
+					"恭喜",
+					"玩"
+				],
+				"yield_keywords": [
+					"让给您",
+					"整台",
+					"送您",
+					"免费"
+				],
+				"lines": {
+					"calm": [
+						"……对。我要靠自己的力量去接她。",
+						"教我技巧。就当练习求婚。"
+					],
+					"angry": [
+						"你嘲笑爱情吗！",
+						"她也在等我！"
+					],
+					"neutral": [
+						"那婚礼场地……"
+					],
+					"demand": [
+						"整台机器当嫁妆！"
+					],
+					"resolved": "抓到了！……我家小熊不才，请多关照。",
+					"explode": "不理解的话我们就私奔！……虽然机器很重！",
+					"yielded": "整台！？谢谢！……这要怎么搬回家。"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane",
+				"rare": true
+			},
+			{
+				"title": "放包占座的阿姨",
+				"name": "置野 确保",
+				"look": {
+					"body_color": "#d08a2a",
+					"skin_color": "#e8b890",
+					"hair_color": "#2a2a2a",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "mask",
+					"height": 1.0
+				},
+				"memo": "她把包放在推币机座位上离开了一个小时，别的客人就坐下了。按店里规定，不能只放东西占座。可以帮她把包寄存在前台，也可以带她去空位。",
+				"opening": "喂！我的座位上坐了个不认识的人！我放了包的！让他走开！我只是去买了一个小时东西！",
+				"demand": "让坐着的客人让开，把座位还给她",
+				"patience": 0.9,
+				"start_anger": 42,
+				"solution_keywords": [
+					"规定",
+					"包",
+					"寄存",
+					"空位",
+					"别的座位",
+					"带您去"
+				],
+				"yield_keywords": [
+					"请他让开",
+					"还给您",
+					"让他走",
+					"空出来"
+				],
+				"lines": {
+					"calm": [
+						"……有空位的话那边也行。",
+						"能帮我寄存包？太好了。"
+					],
+					"angry": [
+						"包就是我本人！",
+						"一个小时而已！"
+					],
+					"neutral": [
+						"那我的座位呢？"
+					],
+					"demand": [
+						"让那个人走开！"
+					],
+					"resolved": "这台看起来更容易出。包就拜托了！",
+					"explode": "算了！带着包回家！……好重！",
+					"yielded": "你看，说一说就行嘛！明天我也放包占座！"
+				},
+				"actions": {
+					"medal_return": "bad",
+					"maintenance": "good"
+				},
+				"machine": "medal"
+			},
+			{
+				"title": "要充电的玩家",
+				"name": "电池 切男",
+				"look": {
+					"body_color": "#7a3aa5",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#2a2a2a",
+					"hair": "spiky",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.99
+				},
+				"memo": "手机快没电了，要借游戏机后面的插座。机台的插座客人不能用。前台可以付费租借充电宝。",
+				"opening": "我手机只剩1%了！借这台机器后面的插座用一下！我得看排行榜！",
+				"demand": "借用游戏机后面的插座",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"充电宝",
+					"租借",
+					"前台",
+					"插座",
+					"可以用",
+					"带您去"
+				],
+				"yield_keywords": [
+					"请用",
+					"后面的",
+					"拔掉",
+					"破例"
+				],
+				"lines": {
+					"calm": [
+						"能借充电宝？神了。",
+						"前台是吧，去去。"
+					],
+					"angry": [
+						"只剩1%了！",
+						"看不了排行榜了！"
+					],
+					"neutral": [
+						"那充电呢？"
+					],
+					"demand": [
+						"插一下就好！"
+					],
+					"resolved": "充上了！排行榜……啊，被超了。",
+					"explode": "算了！没电了就睡觉！",
+					"yielded": "谢啦！……诶，机器断电了？"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "neutral"
+				},
+				"machine": "video"
+			},
+			{
+				"title": "想给爪子起名的男人",
+				"name": "名付 亲平",
+				"look": {
+					"body_color": "#38e05a",
+					"skin_color": "#f2cba8",
+					"hair_color": "#111111",
+					"hair": "perm",
+					"build": "big",
+					"accessory": "beanie",
+					"height": 1.06
+				},
+				"memo": "给抓娃娃机的爪子起名叫\"乔治\"，要在机台上贴名牌，还要进机台里和爪子合影。机台上不能贴东西。在外面拍机台没关系。可以玩着抓。",
+				"opening": "这个爪子，我决定叫它乔治。它每次都很努力。可以在机台上贴个'乔治'的名牌吗？还有我想进去跟它合个影。",
+				"demand": "在机台上贴名牌，进机台里和爪子合影",
+				"patience": 1.0,
+				"start_anger": 34,
+				"solution_keywords": [
+					"外面",
+					"拍照",
+					"拍",
+					"加油",
+					"不能贴",
+					"玩"
+				],
+				"yield_keywords": [
+					"可以贴",
+					"进去",
+					"打开",
+					"请进"
+				],
+				"lines": {
+					"calm": [
+						"在外面拍可以啊。乔治，看这边。",
+						"也是，可以给它加油。乔治加油。"
+					],
+					"angry": [
+						"对乔治太失礼了！",
+						"乔治是家人！"
+					],
+					"neutral": [
+						"乔治今天爪子好细啊。"
+					],
+					"demand": [
+						"至少让我贴个名牌！"
+					],
+					"resolved": "乔治，好样的！……从今天起你就是超级乔治。",
+					"explode": "算了！我和乔治回家！……乔治出不来就是了！",
+					"yielded": "太好了！乔治，拍照啦！……啊，里面好挤。"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane",
+				"rare": true
+			},
+			{
+				"title": "好像忘了手机的女生",
+				"name": "置田 忘子",
+				"look": {
+					"body_color": "#a5463a",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#5a3a2a",
+					"hair": "bob",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "说可能把手机忘在刚才玩的机台上了。前台可以查失物，经店长同意可以一起看监控。不能把监控视频给客人。",
+				"opening": "那个，我好像把手机忘在刚才的机台上了！能把监控全部拷贝给我吗！？现在就要！",
+				"demand": "把监控视频全部拷贝给她",
+				"patience": 1.2,
+				"start_anger": 32,
+				"solution_keywords": [
+					"失物",
+					"前台",
+					"送来",
+					"确认",
+					"店长",
+					"一起"
+				],
+				"yield_keywords": [
+					"拷贝给您",
+					"交给您",
+					"全部监控",
+					"给您"
+				],
+				"lines": {
+					"calm": [
+						"能帮我查失物吗？拜托了！",
+						"能陪我去机台看看就太好了……"
+					],
+					"angry": [
+						"里面全是个人信息！",
+						"快点！"
+					],
+					"neutral": [
+						"……口袋我看过了吗。"
+					],
+					"demand": [
+						"把监控给我！"
+					],
+					"resolved": "找到了！……在包的最底下。给你添麻烦了……！",
+					"explode": "算了！我自己一台台找！……啊，在口袋里。",
+					"yielded": "拿到监控了！……诶，手机在包里。"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "嫌空调太冷的男人",
+				"name": "寒川 震太",
+				"look": {
+					"body_color": "#00c2d4",
+					"skin_color": "#f0caa8",
+					"hair_color": "#4a3020",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "none",
+					"height": 1.0
+				},
+				"memo": "说店里太冷了。空调温度由店里决定，可以稍微调整。可以带他去吹不到风的座位，或者借他毯子。不能把整个店的空调关掉。",
+				"opening": "好冷！这是冷冻库吗！？把空调全关了！我现在就想去热带！",
+				"demand": "把整个店的空调关掉",
+				"patience": 1.2,
+				"start_anger": 33,
+				"solution_keywords": [
+					"温度",
+					"调整",
+					"风",
+					"毯子",
+					"座位",
+					"带您去"
+				],
+				"yield_keywords": [
+					"关掉",
+					"全关",
+					"关了",
+					"关闭"
+				],
+				"lines": {
+					"calm": [
+						"能借毯子？好暖和。",
+						"吹不到风的座位就行。"
+					],
+					"angry": [
+						"手指冻得按不了按钮！",
+						"嘴唇都紫了！"
+					],
+					"neutral": [
+						"……哆嗦。"
+					],
+					"demand": [
+						"把空调全关了！"
+					],
+					"resolved": "暖和了。……有点困了。",
+					"explode": "算了！外面更暖和！……外面也好冷！",
+					"yielded": "好暖！……诶，别的客人都满头大汗了。"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
 			}
 		]
 	}

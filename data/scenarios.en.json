@@ -788,6 +788,450 @@
 					"discount": "bad",
 					"dogeza": "bad"
 				}
+			},
+			{
+				"title": "The Restroom Borrower",
+				"name": "Benzo Karino",
+				"look": {
+					"body_color": "#6a7a8a",
+					"skin_color": "#efc8a5",
+					"hair_color": "#555555",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 1.0
+				},
+				"memo": "He wants to use the restroom. Customers can, but it's being cleaned for about 5 minutes. Cleaning can't be stopped and the staff restroom is off limits. There's also one in the park nearby.",
+				"opening": "Can I use the restroom?! Being cleaned? Then the staff one is fine! Right now!",
+				"demand": "Use the staff restroom right now",
+				"patience": 1.2,
+				"start_anger": 30,
+				"solution_keywords": [
+					"cleaning",
+					"5 minutes",
+					"wait",
+					"park",
+					"soon",
+					"show you"
+				],
+				"yield_keywords": [
+					"staff restroom",
+					"in the back",
+					"go on back",
+					"just this once"
+				],
+				"lines": {
+					"calm": [
+						"Five minutes... I'll hang on.",
+						"The park's faster? Running!"
+					],
+					"angry": [
+						"Five minutes is forever!",
+						"Me before the cleaning!"
+					],
+					"neutral": [
+						"...Is it done?"
+					],
+					"demand": [
+						"The staff one is fine!"
+					],
+					"resolved": "Phew... I'll grab a coffee while I'm here.",
+					"explode": "Forget it! I'm running to the park! ...So far!",
+					"yielded": "Saved! ...The staff one's really clean."
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Proud Grandma",
+				"name": "Jiman Magota",
+				"look": {
+					"body_color": "#8a6a4a",
+					"skin_color": "#f0cfb0",
+					"hair_color": "#dddddd",
+					"hair": "perm",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.92,
+					"gender": "f"
+				},
+				"memo": "Not a complaint: she won't stop bragging about her grandson, and a line is forming behind her. She hasn't paid yet. Don't ignore her: nod along, keep the checkout moving, and get the line flowing.",
+				"opening": "Oh dear, my grandson came first in his race the other day! Want to see photos? I have a hundred. Pay? Oh, later.",
+				"demand": "Stop the line to look at a hundred grandson photos",
+				"patience": 1.4,
+				"start_anger": 28,
+				"solution_keywords": [
+					"amazing",
+					"congratulations",
+					"checkout",
+					"tell me again",
+					"behind",
+					"waiting"
+				],
+				"yield_keywords": [
+					"a hundred",
+					"take your time",
+					"line is fine",
+					"pay later"
+				],
+				"lines": {
+					"calm": [
+						"Oh, people are waiting. Let me pay, then.",
+						"I'll tell you the rest next time."
+					],
+					"angry": [
+						"You won't hear about my grandson?!",
+						"That was only the tenth!"
+					],
+					"neutral": [
+						"And the next photo..."
+					],
+					"demand": [
+						"Look, ninety more!"
+					],
+					"resolved": "You're a sweetheart. I'll bring his sports day photos next time.",
+					"explode": "Hmph! No more stories for you! ...See you next week, though!",
+					"yielded": "Oh, how lovely! Let me start from photo one..."
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Ashtray Mourner",
+				"name": "Suzo Haitani",
+				"look": {
+					"body_color": "#2a2a2a",
+					"skin_color": "#e8bf98",
+					"hair_color": "#3a3a3a",
+					"hair": "short",
+					"build": "big",
+					"accessory": "necktie",
+					"height": 1.05
+				},
+				"memo": "He's angry the ashtray outside the store was removed. It was removed under local rules and can't come back. You can direct him to a nearby public smoking area.",
+				"opening": "Hey! Where'd the ashtray out front go?! I've smoked there for twenty years! Put it back now!",
+				"demand": "Put the ashtray back out front immediately",
+				"patience": 0.95,
+				"start_anger": 42,
+				"solution_keywords": [
+					"local",
+					"rule",
+					"smoking area",
+					"direct you",
+					"nearby",
+					"sorry"
+				],
+				"yield_keywords": [
+					"put it back",
+					"bring it out",
+					"set one out",
+					"we'll get one"
+				],
+				"lines": {
+					"calm": [
+						"...If it's a local rule, fine. Where's the smoking area?",
+						"If it's close by, okay."
+					],
+					"angry": [
+						"You erase twenty years of history?!",
+						"Don't smokers have rights?!"
+					],
+					"neutral": [
+						"So, the ashtray?"
+					],
+					"demand": [
+						"Bring it back!"
+					],
+					"resolved": "That corner, huh. ...I'll grab a canned coffee too.",
+					"explode": "Fine! I'll buy a hundred pocket ashtrays! ...Here!",
+					"yielded": "Glad you get it! ...Wait, the store gets fined?"
+				},
+				"actions": {
+					"discount": "bad",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Slow Wi-Fi Guy",
+				"name": "Hosoo Kaisen",
+				"look": {
+					"body_color": "#3a6ea5",
+					"skin_color": "#f2cba8",
+					"hair_color": "#2a2a2a",
+					"hair": "cap",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.97
+				},
+				"memo": "Says the store's free Wi-Fi is too slow. It's a free service with no speed guarantee. You can walk him through reconnecting. Products can't be given free as an apology.",
+				"opening": "Your Wi-Fi is SO slow! My video won't load! Give me three rice balls free to make up for it!",
+				"demand": "Three free rice balls as an apology for slow Wi-Fi",
+				"patience": 1.0,
+				"start_anger": 38,
+				"solution_keywords": [
+					"reconnect",
+					"steps",
+					"free service",
+					"guarantee",
+					"walk you",
+					"busy"
+				],
+				"yield_keywords": [
+					"for free",
+					"no charge",
+					"on the house",
+					"give you"
+				],
+				"lines": {
+					"calm": [
+						"Reconnect? I'll try.",
+						"Well, it IS free Wi-Fi."
+					],
+					"angry": [
+						"I'm sick of the loading circle!",
+						"My favorite streamer's going live!"
+					],
+					"neutral": [
+						"...Still loading."
+					],
+					"demand": [
+						"I'll settle for rice balls!"
+					],
+					"resolved": "Connected! Made it for the stream! I'll buy the rice balls!",
+					"explode": "Forget it! I'll run home and use my own Wi-Fi!",
+					"yielded": "Three free rice balls! ...Wi-Fi's still slow, though."
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Man Who Named a Bun",
+				"name": "Hota Mushino",
+				"look": {
+					"body_color": "#ffb000",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#2a2a2a",
+					"hair": "spiky",
+					"build": "normal",
+					"accessory": "sunglasses",
+					"height": 1.02
+				},
+				"memo": "He named a pork bun in the steamer 'Bunjiro' and wants the biggest one held for him. The store doesn't hold steamed buns. He can pick one from what's there now.",
+				"opening": "Second from the right in the steamer? I named him Bunjiro. Hold him until tomorrow night. Don't sell him to anyone.",
+				"demand": "Hold the named bun until tomorrow night",
+				"patience": 1.0,
+				"start_anger": 34,
+				"solution_keywords": [
+					"hold",
+					"can't",
+					"now",
+					"pick",
+					"warm",
+					"recommend"
+				],
+				"yield_keywords": [
+					"we'll hold",
+					"set aside",
+					"won't sell",
+					"until tomorrow"
+				],
+				"lines": {
+					"calm": [
+						"...I'll eat him now. Thanks for the food, Bunjiro.",
+						"If you can't hold him, I'll take him now."
+					],
+					"angry": [
+						"You'd hand Bunjiro to a stranger?!",
+						"Once you name it, it's family!"
+					],
+					"neutral": [
+						"Bunjiro looks plump today."
+					],
+					"demand": [
+						"Protect Bunjiro!"
+					],
+					"resolved": "Bunjiro's delicious. ...Naming food makes it hard to eat.",
+					"explode": "Fine! I'll go find a Bunsaburo!",
+					"yielded": "I'm counting on you! ...Oh, he'll be rock hard by tomorrow night."
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				},
+				"rare": true
+			},
+			{
+				"title": "The Wrong Address Guy",
+				"name": "Todoku Okurikawa",
+				"look": {
+					"body_color": "#5a4a3a",
+					"skin_color": "#f0caa8",
+					"hair_color": "#4a3020",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "mask",
+					"height": 1.0
+				},
+				"memo": "He wrote the wrong address on a parcel slip and wants the store to fix it and resend free. If it hasn't shipped, he can fill out a new slip himself and resend. Staff can't fill it in for him or waive the fee.",
+				"opening": "That parcel I sent? Wrong street number! Fix it for me! And paying shipping twice is ridiculous, so it's free!",
+				"demand": "Have staff rewrite the slip and waive the shipping fee",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"not shipped",
+					"new slip",
+					"fill out",
+					"rewrite",
+					"check",
+					"still here"
+				],
+				"yield_keywords": [
+					"we'll write it",
+					"free",
+					"for you",
+					"no charge"
+				],
+				"lines": {
+					"calm": [
+						"It hasn't shipped? Phew. I'll rewrite it.",
+						"Give me a new slip."
+					],
+					"angry": [
+						"You make customers write?!",
+						"The pen made me do it!"
+					],
+					"neutral": [
+						"So, my parcel?"
+					],
+					"demand": [
+						"Fix it and make it free!"
+					],
+					"resolved": "Right number this time. ...Hope it gets to grandma.",
+					"explode": "Forget it! I'll deliver it myself! ...To Hokkaido!",
+					"yielded": "Easy! ...Oh, the postal code might be wrong too."
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Rainy-Day Chatterbox",
+				"name": "Shizuku Amamiya",
+				"look": {
+					"body_color": "#38a0e0",
+					"skin_color": "#f2cba8",
+					"hair_color": "#5a3a2a",
+					"hair": "long",
+					"build": "slim",
+					"accessory": "none",
+					"height": 0.95,
+					"gender": "f"
+				},
+				"memo": "She's sheltering from a sudden downpour and keeps chatting with the clerk without buying much. Don't kick her out: nod along and mention the umbrellas for sale. You can't stop working to chat the whole time.",
+				"opening": "Wow, what a downpour! Can I stay until it stops? And let's chat until then. How've you been lately?",
+				"demand": "Have the clerk stop working and chat until the rain stops",
+				"patience": 1.3,
+				"start_anger": 30,
+				"solution_keywords": [
+					"umbrella",
+					"plastic",
+					"take your time",
+					"rain",
+					"weather",
+					"careful"
+				],
+				"yield_keywords": [
+					"chat all",
+					"work can wait",
+					"keep you company",
+					"talk until"
+				],
+				"lines": {
+					"calm": [
+						"You sell umbrellas! One, please.",
+						"Right, you're working."
+					],
+					"angry": [
+						"Aw, so cold.",
+						"It's a rainy day, come on."
+					],
+					"neutral": [
+						"Oh, thunder."
+					],
+					"demand": [
+						"Just a little more chat!"
+					],
+					"resolved": "Clear umbrellas are nice, you can see the sky. See you again!",
+					"explode": "Fine! I'll walk home wet! ...Whoa, it's pouring!",
+					"yielded": "Yay! Let's start with my favorite cloud shapes..."
+				},
+				"actions": {
+					"discount": "neutral",
+					"dogeza": "bad"
+				}
+			},
+			{
+				"title": "The Oden Broth Lover",
+				"name": "Shirunosuke Dashikawa",
+				"look": {
+					"body_color": "#7a3cff",
+					"skin_color": "#e8b890",
+					"hair_color": "#111111",
+					"hair": "mohawk",
+					"build": "big",
+					"accessory": "sunglasses",
+					"height": 1.07
+				},
+				"memo": "He wants just oden broth, a whole large cup, for free. The store doesn't sell or give away broth alone. If he buys some items, extra broth can be added.",
+				"opening": "Just oden broth, in your biggest cup, for free. No toppings. I LOVE the broth.",
+				"demand": "A large cup of oden broth only, for free",
+				"patience": 1.0,
+				"start_anger": 36,
+				"solution_keywords": [
+					"items",
+					"buy",
+					"extra broth",
+					"plenty",
+					"daikon",
+					"recommend"
+				],
+				"yield_keywords": [
+					"for free",
+					"no charge",
+					"broth only",
+					"on the house"
+				],
+				"lines": {
+					"calm": [
+						"Buy something and get extra broth... one daikon, then.",
+						"If you load it with broth, deal."
+					],
+					"angry": [
+						"You don't get the value of broth!",
+						"Toppings are the extra!"
+					],
+					"neutral": [
+						"...Smells great."
+					],
+					"demand": [
+						"Just the broth!"
+					],
+					"resolved": "Daikon and broth, the perfect pair. ...Toppings aren't bad.",
+					"explode": "Forget it! I'll make dashi from kelp at home! ...Takes three hours!",
+					"yielded": "Pure broth! Amazing! ...A bit salty."
+				},
+				"actions": {
+					"discount": "yield",
+					"dogeza": "bad"
+				},
+				"rare": true
 			}
 		],
 		"arcade": [
@@ -1799,7 +2243,8 @@
 				],
 				"yield_keywords": [
 					"refund",
-					"money back"
+					"money back",
+					"free retake"
 				],
 				"lines": {
 					"calm": [
@@ -1824,6 +2269,676 @@
 					"credit": "yield"
 				},
 				"machine": "purikura"
+			},
+			{
+				"title": "The Change Machine Victim",
+				"name": "Ryoichi Senda",
+				"look": {
+					"body_color": "#6a7a8a",
+					"skin_color": "#efc8a5",
+					"hair_color": "#555555",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 1.02
+				},
+				"memo": "Says the change machine took his 1,000-yen bill and gave no coins. The machine's log can confirm it, and a jammed bill can be pulled out and changed again. Changing money is free. The store can't pay extra.",
+				"opening": "Hey! I put a 1,000 bill in the change machine and got nothing! It ate it! Pay me double!",
+				"demand": "Get the eaten bill back doubled",
+				"patience": 1.0,
+				"start_anger": 38,
+				"solution_keywords": [
+					"log",
+					"check",
+					"jam",
+					"pull",
+					"change it again",
+					"look into"
+				],
+				"yield_keywords": [
+					"double",
+					"two thousand",
+					"pay you back extra",
+					"on top"
+				],
+				"lines": {
+					"calm": [
+						"...You'll check the log? Fine.",
+						"If it was just jammed, I'll let it go."
+					],
+					"angry": [
+						"Don't blame the machine!",
+						"My money's gone!"
+					],
+					"neutral": [
+						"So, my money?"
+					],
+					"demand": [
+						"Double, for my suffering!"
+					],
+					"resolved": "There it is. ...Ten 100-yen coins. Good.",
+					"explode": "Forget it! I'll go yell at the machine!",
+					"yielded": "Double! Getting eaten isn't so bad!"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "The Restroom Emergency",
+				"name": "Kyuzo Kawaya",
+				"look": {
+					"body_color": "#2f5d4a",
+					"skin_color": "#f0caa8",
+					"hair_color": "#777777",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.97
+				},
+				"memo": "He's just asking where the restroom is, but he's in a hurry and panicking. It's at the back, to the right of the rhythm game corner. You can give directions, but staff can't escort him or hold a stall.",
+				"opening": "Wh-where's the restroom?! I can't see the signs! Take me there now! Hold my hand!",
+				"demand": "Be walked to the restroom hand in hand and have a stall held for him",
+				"patience": 1.3,
+				"start_anger": 30,
+				"solution_keywords": [
+					"back",
+					"right",
+					"left",
+					"over there",
+					"this way",
+					"rhythm"
+				],
+				"yield_keywords": [
+					"hold your hand",
+					"walk you",
+					"save you a stall",
+					"come with you"
+				],
+				"lines": {
+					"calm": [
+						"Back and to the right! Got it!",
+						"Thanks! Running!"
+					],
+					"angry": [
+						"Too long!",
+						"No time for that!"
+					],
+					"neutral": [
+						"Which way?!"
+					],
+					"demand": [
+						"Hold my hand!"
+					],
+					"resolved": "...Phew, made it. Nice place, this.",
+					"explode": "Forget it! I'll find it myself! ...That way?!",
+					"yielded": "Let's go! ...Actually, you waiting outside the stall is a bit much."
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "The Smoke Break Guy",
+				"name": "Ippuku Kemuyama",
+				"look": {
+					"body_color": "#5a4a3a",
+					"skin_color": "#e8bf98",
+					"hair_color": "#3a3a3a",
+					"hair": "short",
+					"build": "big",
+					"accessory": "necktie",
+					"height": 1.04
+				},
+				"memo": "The arcade is fully non-smoking with no smoking area. There's a public smoking area in front of the station. He can't smoke inside or by the back exit.",
+				"opening": "Hey, where's the smoking area? None? Then let me smoke by that emergency exit. Just one.",
+				"demand": "A special smoke by the emergency exit",
+				"patience": 0.95,
+				"start_anger": 40,
+				"solution_keywords": [
+					"non-smoking",
+					"station",
+					"public",
+					"smoking area",
+					"direct you",
+					"outside"
+				],
+				"yield_keywords": [
+					"go ahead",
+					"just this once",
+					"by the exit",
+					"you can smoke"
+				],
+				"lines": {
+					"calm": [
+						"By the station? I'll go there.",
+						"Well, if it's non-smoking, fine."
+					],
+					"angry": [
+						"Just one won't hurt!",
+						"Everywhere's so strict now!"
+					],
+					"neutral": [
+						"So where can I smoke?"
+					],
+					"demand": [
+						"Nobody'll notice by the exit!"
+					],
+					"resolved": "By the station, got it. I'll come back after.",
+					"explode": "Forget it! I'm going somewhere I can smoke! ...Where is that?!",
+					"yielded": "You get it! ...Wait, a smoke detector?"
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "The Endless Old-Timer",
+				"name": "Kaizo Furukawa",
+				"look": {
+					"body_color": "#8a6a4a",
+					"skin_color": "#f0cfb0",
+					"hair_color": "#dddddd",
+					"hair": "bald",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.93
+				},
+				"memo": "Not a complaint: he can't stop telling stories about arcades from decades ago, and other customers are waiting. Don't brush him off. You can nod along, gently wrap up, and point him to something to play.",
+				"opening": "Son, back in my day we played Invaders on table cabinets. Stacks of coins... Mind listening for, oh, two hours?",
+				"demand": "Listen to old stories for two hours",
+				"patience": 1.4,
+				"start_anger": 30,
+				"solution_keywords": [
+					"nostalgic",
+					"is that so",
+					"tell me again",
+					"show you",
+					"retro",
+					"enjoy"
+				],
+				"yield_keywords": [
+					"two hours",
+					"listen all",
+					"work can wait",
+					"to the end"
+				],
+				"lines": {
+					"calm": [
+						"Oh, there's a retro machine? I'll go see.",
+						"Tell you more another day."
+					],
+					"angry": [
+						"Young folks never listen!",
+						"That was just the prologue!"
+					],
+					"neutral": [
+						"Now, where was I?"
+					],
+					"demand": [
+						"Just one more hour."
+					],
+					"resolved": "Thank you. It's been a while since anyone listened. That was nice.",
+					"explode": "Hmph! No more stories for you! ...When should I come back?",
+					"yielded": "Good! Now, the summer of 1978..."
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "The Too-Loud-Neighbor Guy",
+				"name": "Jiro Shizuyama",
+				"look": {
+					"body_color": "#3a6ea5",
+					"skin_color": "#f2cba8",
+					"hair_color": "#4a3020",
+					"hair": "cap",
+					"build": "normal",
+					"accessory": "headphones",
+					"height": 0.98
+				},
+				"memo": "Says the rhythm game next to his is way too loud and he can't focus. Volume can be adjusted within set limits and the machine can be checked. You can't kick out the other customer or refund his plays.",
+				"opening": "The machine next to me is blasting! I couldn't hear my song and missed! Kick that guy out and refund my credits!",
+				"demand": "Make the other customer leave and get his plays refunded",
+				"patience": 1.0,
+				"start_anger": 40,
+				"solution_keywords": [
+					"volume",
+					"adjust",
+					"turn down",
+					"check",
+					"another machine",
+					"show you"
+				],
+				"yield_keywords": [
+					"ask him to leave",
+					"kick",
+					"refund",
+					"free"
+				],
+				"lines": {
+					"calm": [
+						"If you turn it down, fine.",
+						"Another machine's open? I'll move."
+					],
+					"angry": [
+						"My ears!",
+						"I was on a full combo!"
+					],
+					"neutral": [
+						"So, the noise?"
+					],
+					"demand": [
+						"Kick him out!"
+					],
+					"resolved": "Good, just the right volume. Full combo this time.",
+					"explode": "Forget it! I'll play with earplugs!",
+					"yielded": "Free round! And the other guy... eh, he can stay."
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "yield"
+				},
+				"machine": "rhythm"
+			},
+			{
+				"title": "The Dented Box Lady",
+				"name": "Hakoko Kakuta",
+				"look": {
+					"body_color": "#a5463a",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#2a2a3a",
+					"hair": "ponytail",
+					"build": "slim",
+					"accessory": "bag",
+					"height": 0.95,
+					"gender": "f"
+				},
+				"memo": "Says the corner of the prize box she won is dented. The prize inside is fine. If there's stock of the same prize, it can be swapped for a clean box. She can't get a second one free.",
+				"opening": "Look! I finally won this and the box corner is dented! It's for display! Give me another one free!",
+				"demand": "Another of the same prize for free",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"exchange",
+					"stock",
+					"clean",
+					"swap",
+					"inside",
+					"check"
+				],
+				"yield_keywords": [
+					"another one",
+					"for free",
+					"keep both",
+					"give you"
+				],
+				"lines": {
+					"calm": [
+						"You'll swap it for a clean one? That works!",
+						"Show me the stock."
+					],
+					"angry": [
+						"I said it's for DISPLAY!",
+						"That dent hurt my soul!"
+					],
+					"neutral": [
+						"So what happens?"
+					],
+					"demand": [
+						"Give me another!"
+					],
+					"resolved": "Perfect corners! Now I can display it, thanks!",
+					"explode": "Fine! I'll display it dented! ...So sad!",
+					"yielded": "Two! One to keep sealed!"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane"
+			},
+			{
+				"title": "The Man Marrying a Plushie",
+				"name": "Watao Aino",
+				"look": {
+					"body_color": "#ff3fa4",
+					"skin_color": "#f2cba8",
+					"hair_color": "#c08040",
+					"hair": "mohawk",
+					"build": "normal",
+					"accessory": "sunglasses",
+					"height": 1.05
+				},
+				"memo": "He fell in love with a teddy bear in a crane game and says he's 'marrying it', so the store should give him the whole machine. Machines and prizes can't be sold or given away. He can win it by playing, and you can give tips.",
+				"opening": "Clerk, I have important news. I've decided to marry the bear in that machine. So let me take the whole machine home. The wedding's next month.",
+				"demand": "Be given the entire crane machine",
+				"patience": 1.0,
+				"start_anger": 35,
+				"solution_keywords": [
+					"tip",
+					"win her",
+					"try",
+					"cheer",
+					"congrat",
+					"play"
+				],
+				"yield_keywords": [
+					"give you the machine",
+					"the whole machine",
+					"take it",
+					"for free"
+				],
+				"lines": {
+					"calm": [
+						"...You're right. I'll win her with my own hands.",
+						"Teach me the trick. It's proposal practice."
+					],
+					"angry": [
+						"You laugh at love?!",
+						"She's waiting for me!"
+					],
+					"neutral": [
+						"So, about the venue..."
+					],
+					"demand": [
+						"The machine is her dowry!"
+					],
+					"resolved": "Got her! ...Please take care of my humble bear.",
+					"explode": "If you won't understand, we'll elope! ...The machine's heavy, though!",
+					"yielded": "The whole machine?! Thank you! ...How do I carry this home?"
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane",
+				"rare": true
+			},
+			{
+				"title": "The Seat-Saving Bag Lady",
+				"name": "Kakuho Okino",
+				"look": {
+					"body_color": "#d08a2a",
+					"skin_color": "#e8b890",
+					"hair_color": "#2a2a2a",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "mask",
+					"height": 1.0
+				},
+				"memo": "She left her bags on a medal-game seat and was gone for an hour, so someone else sat down. Store rules don't allow saving seats with bags. Bags can be kept at the storage counter, and you can show her an open seat.",
+				"opening": "Excuse me! A stranger is in MY seat! My bags were there! Move them! I was only shopping for an hour!",
+				"demand": "Move the seated customer and give her the seat back",
+				"patience": 0.9,
+				"start_anger": 42,
+				"solution_keywords": [
+					"rule",
+					"bags",
+					"keep",
+					"open seat",
+					"another seat",
+					"show you"
+				],
+				"yield_keywords": [
+					"ask them to move",
+					"give it back",
+					"move them",
+					"free the seat"
+				],
+				"lines": {
+					"calm": [
+						"...If there's an open seat, that's fine.",
+						"You'll keep my bags? Great."
+					],
+					"angry": [
+						"My bags ARE me!",
+						"An hour is nothing!"
+					],
+					"neutral": [
+						"So, my seat?"
+					],
+					"demand": [
+						"Move that person!"
+					],
+					"resolved": "This machine looks luckier anyway. Watch my bags!",
+					"explode": "Fine! I'm leaving with my bags! ...Heavy!",
+					"yielded": "See, it pays to ask! I'll leave my bags here tomorrow too!"
+				},
+				"actions": {
+					"medal_return": "bad",
+					"maintenance": "good"
+				},
+				"machine": "medal"
+			},
+			{
+				"title": "The Phone-Charging Gamer",
+				"name": "Kireo Denchi",
+				"look": {
+					"body_color": "#7a3aa5",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#2a2a2a",
+					"hair": "spiky",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.99
+				},
+				"memo": "His phone's about to die and he wants to plug into the outlet behind a game machine. Customers can't use machine outlets. A paid charger can be rented at the counter.",
+				"opening": "My phone's at 1%! Let me use the outlet behind this machine! I have to check the rankings!",
+				"demand": "Use the outlet behind the game machine",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"charger",
+					"rent",
+					"counter",
+					"outlet",
+					"can use",
+					"show you"
+				],
+				"yield_keywords": [
+					"go ahead and use",
+					"behind the",
+					"unplug",
+					"just this once"
+				],
+				"lines": {
+					"calm": [
+						"You rent chargers? Legend.",
+						"Counter, got it."
+					],
+					"angry": [
+						"It's at 1%!",
+						"I can't see the rankings!"
+					],
+					"neutral": [
+						"So, charging?"
+					],
+					"demand": [
+						"Just for a sec!"
+					],
+					"resolved": "Charged! Rankings... oh, someone passed me.",
+					"explode": "Forget it! When it dies, I'll sleep!",
+					"yielded": "Thanks! ...Wait, did the machine just turn off?"
+				},
+				"actions": {
+					"maintenance": "good",
+					"credit": "neutral"
+				},
+				"machine": "video"
+			},
+			{
+				"title": "The Man Who Named the Claw",
+				"name": "Shinpei Nazuke",
+				"look": {
+					"body_color": "#38e05a",
+					"skin_color": "#f2cba8",
+					"hair_color": "#111111",
+					"hair": "perm",
+					"build": "big",
+					"accessory": "beanie",
+					"height": 1.06
+				},
+				"memo": "He named a crane game's claw 'George' and wants to stick a name tag on the machine and take a photo inside with the claw. Nothing can be stuck on machines. Photos from outside are fine. He can play to win.",
+				"opening": "I'm calling this claw George. He tries so hard. Can I stick a 'George' tag on the machine? And I want to get inside for a photo with him.",
+				"demand": "Put a name tag on the machine and climb inside for a photo with the claw",
+				"patience": 1.0,
+				"start_anger": 34,
+				"solution_keywords": [
+					"from outside",
+					"photo",
+					"take a picture",
+					"cheer",
+					"can't stick",
+					"play"
+				],
+				"yield_keywords": [
+					"you can stick",
+					"go inside",
+					"open it",
+					"come on in"
+				],
+				"lines": {
+					"calm": [
+						"From outside is fine? George, look here.",
+						"Right, I can still cheer. Go, George."
+					],
+					"angry": [
+						"That's rude to George!",
+						"George is family!"
+					],
+					"neutral": [
+						"George looks thin today."
+					],
+					"demand": [
+						"At least let me put up a name tag!"
+					],
+					"resolved": "Nice catch, George! ...From today, you're Super George.",
+					"explode": "Fine! George and I are leaving! ...Well, George can't.",
+					"yielded": "Yes! Photo time, George! ...Oh, it's cramped in here."
+				},
+				"actions": {
+					"crane_stuck": "neutral",
+					"credit": "bad"
+				},
+				"machine": "crane",
+				"rare": true
+			},
+			{
+				"title": "The Maybe-Lost-Phone Woman",
+				"name": "Wasureko Okita",
+				"look": {
+					"body_color": "#a5463a",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#5a3a2a",
+					"hair": "bob",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "She thinks she left her phone on a machine she just played. Lost items can be checked at the counter, and security footage can be reviewed together with the manager's OK. Footage can't be handed to customers.",
+				"opening": "Um, I think I left my phone at that machine! Can you copy ALL the security footage for me?! Right now!",
+				"demand": "Get a copy of all the security footage",
+				"patience": 1.2,
+				"start_anger": 32,
+				"solution_keywords": [
+					"lost and found",
+					"counter",
+					"turned in",
+					"check",
+					"manager",
+					"together"
+				],
+				"yield_keywords": [
+					"copy it for you",
+					"hand it over",
+					"all the footage",
+					"give you"
+				],
+				"lines": {
+					"calm": [
+						"You'll check lost and found? Please!",
+						"Checking the machine with me would help..."
+					],
+					"angry": [
+						"My whole life is on that phone!",
+						"Hurry!"
+					],
+					"neutral": [
+						"...Did I check my pockets?"
+					],
+					"demand": [
+						"Give me the footage!"
+					],
+					"resolved": "Found it! ...It was at the bottom of my bag. Sorry for the fuss!",
+					"explode": "Forget it! I'll check every machine myself! ...Oh, it's in my pocket.",
+					"yielded": "Got the footage! ...Wait, my phone's in my bag."
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
+			},
+			{
+				"title": "The Freezing Customer",
+				"name": "Shinta Samukawa",
+				"look": {
+					"body_color": "#00c2d4",
+					"skin_color": "#f0caa8",
+					"hair_color": "#4a3020",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "none",
+					"height": 1.0
+				},
+				"memo": "Says the arcade is way too cold. The thermostat is set by the store and can be nudged a little. You can show him a seat out of the draft or lend a lap blanket. The AC can't be shut off for the whole store.",
+				"opening": "It's freezing! Is this a fridge?! Turn off ALL the AC! I want to be in the tropics NOW!",
+				"demand": "Shut off the AC for the whole store",
+				"patience": 1.2,
+				"start_anger": 33,
+				"solution_keywords": [
+					"temperature",
+					"adjust",
+					"draft",
+					"blanket",
+					"seat",
+					"show you"
+				],
+				"yield_keywords": [
+					"turn it off",
+					"shut it all",
+					"switch off",
+					"all off"
+				],
+				"lines": {
+					"calm": [
+						"A blanket? Ahh, warm.",
+						"A seat out of the draft is fine."
+					],
+					"angry": [
+						"My fingers are too numb to press buttons!",
+						"My lips are purple!"
+					],
+					"neutral": [
+						"...Brr."
+					],
+					"demand": [
+						"Turn off the AC!"
+					],
+					"resolved": "Warmed up. ...Now I'm getting sleepy.",
+					"explode": "Forget it! It's warmer outside! ...Brr, it's not!",
+					"yielded": "Toasty! ...Uh, everyone else is sweating."
+				},
+				"actions": {
+					"dogeza": "bad"
+				},
+				"machine": "none"
 			}
 		]
 	}
