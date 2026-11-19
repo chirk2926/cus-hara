@@ -38,6 +38,7 @@ const GEN_SYSTEM = `あなたはコミカルな接客ゲーム「カスハラ防
 - start_anger: 最初の怒り。30〜55の整数。
 - solution_keywords: 正しい解決策を述べた返答に含まれそうな短い語を4〜6個（例:「交換」「新しい」）。
 - yield_keywords: 不当な要求を受け入れた返答に含まれそうな短い語を3〜5個（例:「土下座」「無料」）。
+- problem: ゲームセンターの台の不具合のお客さんのときだけ入れる。jam（メダルが払い出しのレールで詰まった）/ empty（台のメダルが切れて払い出されない）/ lottery（メダルゲームの抽選機が動かない）/ button（ビデオゲームのボタンが反応しないと言う）/ slam（ビデオゲームのコーナーで台パンしている人がいると知らせに来た）/ loud（大声を出している人がいると知らせに来た）。それ以外は none。台の不具合のお客さんは、困っているのは本当（不当なのは要求の部分だけ）。slam・loud のお客さんは、迷惑な人を追い出せ・出入り禁止にしろ、などを要求する。
 - machine: ゲームセンターのとき、クレームの対象の台の種類。crane（クレーンゲーム）/ medal（メダルゲーム）/ rhythm（音楽ゲーム）/ video（ビデオゲーム・プリントシール機など）/ none（台と関係ない）。コンビニは none。
 - actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを補填）・maintenance（台のメンテナンス）・credit（クレジットを補填）・crane_stuck（引っかかった景品をとる）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
 
@@ -139,6 +140,8 @@ const CustomerSchema = z.object({
     crane_stuck: z.enum(["good", "neutral", "bad", "yield"]),
   }),
   machine: z.enum(["crane", "medal", "rhythm", "video", "purikura", "none"]),
+  // 台の問題（要件#99）。none 以外なら、台の種類と行動の効果はサーバーが表から決める
+  problem: z.enum(["none", "jam", "empty", "lottery", "button", "slam", "loud"]).catch("none"),
 });
 
 const TurnSchema = z.object({
@@ -325,6 +328,7 @@ const REQUEST_KINDS: Record<StageId, Array<[number, string]>> = {
     [2, "場所や決まりの質問から始まり、ちょっと無茶なお願いになる（トイレ・喫煙所・駐車場・ATM・Wi-Fi・年齢制限など）"],
     [1.5, "世間話・長話（天気・昔のゲーセン・家族自慢など）で店員の仕事を止めてしまう人。悪気はないが要求が大きい"],
     [1.5, "思わず笑う突飛な用件（ぬいぐるみと結婚したい、アームに名前をつけたい、など。例と同じものは避けて新しく考える）"],
+    [2, "メダルゲーム・ビデオゲームの台の不具合（メダルが詰まった・メダル切れ・抽選機が動かない・ボタンが反応しない）か、台パン・大声の迷惑なお客さんの通報。problem に種類を入れる"],
   ],
   konbini: [
     [5, "定番のクレーム（商品・会計・接客への不満）"],
@@ -376,6 +380,7 @@ export async function generateCustomer(stage: StageId, avoidTitles: string[], la
     machine: stage === "arcade" ? (spend ? "crane" : c.machine) : "none",
     crane: stage === "arcade" && (spend || c.machine === "crane"),
     spend: spend && stage === "arcade",
+    ...(stage === "arcade" && !spend && c.problem !== "none" ? { problem: c.problem } : {}),
   };
 }
 

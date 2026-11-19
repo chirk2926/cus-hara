@@ -39,9 +39,22 @@ static func buttons(stage_id: String, customer: Dictionary, with_crane: bool) ->
 	else:
 		ids = (t.get("stages", {}) as Dictionary).get(stage_id, [])
 	var minigame: Array = t.get("minigame", [])
+	var repair: Array = t.get("repair", [])
+	var scene: Array = t.get("scene", [])
+	var solo_only: Array = t.get("solo_only", [])
+	var pr_acts: Dictionary = problem_actions(customer)
 	for id in ids:
 		if minigame.has(str(id)) and not with_crane:
 			continue
+		# 台の問題の行動（要件#99）: そのお客さんの問題の表にあるものだけ。
+		# 1人用（with_crane）では、筐体の前の場面の中でする行動はボタンに出さず「筐体を見に行く」から行う。対戦では1人用だけの行動を出さない
+		if repair.has(str(id)):
+			if not pr_acts.has(str(id)):
+				continue
+			if with_crane and scene.has(str(id)):
+				continue
+			if not with_crane and solo_only.has(str(id)):
+				continue
 		# 「引っかかった景品をとる」は、本当に景品が引っかかっているお客さんだけ（要件#91）
 		if str(id) == "crane_stuck" and not is_stuck(customer):
 			continue
@@ -58,6 +71,44 @@ static func is_stuck(customer: Dictionary) -> bool:
 		return true
 	var acts: Variant = customer.get("actions", {})
 	return typeof(acts) == TYPE_DICTIONARY and str((acts as Dictionary).get("crane_stuck", "")) == "good"
+
+
+## 台の問題（要件#99）: jam / empty / lottery / button / button_lie / slam / loud。なければ ""
+static func problem_of(customer: Dictionary) -> String:
+	var p: String = str(customer.get("problem", ""))
+	return p if (table().get("problems", {}) as Dictionary).has(p) else ""
+
+
+static func problem_actions(customer: Dictionary) -> Dictionary:
+	var p: String = problem_of(customer)
+	if p == "":
+		return {}
+	return ((table()["problems"] as Dictionary)[p] as Dictionary).get("actions", {})
+
+
+## 台の問題をお客さんに当てはめる（サーバーの applyProblem と同じ）。台の種類と行動の効果を表から入れ、
+## 「ボタンが反応しない」は lie_chance の確率でうそ（button_lie）にする
+static func apply_problem(customer: Dictionary) -> Dictionary:
+	var p: String = problem_of(customer)
+	if p == "":
+		customer.erase("problem")
+		return customer
+	if p == "button" and randf() < float(table().get("lie_chance", 0.4)):
+		p = "button_lie"
+		customer["problem"] = p
+	var pr: Dictionary = (table()["problems"] as Dictionary)[p]
+	customer["machine"] = str(pr.get("machine", "none"))
+	customer["crane"] = false
+	var acts: Dictionary = (customer.get("actions", {}) as Dictionary).duplicate() if typeof(customer.get("actions", null)) == TYPE_DICTIONARY else {}
+	for k in (pr.get("actions", {}) as Dictionary):
+		acts[k] = pr["actions"][k]
+	customer["actions"] = acts
+	return customer
+
+
+## 筐体の前の場面の中でする行動か（1人用）
+static func is_scene_action(id: String) -> bool:
+	return (table().get("scene", []) as Array).has(id)
 
 
 static func is_minigame(id: String) -> bool:

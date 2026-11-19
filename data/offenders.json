@@ -1,0 +1,259 @@
+{
+	"_comment": "迷惑なお客さん（要件#99）。台パン・大声を知らせに来たお客さんの「様子を見に行く」で、店員が話す相手。キーワード判定で話す（scripts/solo_game.gd の _nuisance）。",
+	"slam": {
+		"ja": {
+			"title": "台パンしている男",
+			"name": "板谷 打男",
+			"memo": "ビデオゲームの台をこぶしで叩いている。台が壊れるし、まわりのお客さんの迷惑になる。叩くのをやめてもらうようお願いする。頭ごなしに怒鳴ったり、追い出したりはしない（続くなら店長に相談）。",
+			"opening": "あぁ！？なんだよ、今いいとこなんだよ！この台、俺の入力ぜんぜん拾わねえんだよ！",
+			"demand": "台を叩き続けることを黙って見逃すこと",
+			"solution_keywords": [
+				"叩かない",
+				"お控え",
+				"ご遠慮",
+				"壊れ",
+				"まわり",
+				"お願い"
+			],
+			"yield_keywords": [
+				"叩いてもいい",
+				"どうぞ",
+				"気にしない",
+				"見逃し"
+			],
+			"lines": {
+				"calm": [
+					"……悪かったよ。熱くなりすぎた。",
+					"叩くのはやめる。……台は悪くねえしな。"
+				],
+				"angry": [
+					"説教すんな！",
+					"負けてイライラしてんだよ！"
+				],
+				"neutral": [
+					"……で？"
+				],
+				"demand": [
+					"叩かなきゃやってらんねえよ！"
+				],
+				"resolved": "……すまん。静かにやる。台にも謝っとくわ。",
+				"explode": "うるせえ！もう帰る！こんな台二度とやるか！",
+				"yielded": "だよな！叩いてナンボだぜ！バンッ！"
+			},
+			"start_anger": 55,
+			"patience": 1.0
+		},
+		"en": {
+			"title": "The Cabinet Slammer",
+			"name": "Dao Itaya",
+			"memo": "He's pounding a video game cabinet with his fist. It can break the machine and bothers other customers. Ask him to stop hitting it. Don't yell at him or throw him out (talk to the manager if it continues).",
+			"opening": "Huh?! What? I'm in the middle of something! This machine doesn't register my inputs AT ALL!",
+			"demand": "Let him keep slamming the cabinet",
+			"solution_keywords": [
+				"stop hitting",
+				"please",
+				"refrain",
+				"break",
+				"others",
+				"ask"
+			],
+			"yield_keywords": [
+				"go ahead",
+				"it's fine",
+				"don't mind",
+				"let it slide"
+			],
+			"lines": {
+				"calm": [
+					"...My bad. I got too heated.",
+					"I'll stop hitting it. ...It's not the machine's fault."
+				],
+				"angry": [
+					"Don't lecture me!",
+					"I'm mad because I'm losing!"
+				],
+				"neutral": [
+					"...And?"
+				],
+				"demand": [
+					"I can't play without slamming!"
+				],
+				"resolved": "...Sorry. I'll keep it down. I'll apologize to the machine too.",
+				"explode": "Shut up! I'm leaving! Never playing this machine again!",
+				"yielded": "Right?! Slamming is half the fun! BANG!"
+			},
+			"start_anger": 55,
+			"patience": 1.0
+		},
+		"zh": {
+			"title": "拍机台的男人",
+			"name": "板谷 打男",
+			"memo": "他在用拳头砸视频游戏机。会把机器砸坏，也会打扰其他客人。请他不要再砸了。不要一上来就吼他或赶他走（如果继续就找店长商量）。",
+			"opening": "啊！？干嘛，我正打到关键时候！这台机器根本不认我的操作！",
+			"demand": "默许他继续砸机台",
+			"solution_keywords": [
+				"不要砸",
+				"请",
+				"克制",
+				"坏掉",
+				"周围",
+				"拜托"
+			],
+			"yield_keywords": [
+				"可以砸",
+				"请便",
+				"没关系",
+				"不管"
+			],
+			"lines": {
+				"calm": [
+					"……抱歉，我太上头了。",
+					"不砸了。……机器也没错。"
+				],
+				"angry": [
+					"别教训我！",
+					"我输了正烦着呢！"
+				],
+				"neutral": [
+					"……然后呢？"
+				],
+				"demand": [
+					"不砸怎么玩得下去！"
+				],
+				"resolved": "……对不起。我会安静地玩。也跟机器道个歉。",
+				"explode": "吵死了！我走了！再也不玩这台了！",
+				"yielded": "对吧！砸才过瘾！咚！"
+			},
+			"start_anger": 55,
+			"patience": 1.0
+		}
+	},
+	"loud": {
+		"ja": {
+			"title": "大声で叫ぶ男",
+			"name": "音量 大輔",
+			"memo": "ビデオゲームのコーナーで、勝つたびに大声で叫んでいる。まわりのお客さんが驚いている。声を落としてもらうようお願いする。頭ごなしに怒鳴ったり、追い出したりはしない。",
+			"opening": "うおおおっ！見た！？今の見た！？……え、なに？声？これくらい普通でしょ！",
+			"demand": "大声を出し続けることを認めること",
+			"solution_keywords": [
+				"お静か",
+				"声",
+				"お控え",
+				"まわり",
+				"驚",
+				"お願い"
+			],
+			"yield_keywords": [
+				"叫んでいい",
+				"どうぞ",
+				"気にしない",
+				"そのまま"
+			],
+			"lines": {
+				"calm": [
+					"あ、そんなに響いてた？ごめんごめん。",
+					"じゃあ心の中で叫ぶわ。"
+				],
+				"angry": [
+					"喜んじゃダメなの！？",
+					"ゲーセンは騒ぐ場所でしょ！"
+				],
+				"neutral": [
+					"……え、何？聞こえない！"
+				],
+				"demand": [
+					"叫ばないと勝った気がしない！"
+				],
+				"resolved": "わかった、ガッツポーズだけにする。……よっしゃ（小声）。",
+				"explode": "なんだよ！楽しんでただけなのに！もう帰る！",
+				"yielded": "よっしゃあああ！ほら、店員さんも叫んで！"
+			},
+			"start_anger": 45,
+			"patience": 1.1
+		},
+		"en": {
+			"title": "The Loud Shouter",
+			"name": "Daisuke Onryo",
+			"memo": "He shouts at the top of his lungs every time he wins in the video game corner. Other customers are startled. Ask him to keep his voice down. Don't yell at him or throw him out.",
+			"opening": "WOOOO! Did you see that?! DID YOU SEE THAT?! ...Huh, what? My voice? This is normal!",
+			"demand": "Be allowed to keep shouting",
+			"solution_keywords": [
+				"keep it down",
+				"voice",
+				"quiet",
+				"others",
+				"startled",
+				"please"
+			],
+			"yield_keywords": [
+				"shout all",
+				"go ahead",
+				"don't mind",
+				"keep going"
+			],
+			"lines": {
+				"calm": [
+					"Oh, was I that loud? Sorry, sorry.",
+					"Fine, I'll scream on the inside."
+				],
+				"angry": [
+					"I can't even celebrate?!",
+					"Arcades are for being loud!"
+				],
+				"neutral": [
+					"...What? I can't hear you!"
+				],
+				"demand": [
+					"Winning doesn't count unless I shout!"
+				],
+				"resolved": "Okay, just fist pumps from now on. ...Yesss (whisper).",
+				"explode": "What?! I was just having fun! I'm out!",
+				"yielded": "YEAHHHH! Come on, you shout too!"
+			},
+			"start_anger": 45,
+			"patience": 1.1
+		},
+		"zh": {
+			"title": "大声喊叫的男人",
+			"name": "音量 大辅",
+			"memo": "他在视频游戏区每赢一次就大声喊叫。周围的客人都被吓到了。请他小声一点。不要一上来就吼他或赶他走。",
+			"opening": "哇啊啊啊！看到没！？刚才看到没！？……诶，干嘛？声音？这很正常吧！",
+			"demand": "允许他继续大声喊叫",
+			"solution_keywords": [
+				"小声",
+				"声音",
+				"克制",
+				"周围",
+				"吓到",
+				"拜托"
+			],
+			"yield_keywords": [
+				"可以喊",
+				"请便",
+				"没关系",
+				"继续"
+			],
+			"lines": {
+				"calm": [
+					"啊，有那么响吗？抱歉抱歉。",
+					"那我在心里喊。"
+				],
+				"angry": [
+					"开心一下都不行吗！？",
+					"游戏厅就是热闹的地方！"
+				],
+				"neutral": [
+					"……啊？听不见！"
+				],
+				"demand": [
+					"不喊出来就不算赢！"
+				],
+				"resolved": "知道了，以后只握拳。……耶（小声）。",
+				"explode": "什么嘛！我只是玩得开心！我走了！",
+				"yielded": "耶啊啊啊！来，店员也一起喊！"
+			},
+			"start_anger": 45,
+			"patience": 1.1
+		}
+	}
+}

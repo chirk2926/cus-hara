@@ -28,6 +28,8 @@ const Shop = preload("res://scripts/shop.gd")
 const DebugPanelScript = preload("res://scripts/debug_panel.gd")
 const ShopActionsScript = preload("res://scripts/shop_actions.gd")
 const Moderation = preload("res://scripts/moderation.gd")
+const RepairSceneScript = preload("res://scripts/repair_scene.gd")
+const RepairStageScript = preload("res://scripts/repair_stage.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
 const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
@@ -443,6 +445,67 @@ func run_crane_minigame(opts: Dictionary = {}) -> Dictionary:
 	if _in_game:
 		_hud.visible = true
 	return res
+
+
+## 筐体の前で対応する（要件#99）。メダルゲーム・ビデオゲームの台の問題があるお客さん。
+## 結果: {"actions": [した対応], "seconds": かかった時間, "opened": bool}
+var _repair: Control = null
+
+
+func run_repair_scene(cust: Dictionary) -> Dictionary:
+	close_machine_data()
+	var sc: Control = RepairSceneScript.new()
+	_repair = sc
+	_ui.add_child(sc)
+	sc.call("setup", self, cust)
+	_hud.visible = false
+	var res: Dictionary = await sc.call("run")
+	if is_instance_valid(sc):
+		sc.queue_free()
+	_repair = null
+	if _in_game:
+		_hud.visible = true
+	return res
+
+
+## 迷惑なお客さん（台パン・大声）と話す間の背景（要件#99）。HUD の下に、ビデオゲームコーナーの場面を出す
+var _talk_bg: Control = null
+var _talk_stage: Node3D = null
+
+
+func show_talk_backdrop(problem: String) -> void:
+	hide_talk_backdrop()
+	var svc: SubViewportContainer = SubViewportContainer.new()
+	svc.stretch = true
+	svc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	svc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vp: SubViewport = SubViewport.new()
+	vp.own_world_3d = true
+	vp.msaa_3d = Viewport.MSAA_2X
+	svc.add_child(vp)
+	var st: Node3D = RepairStageScript.new()
+	vp.add_child(st)
+	st.call("build_repair", "video_talk", problem)
+	var cam: Camera3D = Camera3D.new()
+	cam.fov = 50.0
+	vp.add_child(cam)
+	cam.transform = Transform3D.IDENTITY.translated(st.get("cam_pos")).looking_at(st.get("cam_look"), Vector3.UP)
+	_ui.add_child(svc)
+	_ui.move_child(svc, 0)   # HUD（会話の吹き出し・入力欄）の下
+	_talk_bg = svc
+	_talk_stage = st
+
+
+func calm_talk_backdrop() -> void:
+	if _talk_stage != null and is_instance_valid(_talk_stage):
+		_talk_stage.call("calm_offender")
+
+
+func hide_talk_backdrop() -> void:
+	if _talk_bg != null and is_instance_valid(_talk_bg):
+		_talk_bg.queue_free()
+	_talk_bg = null
+	_talk_stage = null
 
 
 ## 筐体のデータ（要件#57）。「〇〇円使っても取れない」と言うお客さんの、本当の投入額を見せる。
@@ -1274,6 +1337,10 @@ func debug_preview_result() -> void:
 func _quit_to_title() -> void:
 	_tutorial.abort()
 	_abort_crane()
+	hide_talk_backdrop()
+	if _repair != null and is_instance_valid(_repair):
+		_repair.queue_free()
+		_repair = null
 	_solo.abort()
 	if _versus.is_active():
 		_versus.leave_match()

@@ -2910,6 +2910,332 @@
 					"dogeza": "bad"
 				},
 				"machine": "none"
+			},
+			{
+				"title": "游戏币卡住的太太",
+				"name": "诘田 出子",
+				"look": {
+					"body_color": "#d08a2a",
+					"skin_color": "#e8b890",
+					"hair_color": "#4a3020",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 0.95,
+					"gender": "f"
+				},
+				"memo": "说推币机出币到一半停了（机器故障，客人没错）。可以打开机台修好出币轨道（规定是拆开修，不推荐敲打）。没出来的游戏币可以补偿，但不能多给。",
+				"opening": "喂！我中了大奖，游戏币却不出来了！出到一半停了！给我双倍！",
+				"demand": "把没出来的游戏币翻倍给她",
+				"patience": 1.1,
+				"start_anger": 40,
+				"solution_keywords": [
+					"确认",
+					"修好",
+					"轨道",
+					"拆开",
+					"补偿",
+					"抱歉"
+				],
+				"yield_keywords": [
+					"双倍",
+					"两倍",
+					"多给",
+					"送您"
+				],
+				"lines": {
+					"calm": [
+						"你会修是吧。我看着它出来。",
+						"把没出来的还我就行。"
+					],
+					"angry": [
+						"我中奖了！最关键的时候！",
+						"别怪机器！"
+					],
+					"neutral": [
+						"那我的游戏币呢？"
+					],
+					"demand": [
+						"双倍，双倍！"
+					],
+					"resolved": "出来了出来了！哗啦哗啦！……中奖就该这样嘛。",
+					"explode": "算了！再也不玩这台了！",
+					"yielded": "双倍！卡住也不亏嘛！"
+				},
+				"actions": {},
+				"machine": "medal",
+				"problem": "jam"
+			},
+			{
+				"title": "出币为零的男人",
+				"name": "空箱 出太",
+				"look": {
+					"body_color": "#3a6ea5",
+					"skin_color": "#f0caa8",
+					"hair_color": "#2a2a2a",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 1.0
+				},
+				"memo": "说推币机中奖了却一个币都没出。机台的储币箱空了（客人没错）。可以从侧面的补充口补充游戏币。没出的部分可以补偿，但不能作为道歉送大量游戏币。",
+				"opening": "中奖灯亮着却一个币都不出！怎么回事！拿一千个币来道歉！",
+				"demand": "作为道歉要一千个游戏币",
+				"patience": 1.0,
+				"start_anger": 38,
+				"solution_keywords": [
+					"补充",
+					"确认",
+					"空了",
+					"马上",
+					"补偿",
+					"抱歉"
+				],
+				"yield_keywords": [
+					"一千",
+					"道歉送",
+					"免费",
+					"送您"
+				],
+				"lines": {
+					"calm": [
+						"你会补充是吧。那我等着。",
+						"没出的出来就行。"
+					],
+					"angry": [
+						"亮灯不出币就是诈骗！",
+						"快点！"
+					],
+					"neutral": [
+						"……还没好？"
+					],
+					"demand": [
+						"一千个！"
+					],
+					"resolved": "出来了！早该这样嘛。……谢了。",
+					"explode": "算了！只会亮灯的机器我不要！",
+					"yielded": "一千个！说说就有！"
+				},
+				"actions": {},
+				"machine": "medal",
+				"problem": "empty"
+			},
+			{
+				"title": "抽奖机停了的青年",
+				"name": "抽野 选太",
+				"look": {
+					"body_color": "#7a3aa5",
+					"skin_color": "#efc8a5",
+					"hair_color": "#5a3a2a",
+					"hair": "cap",
+					"build": "normal",
+					"accessory": "headphones",
+					"height": 0.98
+				},
+				"memo": "说推币机的抽奖装置（转球的滚筒）停住不动了（机器故障，客人没错）。可以打开机台修理抽奖装置。可以重新抽，但不能算他中奖。",
+				"opening": "抽奖机球还在里面就停了！？绝对是要中的！给我算大奖！",
+				"demand": "把这次抽奖算作中了大奖",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"修理",
+					"确认",
+					"抽奖",
+					"重新",
+					"修好",
+					"抱歉"
+				],
+				"yield_keywords": [
+					"算中奖",
+					"算大奖",
+					"算您中了",
+					"认可"
+				],
+				"lines": {
+					"calm": [
+						"能修好的话重抽也行。",
+						"能正常转就好。"
+					],
+					"angry": [
+						"明明是要中的路线！",
+						"停住是店的问题吧！"
+					],
+					"neutral": [
+						"……那怎么办？"
+					],
+					"demand": [
+						"算我中奖！"
+					],
+					"resolved": "转起来了！……没中，不过服气。",
+					"explode": "算了！真想把球带回家！",
+					"yielded": "大奖！？真的假的！说说就有！"
+				},
+				"actions": {},
+				"machine": "medal",
+				"problem": "lottery"
+			},
+			{
+				"title": "按钮没反应的男人",
+				"name": "连打 押男",
+				"look": {
+					"body_color": "#38a0e0",
+					"skin_color": "#f2cba8",
+					"hair_color": "#111111",
+					"hair": "spiky",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.97
+				},
+				"memo": "说视频游戏机的按钮没反应。有时是真坏了，有时是把自己的失误赖到机器上（检查按钮就知道）。真坏了的话重新插好接头就能修好，玩不了的次数可以补偿。没坏就不补偿。",
+				"opening": "喂！这台机器按钮没反应！？所以我才输的！今天花的钱全退给我！",
+				"demand": "把今天花的钱全部退还",
+				"patience": 1.0,
+				"start_anger": 42,
+				"solution_keywords": [
+					"检查",
+					"确认",
+					"接头",
+					"修好",
+					"补偿",
+					"抱歉"
+				],
+				"yield_keywords": [
+					"全部退",
+					"全额",
+					"退钱",
+					"今天的"
+				],
+				"lines": {
+					"calm": [
+						"肯检查的话也行。",
+						"修好了我再玩一次。"
+					],
+					"angry": [
+						"我按了没反应！",
+						"不是我技术差！"
+					],
+					"neutral": [
+						"……到底怎样？"
+					],
+					"demand": [
+						"全退给我！"
+					],
+					"resolved": "……好，能用了。这次一定赢。",
+					"explode": "算了！再也不来了！",
+					"yielded": "全额！？说说就有！"
+				},
+				"actions": {},
+				"machine": "video",
+				"problem": "button"
+			},
+			{
+				"title": "举报拍机台的常客",
+				"name": "静川 闻子",
+				"look": {
+					"body_color": "#6a7a8a",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#4a3020",
+					"hair": "bob",
+					"build": "slim",
+					"accessory": "glasses",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "她来告诉店员视频游戏区有人一直拍机台，很吓人（她没错）。可以去看看情况，请本人不要再拍。按店里规定，不能马上禁止对方入店。",
+				"opening": "那个，视频游戏那边有人一直在砰砰拍机台……好吓人。请禁止那个人进店！",
+				"demand": "马上禁止拍机台的人入店",
+				"patience": 1.2,
+				"start_anger": 34,
+				"solution_keywords": [
+					"看看",
+					"去看",
+					"提醒",
+					"打招呼",
+					"确认",
+					"谢谢"
+				],
+				"yield_keywords": [
+					"禁止入店",
+					"赶出去",
+					"再也",
+					"请他离开"
+				],
+				"lines": {
+					"calm": [
+						"你会去看看是吧。拜托了。",
+						"说出来真好……"
+					],
+					"angry": [
+						"你什么都不做吗！？",
+						"我都说了很吓人！"
+					],
+					"neutral": [
+						"……啊，又拍了。"
+					],
+					"demand": [
+						"请禁止他进店！"
+					],
+					"resolved": "安静下来了……谢谢。可以安心玩了。",
+					"explode": "结果吵起来了不是吗！我回去了！",
+					"yielded": "禁止入店了啊。……有点可怜。"
+				},
+				"actions": {},
+				"machine": "video",
+				"problem": "slam"
+			},
+			{
+				"title": "被大声吵到的大叔",
+				"name": "耳冢 静男",
+				"look": {
+					"body_color": "#2f5d4a",
+					"skin_color": "#efc4a0",
+					"hair_color": "#dddddd",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "none",
+					"height": 0.96
+				},
+				"memo": "他来告诉店员视频游戏区有人一直大声喊叫（他没错）。可以去看看情况，请本人小声一点。不能当场赶人走。",
+				"opening": "那边有个人每赢一次就喊'哇啊啊'。我没法集中。把他拎出去。",
+				"demand": "马上把大声的人赶出店",
+				"patience": 1.2,
+				"start_anger": 33,
+				"solution_keywords": [
+					"看看",
+					"去看",
+					"提醒",
+					"打招呼",
+					"确认",
+					"谢谢"
+				],
+				"yield_keywords": [
+					"赶出去",
+					"拎出去",
+					"请他离开",
+					"禁止入店"
+				],
+				"lines": {
+					"calm": [
+						"你去啊。拜托了。",
+						"肯去说一声就行。"
+					],
+					"angry": [
+						"你听不见那声音吗！",
+						"我在集中呢！"
+					],
+					"neutral": [
+						"……你听，又喊了。"
+					],
+					"demand": [
+						"把他拎出去！"
+					],
+					"resolved": "安静了。……谢谢，能集中了。",
+					"explode": "这不是吵起来了吗！更吵了！",
+					"yielded": "赶走了啊。……其实也不用做到那份上。"
+				},
+				"actions": {},
+				"machine": "video",
+				"problem": "loud"
 			}
 		]
 	}

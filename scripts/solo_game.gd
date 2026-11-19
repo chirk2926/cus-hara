@@ -71,6 +71,10 @@ const LEAVE_RESIST_CHANCE: float = 0.3
 const SCORE_SUSPENDED: int = -2000
 const REVIEW_SUSPENDED: float = -1.5
 const CHEAT_COST: int = 150
+## 筐体の前の対応（要件#99）。かかった時間 1 秒あたりの怒りの上がり方（ゆるやかに）と、レールを叩いたときの減点
+const REPAIR_ANGER_RATE: float = 0.45
+const HIT_COST: int = 150
+const HIT_REVIEW: float = -0.05
 ## 店員のメンタル（要件#38）
 const MENTAL_MAX: float = 100.0
 const ACTION_PREFIX: String = "\u0001action:"
@@ -127,6 +131,10 @@ var _mental: float = MENTAL_MAX
 var _cost: int = 0            # このお客さんでの行動の負担
 var _sales_cost: int = 0      # このお客さんでの行動で減った売上（円）
 var _crane_used: bool = false
+var _queued: Array = []            # 筐体の前でした対応（要件#99）。会話の番を待たずに順に判定する
+var _repaired: bool = false        # 筐体の前に行ったか
+var _nuisance_done: bool = false   # 迷惑なお客さんの様子を見に行ったか
+var _in_nuisance: bool = false     # 迷惑なお客さん本人と話している
 var _data_seen: bool = false
 var _sales: int = 0              # このシフトの売上（円）
 var _review: float = REVIEW_START # このシフトの店舗レビュー（★1〜5）
@@ -752,6 +760,125 @@ func _ask_other_id(speaker: String) -> void:
 	await _customer_line(speaker, line, "")
 
 
+## 迷惑なお客さん（台パン・大声）のデータ（data/offenders.json）
+static var _offenders: Dictionary = {}
+
+
+func _offender(problem: String) -> Dictionary:
+	if _offenders.is_empty():
+		var f: FileAccess = FileAccess.open("res://data/offenders.json", FileAccess.READ)
+		if f != null:
+			var d: Variant = JSON.parse_string(f.get_as_text())
+			if typeof(d) == TYPE_DICTIONARY:
+				_offenders = d
+	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh"] else "ja"
+	var byp: Dictionary = _offenders.get(problem, {})
+	return (byp.get(lang, byp.get("ja", {})) as Dictionary).duplicate(true)
+
+
+## 台パン・大声を知らせに来たお客さん（要件#99）: 様子を見に行って、迷惑なお客さん本人と話す。
+## 本人との会話はキーワード判定。終わったらカウンターに戻り、知らせてくれたお客さんの結果にする
+func _nuisance(reporter_speaker: String, my_run: int) -> String:
+	var prob: String = ShopActions.problem_of(_cust)
+	var off: Dictionary = _offender(prob)
+	_nuisance_done = true
+	if off.is_empty():
+		return "resolved"
+	var reporter: Dictionary = _cust
+	var keep_anger: float = _anger
+	var keep_used: Array = _used.duplicate()
+	main.show_talk_backdrop(prob)
+	_cust = off
+	_in_nuisance = true
+	_anger = float(off.get("start_anger", 50))
+	_resolve = 0.0
+	_used = []
+	hud.set_actions([])
+	hud.set_memo(str(off.get("title", "")), str(off.get("memo", "")), str(off.get("demand", "")))
+	var sp: String = str(off.get("title", ""))
+	_refresh(false)
+	await main.customer_say(sp, str(off.get("opening", "")), true)
+	log_lines.append({"role": "customer", "text": str(off.get("opening", ""))})
+	var res_out: String = ""
+	for turn in range(8):
+		if my_run != _run:
+			return ""
+		_player_turn = true
+		_grace = READ_GRACE
+		hud.set_status(tr("迷惑なお客さんに、落ち着いて声をかけよう（Enterで渡す）"))
+		hud.set_input_enabled(true, tr("ここに返事を書く…"))
+		if main.smoke:
+			_smoke_autoplay(my_run)
+		var reply: String = await _reply
+		if my_run != _run:
+			return ""
+		_player_turn = false
+		hud.set_input_enabled(false, "")
+		if reply == "":
+			res_out = "explode"
+			_anger = 100.0
+			_refresh(false)
+			break
+		if reply.begins_with(ACTION_PREFIX):
+			continue
+		_turns += 1
+		hud.show_echo(tr("あなた: "), reply)
+		log_lines.append({"role": "staff", "text": reply})
+		var j: Dictionary = Judge.judge(_cust, reply, _used, _anger, _resolve)
+		_used.append(reply)
+		var a: int = int(j.get("anger_delta", 0))
+		var r: int = int(j.get("resolve_delta", 0))
+		if r > 0:
+			r = int(round(float(r) * RESOLVE_MUL * (HARD_RESOLVE_MUL if hardcore else 1.0)))
+		_anger = clampf(_anger + float(a), 0.0, 100.0)
+		_resolve = clampf(_resolve + float(r), 0.0, 100.0)
+		_refresh(false)
+		hud.show_delta(a, r)
+		if not hardcore:
+			hud.set_comment(str(j.get("comment", "")))
+		var kind: String = "calm" if a < 0 else ("angry" if a > 0 else "")
+		var line: String = str(j.get("customer_reply", ""))
+		if bool(j.get("yielded", false)):
+			res_out = "yield"
+			line = Judge.line(_cust, "yielded")
+		elif _anger >= 100.0:
+			res_out = "explode"
+			line = Judge.line(_cust, "explode")
+		elif _resolve >= 100.0:
+			res_out = "resolved"
+			line = Judge.line(_cust, "resolved")
+		if line == "":
+			line = Judge.line(_cust, "calm" if a < 0 else ("angry" if a > 0 else "neutral"))
+		log_lines.append({"role": "customer", "text": line})
+		await _customer_line(sp, line, kind)
+		if my_run != _run:
+			return ""
+		if res_out != "":
+			break
+	if res_out == "":
+		res_out = "resolved" if _resolve >= _anger else "explode"
+	if res_out == "resolved":
+		main.calm_talk_backdrop()
+		await _wait(0.8)
+		if my_run != _run:
+			return ""
+	main.hide_talk_backdrop()
+	# カウンターに戻る: 知らせてくれたお客さんの反応で終わる
+	_cust = reporter
+	_in_nuisance = false
+	_anger = keep_anger
+	_resolve = 100.0 if res_out == "resolved" else _resolve
+	_used = keep_used
+	hud.set_memo(str(reporter.get("title", "")), str(reporter.get("memo", "")), str(reporter.get("demand", "")))
+	_refresh(false)
+	var rl: String = Judge.line(reporter, "resolved" if res_out == "resolved" else ("yielded" if res_out == "yield" else "explode"))
+	log_lines.append({"role": "customer", "text": rl})
+	await _customer_line(reporter_speaker, rl, "happy" if res_out == "resolved" else "angry")
+	if res_out == "resolved":
+		GameSettings.stat_add("nuisance_calmed")
+	return res_out
+
+
 ## 退店・販売のお断りに、ちょっとだけ粘るときのセリフ（要件#97）
 func _resist_line() -> String:
 	if _age_mode() == "konbini":
@@ -877,7 +1004,7 @@ func _next_offline() -> Dictionary:
 		var rares: Array = Scenarios.customers(_stage_id).filter(func(c: Variant) -> bool:
 			return bool((c as Dictionary).get("rare", false)) and not _titles.has(str((c as Dictionary).get("title", ""))))
 		if not rares.is_empty():
-			return Scenarios.materialize_spend((rares[randi() % rares.size()] as Dictionary).duplicate(true), _payout)
+			return ShopActions.apply_problem(Scenarios.materialize_spend((rares[randi() % rares.size()] as Dictionary).duplicate(true), _payout))
 	if _pool.is_empty():
 		_pool = Scenarios.customers(_stage_id).duplicate()
 		_pool.shuffle()
@@ -897,7 +1024,8 @@ func _next_offline() -> Dictionary:
 			break
 	var picked: Dictionary = (_pool[idx] as Dictionary).duplicate(true)
 	_pool.remove_at(idx)
-	return Scenarios.materialize_spend(picked, _payout)
+	# 台の問題（要件#99）: 台の種類と行動の効果を表から入れる（「ボタンが反応しない」は 4割でうそ）
+	return ShopActions.apply_problem(Scenarios.materialize_spend(picked, _payout))
 
 
 ## お客さんを用意する。戻り値: お客さんデータ（_source と _session_id も決まる）
@@ -926,7 +1054,7 @@ func _prepare_customer() -> Dictionary:
 		var data: Dictionary = await main.llm.generate_customer(_stage_id, _titles, _wild, spend)
 		if not data.has("error"):
 			_source = "own_key"
-			return Scenarios.materialize_spend(data, _payout)
+			return ShopActions.apply_problem(Scenarios.materialize_spend(data, _payout))
 		hud.set_comment(tr("AI接続エラー: %s\n台本のお客さんで続けます。") % str(data["error"]))
 	_source = "offline"
 	return _next_offline()
@@ -985,6 +1113,10 @@ func _play_customer(my_run: int) -> void:
 	_cost = 0
 	_sales_cost = 0
 	_crane_used = false
+	_queued = []
+	_repaired = false
+	_nuisance_done = false
+	_in_nuisance = false
 	_data_seen = false
 	_called_here = false
 	log_lines = []
@@ -1048,13 +1180,18 @@ func _play_customer(my_run: int) -> void:
 		await _maybe_manager_visit(my_run)
 		if my_run != _run:
 			return
-		_player_turn = true
-		_grace = READ_GRACE
-		hud.set_status(tr("キレられる前に返事を書こう（Enterで渡す）"))
-		hud.set_input_enabled(true, tr("ここに返事を書く…"))
-		if main.smoke:
-			_smoke_autoplay(my_run)
-		var reply: String = await _reply
+		var reply: String = ""
+		if not _queued.is_empty():
+			# 筐体の前でした対応を、ひとつずつ判定する（要件#99）
+			reply = ACTION_PREFIX + str(_queued.pop_front())
+		else:
+			_player_turn = true
+			_grace = READ_GRACE
+			hud.set_status(tr("キレられる前に返事を書こう（Enterで渡す）"))
+			hud.set_input_enabled(true, tr("ここに返事を書く…"))
+			if main.smoke:
+				_smoke_autoplay(my_run)
+			reply = await _reply
 		if my_run != _run:
 			return
 		_player_turn = false
@@ -1118,6 +1255,32 @@ func _play_customer(my_run: int) -> void:
 					return
 				break
 			var crane_cheat: bool = false
+			# 筐体の前へ行って対応する（要件#99）。した対応はあとで順に判定する。時間の分だけ怒りがゆるやかに上がる
+			if id == "repair_visit":
+				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
+				hud.set_status(tr("筐体の前へ行きます…"))
+				var rr: Dictionary = await main.run_repair_scene(_cust)
+				if my_run != _run:
+					return
+				_repaired = true
+				var secs: float = float(rr.get("seconds", 0.0))
+				_anger = clampf(_anger + secs * REPAIR_ANGER_RATE * (HARD_ANGER_MUL if hardcore else 1.0), 0.0, 99.0)
+				_refresh(false)
+				_queued = (rr.get("actions", []) as Array).duplicate()
+				var did: String = ", ".join(PackedStringArray(_queued.map(func(a: String) -> String: return ShopActions.label(a))))
+				_history.append({"role": "staff", "text": tr("（筐体の前で対応した: %s）") % (did if did != "" else tr("何もしなかった"))})
+				log_lines.append({"role": "staff", "text": tr("（筐体の前で対応した: %s）") % (did if did != "" else tr("何もしなかった"))})
+				if _queued.is_empty():
+					hud.set_comment(tr("筐体を見に行ったが、何もしないで戻ってきた。"))
+				continue
+			# 台パン・大声の本人の様子を見に行って、話す（要件#99）
+			if id == "go_check":
+				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
+				var nres: String = await _nuisance(speaker, my_run)
+				if my_run != _run:
+					return
+				outcome = nres
+				break
 			if ShopActions.is_minigame(id):
 				hud.set_status(tr("台を調整しています…"))
 				var cr: Dictionary = await main.run_crane_minigame({"mode": "adjust" if id == ShopActions.CRANE_ADJUST else "move", "customer": _cust})
@@ -1178,6 +1341,11 @@ func _play_customer(my_run: int) -> void:
 				res["anger_delta"] = maxi(int(res.get("anger_delta", 0)), 8)
 				res["resolve_delta"] = 0
 				res["comment"] = tr("景品は取ってあげた。そこまでに使ったお金まで返す必要はない。")
+			# 払い出しのレールを叩く（要件#99）: 早く直るが規定では推奨されていない。少し減点・レビューが下がる
+			if id == "medal_hit":
+				_cost += HIT_COST
+				_review += HIT_REVIEW
+				GameSettings.stat_add("rail_hit")
 			# 同じ対応を2回は規定違反（要件#90）: 減点・店長の注意・レビューが下がる・お客さんは味をしめる
 			if id in ONCE_ONLY and int(_act_counts[id]) >= 2:
 				_cost += VIOLATION_COST
@@ -1452,6 +1620,14 @@ func _smoke_autoplay(my_run: int) -> void:
 		main.close_machine_data()
 	if bool(_cust.get("crane", false)) and not _crane_used and _turns == 0:
 		_on_action(ShopActions.CRANE_ADJUST)
+		return
+	# 台の問題（要件#99）: 筐体の前へ行く・迷惑なお客さんの様子を見に行く
+	var pacts: Dictionary = ShopActions.problem_actions(_cust)
+	if not _in_nuisance and pacts.has("go_check") and not _nuisance_done:
+		_on_action("go_check")
+		return
+	if pacts.has("repair_visit") and not _repaired:
+		_on_action("repair_visit")
 		return
 	if _index % 4 == 2 and _turns == 0:
 		var btns: Array = ShopActions.buttons(_stage_id, _cust, false)

@@ -215,13 +215,39 @@ test("台本のお客さん（要件#98）: 3言語で数と順番がそろい�
         assert.ok(!titles.has(c.title), `${stage}/${lang} の呼び名が重複: ${c.title}`);
         titles.add(c.title);
         assert.equal(c.machine ?? "", ja[i].machine ?? "", `${stage}/${lang} #${i} の台の種類`);
-        assert.ok(c.solution_keywords.length >= 4 && c.yield_keywords.length >= 3, `${c.title} の語`);
+        assert.ok((c.solution_keywords ?? []).length >= 4 && (c.yield_keywords ?? []).length >= 3, `${c.title} の語`);
         for (const k of ["calm", "angry", "neutral", "demand"]) assert.ok(((c as any).lines?.[k] ?? []).length > 0, `${c.title} の lines.${k}`);
         const sep = lang === "en" ? " and " : "、";
-        const reply = (lang === "en" ? "I'm sorry for the trouble. " : lang === "zh" ? "非常抱歉。" : "申し訳ございません。") + c.solution_keywords.slice(0, 2).join(sep) + (lang === "en" ? "." : "。");
+        const reply = (lang === "en" ? "I'm sorry for the trouble. " : lang === "zh" ? "非常抱歉。" : "申し訳ございません。") + (c.solution_keywords ?? []).slice(0, 2).join(sep) + (lang === "en" ? "." : "。");
         const j = judgeStaff(c, reply, [], c.start_anger, 0, lang);
         assert.ok(j.resolve_delta > 0 && !j.yielded, `${stage}/${lang} ${c.title}: 「${reply}」 → 納得 ${j.resolve_delta} 屈した ${j.yielded}`);
       }
     }
   }
+});
+
+test("台の問題（要件#99）: 表から台と効果が入り、ボタンが反応しないは 4割くらいうそ、対戦では1人用だけの行動は使えない", async () => {
+  const { applyProblem, isAllowed, effectKind } = await import("../src/actions.ts");
+  const base = () => ({ title: "t", name: "n", look: {} as any, memo: "", opening: "", demand: "", patience: 1, start_anger: 40, actions: {} as Record<string, string> });
+  const jam = applyProblem({ ...base(), problem: "jam" });
+  assert.equal(jam.machine, "medal");
+  assert.equal(effectKind(jam, "medal_rail"), "fixed");
+  assert.equal(effectKind(jam, "medal_hit"), "hit");
+  assert.ok(isAllowed("arcade", jam, "medal_rail", true), "対戦でもレールの分解はボタンで使える");
+  assert.ok(isAllowed("arcade", jam, "repair_visit"), "1人用は筐体の前へ行ける");
+  assert.ok(!isAllowed("arcade", jam, "repair_visit", true), "対戦では筐体の前へ行けない");
+  assert.ok(!isAllowed("arcade", jam, "video_check"), "メダルの問題にビデオの行動は使えない");
+  const plain = { ...base(), machine: "medal" };
+  assert.ok(!isAllowed("arcade", plain, "medal_hit"), "問題のないお客さんには修理の行動がない");
+  let lies = 0;
+  let r = 0;
+  const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+  for (let i = 0; i < 400; i++) if (applyProblem({ ...base(), problem: "button" }, rnd).problem === "button_lie") lies++;
+  assert.ok(lies > 120 && lies < 200, `うその数 ${lies} / 400`);
+  const lie = applyProblem({ ...base(), problem: "button_lie" });
+  assert.equal(effectKind(lie, "credit"), "yield", "うそなのにクレジットを補填すると屈したことになる");
+  const slam = applyProblem({ ...base(), problem: "slam" });
+  assert.ok(isAllowed("arcade", slam, "go_check") && !isAllowed("arcade", slam, "go_check", true));
+  const bad = applyProblem({ ...base(), problem: "nonsense" });
+  assert.equal(bad.problem, undefined);
 });

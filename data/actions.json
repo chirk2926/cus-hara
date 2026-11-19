@@ -25,7 +25,16 @@
 			"age_refuse": "退店をお願いする",
 			"sell_ok": "販売する",
 			"sell_refuse": "販売をお断りする",
-			"ask_other_id": "別の身分証をお願いする"
+			"ask_other_id": "別の身分証をお願いする",
+			"repair_visit": "筐体を見に行く",
+			"medal_hit": "払い出しレールを叩く",
+			"medal_rail": "払い出しレールを分解して直す",
+			"medal_refill": "メダルを補充する",
+			"medal_repair": "抽選機を修理する",
+			"video_check": "ボタンを確かめる",
+			"video_connector": "ボタンのコネクタを差し直す",
+			"go_check": "様子を見に行く",
+			"cab_open": "筐体を開ける"
 		},
 		"en": {
 			"discount": "Offer a discount",
@@ -44,7 +53,16 @@
 			"age_refuse": "Ask them to leave",
 			"sell_ok": "Sell it",
 			"sell_refuse": "Decline the sale",
-			"ask_other_id": "Ask for another ID"
+			"ask_other_id": "Ask for another ID",
+			"repair_visit": "Go to the machine",
+			"medal_hit": "Bang the payout rail",
+			"medal_rail": "Take apart and fix the payout rail",
+			"medal_refill": "Refill medals",
+			"medal_repair": "Repair the lottery unit",
+			"video_check": "Test the buttons",
+			"video_connector": "Reseat the button connector",
+			"go_check": "Go take a look",
+			"cab_open": "Open the cabinet"
 		},
 		"zh": {
 			"discount": "打折",
@@ -63,7 +81,16 @@
 			"age_refuse": "请对方离店",
 			"sell_ok": "出售",
 			"sell_refuse": "拒绝出售",
-			"ask_other_id": "请出示其他证件"
+			"ask_other_id": "请出示其他证件",
+			"repair_visit": "去机台那边看看",
+			"medal_hit": "敲打出币轨道",
+			"medal_rail": "拆开出币轨道修好",
+			"medal_refill": "补充游戏币",
+			"medal_repair": "修理抽奖装置",
+			"video_check": "检查按钮",
+			"video_connector": "重新插好按钮的接头",
+			"go_check": "去看看情况",
+			"cab_open": "打开机台"
 		}
 	},
 	"effects": {
@@ -97,6 +124,21 @@
 			"anger": 8,
 			"resolve": 5,
 			"reply": "angry"
+		},
+		"hit": {
+			"anger": -6,
+			"resolve": 30,
+			"reply": "calm"
+		},
+		"partial": {
+			"anger": -6,
+			"resolve": 15,
+			"reply": "calm"
+		},
+		"fixed": {
+			"anger": -18,
+			"resolve": 55,
+			"reply": "calm"
 		}
 	},
 	"comments": {
@@ -106,7 +148,10 @@
 			"bad": "逆効果だった…",
 			"yield": "不当な要求を飲んじゃダメだ…。",
 			"crane_won": "取れた！これは効く。",
-			"crane_lost": "取れなかった…期待させた分だけ怒らせた。"
+			"crane_lost": "取れなかった…期待させた分だけ怒らせた。",
+			"hit": "直ったが、叩いて直すのは規定では推奨されていない。",
+			"partial": "悪くない。でも、それだけでは解決しない。",
+			"fixed": "直った！困っていた原因がなくなった。"
 		},
 		"en": {
 			"good": "That's the right move!",
@@ -114,7 +159,10 @@
 			"bad": "That backfired...",
 			"yield": "You caved to an unreasonable demand...",
 			"crane_won": "They won it! That worked.",
-			"crane_lost": "No luck... raising hopes made it worse."
+			"crane_lost": "No luck... raising hopes made it worse.",
+			"hit": "Fixed, but banging on machines isn't recommended by the rules.",
+			"partial": "Not bad, but that alone won't solve it.",
+			"fixed": "Fixed! The cause of the trouble is gone."
 		},
 		"zh": {
 			"good": "这样处理就对了！",
@@ -122,7 +170,10 @@
 			"bad": "适得其反了…",
 			"yield": "不能答应无理要求啊…。",
 			"crane_won": "抓到了！这招有效。",
-			"crane_lost": "没抓到…给了期待反而让对方更生气了。"
+			"crane_lost": "没抓到…给了期待反而让对方更生气了。",
+			"hit": "修好了，但规定上不推荐靠敲打来修。",
+			"partial": "不错，但光这样解决不了问题。",
+			"fixed": "修好了！困扰客人的原因消除了。"
 		}
 	},
 	"default": {
@@ -142,7 +193,12 @@
 		],
 		"medal": [
 			"medal_return",
-			"maintenance"
+			"maintenance",
+			"repair_visit",
+			"medal_hit",
+			"medal_rail",
+			"medal_refill",
+			"medal_repair"
 		],
 		"rhythm": [
 			"maintenance",
@@ -150,7 +206,11 @@
 		],
 		"video": [
 			"maintenance",
-			"credit"
+			"credit",
+			"repair_visit",
+			"video_check",
+			"video_connector",
+			"go_check"
 		],
 		"none": [
 			"dogeza"
@@ -167,5 +227,100 @@
 	"info": [
 		"machine_data"
 	],
-	"_comment_age": "id_check / age_allow / age_refuse は年齢確認のお客さん（scripts/age_check.gd）専用。ゲームの中だけで判定し、サーバーには送らない（要件#61）。"
+	"_comment_age": "id_check / age_allow / age_refuse は年齢確認のお客さん（scripts/age_check.gd）専用。ゲームの中だけで判定し、サーバーには送らない（要件#61）。",
+	"_comment_repair": "要件#99: メダル・ビデオの「台の問題」（problems）。お客さんに problem があるときだけ repair の行動を出す。1人用では repair_visit で筐体の前へ行き、scene の行動はその場面の中で行う（対戦ではふつうのボタン）。go_check は迷惑なお客さん（台パン・大声）の様子を見に行く（1人用だけ）。button は 40% でお客さんのうそ（button_lie）になる。",
+	"repair": [
+		"repair_visit",
+		"medal_hit",
+		"medal_rail",
+		"medal_refill",
+		"medal_repair",
+		"video_check",
+		"video_connector",
+		"go_check"
+	],
+	"scene": [
+		"medal_hit",
+		"medal_rail",
+		"medal_refill",
+		"medal_repair",
+		"video_check",
+		"video_connector"
+	],
+	"solo_only": [
+		"repair_visit",
+		"go_check"
+	],
+	"lie_chance": 0.4,
+	"problems": {
+		"jam": {
+			"machine": "medal",
+			"actions": {
+				"repair_visit": "neutral",
+				"medal_rail": "fixed",
+				"medal_hit": "hit",
+				"medal_refill": "neutral",
+				"medal_repair": "neutral",
+				"medal_return": "partial"
+			}
+		},
+		"empty": {
+			"machine": "medal",
+			"actions": {
+				"repair_visit": "neutral",
+				"medal_refill": "fixed",
+				"medal_rail": "neutral",
+				"medal_hit": "neutral",
+				"medal_repair": "neutral",
+				"medal_return": "partial"
+			}
+		},
+		"lottery": {
+			"machine": "medal",
+			"actions": {
+				"repair_visit": "neutral",
+				"medal_repair": "fixed",
+				"medal_rail": "neutral",
+				"medal_hit": "neutral",
+				"medal_refill": "neutral",
+				"medal_return": "partial"
+			}
+		},
+		"button": {
+			"machine": "video",
+			"actions": {
+				"repair_visit": "neutral",
+				"video_check": "partial",
+				"video_connector": "fixed",
+				"credit": "good",
+				"maintenance": "neutral"
+			}
+		},
+		"button_lie": {
+			"machine": "video",
+			"actions": {
+				"repair_visit": "neutral",
+				"video_check": "good",
+				"video_connector": "neutral",
+				"credit": "yield",
+				"maintenance": "neutral"
+			}
+		},
+		"slam": {
+			"machine": "video",
+			"actions": {
+				"go_check": "neutral",
+				"credit": "bad",
+				"maintenance": "neutral"
+			}
+		},
+		"loud": {
+			"machine": "video",
+			"actions": {
+				"go_check": "neutral",
+				"credit": "bad",
+				"maintenance": "neutral"
+			}
+		}
+	}
 }

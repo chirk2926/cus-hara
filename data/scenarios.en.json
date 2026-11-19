@@ -2939,6 +2939,332 @@
 					"dogeza": "bad"
 				},
 				"machine": "none"
+			},
+			{
+				"title": "The Jammed Jackpot Lady",
+				"name": "Deko Tsumeda",
+				"look": {
+					"body_color": "#d08a2a",
+					"skin_color": "#e8b890",
+					"hair_color": "#4a3020",
+					"hair": "perm",
+					"build": "normal",
+					"accessory": "bag",
+					"height": 0.95,
+					"gender": "f"
+				},
+				"memo": "Says the medal payout stopped mid-jackpot (a machine fault, not her fault). You can open the cabinet and fix the payout rail (taking it apart is the rule; banging on it isn't recommended). Missing medals can be refunded, but nothing beyond that.",
+				"opening": "Excuse me! I hit the jackpot and the medals stopped coming out! It froze halfway! Pay me double!",
+				"demand": "Double the medals that didn't come out",
+				"patience": 1.1,
+				"start_anger": 40,
+				"solution_keywords": [
+					"check",
+					"fix",
+					"rail",
+					"take apart",
+					"refund",
+					"sorry"
+				],
+				"yield_keywords": [
+					"double",
+					"twice",
+					"extra",
+					"on the house"
+				],
+				"lines": {
+					"calm": [
+						"You'll fix it? I'll watch until they come out.",
+						"If you give back what I'm owed, fine."
+					],
+					"angry": [
+						"I WON! At the best moment!",
+						"Don't blame the machine!"
+					],
+					"neutral": [
+						"So, my medals?"
+					],
+					"demand": [
+						"Double! Double!"
+					],
+					"resolved": "There they go! Clink clink! ...That's how a jackpot should feel.",
+					"explode": "Forget it! Never playing this machine again!",
+					"yielded": "Double! Jams aren't so bad!"
+				},
+				"actions": {},
+				"machine": "medal",
+				"problem": "jam"
+			},
+			{
+				"title": "The Zero Payout Guy",
+				"name": "Deta Karabako",
+				"look": {
+					"body_color": "#3a6ea5",
+					"skin_color": "#f0caa8",
+					"hair_color": "#2a2a2a",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "glasses",
+					"height": 1.0
+				},
+				"memo": "Says he won on a medal game but got zero medals. The machine's hopper is empty (not his fault). You can refill through the side refill hatch. Missing medals can be refunded, but not a huge pile as an apology.",
+				"opening": "The win light's on but not a single medal came out! What's going on?! Bring me a thousand medals as an apology!",
+				"demand": "A thousand medals as an apology",
+				"patience": 1.0,
+				"start_anger": 38,
+				"solution_keywords": [
+					"refill",
+					"check",
+					"empty",
+					"right away",
+					"refund",
+					"sorry"
+				],
+				"yield_keywords": [
+					"thousand",
+					"as an apology",
+					"on the house",
+					"give you"
+				],
+				"lines": {
+					"calm": [
+						"You'll refill it? I'll wait.",
+						"If I get what I'm owed, fine."
+					],
+					"angry": [
+						"It lights up and pays nothing? That's a scam!",
+						"Hurry up!"
+					],
+					"neutral": [
+						"...Done yet?"
+					],
+					"demand": [
+						"A thousand!"
+					],
+					"resolved": "There they are! Should've been like this from the start. ...Thanks.",
+					"explode": "Forget it! I don't need a machine that only lights up!",
+					"yielded": "A thousand! Worth asking!"
+				},
+				"actions": {},
+				"machine": "medal",
+				"problem": "empty"
+			},
+			{
+				"title": "The Frozen Lottery Kid",
+				"name": "Senta Chuno",
+				"look": {
+					"body_color": "#7a3aa5",
+					"skin_color": "#efc8a5",
+					"hair_color": "#5a3a2a",
+					"hair": "cap",
+					"build": "normal",
+					"accessory": "headphones",
+					"height": 0.98
+				},
+				"memo": "Says the medal game's lottery drum (the spinning ball drum) stopped and won't move (a machine fault, not his fault). You can open the cabinet and repair it. The draw can be redone, but it can't be counted as a win.",
+				"opening": "The lottery drum froze with the ball inside?! It was totally going to win! Count it as a jackpot!",
+				"demand": "Count the draw as a jackpot win",
+				"patience": 1.1,
+				"start_anger": 36,
+				"solution_keywords": [
+					"repair",
+					"check",
+					"draw",
+					"redo",
+					"fix",
+					"sorry"
+				],
+				"yield_keywords": [
+					"count it as a win",
+					"jackpot",
+					"as a win",
+					"we'll accept"
+				],
+				"lines": {
+					"calm": [
+						"If you fix it, a redo is fine.",
+						"As long as it spins properly."
+					],
+					"angry": [
+						"It was on the winning path!",
+						"It froze because of YOUR machine!"
+					],
+					"neutral": [
+						"...So what now?"
+					],
+					"demand": [
+						"Make it a win!"
+					],
+					"resolved": "It spins! ...Lost, but fair enough.",
+					"explode": "Forget it! I want to take the ball home!",
+					"yielded": "Jackpot?! Seriously? Worth asking!"
+				},
+				"actions": {},
+				"machine": "medal",
+				"problem": "lottery"
+			},
+			{
+				"title": "The Dead Button Guy",
+				"name": "Oso Renda",
+				"look": {
+					"body_color": "#38a0e0",
+					"skin_color": "#f2cba8",
+					"hair_color": "#111111",
+					"hair": "spiky",
+					"build": "slim",
+					"accessory": "headphones",
+					"height": 0.97
+				},
+				"memo": "Says a video game cabinet's button doesn't respond. Sometimes it's really broken; sometimes he's blaming his own mistake on the machine (testing the buttons will tell). If broken, reseating the connector fixes it and lost credits can be refunded. If not broken, no refund.",
+				"opening": "Hey! This machine's button doesn't respond?! That's why I lost! Refund everything I spent today!",
+				"demand": "A refund of everything spent today",
+				"patience": 1.0,
+				"start_anger": 42,
+				"solution_keywords": [
+					"test",
+					"check",
+					"connector",
+					"fix",
+					"refund the credit",
+					"sorry"
+				],
+				"yield_keywords": [
+					"refund everything",
+					"full refund",
+					"all your money",
+					"today's total"
+				],
+				"lines": {
+					"calm": [
+						"If you check it, fine.",
+						"If it's fixed, I'll play again."
+					],
+					"angry": [
+						"I'm pressing it and nothing happens!",
+						"It's not my skill!"
+					],
+					"neutral": [
+						"...Well?"
+					],
+					"demand": [
+						"Refund it all!"
+					],
+					"resolved": "...Okay, it works now. I'll win this time.",
+					"explode": "Forget it! Never coming back here!",
+					"yielded": "A full refund?! Worth asking!"
+				},
+				"actions": {},
+				"machine": "video",
+				"problem": "button"
+			},
+			{
+				"title": "The Regular Who Reported Slamming",
+				"name": "Kikuko Shizukawa",
+				"look": {
+					"body_color": "#6a7a8a",
+					"skin_color": "#f5d3b5",
+					"hair_color": "#4a3020",
+					"hair": "bob",
+					"build": "slim",
+					"accessory": "glasses",
+					"height": 0.94,
+					"gender": "f"
+				},
+				"memo": "She came to report someone pounding a cabinet in the video game corner; it scares her (she did nothing wrong). You can go check and ask the person to stop. Store rules don't allow an immediate ban.",
+				"opening": "Um, someone in the video game corner keeps banging on the machine... It's scary. Please ban that person!",
+				"demand": "Ban the slamming customer right now",
+				"patience": 1.2,
+				"start_anger": 34,
+				"solution_keywords": [
+					"take a look",
+					"go check",
+					"talk to",
+					"ask him",
+					"check",
+					"thank you"
+				],
+				"yield_keywords": [
+					"ban him",
+					"kick him out",
+					"never again",
+					"make him leave"
+				],
+				"lines": {
+					"calm": [
+						"You'll go check? Please.",
+						"I'm glad I said something..."
+					],
+					"angry": [
+						"You won't do anything?!",
+						"I said it's scary!"
+					],
+					"neutral": [
+						"...Oh, he hit it again."
+					],
+					"demand": [
+						"Please ban him!"
+					],
+					"resolved": "It's quiet now... Thank you. I can play in peace.",
+					"explode": "Now it's turned into a fight! I'm going home!",
+					"yielded": "He's banned? ...Kind of feel sorry for him."
+				},
+				"actions": {},
+				"machine": "video",
+				"problem": "slam"
+			},
+			{
+				"title": "The Man Bothered by Shouting",
+				"name": "Shizuo Mimizuka",
+				"look": {
+					"body_color": "#2f5d4a",
+					"skin_color": "#efc4a0",
+					"hair_color": "#dddddd",
+					"hair": "short",
+					"build": "normal",
+					"accessory": "none",
+					"height": 0.96
+				},
+				"memo": "He came to report someone in the video game corner who keeps shouting (he did nothing wrong). You can go check and ask the person to keep it down. You can't throw them out on the spot.",
+				"opening": "There's a guy over there yelling 'WOOO!' every time he wins. I can't focus. Throw him out.",
+				"demand": "Throw the loud customer out immediately",
+				"patience": 1.2,
+				"start_anger": 33,
+				"solution_keywords": [
+					"take a look",
+					"go check",
+					"talk to",
+					"ask him",
+					"check",
+					"thank you"
+				],
+				"yield_keywords": [
+					"throw him out",
+					"kick him out",
+					"make him leave",
+					"ban him"
+				],
+				"lines": {
+					"calm": [
+						"You'll go? Thanks.",
+						"If you'll talk to him, fine."
+					],
+					"angry": [
+						"Can't you hear him?!",
+						"I'm trying to focus!"
+					],
+					"neutral": [
+						"...There, he yelled again."
+					],
+					"demand": [
+						"Throw him out!"
+					],
+					"resolved": "Quiet now. ...Thanks, I can focus.",
+					"explode": "Now there's a fight! Even louder!",
+					"yielded": "You threw him out? ...Maybe that was too much."
+				},
+				"actions": {},
+				"machine": "video",
+				"problem": "loud"
 			}
 		]
 	}

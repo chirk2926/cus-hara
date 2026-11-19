@@ -6,6 +6,7 @@ extends Node
 const Shop = preload("res://scripts/shop.gd")
 const AgeCheck = preload("res://scripts/age_check.gd")
 const ShopActions = preload("res://scripts/shop_actions.gd")
+const Scenarios = preload("res://scripts/scenarios.gd")
 const Titles = preload("res://scripts/titles.gd")
 const Moderation = preload("res://scripts/moderation.gd")
 
@@ -40,6 +41,7 @@ func run(m) -> void:
 	await _wait(1.0)
 	await _economy()
 	await _round5()
+	await _repairs()
 	await _screens()
 	await _age_and_items()
 	await _solo_shift()
@@ -97,6 +99,89 @@ func _economy() -> void:
 
 
 # ---------------------------------------------------------------- 画面
+
+## 要件#99: メダル・ビデオの台の問題と、筐体の前の場面
+func _repairs() -> void:
+	var lies: int = 0
+	for i in range(200):
+		var c: Dictionary = ShopActions.apply_problem({"problem": "button", "title": "x"})
+		if str(c.get("problem", "")) == "button_lie":
+			lies += 1
+		if i == 0:
+			check("button problem sets the video machine", str(c.get("machine", "")) == "video")
+	check("about 40% of dead-button reports are lies", lies > 50 and lies < 115, str(lies))
+	var jam: Dictionary = ShopActions.apply_problem({"problem": "jam", "title": "jam", "actions": {}})
+	var solo_ids: Array = ShopActions.buttons("arcade", jam, true).map(func(b: Array) -> String: return str(b[0]))
+	var vs_ids: Array = ShopActions.buttons("arcade", jam, false).map(func(b: Array) -> String: return str(b[0]))
+	check("solo: go to the machine, repairs happen in the scene", solo_ids.has("repair_visit") and not solo_ids.has("medal_rail"), str(solo_ids))
+	check("versus: repairs are plain buttons", vs_ids.has("medal_rail") and vs_ids.has("medal_hit") and not vs_ids.has("repair_visit"), str(vs_ids))
+	var plain: Array = ShopActions.buttons("arcade", {"machine": "medal", "actions": {}}, true).map(func(b: Array) -> String: return str(b[0]))
+	check("no repair buttons without a machine problem", not plain.has("repair_visit") and not plain.has("medal_hit"), str(plain))
+	check("rail hit is a quick fix kind", ShopActions.effect_kind(jam, "medal_hit") == "hit" and ShopActions.effect_kind(jam, "medal_rail") == "fixed")
+	var solo = main.get("_solo")
+	for prob in ["slam", "loud"]:
+		var off: Dictionary = solo.call("_offender", prob)
+		check("offender data: " + prob, str(off.get("title", "")) != "" and (off.get("solution_keywords", []) as Array).size() >= 4)
+	# 場面: 自動テストのやり方（smoke）で、開けて正しい対応をして戻る
+	var keep_smoke: bool = bool(main.get("smoke"))
+	main.set("smoke", true)
+	var res: Dictionary = await main.call("run_repair_scene", jam)
+	check("medal scene: disassembled the rail", (res.get("actions", []) as Array).has("medal_rail") and float(res.get("seconds", 0.0)) > 10.0, str(res))
+	var lie: Dictionary = ShopActions.apply_problem({"problem": "button", "title": "y"})
+	lie["problem"] = "button_lie"
+	lie = ShopActions.apply_problem(lie)
+	var res2: Dictionary = await main.call("run_repair_scene", lie)
+	check("video scene (lie): only tested the buttons", (res2.get("actions", []) as Array) == ["video_check"], str(res2))
+	# 台パンの通報 → 本人と話す（自動の返事）→ カウンターに戻る
+	var reporter: Dictionary = {}
+	for c in Scenarios.customers("arcade"):
+		if str((c as Dictionary).get("problem", "")) == "slam":
+			reporter = ShopActions.apply_problem((c as Dictionary).duplicate(true))
+	check("slam reporter exists", not reporter.is_empty())
+	if not reporter.is_empty():
+		solo.set("_cust", reporter)
+		solo.set("_active", true)
+		solo.set("paused", false)
+		main.get("_hud").visible = true
+		var out: String = await solo.call("_nuisance", "QA", int(solo.get("_run")))
+		check("nuisance talk finishes", out in ["resolved", "explode", "yield"], out)
+		check("back to the reporter after the talk", solo.get("_cust") == reporter and not bool(solo.get("_in_nuisance")))
+		check("talk backdrop closed", main.get("_talk_bg") == null)
+		solo.set("_active", false)
+		main.get("_hud").visible = false
+	main.set("smoke", keep_smoke)
+	# 見た目の確認用に、場面を開いたまま撮る
+	if _snap_dir != "":
+		var sc = load("res://scripts/repair_scene.gd").new()
+		main.get("_ui").add_child(sc)
+		sc.call("setup", main, ShopActions.apply_problem({"problem": "jam", "title": "jam", "actions": {}}))
+		await _wait(1.5)
+		await _snap("repair_medal")
+		await (sc.get("_stage") as Node).call("open_door")
+		(sc.get("_status") as Label).text = str(sc.call("_inside_look"))
+		sc.call("_minigame", "medal_rail")
+		await _wait(0.5)
+		await _snap("repair_medal_open")
+		sc.emit_signal("_mini_done", true)
+		await _wait(0.2)
+		sc.queue_free()
+		var sc2 = load("res://scripts/repair_scene.gd").new()
+		main.get("_ui").add_child(sc2)
+		var b: Dictionary = {}
+		for k in range(30):
+			b = ShopActions.apply_problem({"problem": "button", "title": "b", "actions": {}})
+			if str(b.get("problem", "")) == "button":
+				break
+		sc2.call("setup", main, b)
+		await _wait(1.5)
+		await _snap("repair_video")
+		sc2.queue_free()
+		main.call("show_talk_backdrop", "slam")
+		await _wait(1.0)
+		await _snap("talk_slam")
+		main.call("hide_talk_backdrop")
+	await _wait(0.2)
+
 
 ## 要件#94, #95: 不適切な言葉を送らせない・画面の設定
 func _round5() -> void:

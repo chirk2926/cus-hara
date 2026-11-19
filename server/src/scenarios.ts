@@ -1,4 +1,5 @@
 // 台本のお客さんデータ（data/scenarios.json。Godot 側と同じファイル）
+import { applyProblem } from "./actions.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.ts";
@@ -38,6 +39,8 @@ export interface Customer {
   spend_data?: SpendData;
   /** ネタ枠（まれに出る） */
   rare?: boolean;
+  /** 台の問題（要件#99）: jam / empty / lottery（メダル）、button / button_lie / slam / loud（ビデオ）。applyProblem が台と行動の効果を入れる */
+  problem?: string;
 }
 
 export const STAGES = ["konbini", "arcade"] as const;
@@ -95,6 +98,7 @@ function roundTo(n: number, step: number): number {
  * 嘘のときは「クレジットを補填」が屈服になり、記録を示して話すのが正解になる。
  */
 export function materializeSpend(c: Customer, payout: number, lang: Lang, rnd: () => number = Math.random): Customer {
+  applyProblem(c, rnd);
   if (!c.spend) return c;
   const p = clampPayout(payout);
   const expected = costPerPrize(p);
@@ -191,6 +195,8 @@ export function publicCustomer(c: Customer) {
     crane: c.crane === true,
     machine: machineOf(c),
     rare: c.rare === true,
+    // 台の問題（要件#99）。ゲームが筐体の前の場面と「確かめる」の結果を出すのに使う
+    problem: c.problem ?? "",
     // 筐体のデータ（「筐体のデータを見る」で見せる。要件#57）
     spend: c.spend_data ? { claimed: c.spend_data.claimed, actual: c.spend_data.actual, expected: c.spend_data.expected, payout: c.spend_data.payout } : null,
   };
