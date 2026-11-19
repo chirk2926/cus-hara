@@ -99,6 +99,8 @@ func _ready() -> void:
 	# すべての字体に中国語（簡体字）の予備を付ける（テーマ既定の字体も同じリソース）
 	for f in [UI.F_BODY, UI.F_BOLD, UI.F_HAND, UI.F_DOT, UI.F_SIGN]:
 		UI.font(f)
+	# Godot の既定のまま残っていた部品を店の見た目にそろえる（要件#96）
+	UI.install_theme()
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	for a in args:
 		if a.begins_with("--lang="):
@@ -565,7 +567,7 @@ func _build_service_screen(d: Dictionary) -> void:
 
 
 ## 年齢確認の身分証（要件#61）。お客さんが差し出した身分証を、カードの形で見せる。
-## プレイヤーは「公的か・顔写真があるか・顔が同じか・生年月日から何歳か」を自分で確かめる
+## プレイヤーは「使える身分証か・顔写真があるか・顔が同じか・生年月日から何歳か」を自分で確かめる
 const AgeCheck = preload("res://scripts/age_check.gd")
 
 
@@ -629,9 +631,9 @@ func show_id_card(cust: Dictionary) -> void:
 		"insurance":
 			info.add_child(UI.text(tr("被保険者証"), UI.S_SMALL, UI.INK_SOFT))
 	if str(a.get("mode", "arcade")) == "konbini":
-		col.add_child(UI.para(tr("確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（お酒・たばこは20歳未満に販売不可）"), UI.S_SMALL, UI.INK_SOFT))
+		col.add_child(UI.para(tr("確かめること: 使える身分証か（免許証・マイナンバーカード・パスポート・学生証）・顔写真と生年月日があるか・写真の顔が本人か・何歳か（お酒・たばこは20歳未満に販売不可）"), UI.S_SMALL, UI.INK_SOFT))
 	else:
-		col.add_child(UI.para(tr("確かめること: 公的な身分証か・顔写真と生年月日があるか・写真の顔が本人か・何歳か（%d歳未満は入店不可）") % int(a.get("limit", 18)), UI.S_SMALL, UI.INK_SOFT))
+		col.add_child(UI.para(tr("確かめること: 使える身分証か（免許証・マイナンバーカード・パスポート・学生証）・顔写真と生年月日があるか・写真の顔が本人か・何歳か（%d歳未満は入店不可）") % int(a.get("limit", 18)), UI.S_SMALL, UI.INK_SOFT))
 	var close: Button = UI.link(tr("閉じる"), UI.S_SMALL)
 	close.focus_mode = Control.FOCUS_NONE
 	close.pressed.connect(close_machine_data)
@@ -848,14 +850,9 @@ func _show_titles() -> void:
 	head.add_child(UI.text("%d / %d" % [GameSettings.unlocked_titles.size(), all_t.size()], UI.S_LEAD, UI.SHU, UI.F_DOT))
 	head.add_child(UI.spacer())
 	head.add_child(UI.text(tr("いまの称号: %s") % (Titles.equipped_name() if Titles.equipped_name() != "" else tr("なし")), UI.S_BODY, UI.INK, UI.F_BOLD))
-	# 分類のタブ（進み具合つき）
-	var tabs: HFlowContainer = HFlowContainer.new()
-	tabs.add_theme_constant_override("h_separation", 6)
-	tabs.add_theme_constant_override("v_separation", 6)
-	col.add_child(tabs)
-	var group: ButtonGroup = ButtonGroup.new()
+	# 分類のタブ（進み具合つき）。書類のインデックスの形（要件#96）
+	var tab_items: Array = []
 	for c in TITLE_CATS:
-		var cid: String = str(c[0])
 		var lo: int = int(c[2])
 		var hi: int = int(c[3])
 		var have: int = 0
@@ -866,14 +863,11 @@ func _show_titles() -> void:
 				total += 1
 				if GameSettings.unlocked_titles.has(str((t as Dictionary).get("id", ""))):
 					have += 1
-		var b: Button = UI.tag(tr(str(c[1])) + " %d/%d" % [have, total], UI.S_SMALL)
-		b.toggle_mode = true
-		b.button_group = group
-		b.button_pressed = cid == _titles_cat
-		b.pressed.connect(func() -> void:
-			_titles_cat = cid
-			_show_titles())
-		tabs.add_child(b)
+		tab_items.append([str(c[0]), tr(str(c[1])) + " %d/%d" % [have, total]])
+	col.add_child(UI.index_tabs(tab_items, _titles_cat, func(id: String) -> void:
+		sfx.play("click")
+		_titles_cat = id
+		_show_titles()))
 	var opts: HBoxContainer = UI.hbox(16)
 	col.add_child(opts)
 	var own: CheckBox = UI.check(tr("手に入れたものだけ"), _titles_owned_only)
@@ -905,51 +899,14 @@ func _show_titles() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(820, 380)
 	col.add_child(scroll)
-	var grid: GridContainer = GridContainer.new()
-	grid.columns = 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 8)
-	scroll.add_child(grid)
+	# 一覧は「表彰の台帳」: カードを並べず、罫線で区切った行にする（要件#96）
+	var ledger: VBoxContainer = UI.vbox(0)
+	ledger.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(ledger)
 	if list.is_empty():
-		grid.add_child(UI.text(tr("まだありません。"), UI.S_BODY, UI.INK_SOFT))
+		ledger.add_child(UI.text(tr("まだありません。"), UI.S_BODY, UI.INK_SOFT))
 	for t in list:
-		var d: Dictionary = t
-		var id: String = str(d.get("id", ""))
-		var have2: bool = GameSettings.unlocked_titles.has(id)
-		var box: PanelContainer = UI.paper(UI.POP.lerp(UI.PAPER, 0.55) if GameSettings.equipped_title == id else (UI.PAPER if have2 else UI.PAPER_DIM.lerp(UI.PAPER, 0.4)), 10, 2)
-		box.custom_minimum_size = Vector2(395, 0)
-		grid.add_child(box)
-		var c3: VBoxContainer = UI.vbox(2)
-		box.add_child(c3)
-		var top: HBoxContainer = UI.hbox(8)
-		c3.add_child(top)
-		top.add_child(UI.text("★".repeat(clampi(int(d.get("rarity", 1)), 1, 5)), UI.S_SMALL, UI.SHU if have2 else UI.INK_SOFT, UI.F_BOLD))
-		top.add_child(UI.text(Titles.title_name(d) if have2 else tr("？？？"), UI.S_BODY, UI.INK if have2 else UI.INK_SOFT, UI.F_BOLD))
-		top.add_child(UI.spacer())
-		if GameSettings.equipped_title == id:
-			top.add_child(UI.text(tr("つけている"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
-		var desc: Label = UI.para(Titles.title_desc(d), UI.S_SMALL, UI.INK_SOFT)
-		c3.add_child(desc)
-		if not have2:
-			# 進み具合（数で数える条件だけ）
-			var cur: int = Titles.value(str(d.get("stat", "")))
-			var mn: int = int(d.get("min", 1))
-			if mn > 1:
-				var bar: ProgressBar = ProgressBar.new()
-				bar.show_percentage = false
-				bar.custom_minimum_size = Vector2(0, 6)
-				bar.value = 100.0 * float(mini(cur, mn)) / float(mn)
-				bar.add_theme_stylebox_override("background", UI.flat_style(Color("#e0dbd0"), 0, 2))
-				bar.add_theme_stylebox_override("fill", UI.flat_style(UI.OK, 0, 2))
-				c3.add_child(bar)
-				c3.add_child(UI.text("%s / %s" % [_num(mini(cur, mn)), _num(mn)], UI.S_SMALL - 2, UI.INK_SOFT, UI.F_DOT))
-		elif GameSettings.equipped_title != id:
-			var use: Button = UI.stamp(tr("つける"), UI.S_SMALL)
-			use.pressed.connect(func() -> void:
-				_equip_title(id)
-				_show_titles())
-			c3.add_child(use)
+		ledger.add_child(_title_row(t))
 	var row: HBoxContainer = UI.hbox(24)
 	col.add_child(row)
 	var off: Button = UI.link(tr("称号をはずす"), UI.S_BODY, UI.INK_SOFT)
@@ -962,6 +919,72 @@ func _show_titles() -> void:
 		_close_sheet()
 		_refresh_title())
 	row.add_child(close)
+
+
+## 称号の台帳の1行: ★ ｜ 名前と条件 ｜ 右はし（つける・つけている・進み具合）
+func _title_row(t: Dictionary) -> Control:
+	var id: String = str(t.get("id", ""))
+	var have: bool = GameSettings.unlocked_titles.has(id)
+	var wearing: bool = GameSettings.equipped_title == id
+	var wrap: VBoxContainer = UI.vbox(0)
+	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row: PanelContainer = PanelContainer.new()
+	# つけている行だけ、蛍光ペンを引いたように黄色くする（影や枠はつけない）
+	row.add_theme_stylebox_override("panel", UI.flat_style(UI.POP.lerp(UI.PAPER, 0.45) if wearing else Color(0, 0, 0, 0), 0, 0))
+	wrap.add_child(row)
+	var line: HBoxContainer = UI.hbox(12)
+	row.add_child(line)
+	var m: MarginContainer = MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 6)
+	m.add_theme_constant_override("margin_right", 6)
+	m.add_theme_constant_override("margin_top", 10)
+	m.add_theme_constant_override("margin_bottom", 10)
+	m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(m)
+	var cols: HBoxContainer = UI.hbox(16)
+	m.add_child(cols)
+	var r: int = clampi(int(t.get("rarity", 1)), 1, 5)
+	var stars: Label = UI.text("★".repeat(r) + "☆".repeat(5 - r), UI.S_SMALL, UI.SHU if have else UI.PAPER_DIM.darkened(0.25), UI.F_DOT)
+	stars.custom_minimum_size = Vector2(84, 0)
+	stars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cols.add_child(stars)
+	var mid: VBoxContainer = UI.vbox(2)
+	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(mid)
+	mid.add_child(UI.text(Titles.title_name(t) if have else tr("？？？"), UI.S_BODY, UI.INK if have else UI.INK_SOFT, UI.F_BOLD))
+	mid.add_child(UI.para(Titles.title_desc(t), UI.S_SMALL, UI.INK_SOFT))
+	var right: VBoxContainer = UI.vbox(4)
+	right.custom_minimum_size = Vector2(150, 0)
+	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cols.add_child(right)
+	if wearing:
+		var on: Label = UI.text(tr("つけている"), UI.S_SMALL, UI.SHU, UI.F_BOLD)
+		on.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		right.add_child(on)
+	elif have:
+		var use: Button = UI.link(tr("つける →"), UI.S_SMALL)
+		use.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		use.pressed.connect(func() -> void:
+			_equip_title(id)
+			_show_titles())
+		right.add_child(use)
+	else:
+		# 進み具合（数で数える条件だけ）。細い鉛筆の線のゲージと数
+		var cur: int = Titles.value(str(t.get("stat", "")))
+		var mn: int = int(t.get("min", 1))
+		if mn > 1:
+			var num: Label = UI.text("%s / %s" % [_num(mini(cur, mn)), _num(mn)], UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
+			num.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			right.add_child(num)
+			var bar: ProgressBar = ProgressBar.new()
+			bar.show_percentage = false
+			bar.custom_minimum_size = Vector2(150, 4)
+			bar.value = 100.0 * float(mini(cur, mn)) / float(mn)
+			bar.add_theme_stylebox_override("background", UI.flat_style(UI.PAPER_DIM, 0, 0))
+			bar.add_theme_stylebox_override("fill", UI.flat_style(UI.INK_SOFT, 0, 0))
+			right.add_child(bar)
+	wrap.add_child(UI.rule(UI.PAPER_DIM, 1))
+	return wrap
 
 
 func _equip_title(id: String) -> void:
@@ -1855,7 +1878,7 @@ func _shop_item(it: Dictionary) -> Control:
 		row.add_child(UI.text(tr("使用中"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
 	elif have:
 		row.add_child(UI.text(tr("持っている"), UI.S_SMALL, UI.OK, UI.F_BOLD))
-		var use: Button = UI.stamp(tr("使う"), UI.S_SMALL)
+		var use: Button = UI.link(tr("使う →"), UI.S_SMALL)
 		use.pressed.connect(func() -> void:
 			sfx.play("click")
 			Shop.equip(cat, id)
@@ -1869,8 +1892,10 @@ func _shop_item(it: Dictionary) -> Control:
 				continue
 			var cur_name: String = "HP" if cur == "hp" else "KAS"
 			var wallet: int = GameSettings.hp_points if cur == "hp" else GameSettings.kas_points
-			var buy: Button = UI.stamp(tr("%s %s で買う") % [_num(price), cur_name], UI.S_SMALL)
-			buy.disabled = wallet < price
+			# 値札の形のボタン（要件#96）。枠つきの角丸ボタンを並べない
+			var tag: Paper.PriceTag = Paper.PriceTag.new(tr("%s %s で買う") % [_num(price), cur_name], UI.S_SMALL)
+			tag.disabled = wallet < price
+			var buy: Button = tag.button
 			var cur_id: String = cur
 			buy.pressed.connect(func() -> void:
 				if Shop.buy(cat, id, cur_id):
@@ -1879,7 +1904,7 @@ func _shop_item(it: Dictionary) -> Control:
 					_after_equip(cat)
 					show_new_titles(Titles.check())
 				_show_shop())
-			row.add_child(buy)
+			row.add_child(tag)
 	return box
 
 
@@ -1900,13 +1925,24 @@ func _shop_gacha(col: VBoxContainer) -> void:
 		var price: int = Shop.gacha_price(cur, ten)
 		var wallet: int = GameSettings.kas_points if cur == "kas" else GameSettings.hp_points
 		var label: String = (tr("10連") if ten else tr("1回")) + "  %s %s" % [_num(price), "KAS" if cur == "kas" else "HP"]
-		var b: Button = UI.primary(label, UI.S_BODY) if cur == "kas" else UI.stamp(label, UI.S_BODY)
+		# 主役は「KAS の10連」だけ（1画面に主役は1つ。要件#96）。ほかは値札
+		var holder: Control = null
+		var b: Button = null
+		if cur == "kas" and ten:
+			b = UI.primary(label, UI.S_BODY)
+			holder = b
+		else:
+			var tg: Paper.PriceTag = Paper.PriceTag.new(label, UI.S_BODY)
+			b = tg.button
+			holder = tg
 		b.disabled = not can or wallet < price
+		if holder is Paper.PriceTag:
+			(holder as Paper.PriceTag).disabled = b.disabled
 		b.pressed.connect(func() -> void:
 			var res: Array = Shop.gacha_pull(cur, ten)
 			if not res.is_empty():
 				_show_gacha_result(res))
-		row.add_child(b)
+		row.add_child(holder)
 	if not can:
 		col.add_child(UI.text(tr("背景を全部集めました！"), UI.S_BODY, UI.SHU, UI.F_BOLD))
 	# 持っている背景（使うものを選ぶ）
@@ -1943,7 +1979,7 @@ func _bg_card(it: Dictionary) -> Control:
 	if using:
 		c.add_child(UI.text(tr("使用中"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
 	elif have:
-		var use: Button = UI.stamp(tr("使う"), UI.S_SMALL)
+		var use: Button = UI.link(tr("使う →"), UI.S_SMALL)
 		use.pressed.connect(func() -> void:
 			sfx.play("click")
 			Shop.equip("bg", id)
@@ -2396,19 +2432,10 @@ func _show_records() -> void:
 	sfx.play("click")
 	var col: VBoxContainer = _open_sheet(820, "center")
 	_sheet_title(col, tr("記録"))
-	var tabs: HBoxContainer = UI.hbox(8)
-	col.add_child(tabs)
-	var group: ButtonGroup = ButtonGroup.new()
-	for tb in [["reviews", "レビューログ"], ["stats", "統計"]]:
-		var tid: String = str(tb[0])
-		var t: Button = UI.tag(tr(str(tb[1])), UI.S_BODY)
-		t.toggle_mode = true
-		t.button_group = group
-		t.button_pressed = tid == _records_tab
-		t.pressed.connect(func() -> void:
-			_records_tab = tid
-			_show_records())
-		tabs.add_child(t)
+	col.add_child(UI.index_tabs([["reviews", tr("レビューログ")], ["stats", tr("統計")]], _records_tab, func(id: String) -> void:
+		sfx.play("click")
+		_records_tab = id
+		_show_records(), UI.S_BODY))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(780, 440)
@@ -2453,47 +2480,66 @@ func _fill_review_log(list: VBoxContainer) -> void:
 			c.add_child(t)
 
 
+## 統計は「業務日報」: 分けた見出しの下に、点線のリーダーでつないだ行（要件#96）。0 の行は薄く、数のある行を目立たせる
 func _fill_stats(list: VBoxContainer) -> void:
-	var grid: GridContainer = GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 40)
-	grid.add_theme_constant_override("v_separation", 6)
-	list.add_child(grid)
-	var rows: Array = [
-		["勤めたシフト", GameSettings.stat("shifts")],
-		["パーフェクトシフト", GameSettings.stat("perfect_shift")],
-		["納得させたお客さん", GameSettings.stat("resolved")],
-		["ブチギレさせた", GameSettings.stat("explode")],
-		["要求に屈した", GameSettings.stat("yield")],
-		["心が折れて早退", GameSettings.stat("breakdown")],
-		["時間切れ", GameSettings.stat("timeout")],
-		["1回目の返事で納得", GameSettings.stat("one_turn_resolve")],
-		["要注意人物を納得させた", GameSettings.stat("wild_resolved")],
-		["「〇〇円使った」の嘘を見破った", GameSettings.stat("lie_caught")],
-		["年齢確認の正しい判断", GameSettings.stat("age_correct")],
-		["営業停止", GameSettings.stat("suspended")],
-		["店長が来た", GameSettings.stat("manager_visits")],
-		["店長を呼んだ", GameSettings.stat("manager_called")],
-		["台の調整で取らせた", GameSettings.stat("crane_won")],
-		["土下座", GameSettings.stat("dogeza")],
-		["最高の売上（1シフト）", GameSettings.money(GameSettings.stat("max_sales"))],
-		["ハイスコア: ゲームセンター", GameSettings.get_high_score("arcade")],
-		["ハイスコア: コンビニ", GameSettings.get_high_score("konbini")],
-		["ハイスコア: ゲームセンター（ハードコア）", GameSettings.get_high_score("arcade_hard")],
-		["ハイスコア: コンビニ（ハードコア）", GameSettings.get_high_score("konbini_hard")],
-		["メンタルランク", "%d「%s」" % [GameSettings.mental_rank(), GameSettings.mental_name_a(GameSettings.mental_rank())]],
-		["対戦の回数", GameSettings.stat("vs_matches")],
-		["対戦の勝ち", GameSettings.stat("vs_wins")],
-		["対戦の最高連勝", GameSettings.stat("vs_streak_max")],
-		["称号", "%d / %d" % [GameSettings.unlocked_titles.size(), Titles.all().size()]],
-		["ガチャを回した回数", GameSettings.stat("gacha_pulls")],
-		["ショップで買った回数", GameSettings.stat("shop_buys")],
-		["休憩した回数", GameSettings.stat("pauses")],
+	var groups: Array = [
+		["シフト", [
+			["勤めたシフト", GameSettings.stat("shifts")],
+			["パーフェクトシフト", GameSettings.stat("perfect_shift")],
+			["最高の売上（1シフト）", GameSettings.money(GameSettings.stat("max_sales"))],
+			["ハイスコア: ゲームセンター", GameSettings.get_high_score("arcade")],
+			["ハイスコア: コンビニ", GameSettings.get_high_score("konbini")],
+			["ハイスコア: ゲームセンター（社員モード）", GameSettings.get_high_score("arcade_hard")],
+			["ハイスコア: コンビニ（社員モード）", GameSettings.get_high_score("konbini_hard")],
+			["メンタルランク", "%d「%s」" % [GameSettings.mental_rank(), GameSettings.mental_name_a(GameSettings.mental_rank())]],
+		]],
+		["お客さん", [
+			["納得させたお客さん", GameSettings.stat("resolved")],
+			["1回目の返事で納得", GameSettings.stat("one_turn_resolve")],
+			["要注意人物を納得させた", GameSettings.stat("wild_resolved")],
+			["「〇〇円使った」の嘘を見破った", GameSettings.stat("lie_caught")],
+			["台の調整で取らせた", GameSettings.stat("crane_won")],
+			["ブチギレさせた", GameSettings.stat("explode")],
+			["要求に屈した", GameSettings.stat("yield")],
+			["時間切れ", GameSettings.stat("timeout")],
+			["土下座", GameSettings.stat("dogeza")],
+		]],
+		["事件", [
+			["年齢確認の正しい判断", GameSettings.stat("age_correct")],
+			["営業停止", GameSettings.stat("suspended")],
+			["店長が来た", GameSettings.stat("manager_visits")],
+			["店長を呼んだ", GameSettings.stat("manager_called")],
+			["心が折れて早退", GameSettings.stat("breakdown")],
+			["休憩した回数", GameSettings.stat("pauses")],
+		]],
+		["対戦・ショップ", [
+			["対戦の回数", GameSettings.stat("vs_matches")],
+			["対戦の勝ち", GameSettings.stat("vs_wins")],
+			["対戦の最高連勝", GameSettings.stat("vs_streak_max")],
+			["称号", "%d / %d" % [GameSettings.unlocked_titles.size(), Titles.all().size()]],
+			["ガチャを回した回数", GameSettings.stat("gacha_pulls")],
+			["ショップで買った回数", GameSettings.stat("shop_buys")],
+		]],
 	]
-	for r in rows:
-		grid.add_child(UI.text(tr(str(r[0])), UI.S_BODY, UI.INK_SOFT))
-		var v: Variant = r[1]
-		grid.add_child(UI.text(_num(int(v)) if typeof(v) == TYPE_INT else str(v), UI.S_BODY, UI.INK, UI.F_DOT))
+	for g in groups:
+		var head: Label = UI.text(tr(str(g[0])), UI.S_BODY, UI.SHU, UI.F_BOLD)
+		list.add_child(head)
+		var rows: VBoxContainer = UI.vbox(2)
+		list.add_child(rows)
+		for r in (g[1] as Array):
+			var v: Variant = r[1]
+			var zero: bool = (typeof(v) == TYPE_INT and int(v) == 0)
+			var line: HBoxContainer = UI.hbox(6)
+			rows.add_child(line)
+			line.add_child(UI.text(tr(str(r[0])), UI.S_BODY, UI.INK_SOFT if zero else UI.INK))
+			line.add_child(Paper.DotLeader.new())
+			var num: Label = UI.text(_num(int(v)) if typeof(v) == TYPE_INT else str(v), UI.S_LEAD if not zero else UI.S_BODY, UI.INK_SOFT.lerp(UI.PAPER, 0.3) if zero else UI.INK, UI.F_DOT)
+			num.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			num.custom_minimum_size = Vector2(120, 0)
+			line.add_child(num)
+			line.add_child(UI.gap(0))
+			(line.get_child(line.get_child_count() - 1) as Control).custom_minimum_size = Vector2(16, 0)   # スクロールバーと重ならないように
+		list.add_child(UI.gap(8))
 
 
 ## 鍵マーク（ハードコアが解放されていないとき）
@@ -2668,6 +2714,12 @@ func _open_sheet(width: int, align: String = "center", receipt: bool = false, ti
 		row.add_child(UI.spacer())
 	var col: VBoxContainer = UI.vbox(12)
 	panel.add_child(col)
+	if not receipt and not timecard:
+		# 紙をマスキングテープで留めた感じにする（要件#96）。位置と傾きは幅から決めて、シートごとに少しずつ変える
+		var tape: Paper.Tape = Paper.Tape.new()
+		tape.at = 0.44 + float(width % 5) * 0.09   # 見出しは左にあるので、テープは右寄りに貼る
+		tape.angle = -5.0 + float(width % 5) * 2.2
+		panel.add_child(tape, false, Node.INTERNAL_MODE_FRONT)
 	_solo.paused = true
 	_sheet_is_receipt = receipt or timecard
 	_sheet_is_lobby = false
@@ -3244,8 +3296,8 @@ func _show_versus_lobby() -> void:
 	_sheet_is_lobby = true
 	_hud.set_blocked(true)
 	var use_eos: bool = _versus.eos_available()
-	var board: Panel = Panel.new()
-	board.add_theme_stylebox_override("panel", UI.flat_style(Color("#5b4636"), 0, 0))
+	# コルクの掲示板（要件#96）: 紙を押しピンで留め、大きさ・高さ・傾きをそろえない
+	var board: Paper.Cork = Paper.Cork.new()
 	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_sheet.add_child(board)
 	var margin: MarginContainer = MarginContainer.new()
@@ -3282,15 +3334,16 @@ func _show_versus_lobby() -> void:
 		_ask_versus_format())
 	fmt_row.add_child(change)
 
-	var notes: HBoxContainer = UI.hbox(24)
+	var notes: HBoxContainer = UI.hbox(32)
 	notes.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(notes)
 
-	# ランクマッチ
-	var ranked: PanelContainer = UI.paper(UI.PAPER, 20, 5)
-	ranked.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ranked.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	notes.add_child(ranked)
+	# ランクマッチ（いちばん大きいポスター。少し左に傾ける）
+	var ranked: PanelContainer = UI.paper(UI.PAPER, 24, 5)
+	var ranked_pin: Paper.PinnedNote = _pin_note(ranked, -1.2, UI.SHU, 0)
+	ranked_pin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ranked_pin.size_flags_stretch_ratio = 1.5
+	notes.add_child(ranked_pin)
 	var rc: VBoxContainer = UI.vbox(10)
 	ranked.add_child(rc)
 	rc.add_child(UI.text(tr("ランクマッチ"), UI.S_LEAD, UI.INK, UI.F_SIGN))
@@ -3307,10 +3360,12 @@ func _show_versus_lobby() -> void:
 		rc.add_child(UI.para(tr("Epic Online Services で相手を探します。見つからなければゲームサーバーで探します。"), UI.S_SMALL, UI.INK_SOFT))
 
 	# フレンド対戦
-	var friend: PanelContainer = UI.paper(UI.POP, 20, 5)
-	friend.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	friend.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	notes.add_child(friend)
+	# フレンド対戦（黄色い付箋。少し下げて、右に傾ける）
+	var friend: PanelContainer = UI.paper(UI.POP, 18, 3)
+	var friend_pin: Paper.PinnedNote = _pin_note(friend, 1.6, Color("#2f6fb0"), 36)
+	friend_pin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	friend_pin.size_flags_stretch_ratio = 1.0
+	notes.add_child(friend_pin)
 	var fc: VBoxContainer = UI.vbox(10)
 	friend.add_child(fc)
 	fc.add_child(UI.text(tr("フレンド対戦"), UI.S_LEAD, UI.INK, UI.F_SIGN))
@@ -3342,10 +3397,9 @@ func _show_versus_lobby() -> void:
 	join_row.add_child(join)
 
 	# ランキング（シフト表の形）
-	var board_note: PanelContainer = UI.paper(UI.PAPER, 20, 5)
-	board_note.custom_minimum_size = Vector2(320, 0)
-	board_note.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	notes.add_child(board_note)
+	var board_note: PanelContainer = UI.paper(Color("#f7f3e8"), 18, 4)
+	board_note.custom_minimum_size = Vector2(300, 0)
+	notes.add_child(_pin_note(board_note, -0.6, UI.OK, 12))
 	var bc: VBoxContainer = UI.vbox(4)
 	board_note.add_child(bc)
 	bc.add_child(UI.text(tr("今月の優秀スタッフ"), UI.S_LEAD, UI.INK, UI.F_SIGN))
@@ -3371,6 +3425,17 @@ func _show_versus_lobby() -> void:
 		_close_sheet()
 		_refresh_title())
 	foot.add_child(back)
+
+
+## 掲示板に紙を留める。drop: 上からの下げ幅（紙ごとに高さをずらす）
+func _pin_note(note: Control, tilt: float, pin: Color, drop: int) -> Paper.PinnedNote:
+	var pn: Paper.PinnedNote = Paper.PinnedNote.new()
+	pn.tilt = tilt
+	pn.pin_color = pin
+	pn.top_gap = float(drop)
+	pn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	pn.add_child(note)
+	return pn
 
 
 func _load_leaderboard(list: VBoxContainer) -> void:

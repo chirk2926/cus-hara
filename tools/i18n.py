@@ -19,7 +19,7 @@ LANGS = ["en", "zh"]
 UI_FILES = ["main.gd", "hud.gd", "solo_game.gd", "versus_game.gd", "game_settings.gd", "ui_paper.gd", "server_api.gd", "shop_actions.gd", "crane_minigame.gd", "eos_matchmaker.gd", "tutorial.gd", "titles.gd"]
 SKIP_FUNCS = ("_smoke_autoplay", "_run_shots", "_run_smoke", "_run_versus_smoke", "_auto_reply",
               # 言語ごとの言葉の表・ゲームの中の言葉（翻訳しない）
-              "_tally", "_wants_other_id", "_prize_only", "_ask_other_id", "_says_amount", "_smell_talk", "_deodorize")
+              "_tally", "_wants_other_id", "_prize_only", "_ask_other_id", "_says_amount", "_smell_talk", "_deodorize", "_resist_line")
 JA = re.compile(r"[぀-ヿ㐀-鿿！-｠]")
 STR = re.compile(r'"((?:[^"\\]|\\.)*)"')
 TR = re.compile(r'tr\("((?:[^"\\]|\\.)*)"\)')

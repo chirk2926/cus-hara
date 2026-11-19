@@ -312,3 +312,194 @@ class TimeCard extends PanelContainer:
 		if line_end > 0.0:
 			draw_line(Vector2(30 + 78, 120), Vector2(30 + 78, line_end), Color(RED.r, RED.g, RED.b, 0.55), 1.5)
 
+
+
+## 値札（要件#96）。ショップの「買う」ボタン。左がとがって穴のあいた、店で使う紙の値札の形。
+## 中に文字だけのボタンを入れて、形はこの入れ物が描く（ボタンの既定の角丸の枠を使わない）
+class PriceTag extends Container:
+	var button: Button = null
+	var _hover: bool = false
+	const NOTCH: float = 14.0
+
+	func _init(label: String, size: int = UI.S_SMALL) -> void:
+		button = Button.new()
+		button.text = label
+		button.focus_mode = Control.FOCUS_ALL
+		button.add_theme_font_override("font", UI.font(UI.F_BOLD))
+		button.add_theme_font_size_override("font_size", size)
+		for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			button.add_theme_color_override(k, UI.INK)
+		button.add_theme_color_override("font_disabled_color", UI.INK_SOFT)
+		for st in ["normal", "hover", "pressed", "disabled"]:
+			button.add_theme_stylebox_override(st, UI.empty_style(0, 0))
+		var f: StyleBoxFlat = StyleBoxFlat.new()
+		f.draw_center = false
+		f.set_border_width_all(2)
+		f.border_color = UI.SHU
+		f.set_expand_margin_all(2)
+		button.add_theme_stylebox_override("focus", f)
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		button.mouse_entered.connect(func() -> void:
+			_hover = true
+			queue_redraw())
+		button.mouse_exited.connect(func() -> void:
+			_hover = false
+			queue_redraw())
+		add_child(button)
+
+	var disabled: bool:
+		get:
+			return button.disabled
+		set(v):
+			button.disabled = v
+			queue_redraw()
+
+	func _get_minimum_size() -> Vector2:
+		return button.get_combined_minimum_size() + Vector2(NOTCH + 22.0, 10.0)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_SORT_CHILDREN:
+			fit_child_in_rect(button, Rect2(Vector2(NOTCH + 10.0, 5.0), size - Vector2(NOTCH + 22.0, 10.0)))
+
+	func _draw() -> void:
+		var w: float = size.x
+		var h: float = size.y
+		var pts: PackedVector2Array = PackedVector2Array([
+			Vector2(NOTCH, 0), Vector2(w - 2, 0), Vector2(w - 2, h - 2), Vector2(NOTCH, h - 2), Vector2(0, (h - 2) * 0.5)])
+		# ずらしただけの影 → 紙 → 線
+		var sh: PackedVector2Array = PackedVector2Array()
+		for p in pts:
+			sh.append(p + Vector2(3, 3))
+		draw_colored_polygon(sh, UI.SHADOW)
+		var fill: Color = UI.PAPER.lightened(0.45)
+		if button.disabled:
+			fill = UI.PAPER_DIM
+		elif _hover:
+			fill = UI.POP.lerp(UI.PAPER, 0.35)
+		draw_colored_polygon(pts, fill)
+		var loop: PackedVector2Array = pts.duplicate()
+		loop.append(pts[0])
+		draw_polyline(loop, UI.INK_SOFT if button.disabled else UI.INK, 1.5, true)
+		# ひもを通す穴と、朱色の縁どり
+		var hole: Vector2 = Vector2(NOTCH * 0.85, (h - 2) * 0.5)
+		draw_circle(hole, 3.5, UI.PAPER_DIM.darkened(0.2))
+		draw_arc(hole, 4.5, 0.0, TAU, 16, UI.INK_SOFT if button.disabled else UI.SHU, 1.2, true)
+
+
+## 点線のリーダー（「勤めたシフト ………… 12」）。帳簿・日報の行に使う
+class DotLeader extends Control:
+	func _init() -> void:
+		size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		custom_minimum_size = Vector2(24, 4)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var y: float = size.y * 0.5 + 6.0
+		var x: float = 4.0
+		while x < size.x - 4.0:
+			draw_rect(Rect2(x, y, 2, 2), UI.INK_SOFT.lerp(UI.PAPER, 0.35))
+			x += 7.0
+
+
+## コルクボード（対戦の掲示板の地）。乱数を固定して、毎回同じ粒の模様にする
+class Cork extends Control:
+	const BASE: Color = Color("#8a6a48")
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), BASE)
+		var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		rng.seed = 4096
+		var n: int = int(size.x * size.y / 900.0)
+		for i in n:
+			var p: Vector2 = Vector2(rng.randf() * size.x, rng.randf() * size.y)
+			var dark: bool = rng.randf() < 0.55
+			var c: Color = BASE.darkened(rng.randf_range(0.12, 0.3)) if dark else BASE.lightened(rng.randf_range(0.08, 0.2))
+			draw_rect(Rect2(p, Vector2(rng.randi_range(2, 4), rng.randi_range(1, 3))), c)
+		# 木の枠
+		var frame: Color = Color("#5b3f28")
+		draw_rect(Rect2(Vector2.ZERO, size), frame, false, 14.0)
+
+
+## 押しピンで留めた紙。中身を1つ入れ、上の真ん中にピンを描く。tilt は傾き（度）。
+## コンテナは子の傾きを 0 に戻すので、並べた後に傾けなおす
+class PinnedNote extends Container:
+	var tilt: float = 0.0
+	var pin_color: Color = UI.SHU
+	var top_gap: float = 0.0   # 紙ごとに高さをずらすための、上の余白
+	const TOP: float = 10.0
+	var _pin: Control = null
+
+	func _get_minimum_size() -> Vector2:
+		var m: Vector2 = Vector2.ZERO
+		for c in get_children():
+			if c is Control and (c as Control).visible:
+				m = m.max((c as Control).get_combined_minimum_size())
+		return m + Vector2(0, TOP + top_gap)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_SORT_CHILDREN:
+			var y: float = TOP + top_gap
+			for c in get_children():
+				if c is Control:
+					var cc: Control = c
+					var h: float = cc.get_combined_minimum_size().y
+					fit_child_in_rect(cc, Rect2(Vector2(0, y), Vector2(size.x, h)))
+					cc.pivot_offset = Vector2(cc.size.x * 0.5, 0)
+					cc.rotation_degrees = tilt
+			if _pin != null:
+				_pin.position = Vector2(size.x * 0.5 - 9, top_gap)
+
+	func _ready() -> void:
+		# ピンは紙の上に描く必要があるので、最後に描かれる「後ろ側の内部の子」として足す
+		var pin: _Pin = _Pin.new()
+		pin.color = pin_color
+		add_child(pin, false, Node.INTERNAL_MODE_BACK)
+		_pin = pin
+		queue_sort()
+
+
+class _Pin extends Control:
+	var color: Color = UI.SHU
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(18, 22)
+		size = Vector2(18, 22)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		draw_circle(Vector2(11, 13), 7.0, UI.SHADOW)
+		draw_circle(Vector2(9, 11), 7.0, color)
+		draw_circle(Vector2(7, 8), 2.2, color.lightened(0.45))
+
+
+## マスキングテープ（シートの上の辺に貼る）。at: 横の位置（0〜1）、angle: 傾き（度）
+class Tape extends Control:
+	var at: float = 0.5
+	var angle: float = -3.0
+	var width: float = 96.0
+	var color: Color = Color(UI.POP.r, UI.POP.g, UI.POP.b, 0.7)
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_preset(Control.PRESET_TOP_WIDE)
+
+	func _draw() -> void:
+		var c: Vector2 = Vector2(size.x * at, 0)
+		var r: float = deg_to_rad(angle)
+		var hw: Vector2 = Vector2(width * 0.5, 0).rotated(r)
+		var hh: Vector2 = Vector2(0, 11).rotated(r)
+		var pts: PackedVector2Array = PackedVector2Array([c - hw - hh, c + hw - hh, c + hw + hh, c - hw + hh])
+		draw_colored_polygon(pts, color)
+		# 切り口のギザギザ（左右の短い辺）
+		for e in [-1.0, 1.0]:
+			var base: Vector2 = c + hw * e
+			for k in range(-2, 3):
+				var p: Vector2 = base + hh * (float(k) / 2.0)
+				draw_line(p, p + Vector2(2.0 * e, 0).rotated(r), color.darkened(0.15), 1.0)

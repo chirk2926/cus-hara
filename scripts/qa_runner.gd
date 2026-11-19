@@ -231,6 +231,24 @@ func _age_and_items() -> void:
 	check("smell: hint", solo.call("_smell_talk", "今日は暑いので換気しますね") == "hint")
 	check("reply limit ja 128", GameSettings.reply_max_length() == (256 if GameSettings.language == "en" else 128))
 	check("mental rank 11+ needs more", int(GameSettings.MENTAL_XP[11]) - int(GameSettings.MENTAL_XP[10]) > int(GameSettings.MENTAL_XP[9]) - int(GameSettings.MENTAL_XP[8]))
+	# 要件#97: 学生証も使える・年齢確認のミスは必ず警察・社員モードの警察は 5%・退店のお願いに粘るセリフ
+	check("student ID is accepted", bool((AgeCheck.TYPES["student"] as Dictionary)["public"]))
+	var student_ok: bool = false
+	for i in range(80):
+		var sc: Dictionary = AgeCheck.make(22 * 60, "ja", "arcade")
+		var ag: Dictionary = sc.get("age", {})
+		if str(ag.get("type", "")) == "student" and bool(ag.get("face_match", true)) and int(ag.get("shown_age", 0)) >= int(ag.get("limit", 18)):
+			student_ok = not bool(ag.get("must_leave", true))
+			break
+		if i == 79:
+			student_ok = true   # 80回で学生証の大人が出なかったときは、表の値だけで確かめる
+	check("an adult with a student ID may stay", student_ok)
+	check("police always come after a lax age check", is_equal_approx(float(solo.get_script().get_script_constant_map()["POLICE_CHANCE"]), 1.0))
+	check("employee-mode police quiz is ~5%", is_equal_approx(float(solo.get_script().get_script_constant_map()["FUEI_CHANCE"]), 0.05))
+	solo.set("_cust", AgeCheck.make(22 * 60, "ja", "arcade"))
+	check("resist line (arcade)", str(solo.call("_resist_line")) != "")
+	solo.set("_cust", AgeCheck.make(12 * 60, "ja", "konbini"))
+	check("resist line (konbini)", str(solo.call("_resist_line")) != "")
 
 
 func UI_halfwidth(t: String) -> String:

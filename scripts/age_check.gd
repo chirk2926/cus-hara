@@ -3,9 +3,9 @@ extends RefCounted
 ##
 ## 決まり（依頼者の指定）:
 ##   18:00 以降は 16 歳未満は入店不可。22:00 以降は 18 歳未満は入店不可。
-##   年齢は「公的な身分証」で、顔写真と生年月日が書いてあるものだけで確かめられる。
-##     使える: 運転免許証・マイナンバーカード・パスポート（顔が本人と違えば不可）
-##     使えない: 定期券・学生証（公的でない）、健康保険証（顔写真がない）
+##   年齢は、顔写真と生年月日が書いてある身分証だけで確かめられる。
+##     使える: 運転免許証・マイナンバーカード・パスポート・学生証（要件#97。顔が本人と違えば不可）
+##     使えない: 定期券（生年月日・顔写真がない）、健康保険証（顔写真がない）
 ##   確かめられない・入店できない年齢なら、退店してもらう。
 ## コンビニ（要件#63）: お酒・たばこは時間に関係なく 20 歳未満には売れない。身分証の決まりは同じ。
 ## お客さんのデータは make() が作る（台本・AIは使わない。サーバーも通さない）。
@@ -17,7 +17,7 @@ const TYPES: Dictionary = {
 	"license": {"public": true, "photo": true, "dob": true},
 	"mynumber": {"public": true, "photo": true, "dob": true},
 	"passport": {"public": true, "photo": true, "dob": true},
-	"student": {"public": false, "photo": true, "dob": true},
+	"student": {"public": true, "photo": true, "dob": true},   # 学生証も使える（要件#97）
 	"commuter": {"public": false, "photo": false, "dob": false},
 	"insurance": {"public": true, "photo": false, "dob": true},
 }
@@ -116,9 +116,9 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 	var id_type: String = ""
 	var face_match: bool = true
 	if under:
-		id_type = _pick({"commuter": 25, "insurance": 20, "borrowed": 20, "student": 10, "mynumber": 15, "license": 10})
+		id_type = _pick({"commuter": 25, "insurance": 20, "borrowed": 20, "student": 15, "mynumber": 10, "license": 10})
 	else:
-		id_type = _pick({"license": 30, "mynumber": 25, "passport": 10, "insurance": 15, "commuter": 10, "borrowed": 10})
+		id_type = _pick({"license": 25, "mynumber": 20, "passport": 10, "student": 10, "insurance": 15, "commuter": 10, "borrowed": 10})
 	if id_type == "borrowed":
 		# 年上の家族・友だちの運転免許証。顔が違う
 		id_type = "license"
@@ -159,11 +159,11 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 	var clock: String = clock_text(clock_min)
 	var rule: String = ""
 	if zh:
-		rule = "现在是 %s。未满%d岁的顾客不能入店（18:00以后未满16岁、22:00以后未满18岁不可入店）。年龄只能用带有照片和出生日期的官方证件（驾照、个人编号卡、护照）来确认。月票和学生证不是官方证件，健康保险证没有照片，都不能用。照片与本人不符的证件也不行。" % [clock, limit]
+		rule = "现在是 %s。未满%d岁的顾客不能入店（18:00以后未满16岁、22:00以后未满18岁不可入店）。年龄只能用带有照片和出生日期的证件（驾照、个人编号卡、护照、学生证）来确认。月票没有照片和出生日期，健康保险证没有照片，都不能用。照片与本人不符的证件也不行。" % [clock, limit]
 	elif en:
-		rule = "It's %s. Under-%d customers may not stay (after 18:00 under-16, after 22:00 under-18). Check age only with a public ID showing a face photo and date of birth (driver's license, My Number card, passport). Commuter passes and student IDs aren't public; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either." % [clock, limit]
+		rule = "It's %s. Under-%d customers may not stay (after 18:00 under-16, after 22:00 under-18). Check age only with an ID showing a face photo and date of birth (driver's license, My Number card, passport, student ID). Commuter passes have neither; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either." % [clock, limit]
 	else:
-		rule = "現在 %s。%d歳未満は入店できない（18:00以降は16歳未満、22:00以降は18歳未満）。年齢は、顔写真と生年月日のある公的な身分証（運転免許証・マイナンバーカード・パスポート）で確かめる。定期券・学生証は公的でなく、健康保険証は顔写真がないので使えない。顔が本人と違う身分証も不可。" % [clock, limit]
+		rule = "現在 %s。%d歳未満は入店できない（18:00以降は16歳未満、22:00以降は18歳未満）。年齢は、顔写真と生年月日のある身分証（運転免許証・マイナンバーカード・パスポート・学生証）で確かめる。定期券は顔写真も生年月日もなく、健康保険証は顔写真がないので使えない。顔が本人と違う身分証も不可。" % [clock, limit]
 	var openings_ja: Array = ["え、まだ遊べますよね？あと1回だけ！", "なんで出なきゃいけないの？オレもう大人だし！", "年齢確認？ほら、これ見せればいいんでしょ？", "友だち待ってるんで、あと10分だけお願いします！"]
 	var openings_en: Array = ["I can still play, right? Just one more round!", "Why do I have to leave? I'm basically an adult!", "Age check? Here, this should do, right?", "My friends are waiting, just ten more minutes, please!"]
 	var titles_ja: Array = ["年齢があやしい常連", "大人っぽい学生", "自称ハタチ", "あと1回だけの客"]
@@ -180,11 +180,11 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		var k: int = randi() % 4
 		item = str(_tr(lang, items_ja[k], items_en[k], items_zh[k]))
 		if zh:
-			rule = "想买%s。无论什么时间，酒和烟都不能卖给未满20岁的人。年龄只能用带有照片和出生日期的官方证件（驾照、个人编号卡、护照）来确认。月票和学生证不是官方证件，健康保险证没有照片，都不能用。照片与本人不符的证件也不行。只在收银台屏幕上按“已满20岁”不算确认。" % item
+			rule = "想买%s。无论什么时间，酒和烟都不能卖给未满20岁的人。年龄只能用带有照片和出生日期的证件（驾照、个人编号卡、护照、学生证）来确认。月票没有照片和出生日期，健康保险证没有照片，都不能用。照片与本人不符的证件也不行。只在收银台屏幕上按“已满20岁”不算确认。" % item
 		elif en:
-			rule = "Wants to buy %s. Alcohol and tobacco can't be sold to anyone under 20, at any hour. Check age only with a public ID showing a face photo and date of birth (driver's license, My Number card, passport). Commuter passes and student IDs aren't public; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either. Pressing \"I'm 20 or older\" on the register screen alone isn't proof." % item
+			rule = "Wants to buy %s. Alcohol and tobacco can't be sold to anyone under 20, at any hour. Check age only with an ID showing a face photo and date of birth (driver's license, My Number card, passport, student ID). Commuter passes have neither; health insurance cards have no photo. An ID whose photo doesn't match the face doesn't count either. Pressing \"I'm 20 or older\" on the register screen alone isn't proof." % item
 		else:
-			rule = "%sを買おうとしている。お酒・たばこは、時間に関係なく20歳未満には売れない。年齢は、顔写真と生年月日のある公的な身分証（運転免許証・マイナンバーカード・パスポート）で確かめる。定期券・学生証は公的でなく、健康保険証は顔写真がないので使えない。顔が本人と違う身分証も不可。レジの画面の「20歳以上」を押しただけでは確認にならない。" % item
+			rule = "%sを買おうとしている。お酒・たばこは、時間に関係なく20歳未満には売れない。年齢は、顔写真と生年月日のある身分証（運転免許証・マイナンバーカード・パスポート・学生証）で確かめる。定期券は顔写真も生年月日もなく、健康保険証は顔写真がないので使えない。顔が本人と違う身分証も不可。レジの画面の「20歳以上」を押しただけでは確認にならない。" % item
 		openings_ja = ["%sください。……え、年齢確認？見ればわかるでしょ。" % item, "画面の「20歳以上です」押したんだから、それでいいでしょ？", "%sと、あと袋もお願いします。急いでるんで。" % item, "年齢確認とか、いつもされないんだけど？"]
 		openings_en = ["%s, please. ...Huh, an age check? Isn't it obvious?" % (item.left(1).to_upper() + item.substr(1)), "I pressed \"I'm 20 or older\" on the screen, so we're good, right?", "%s, and a bag too. I'm in a hurry." % (item.left(1).to_upper() + item.substr(1)), "Age check? Nobody ever asks me that."]
 		titles_ja = ["若く見えるお客さん", "急いでいる若者", "自称社会人", "年齢確認されたことがない客"]

@@ -361,3 +361,173 @@ static func to_halfwidth(t: String) -> String:
 			c = 0x20
 		out += String.chr(c)
 	return out
+
+
+# ---------------------------------------------------------------- 全体の見た目（要件#96。docs/UI_GUIDE.md 6節）
+## Godot の既定のまま残っていた部品（灰色のスクロールバー・チェックボックス・選択欄の黒い一覧・進み具合のバー）を、
+## 店の紙と鉛筆の見た目にそろえる。起動時に1回だけ、既定のテーマを書き換える。
+
+static var _theme_done: bool = false
+
+
+static func install_theme() -> void:
+	if _theme_done:
+		return
+	_theme_done = true
+	var th: Theme = ThemeDB.get_default_theme()
+	if th == null:
+		return
+	# スクロールバー: 紙の上の細い罫線と、鉛筆で引いたような細いつまみ（角丸なし）
+	for sb in ["VScrollBar", "HScrollBar"]:
+		var vert: bool = sb == "VScrollBar"
+		var track: StyleBoxFlat = StyleBoxFlat.new()
+		track.bg_color = Color(0, 0, 0, 0)
+		track.draw_center = false
+		if vert:
+			track.border_width_left = 1
+			track.content_margin_left = 6
+			track.content_margin_right = 2
+		else:
+			track.border_width_top = 1
+			track.content_margin_top = 6
+			track.content_margin_bottom = 2
+		track.border_color = PAPER_DIM.darkened(0.1)
+		th.set_stylebox("scroll", sb, track)
+		th.set_stylebox("scroll_focus", sb, track)
+		for g in [["grabber", INK_SOFT], ["grabber_highlight", INK], ["grabber_pressed", SHU]]:
+			var gs: StyleBoxFlat = flat_style(g[1], 0, 0)
+			if vert:
+				gs.content_margin_left = 3
+				gs.content_margin_right = 3
+			else:
+				gs.content_margin_top = 3
+				gs.content_margin_bottom = 3
+			th.set_stylebox(str(g[0]), sb, gs)
+		for ic in ["increment", "increment_highlight", "increment_pressed", "decrement", "decrement_highlight", "decrement_pressed"]:
+			th.set_icon(ic, sb, _blank_icon())
+	# チェックボックス: 紙に印刷した四角と、朱色のペンで書いたレ点
+	th.set_icon("unchecked", "CheckBox", _check_icon(false, false))
+	th.set_icon("checked", "CheckBox", _check_icon(true, false))
+	th.set_icon("unchecked_disabled", "CheckBox", _check_icon(false, true))
+	th.set_icon("checked_disabled", "CheckBox", _check_icon(true, true))
+	th.set_constant("h_separation", "CheckBox", 8)
+	for st in ["normal", "pressed", "hover", "hover_pressed", "disabled"]:
+		th.set_stylebox(st, "CheckBox", empty_style(2, 4))
+	# 選択欄の一覧（ポップアップ）: 黒い箱ではなく、紙の一覧表。選んでいる行は蛍光ペン
+	var pm: StyleBoxFlat = paper_style(PAPER, 6, 0, 4)
+	pm.border_width_left = 2
+	pm.border_width_top = 2
+	pm.border_color = INK
+	pm.border_width_right = 2
+	pm.border_width_bottom = 2
+	pm.shadow_color = SHADOW
+	pm.shadow_size = 0
+	pm.shadow_offset = Vector2(4, 4)
+	th.set_stylebox("panel", "PopupMenu", pm)
+	var hov: StyleBoxFlat = flat_style(POP.lerp(PAPER, 0.35), 0, 0)
+	th.set_stylebox("hover", "PopupMenu", hov)
+	th.set_color("font_color", "PopupMenu", INK)
+	th.set_color("font_hover_color", "PopupMenu", INK)
+	th.set_color("font_disabled_color", "PopupMenu", INK_SOFT)
+	th.set_font_size("font_size", "PopupMenu", S_BODY)
+	th.set_constant("v_separation", "PopupMenu", 10)
+	th.set_icon("radio_checked", "PopupMenu", _check_icon(true, false))
+	th.set_icon("radio_unchecked", "PopupMenu", _blank_icon())
+	var sep: StyleBoxLine = StyleBoxLine.new()
+	sep.color = PAPER_DIM
+	sep.thickness = 1
+	th.set_stylebox("separator", "PopupMenu", sep)
+	# 進み具合のバー（ふだん使う所は個別に作るが、指定を忘れても既定の灰色にならないように）
+	th.set_stylebox("background", "ProgressBar", flat_style(PAPER_DIM, 0, 0))
+	th.set_stylebox("fill", "ProgressBar", flat_style(OK, 0, 0))
+	th.set_color("font_color", "ProgressBar", INK)
+	# 説明の吹き出し（ツールチップ）
+	var tip: StyleBoxFlat = paper_style(POP.lerp(PAPER, 0.4), 8, 0, 3)
+	th.set_stylebox("panel", "TooltipPanel", tip)
+	th.set_color("font_color", "TooltipLabel", INK)
+
+
+static func _blank_icon() -> Texture2D:
+	var img: Image = Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	return ImageTexture.create_from_image(img)
+
+
+## 紙に印刷した四角（INK の細い線）と、朱色のペンのレ点。わずかに太さを揺らして手で書いた感じにする
+static func _check_icon(on: bool, disabled: bool) -> Texture2D:
+	var n: int = 22
+	var img: Image = Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var line: Color = INK_SOFT if disabled else INK
+	for i in range(3, n - 4):
+		img.set_pixel(i, 6, line)
+		img.set_pixel(i, n - 4, line)
+	for j in range(6, n - 3):
+		img.set_pixel(3, j, line)
+		img.set_pixel(n - 5, j, line)
+	if on:
+		var pen: Color = INK_SOFT if disabled else SHU
+		# 短い払い → 長い払い（右上へ少しはみ出す）
+		_pen_line(img, Vector2(5, 12), Vector2(9, 17), pen, 2.6)
+		_pen_line(img, Vector2(9, 17), Vector2(20, 2), pen, 2.0)
+	return ImageTexture.create_from_image(img)
+
+
+static func _pen_line(img: Image, a: Vector2, b: Vector2, c: Color, w: float) -> void:
+	var steps: int = int(a.distance_to(b) * 3.0) + 1
+	for s in range(steps + 1):
+		var p: Vector2 = a.lerp(b, float(s) / float(steps))
+		var r: float = w * 0.5
+		for y in range(int(p.y - r) - 1, int(p.y + r) + 2):
+			for x in range(int(p.x - r) - 1, int(p.x + r) + 2):
+				if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
+					continue
+				var d: float = Vector2(x + 0.5, y + 0.5).distance_to(p)
+				if d <= r:
+					img.set_pixel(x, y, c)
+				elif d <= r + 0.8:
+					var old: Color = img.get_pixel(x, y)
+					var k: float = 1.0 - (d - r) / 0.8
+					if old.a < k:
+						img.set_pixel(x, y, Color(c.r, c.g, c.b, k))
+
+
+# ---------------------------------------------------------------- 見出しの「インデックス」（要件#96）
+
+## 書類のファイルの耳（インデックス）。選んでいるものは紙と同じ色で下の線とつながり、ほかは一段低くて色が濃い。
+## items: [[id, 表示する文字], ...]。HFlow なので、多いときは2段になる
+static func index_tabs(items: Array, current: String, on_pick: Callable, size: int = S_SMALL) -> Control:
+	var wrap: VBoxContainer = vbox(0)
+	var flow: HFlowContainer = HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 2)
+	flow.add_theme_constant_override("v_separation", 4)
+	wrap.add_child(flow)
+	for it in items:
+		var id: String = str(it[0])
+		var on: bool = id == current
+		var b: Button = _button_base(str(it[1]), size, F_BOLD if on else F_BODY)
+		b.focus_mode = Control.FOCUS_ALL
+		_colors(b, INK if on else INK_SOFT, INK, INK_SOFT)
+		var st: StyleBoxFlat = flat_style(PAPER if on else PAPER_DIM, 0, 0)
+		st.corner_radius_top_left = 6
+		st.corner_radius_top_right = 2   # 左右で丸みを変える（型抜きの耳の、手で切った感じ）
+		st.content_margin_left = 14
+		st.content_margin_right = 14
+		st.content_margin_top = 8 if on else 5
+		st.content_margin_bottom = 6
+		st.border_width_top = 2
+		st.border_width_left = 2
+		st.border_width_right = 2
+		st.border_color = INK if on else PAPER_DIM.darkened(0.18)
+		var h: StyleBoxFlat = st.duplicate()
+		h.bg_color = PAPER if on else POP.lerp(PAPER_DIM, 0.5)
+		b.add_theme_stylebox_override("normal", st)
+		b.add_theme_stylebox_override("hover", h)
+		b.add_theme_stylebox_override("pressed", st)
+		b.add_theme_stylebox_override("focus", _focus_style())
+		b.size_flags_vertical = Control.SIZE_SHRINK_END
+		b.set_meta("tab_id", id)
+		b.pressed.connect(func() -> void: on_pick.call(id))
+		flow.add_child(b)
+	wrap.add_child(rule(INK, 2))
+	return wrap

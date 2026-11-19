@@ -29,7 +29,7 @@ const HARD_UNLOCK_RANK: int = 10
 ## 店長を呼ぶ（要件#86）: 1シフト1回。呼んだお客さんの点数は半分
 const CALL_MANAGER_POINTS: float = 0.5
 ## 社員モードの風営法の確認（要件#91）: お客さんの合間に、この確率で警察が来て質問する（1シフト1回まで）
-const FUEI_CHANCE: float = 0.2
+const FUEI_CHANCE: float = 0.05   # 社員モードで警察が風営法の質問に来る確率（要件#97: 5%くらい）
 const FUEI_SECONDS: float = 20.0
 ## 臭い客のイベント（要件#92）: この確率でお客さんから強烈なにおい。しれっと消臭剤をかける（30% でバレる）か、遠回しに伝える
 const SMELL_CHANCE: float = 0.12
@@ -64,8 +64,10 @@ const AGE_CHANCE_KONBINI: float = 0.25
 const AGE_MAX: int = 2
 ## 年齢確認の点数（減りは少なめ）
 const SCORE_AGE: Dictionary = {"age_ok": 700, "age_refused": 600, "age_wrong": -150, "age_lax": -200, "age_left_ok": 300, "age_left_ng": -150}
-## 入店できない客を遊ばせていたとき、警察が来る確率と営業停止の点数
-const POLICE_CHANCE: float = 0.7
+## 入店できない客を遊ばせていた・売ってしまったとき、警察が来る確率と営業停止の点数（要件#97: 年齢確認のミスは必ず来る）
+const POLICE_CHANCE: float = 1.0
+## 退店・販売のお断りをお願いしたとき、ちょっとだけ粘る確率（要件#97）。もう一度お願いすれば従う
+const LEAVE_RESIST_CHANCE: float = 0.3
 const SCORE_SUSPENDED: int = -2000
 const REVIEW_SUSPENDED: float = -1.5
 const CHEAT_COST: int = 150
@@ -99,6 +101,7 @@ var _alt_resisted: bool = false      # 別の身分証を頼んで、一度し�
 var _smelly: bool = false            # このお客さんは強烈なにおい（要件#92）
 var _smell_done: bool = false        # 消臭剤をかけた・遠回しに伝えた
 var _alt_id_asked: bool = false
+var _leave_resisted: bool = false   # 退店のお願いに一度粘ったか（要件#97）
 
 var _run: int = 0
 var _active: bool = false
@@ -329,7 +332,7 @@ func _age_result(outcome: String) -> Dictionary:
 			points = SCORE_AGE["age_wrong"]
 			mood = "angry"
 			hud.show_banner(tr("大人だったのに…") + "  %d" % points, Color("#ff8a6a"))
-			hud.set_comment(tr("顔写真つきの公的な身分証で、年齢も足りていた。帰す必要はなかった。") if _age_mode() != "konbini" else tr("顔写真つきの公的な身分証で、20歳以上だった。売ってよかった。"))
+			hud.set_comment(tr("顔写真と生年月日のある身分証で、年齢も足りていた。帰す必要はなかった。") if _age_mode() != "konbini" else tr("顔写真と生年月日のある身分証で、20歳以上だった。売ってよかった。"))
 			_change_mental(-5.0)
 			main.sfx.play("lose")
 		"age_lax":
@@ -700,7 +703,7 @@ func _age_buttons() -> Array:
 	return out
 
 
-## 「別の身分証を見せて」と言った・押した（要件#86）。持っていれば本人の公的な身分証を出し、なければ「持ってない」
+## 「別の身分証を見せて」と言った・押した（要件#86）。持っていれば本人の使える身分証を出し、なければ「持ってない」
 func _wants_other_id(reply: String) -> bool:
 	var words: Array = ["別の身分証", "他の身分証", "ほかの身分証", "別のもの", "免許証", "マイナンバー", "パスポート", "another id", "other id", "different id", "license", "passport", "其他证件", "别的证件", "驾照", "护照"]
 	var t: String = reply.to_lower()
@@ -741,12 +744,25 @@ func _ask_other_id(speaker: String) -> void:
 		ag["no_id"] = true
 		line = str(Judge.pick_lang(["え、ほかのは持ってないけど……", "そんなの持ち歩いてないよ。", "……それしかない。"], ["Uh, I don't have anything else...", "I don't carry that around.", "...That's all I've got."], ["诶，我没带别的……", "谁随身带那个啊。", "……就只有这个。"]))
 		if not hardcore:
-			hud.set_comment(tr("公的な身分証がないなら、年齢は確かめられない。退店をお願いしよう。"))
+			hud.set_comment(tr("顔写真と生年月日のある身分証がないなら、年齢は確かめられない。退店をお願いしよう。"))
 	_cust["age"] = ag
 	hud.set_actions(_age_buttons())
 	log_lines.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label("ask_other_id")})
 	log_lines.append({"role": "customer", "text": line})
 	await _customer_line(speaker, line, "")
+
+
+## 退店・販売のお断りに、ちょっとだけ粘るときのセリフ（要件#97）
+func _resist_line() -> String:
+	if _age_mode() == "konbini":
+		return str(Judge.pick_lang(
+			["えー、1本だけでいいんだけど……ダメ？", "いや、ほんとに大人なんだって。ちょっとだけ見逃してよ。", "……マジで？ほかの店じゃ普通に買えたけど。"],
+			["Aw, just one... Really, no?", "Come on, I really am an adult. Just let it slide this once.", "...Seriously? Other stores sell it to me."],
+			["诶，就买一个……不行吗？", "我真的是大人啦。就通融一下嘛。", "……真的假的？别的店都能买的。"]))
+	return str(Judge.pick_lang(
+		["えー、あと1回だけ！ほんとに1回だけだから！", "ちょっと待って、今いいとこなんだって……", "……え、もう？友だちまだ来てないんだけど。"],
+		["Aw, just one more round! Really, just one!", "Wait, I'm right in the middle of something good...", "...Already? My friends aren't even here yet."],
+		["诶，再玩一次！真的就一次！", "等一下，现在正玩到关键时候……", "……啊，这就要走？我朋友还没来呢。"]))
 
 
 ## 年齢確認の種類: "arcade"（夜の入店）| "konbini"（お酒・たばこ。要件#63）
@@ -973,6 +989,7 @@ func _play_customer(my_run: int) -> void:
 	_called_here = false
 	log_lines = []
 	_alt_id_asked = false
+	_leave_resisted = false
 	_act_counts = {}
 	_id_views = 0
 	_alt_resisted = false
@@ -1068,6 +1085,25 @@ func _play_customer(my_run: int) -> void:
 					await _ask_other_id(speaker)
 					if my_run != _run:
 						return
+				continue
+			if id == "age_refuse" and not _leave_resisted and not main.smoke and (randf() < LEAVE_RESIST_CHANCE or main.debug_flag("resist")):
+				# ちょっとだけ粘る（要件#97）: 少し怒って言い返す。決着はせず、もう一度お願いすれば従う
+				_leave_resisted = true
+				main.close_machine_data()
+				var shown_r: String = "sell_refuse" if _age_mode() == "konbini" else id
+				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(shown_r))
+				log_lines.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label(shown_r)})
+				_history.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label(shown_r)})
+				_anger = clampf(_anger + 8.0, 0.0, 100.0)
+				_refresh(false)
+				var rl: String = _resist_line()
+				log_lines.append({"role": "customer", "text": rl})
+				_history.append({"role": "customer", "text": rl})
+				await _customer_line(speaker, rl, "angry")
+				if my_run != _run:
+					return
+				if not hardcore:
+					hud.set_comment(tr("少し粘られた。落ち着いて、もう一度はっきりお願いしよう。"))
 				continue
 			if id == "age_allow" or id == "age_refuse":
 				main.close_machine_data()
