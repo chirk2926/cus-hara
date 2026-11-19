@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://example.pages.dev/</loc>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ja/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/en/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/zh/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ko/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ja/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/contact/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/contact/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/contact/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/contact/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/contact/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/en/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/contact/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/contact/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/contact/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/contact/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/contact/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/zh/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/contact/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/contact/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/contact/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/contact/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/contact/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ko/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/contact/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/contact/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/contact/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/contact/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/contact/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ja/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/terms/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/terms/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/en/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/terms/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/terms/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/zh/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/terms/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/terms/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ko/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/terms/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/terms/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ja/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/privacy/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/en/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/privacy/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/zh/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/privacy/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ko/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/privacy/"/>
+    <lastmod>2026-11-19</lastmod>
+  </url>
+</urlset>
