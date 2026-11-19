@@ -18,6 +18,7 @@ const Shop = preload("res://scripts/shop.gd")
 ## サーバーのエラーコード → 画面の言葉（サーバーの文は日本語だけなので、ここで訳す）
 const ERROR_TEXT: Dictionary = {
 	"maintenance": "メンテナンス中のため、対戦はお休みしています。1人用は遊べます",
+	"consent_required": "対戦の前に、発言の取り扱いへの同意が必要です",
 	"versus_banned": "対戦の利用を停止されています",
 	"banned": "このアカウントは利用停止中です",
 	"bad_format": "対戦の形式（文字・音声）が正しくありません",
@@ -265,6 +266,10 @@ func _on_message(msg: Dictionary) -> void:
 				if code in ["maintenance", "versus_banned", "banned"] and GameSettings.language == "ja" and str(msg.get("message", "")) != "":
 					shown["message"] = str(msg.get("message", ""))
 			lobby_event.emit("error", shown)
+			# 同意がない（取り消した・別のPCで遊んだなど）: 同意の画面を出す（要件#101）
+			if code == "consent_required" and not main.smoke:
+				GameSettings.vs_consent = 0
+				main.call("show_vs_consent", Callable(main, "_show_versus_lobby"))
 			if _eos_flow != "" and state != "match":
 				_on_eos_failed(shown.get("message", ""))
 		"match_found":

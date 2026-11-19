@@ -2,7 +2,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { config } from "./config.ts";
-import { sanctionOf, isActiveBan, setSanction, announcements } from "./db.ts";
+import { sanctionOf, isActiveBan, setSanction, announcements, VS_CONSENT_VERSION, consentOf, setConsent, hasConsent, deletePlayer } from "./db.ts";
 import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar, setPlayerAvatar, addReport, playerById, REPORT_REASONS, type ReportReason, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
@@ -11,6 +11,9 @@ import { moderate } from "./moderation.ts";
 import { runtime } from "./settings.ts";
 import { markReported } from "./matchlogs.ts";
 import { readNoticeImage } from "./notices.ts";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
@@ -127,6 +130,8 @@ export function banMessage(id: string): string | null {
 
 /** 対戦を始められないとき（メンテナンス中・対戦の利用停止）の [code, 説明]。始められるなら null */
 export function versusBlock(id: string): [string, string] | null {
+  // 対戦の発言の取り扱いに同意していない人は、対戦できない（要件#101。1人用は遊べる）
+  if (!hasConsent(id)) return ["consent_required", "対戦の前に、発言の取り扱いへの同意が必要です"];
   if (runtime.maintenance) return ["maintenance", runtime.maintenanceMessage || "メンテナンス中のため、対戦はお休みしています。1人用は遊べます"];
   const s = sanctionOf(id);
   if (isActiveBan(s.versusBannedUntil)) {
@@ -194,7 +199,24 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
   if (method === "GET" && p === "/api/v1/me") {
     // 運営からの警告（要件#100）。ゲームが表示したら ack を送る
     const w = sanctionOf(player.id).warnMessage;
-    return { player: publicPlayer(player), warning: w };
+    return { player: publicPlayer(player), warning: w, vs_consent: consentOf(player.id).version, vs_consent_required: VS_CONSENT_VERSION };
+  }
+
+  // 退職（要件#101）: サーバーのアカウントとデータを消す
+  if (method === "POST" && p === "/api/v1/me/delete") {
+    deletePlayer(player.id);
+    log("account deleted", player.id);
+    return { ok: true };
+  }
+
+  // 対戦の発言の取り扱いへの同意（要件#101）。agree: true で今の版に同意、false で取り消す
+  if (method === "POST" && p === "/api/v1/me/consent") {
+    const body = await readJson(req);
+    const agree = body.agree === true && Number(body.version) === VS_CONSENT_VERSION;
+    if (body.agree === true && !agree) throw new HttpError(409, "consent_outdated", "同意の文が新しくなっています。ゲームを最新にしてください");
+    setConsent(player.id, agree ? VS_CONSENT_VERSION : 0);
+    log("consent", player.id, agree ? `agree v${VS_CONSENT_VERSION}` : "withdraw");
+    return { ok: true, consent: consentOf(player.id), required: VS_CONSENT_VERSION };
   }
 
   if (method === "POST" && p === "/api/v1/me/ack_warning") {
@@ -382,6 +404,20 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
 export function createHttpServer(lobby: Lobby): http.Server {
   return http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
+    // プライバシーポリシー（要件#101）。/privacy?lang=ja|en|zh
+    if (req.method === "GET" && (url.pathname === "/privacy" || url.pathname === "/privacy/")) {
+      const lang = ["ja", "en", "zh"].includes(url.searchParams.get("lang") ?? "") ? url.searchParams.get("lang") : "ja";
+      try {
+        const html = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", `privacy.${lang}.html`), "utf-8");
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff",
+          "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'" });
+        res.end(html);
+      } catch {
+        res.writeHead(404, { "content-type": "text/plain" });
+        res.end("not found");
+      }
+      return;
+    }
     // お知らせの画像（要件#100）。だれでも読める（名前は推測できない）
     const img = /^\/api\/v1\/notice_image\/([0-9a-f]{32}\.(?:png|jpg))$/.exec(url.pathname);
     if (req.method === "GET" && img) {

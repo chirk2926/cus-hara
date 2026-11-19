@@ -76,7 +76,9 @@ export function openDb(): DatabaseSync {
   if (!cols.some((c) => c.name === "avatar")) db.exec("ALTER TABLE players ADD COLUMN avatar TEXT NOT NULL DEFAULT ''");
   // 利用停止・警告（要件#100。管理画面から）。banned_until: 0 = なし、-1 = 永久、それ以外はその時刻（ミリ秒）まで
   for (const [col, def] of [["banned_until", "INTEGER NOT NULL DEFAULT 0"], ["versus_banned_until", "INTEGER NOT NULL DEFAULT 0"],
-    ["ban_reason", "TEXT NOT NULL DEFAULT ''"], ["warn_message", "TEXT NOT NULL DEFAULT ''"]] as const) {
+    ["ban_reason", "TEXT NOT NULL DEFAULT ''"], ["warn_message", "TEXT NOT NULL DEFAULT ''"],
+    // 対戦の発言の取り扱いへの同意（要件#101）。どの版の文に、いつ同意したか（0 = 同意していない・取り消した）
+    ["vs_consent_version", "INTEGER NOT NULL DEFAULT 0"], ["vs_consent_at", "INTEGER NOT NULL DEFAULT 0"]] as const) {
     if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE players ADD COLUMN ${col} ${def}`);
   }
   // 通報の対応状況（要件#100）
@@ -167,6 +169,49 @@ export function setSanction(id: string, s: Partial<Sanction>): void {
     .run(n.bannedUntil, n.versusBannedUntil, n.reason.slice(0, 200), n.warnMessage.slice(0, 300), id);
 }
 
+// ---------------------------------------------------------------- アカウントの削除（要件#101: 退職でサーバーのデータも消す）
+
+/**
+ * プレイヤーのデータを消す: アカウント（名前・レート・称号・飾り・キャラクター・同意の記録）、この人がした通報・この人への通報、
+ * この人が出た試合の保存された会話。対戦の記録（matches）は相手のレートの計算のために残すが、ID だけで名前は消える。
+ */
+export function deletePlayer(id: string): void {
+  const d = openDb();
+  d.exec("BEGIN");
+  try {
+    const ms = d.prepare("SELECT id FROM matches WHERE p1 = ? OR p2 = ?").all(id, id) as Array<{ id: string }>;
+    for (const m of ms) d.prepare("DELETE FROM match_logs WHERE match_id = ?").run(m.id);
+    d.prepare("DELETE FROM reports WHERE reporter_id = ? OR target_id = ?").run(id, id);
+    d.prepare("DELETE FROM players WHERE id = ?").run(id);
+    d.exec("COMMIT");
+  } catch (e) {
+    d.exec("ROLLBACK");
+    throw e;
+  }
+}
+
+// ---------------------------------------------------------------- 対戦の同意（要件#101）
+
+/**
+ * 対戦の発言（ユーザーどうしの通信）を、チェック・AIの判定・外部のAIへの送信・通報された試合の保存に使うことへの同意の版。
+ * 同意の画面の文（ゲームの scripts/consent.gd）を大きく変えたら上げる（もう一度同意してもらう）
+ */
+export const VS_CONSENT_VERSION = 1;
+
+export function consentOf(id: string): { version: number; at: number } {
+  const r = openDb().prepare("SELECT vs_consent_version, vs_consent_at FROM players WHERE id = ?").get(id) as { vs_consent_version: number; vs_consent_at: number } | undefined;
+  return { version: Number(r?.vs_consent_version ?? 0), at: Number(r?.vs_consent_at ?? 0) };
+}
+
+/** 同意する（version）・取り消す（0） */
+export function setConsent(id: string, version: number): void {
+  openDb().prepare("UPDATE players SET vs_consent_version = ?, vs_consent_at = ? WHERE id = ?").run(version, Date.now(), id);
+}
+
+export function hasConsent(id: string): boolean {
+  return consentOf(id).version >= VS_CONSENT_VERSION;
+}
+
 // ---------------------------------------------------------------- 通報された試合の会話（要件#100）
 
 export const MATCH_LOG_DAYS = 30;
@@ -180,9 +225,12 @@ export function matchLog(matchId: string): unknown | null {
   return r ? JSON.parse(r.body) : null;
 }
 
-/** 保存期間を過ぎた会話を消す。消した数を返す */
+/** 保存期間を過ぎた会話（30日）と通報（1年）を消す。消した会話の数を返す（プライバシーポリシー） */
+export const REPORT_KEEP_DAYS = 365;
+
 export function purgeMatchLogs(now = Date.now()): number {
   const r = openDb().prepare("DELETE FROM match_logs WHERE created_at < ?").run(now - MATCH_LOG_DAYS * 86_400_000);
+  openDb().prepare("DELETE FROM reports WHERE created_at < ?").run(now - REPORT_KEEP_DAYS * 86_400_000);
   return Number(r.changes);
 }
 

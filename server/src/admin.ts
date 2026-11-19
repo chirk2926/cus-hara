@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { config } from "./config.ts";
 import { log } from "./log.ts";
 import {
-  openDb, playerById, sanctionOf, setSanction, isActiveBan, renamePlayer, setPlayerTitle, cleanName, matchLog, aiUsage,
+  openDb, playerById, sanctionOf, consentOf, setSanction, isActiveBan, renamePlayer, setPlayerTitle, cleanName, matchLog, aiUsage,
   announcements, addAnnouncement, updateAnnouncement, setAnnouncementActive, deleteAnnouncement, adminLog, adminLogs, adminLogById, NOTICE_FONTS,
 } from "./db.ts";
 import { listSettings, setSetting, SettingError, settingDef, currentValue, costUsd, runtime } from "./settings.ts";
@@ -371,6 +371,7 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     return {
       player: pr,
       sanction: sanctionOf(id),
+      consent: consentOf(id),
       reports_against: db.prepare("SELECT r.*, rp.name AS reporter_name FROM reports r LEFT JOIN players rp ON rp.id = r.reporter_id WHERE r.target_id = ? ORDER BY r.id DESC LIMIT 50").all(id),
       reports_by: db.prepare("SELECT COUNT(*) AS n FROM reports WHERE reporter_id = ?").get(id),
       matches: db.prepare(`SELECT m.*, a.name AS p1_name, b.name AS p2_name, (SELECT COUNT(*) FROM match_logs l WHERE l.match_id = m.id) AS has_log

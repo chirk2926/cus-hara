@@ -89,8 +89,10 @@ export class Client {
   }
 }
 
-export async function guest(base: string, wsUrl: string, name: string) {
+export async function guest(base: string, wsUrl: string, name: string, consent = true) {
   const g = await api(base, "POST", "/api/v1/guest", { name });
+  // 対戦の同意（要件#101）。テストではふつう同意しておく
+  if (consent) await api(base, "POST", "/api/v1/me/consent", { agree: true, version: 1 }, g.body.token);
   const c = new Client(wsUrl);
   await c.open();
   c.send({ t: "auth", token: g.body.token });

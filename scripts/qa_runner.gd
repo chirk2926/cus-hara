@@ -49,6 +49,22 @@ func run(m) -> void:
 	get_tree().quit(0 if _fails == 0 else 1)
 
 
+func _find_button(root: Node, text: String) -> Button:
+	if root == null:
+		return null
+	for c in root.find_children("*", "Button", true, false):
+		if (c as Button).text == text:
+			return c
+	return null
+
+
+func _find_check(root: Node) -> CheckBox:
+	if root == null:
+		return null
+	var all: Array = root.find_children("*", "CheckBox", true, false)
+	return all[0] if not all.is_empty() else null
+
+
 func check(name: String, ok: bool, detail: String = "") -> void:
 	if ok:
 		print("QA PASS ", name)
@@ -250,6 +266,20 @@ func _screens() -> void:
 	main.call("_show_records")
 	await _wait(0.3)
 	check("records: stats opens", main.get("_sheet") != null)
+	# 対戦の同意（要件#101）: 同意していないと、形式の前に同意の画面。チェックするまで進めない
+	var keep_consent: int = GameSettings.vs_consent
+	GameSettings.vs_consent = 0
+	main.call("_ask_versus_format")
+	await _wait(0.3)
+	var agree_btn: Button = _find_button(main.get("_sheet"), tr("同意して対戦へ進む"))
+	check("consent screen comes before versus", agree_btn != null and agree_btn.disabled, str(agree_btn))
+	await _snap("vs_consent")
+	var cb: CheckBox = _find_check(main.get("_sheet"))
+	if cb != null:
+		cb.button_pressed = true
+	check("ticking the box enables agree", agree_btn != null and not agree_btn.disabled)
+	main.call("_close_sheet")
+	GameSettings.vs_consent = maxi(keep_consent, 1)
 	main.call("_ask_versus_format")
 	await _wait(0.3)
 	check("versus format chooser opens", main.get("_sheet") != null)

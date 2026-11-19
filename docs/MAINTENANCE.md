@@ -154,10 +154,14 @@ steamcmd +login <アカウント名> +run_app_build <app_build.vdf の絶対パ�
 - マニフェストは `runFullTrust`（通常のデスクトップアプリ）、`internetClient` / `internetClientServer`（サーバーとの通信）、`microphone`（音声対戦）を宣言している。`runFullTrust` はストア提出時に利用理由の入力を求められる。
 - ストアの説明とプライバシーポリシーに、ゲームサーバーと通信すること（名前・対戦の記録・入力した文章・音声が送られ、AIの判定に使われること）、自分のAPIキーを入れた場合は Anthropic と直接通信することを書く必要がある。
 - MSIX を実際にインストールして起動する確認は、まだ誰も行っていない。
+- 掲載の文（3言語）・画像・年齢レーティング（IARC）の答えの案・提出前の確認の一覧は [STORE_LISTING.md](STORE_LISTING.md)。プライバシーポリシーの URL はゲームサーバーの `https://<ドメイン>/privacy`（`server/public/privacy.*.html` の〔運営者名〕〔連絡先メールアドレス〕を書きかえてから）。
+- ストアの画像: コミットのメッセージに `[shots]` を入れてプッシュすると、CI が 1920×1080 で `docs/store/` に描く。
+- 実績: EOS の開発者ポータルに t001〜t155 を登録する（docs/HANDOVER.md 4b）。
+- コードのロックの鍵は GitHub の Secrets の `GODOT_SCRIPT_ENCRYPTION_KEY`（2.1節）。ストアに出す版は、鍵を Secrets に入れてから作る（自動で作られた鍵はキャッシュが消えると変わる）。
 
 ## 8. ゲームサーバーの運用
 
-詳細は [SERVER.md](SERVER.md)。要点:
+詳細は [SERVER.md](SERVER.md)。自宅の Linux サーバー（Cloudflare Tunnel・管理画面は SSH で）の手順は [HOME_SERVER.md](HOME_SERVER.md)。要点:
 1. Linux のサーバーに Docker で `server/compose.yaml` を動かす（または Node.js 22.18 以上で `npm start`）。`ANTHROPIC_API_KEY` を環境変数で渡す。
 2. 前に HTTPS 終端（Caddy / nginx）を置き、`https://` と `wss://` で公開する。
 3. `scripts/game_settings.gd` の `DEFAULT_SERVER_URL` を本番のURLに書き換えてから、配布用の exe / MSIX を作る。

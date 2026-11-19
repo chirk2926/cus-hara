@@ -113,6 +113,8 @@ const REVIEW_LOG_MAX: int = 200
 var tutorial_seen: bool = false
 ## 初めて起動したときに難しさ（かめ・うさぎ・チーター）を選んだか（要件#91）
 var difficulty_asked: bool = false
+## 対戦の発言の取り扱いに同意した版（要件#101。0 = していない）。サーバーの記録が正で、ログインのたびに合わせる
+var vs_consent: int = 0
 ## 起動引数 --resolution で大きさを決めたとき（テスト・スクリーンショット）は、保存した解像度で上書きしない
 var _resolution_from_cmdline: bool = false
 var push_to_talk_key: int = KEY_SPACE
@@ -227,6 +229,7 @@ func load_settings() -> void:
 	crane_payout = clampi(int(cfg.get_value("play", "crane_payout", 30)), 10, 80)
 	tutorial_seen = bool(cfg.get_value("play", "tutorial_seen", false))
 	difficulty_asked = bool(cfg.get_value("play", "difficulty_asked", false))
+	vs_consent = int(cfg.get_value("play", "vs_consent", 0))
 	mental_xp = maxi(0, int(cfg.get_value("play", "mental_xp", 0)))
 	var st: Variant = cfg.get_value("play", "stats", {})
 	stats = st if typeof(st) == TYPE_DICTIONARY else {}
@@ -273,6 +276,7 @@ func save_settings() -> void:
 	cfg.set_value("play", "crane_payout", crane_payout)
 	cfg.set_value("play", "tutorial_seen", tutorial_seen)
 	cfg.set_value("play", "difficulty_asked", difficulty_asked)
+	cfg.set_value("play", "vs_consent", vs_consent)
 	cfg.set_value("play", "mental_xp", mental_xp)
 	cfg.set_value("play", "stats", stats)
 	cfg.set_value("play", "titles", unlocked_titles)
@@ -575,6 +579,7 @@ func wipe_all() -> void:
 	mental_xp = 0
 	tutorial_seen = false
 	difficulty_asked = false
+	vs_consent = 0
 	high_scores = {}
 	api_key = ""
 

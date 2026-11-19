@@ -245,6 +245,19 @@ jobs:
           # 画面の大きさ・縦横比が違う環境（要件#44, #45）
           xvfb-run -a -s "-screen 0 1024x768x24" timeout 900 godot --resolution 1024x768 -- --shots --lang=en --shot-tag=4x3 --profile=shots_43 2>&1 | tee shots_43.log || true
           xvfb-run -a -s "-screen 0 1920x1040x24" timeout 900 godot --resolution 1920x1040 -- --shots --lang=ja --shot-tag=wide --profile=shots_wide 2>&1 | tee shots_wide.log || true
+          # Microsoft Store 用（1920×1080。要件#100）: 撮った中から見せたい画面だけを docs/store/ に
+          rm -rf docs/store build/store_shots
+          mkdir -p docs/store
+          for lang in ja en zh; do
+            xvfb-run -a -s "-screen 0 1920x1080x24" timeout 900 godot --resolution 1920x1080 -- --shots --lang=$lang --shot-tag=store --profile=shots_store_$lang 2>&1 | tee shots_store_$lang.log || true
+            n=1
+            for s in 01_title konbini_1_play arcade_2_angry konbini_3c_id_card arcade_5_crane_adjust 10_versus_customer_view 06b_titles 06g_avatar_maker; do
+              f=$(ls docs/screenshots/${lang}_store_${s}.* 2>/dev/null | head -1)
+              [ -n "$f" ] && cp "$f" "docs/store/${lang}_$(printf %02d $n)_${s}.${f##*.}" && n=$((n+1))
+            done
+          done
+          rm -f docs/screenshots/*_store_*
+          git add -f docs/store
           cat shots_*.log > docs/screenshots/render.log || true
           grep -E "SCRIPT ERROR|ERROR|SHOT" docs/screenshots/render.log | head -80 || true
           git config user.name "github-actions[bot]"

@@ -71,6 +71,9 @@ func ensure_login() -> Dictionary:
 		if bool(me.get("ok", false)):
 			var p: Dictionary = (me["body"] as Dictionary).get("player", {})
 			pending_warning = str((me["body"] as Dictionary).get("warning", ""))
+			# 対戦の同意（要件#101）はサーバーの記録に合わせる
+			if (me["body"] as Dictionary).has("vs_consent"):
+				GameSettings.vs_consent = int((me["body"] as Dictionary).get("vs_consent", 0))
 			_remember(p)
 			return p
 		if int(me.get("status", 0)) == 403:

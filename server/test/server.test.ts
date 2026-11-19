@@ -430,3 +430,51 @@ test("EOS のボイス（要件#100）: 部屋の ID を相手に渡し、両方
   assert.ok(a.c.inbox.some((m) => m.t === "line" && m.via === "voice"), "文字起こしは続く");
   a.c.close(); b.c.close();
 });
+
+test("対戦の同意（要件#101）: 同意していないと対戦できず、同意すればでき、取り消せばまたできない", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "同意まだ", false);
+  const me = await api(srv.base, "GET", "/api/v1/me", undefined, a.token);
+  assert.equal(me.body.vs_consent, 0);
+  assert.equal(me.body.vs_consent_required, 1);
+  a.c.send({ t: "queue", format: "text" });
+  assert.equal((await a.c.wait((m) => m.t === "error")).code, "consent_required");
+  a.c.inbox.length = 0;
+  const old = await api(srv.base, "POST", "/api/v1/me/consent", { agree: true, version: 0 }, a.token);
+  assert.equal(old.status, 409, "古い版の文への同意は受け付けない");
+  const ok = await api(srv.base, "POST", "/api/v1/me/consent", { agree: true, version: 1 }, a.token);
+  assert.equal(ok.body.consent.version, 1);
+  assert.ok(ok.body.consent.at > 0, "いつ同意したかを残す");
+  a.c.send({ t: "queue", format: "text" });
+  assert.equal((await a.c.wait((m) => m.t === "queued" || m.t === "error")).t, "queued");
+  a.c.send({ t: "cancel" });
+  await api(srv.base, "POST", "/api/v1/me/consent", { agree: false }, a.token);
+  a.c.inbox.length = 0;
+  a.c.send({ t: "room_create", format: "text" });
+  assert.equal((await a.c.wait((m) => m.t === "error")).code, "consent_required", "取り消したら対戦できない");
+  const solo = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, a.token);
+  assert.equal(solo.status, 200, "1人用は遊べる");
+  a.c.close();
+});
+
+test("退職（要件#101）: サーバーのアカウントと通報を消し、トークンは使えなくなる", async () => {
+  const a = await guest(srv.base, srv.wsUrl, "やめる人");
+  const b = await guest(srv.base, srv.wsUrl, "残る人2");
+  await api(srv.base, "POST", "/api/v1/report", { player_id: b.player.id, reason: "abuse", note: "test" }, a.token);
+  const del = await api(srv.base, "POST", "/api/v1/me/delete", {}, a.token);
+  assert.equal(del.status, 200);
+  assert.equal((await api(srv.base, "GET", "/api/v1/me", undefined, a.token)).status, 401, "消したアカウントは使えない");
+  const { reportCount } = await import("../src/db.ts");
+  assert.equal(reportCount(b.player.id), 0, "この人がした通報も消える");
+  a.c.close(); b.c.close();
+});
+
+test("プライバシーポリシー（要件#101）: 3言語で配り、同意の内容（30日・声は保存しない）が書いてある", async () => {
+  for (const [lang, word] of [["ja", "30日"], ["en", "30 days"], ["zh", "30天"]] as const) {
+    const r = await fetch(`${srv.base}/privacy?lang=${lang}`);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get("content-type") ?? "", /text\/html/);
+    const t = await r.text();
+    assert.ok(t.includes(word), `${lang}: ${word}`);
+  }
+  assert.equal((await fetch(`${srv.base}/privacy?lang=../../etc`)).status, 200, "変な言語は日本語にする");
+});

@@ -204,6 +204,7 @@ async function openPlayer(id) {
         h("div", { class: "kv" }, h("span", {}, "利用停止（対戦）"), h("b", { class: until(s.versusBannedUntil) !== "なし" ? "warn" : "" }, until(s.versusBannedUntil))),
         h("div", { class: "kv" }, h("span", {}, "まだ読まれていない警告"), h("b", {}, s.warnMessage || "—")),
         h("div", { class: "kv" }, h("span", {}, "この人がした通報"), h("b", {}, r.reports_by.n)),
+        h("div", { class: "kv" }, h("span", {}, "対戦の同意"), h("b", {}, r.consent.version > 0 ? `第${r.consent.version}版（${fmtTime(r.consent.at)}）` : "なし")),
       ),
       h("h3", {}, "利用停止"),
       h("div", { class: "row" }, reason),

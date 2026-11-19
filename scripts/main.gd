@@ -1404,6 +1404,72 @@ func _sync_eos_achievements() -> void:
 	_versus.eos.unlock_achievements(GameSettings.unlocked_titles.duplicate())
 
 
+## 対戦の発言の取り扱いへの同意（要件#101）。総務省の考え方に合わせ、利用規約にまとめた同意ではなく、
+## 対戦の前に、何に使い・どこに送り・どれだけ保存するかを具体的に見せて、チェックと「同意して進む」で明確に同意してもらう。
+## 文を大きく変えたら VS_CONSENT_VERSION とサーバーの VS_CONSENT_VERSION を上げる（もう一度同意してもらう）
+const VS_CONSENT_VERSION: int = 1
+const VS_CONSENT_POINTS: Array = [
+	["発言のチェックと判定", "対戦での発言（文字・声）は、不適切な内容（性的な内容・差別・脅し・個人情報）のチェックと、AIによる採点に使います。"],
+	["外部のAIへの送信", "チェックと採点のため、発言の文字（声は文字に起こしたもの）を、ゲームサーバーからAIの事業者（Anthropic など、運営が設定した事業者）に送ります。声の対戦では、文字に起こすために声を文字起こしのサービスに送ります。"],
+	["相手への中継", "発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャット、またはゲームサーバーを通して届けます。"],
+	["保存", "発言は、試合中と試合の終わりから1時間だけ、サーバーのメモリに置きます。通報（相手からの通報、または自動の不適切発言の検出）があった試合だけ、会話の文字を30日保存し、運営が通報の確認に使います。声そのものは保存しません。"],
+	["不適切な発言", "見つかった発言は相手に見せず、あなたに警告します。3回で負けになり、自動で通報されます。"],
+]
+
+
+func show_vs_consent(next: Callable) -> void:
+	_close_sheet()
+	var col: VBoxContainer = _open_sheet(820, "center")
+	_sheet_title(col, tr("対戦の前に確認してください"))
+	col.add_child(UI.para(tr("オンライン対戦での、あなたの発言（文字・声）の取り扱いです。同意すると対戦できます。同意しなくても、1人用は遊べます。"), UI.S_BODY, UI.INK))
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(770, 300)
+	col.add_child(scroll)
+	var list: VBoxContainer = UI.vbox(10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for i in VS_CONSENT_POINTS.size():
+		var p: Array = VS_CONSENT_POINTS[i]
+		list.add_child(UI.text("%d. %s" % [i + 1, tr(str(p[0]))], UI.S_BODY, UI.SHU, UI.F_BOLD))
+		list.add_child(UI.para(tr(str(p[1])), UI.S_BODY, UI.INK))
+	list.add_child(UI.para(tr("同意はいつでも「設定」から取り消せます（取り消すと対戦できなくなります）。くわしくはプライバシーポリシーをご覧ください。"), UI.S_SMALL, UI.INK_SOFT))
+	var check: CheckBox = UI.check(tr("上の内容を読み、同意します"), false)
+	col.add_child(check)
+	var row: HBoxContainer = UI.hbox(24)
+	col.add_child(row)
+	var agree: Button = UI.primary(tr("同意して対戦へ進む"), UI.S_LEAD)
+	agree.disabled = true
+	check.toggled.connect(func(on: bool) -> void: agree.disabled = not on)
+	row.add_child(agree)
+	var no: Button = UI.link(tr("同意しない（1人用で遊ぶ）"), UI.S_BODY, UI.INK_SOFT)
+	row.add_child(no)
+	var policy: Button = UI.link(tr("プライバシーポリシーを読む →"), UI.S_BODY)
+	policy.pressed.connect(func() -> void: OS.shell_open(api.base_url() + "/privacy?lang=" + GameSettings.language))
+	row.add_child(policy)
+	var msg: Label = UI.para("", UI.S_SMALL, UI.SHU)
+	col.add_child(msg)
+	no.pressed.connect(func() -> void:
+		_close_sheet()
+		_refresh_title())
+	agree.pressed.connect(func() -> void:
+		agree.disabled = true
+		msg.text = tr("同意を記録しています…")
+		var me: Dictionary = await api.ensure_login()
+		var r: Dictionary = {} if me.has("error") else await api.request("POST", "/api/v1/me/consent", {"agree": true, "version": VS_CONSENT_VERSION})
+		if not is_instance_valid(msg):
+			return
+		if not bool(r.get("ok", false)):
+			agree.disabled = false
+			msg.text = tr("サーバーにつながらないため、同意を記録できませんでした。つながってから、もう一度押してください。")
+			return
+		GameSettings.vs_consent = VS_CONSENT_VERSION
+		GameSettings.save_settings()
+		_close_sheet()
+		if next.is_valid():
+			next.call())
+
+
 ## 運営からの警告・利用停止の知らせ（要件#100）。警告は「わかりました」で既読にする
 func _show_admin_message(title: String, text: String, ack: bool) -> void:
 	if _sheet != null:
@@ -3143,6 +3209,19 @@ func _show_settings() -> void:
 	row.add_child(save)
 	var test_btn: Button = UI.link(tr("接続を確かめる"), UI.S_BODY)
 	row.add_child(test_btn)
+	# 対戦の同意を取り消す（要件#101）
+	if GameSettings.vs_consent >= VS_CONSENT_VERSION:
+		var withdraw: Button = UI.link(tr("対戦の発言の取り扱いへの同意を取り消す（対戦できなくなります）"), UI.S_SMALL, UI.INK_SOFT)
+		withdraw.pressed.connect(func() -> void:
+			var r: Dictionary = await api.request("POST", "/api/v1/me/consent", {"agree": false})
+			if bool(r.get("ok", false)):
+				GameSettings.vs_consent = 0
+				GameSettings.save_settings()
+				withdraw.text = tr("同意を取り消しました。対戦するときに、もう一度確かめます。")
+				withdraw.disabled = true
+			else:
+				withdraw.text = tr("サーバーにつながらないため、取り消せませんでした。") + " " + str(r.get("message", "")))
+		col.add_child(withdraw)
 	# 退職（データ削除。要件#91）: 2回確かめる
 	var resign: Button = UI.link(tr("退職する（データ削除）"), UI.S_SMALL, UI.SHU)
 	resign.pressed.connect(_confirm_resign.bind(1))
@@ -3223,6 +3302,7 @@ func _confirm_resign(step: int) -> void:
 	_sheet_title(col, tr("退職届") if step == 1 else tr("本当に退職しますか？"))
 	if step == 1:
 		col.add_child(UI.para(tr("退職すると、このパソコンに保存した記録・称号・HP/KAS・持ち物・キャラクター・設定がすべて消えます。元には戻せません。"), UI.S_BODY, UI.INK))
+		col.add_child(UI.para(tr("ゲームサーバーにあるあなたのアカウント（名前・レート・同意の記録・通報の記録・保存された会話）も消します。"), UI.S_SMALL, UI.INK_SOFT))
 	else:
 		col.add_child(UI.para(tr("最後の確認です。すべてのデータを消して、新人からやり直します。"), UI.S_BODY, UI.SHU))
 	var row: HBoxContainer = UI.hbox(20)
@@ -3232,9 +3312,17 @@ func _confirm_resign(step: int) -> void:
 		if step == 1:
 			_confirm_resign(2)
 			return
+		# サーバーのアカウントも消す（要件#101）。つながらないときは、このPCのデータだけ消して、そのことを伝える
+		var server_note: String = ""
+		if GameSettings.token != "":
+			var del: Dictionary = await api.request("POST", "/api/v1/me/delete", {})
+			if not bool(del.get("ok", false)):
+				server_note = tr("サーバーにつながらなかったため、サーバーのアカウントは消せませんでした。プライバシーポリシーの連絡先から、削除をお申し込みください。")
 		GameSettings.wipe_all()
 		GameSettings.save_settings()
 		_close_sheet()
+		if server_note != "":
+			_show_admin_message(tr("退職しました"), server_note, false)
 		_server_info = {}
 		_rebuild_ui()
 		_check_server()
@@ -3492,6 +3580,10 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 
 ## 対戦: まず「文字で言い合う」か「声で言い合う」かを選んでから掲示板へ（要件#90）
 func _ask_versus_format() -> void:
+	# 初めての対戦の前に、発言の取り扱いへの同意をもらう（要件#101）。同意しないと対戦できない（1人用は遊べる）
+	if GameSettings.vs_consent < VS_CONSENT_VERSION and not smoke:
+		show_vs_consent(_ask_versus_format)
+		return
 	sfx.play("click")
 	var col: VBoxContainer = _open_sheet(620, "center")
 	_sheet_title(col, tr("対戦の形式を選んでください"))
@@ -3830,6 +3922,9 @@ func _run_smoke() -> void:
 ## ランクマッチに並んで対戦を自動プレイする（2つ同時に起動して使う）
 func _run_versus_smoke(format: String) -> void:
 	Engine.time_scale = 4.0
+	# 自動テストでは同意しておく（要件#101）
+	await api.ensure_login()
+	await api.request("POST", "/api/v1/me/consent", {"agree": true, "version": VS_CONSENT_VERSION})
 	get_tree().create_timer(240.0, true, false, true).timeout.connect(func() -> void:
 		print("VERSUS TIMEOUT")
 		get_tree().quit(1))
