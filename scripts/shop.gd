@@ -157,7 +157,13 @@ static func pay_text(paid: Dictionary) -> String:
 # ---------------------------------------------------------------- 名札
 
 ## 名札を作る。tag は {frame, color, stamp}（空なら最初からあるもの）。big は文字の大きさ
+## サーバーが名前の無い人につける既定の名前は、表示の言語に訳して出す（要件#102）
+static func display_name(n: String) -> String:
+	return TranslationServer.translate("名無しのスタッフ") if n == "名無しのスタッフ" else n
+
+
 static func name_tag(player_name: String, title: String, tag: Dictionary, big: int = UI.S_LEAD) -> PanelContainer:
+	player_name = display_name(player_name)
 	var fr: Dictionary = item("frame", str(tag.get("frame", "")))
 	if fr.is_empty():
 		fr = item("frame", default_id("frame"))

@@ -802,5 +802,7 @@
 	"ゲームサーバーにあるあなたのアカウント（名前・レート・同意の記録・通報の記録・保存された会話）も消します。": "Your account on the game server (name, rating, consent record, report records, stored conversations) will also be deleted.",
 	"サーバーにつながらなかったため、サーバーのアカウントは消せませんでした。プライバシーポリシーの連絡先から、削除をお申し込みください。": "Couldn't reach the server, so your server account wasn't deleted. Please request deletion via the contact in the privacy policy.",
 	"退職しました": "You have resigned",
-	"（準備中）": "(Coming soon)"
+	"（準備中）": "(Coming soon)",
+	"返事の時間はふつう": "Standard time to reply",
+	"名無しのスタッフ": "Nameless Staff"
 }

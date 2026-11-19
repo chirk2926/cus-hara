@@ -314,7 +314,7 @@ func _on_message(msg: Dictionary) -> void:
 
 
 func _who(by: String) -> String:
-	return tr("あなた") if by == "you" else str((_match.get("opponent", {}) as Dictionary).get("name", tr("相手")))
+	return tr("あなた") if by == "you" else Shop.display_name(str((_match.get("opponent", {}) as Dictionary).get("name", tr("相手"))))
 
 
 func _on_match_found(msg: Dictionary) -> void:
@@ -333,7 +333,7 @@ func _on_match_found(msg: Dictionary) -> void:
 		var kind_label: String = tr("ランクマッチ") if str(msg.get("kind", "")) == "ranked" else tr("フレンド対戦")
 		hud.set_top(tr(str(STAGE_NAMES.get(stage, ""))), kind_label, "")
 		var op_title: Dictionary = Titles.by_id(str(op.get("title", "")))
-		var op_name: String = str(op.get("name", ""))
+		var op_name: String = Shop.display_name(str(op.get("name", "")))
 		if not op_title.is_empty():
 			op_name = tr("「%s」") % Titles.title_name(op_title) + op_name
 		hud.set_comment(tr("対戦相手: %s（%s・%d）") % [op_name, str(op.get("rank", "")), int(op.get("rating", 0))])

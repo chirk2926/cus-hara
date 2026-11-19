@@ -1089,7 +1089,7 @@ func _offer_difficulty() -> void:
 	col.add_child(UI.para(tr("このゲームはキーボードでの迅速な入力が必要です。自身のタイピング能力に合わせて難易度を設定してください。（難易度はいつでも設定で変更できます）"), UI.S_BODY, UI.INK))
 	var row: HBoxContainer = UI.hbox(14)
 	col.add_child(row)
-	for d in [["slow", "かめ", "イージー", "返事の時間が長い"], ["normal", "うさぎ", "ノーマル", "ふつう"], ["fast", "チーター", "ハード", "返事の時間が短い"]]:
+	for d in [["slow", "かめ", "イージー", "返事の時間が長い"], ["normal", "うさぎ", "ノーマル", "返事の時間はふつう"], ["fast", "チーター", "ハード", "返事の時間が短い"]]:
 		var did: String = str(d[0])
 		var b: Button = Button.new()
 		b.text = tr(str(d[1])) + "\n" + tr(str(d[2])) + "\n" + tr(str(d[3]))
