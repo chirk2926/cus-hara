@@ -29,6 +29,7 @@ const DebugPanelScript = preload("res://scripts/debug_panel.gd")
 const ShopActionsScript = preload("res://scripts/shop_actions.gd")
 const Moderation = preload("res://scripts/moderation.gd")
 const RepairSceneScript = preload("res://scripts/repair_scene.gd")
+const Markdown = preload("res://scripts/markdown.gd")
 const RepairStageScript = preload("res://scripts/repair_stage.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
@@ -73,6 +74,7 @@ var _sheet: Control = null
 var _server_label: Label = null
 var _notice_box: PanelContainer = null   # 運営からのお知らせ（要件#100）
 var _notice_text: Label = null
+var _notice_list: VBoxContainer = null   # お知らせの見出し（押すと本文。要件#100）
 var _warning_shown: bool = false
 var _player_card: Control = null
 var _version_label: Label = null
@@ -1451,22 +1453,111 @@ func _refresh_title() -> void:
 	_refresh_notices()
 
 
-## 運営からのお知らせ・メンテナンス（要件#100）
+## 運営からのお知らせ・メンテナンス（要件#100）。付箋に見出しを並べ、押すと本文（Markdown）・画像を出す
 func _refresh_notices() -> void:
 	if _notice_box == null or not is_instance_valid(_notice_box):
 		return
-	var lines: PackedStringArray = PackedStringArray()
+	for c in _notice_list.get_children():
+		c.queue_free()
+	var head: PackedStringArray = PackedStringArray([tr("運営からのお知らせ")])
 	if bool(_server_info.get("maintenance", false)):
 		var mm: String = str(_server_info.get("maintenance_message", ""))
-		lines.append(tr("【メンテナンス中】対戦はお休みしています。1人用は遊べます。") + ("\n" + mm if mm != "" and GameSettings.language == "ja" else ""))
+		head.append(tr("【メンテナンス中】対戦はお休みしています。1人用は遊べます。") + ("\n" + mm if mm != "" and GameSettings.language == "ja" else ""))
+	var notices: Array = _server_info.get("notices", [])
+	for n in notices:
+		var d: Dictionary = n
+		var title: String = _notice_lang(d.get("title", {}))
+		if title == "":
+			title = _notice_lang(d.get("body", {})).split("\n")[0].left(30)
+		var b: Button = UI.link("・" + title + " →", UI.S_SMALL)
+		b.add_theme_font_override("font", UI.font(UI.F_HAND))
+		b.pressed.connect(func() -> void: show_notice(d))
+		_notice_list.add_child(b)
+	_notice_text.text = "\n".join(head)
+	_notice_box.visible = head.size() > 1 or not notices.is_empty()
+
+
+func _notice_lang(v: Variant) -> String:
+	if typeof(v) != TYPE_DICTIONARY:
+		return str(v)
 	var lang: String = GameSettings.language if GameSettings.language in ["en", "zh"] else "ja"
-	for n in (_server_info.get("notices", []) as Array):
-		var t: String = str((n as Dictionary).get(lang, (n as Dictionary).get("ja", "")))
-		if t != "":
-			lines.append("・" + t)
-	_notice_box.visible = not lines.is_empty()
-	if not lines.is_empty():
-		_notice_text.text = tr("運営からのお知らせ") + "\n" + "\n".join(lines)
+	var d: Dictionary = v
+	return str(d.get(lang, d.get("ja", "")))
+
+
+const NOTICE_FONTS: Dictionary = {"body": ["res://assets/fonts/NotoSansJP_500Medium.ttf", "res://assets/fonts/NotoSansJP_800ExtraBold.ttf"],
+	"hand": ["res://assets/fonts/YuseiMagic.ttf", "res://assets/fonts/YuseiMagic.ttf"],
+	"dot": ["res://assets/fonts/DotGothic16.ttf", "res://assets/fonts/DotGothic16.ttf"],
+	"sign": ["res://assets/fonts/DelaGothicOne.ttf", "res://assets/fonts/DelaGothicOne.ttf"]}
+var _notice_tex: Dictionary = {}
+
+
+## お知らせを1つ開く（見出し・画像・本文）。本文は Markdown を BBCode にして出す。リンクは http/https だけ開く
+func show_notice(n: Dictionary) -> void:
+	sfx.play("click")
+	var fonts: Array = NOTICE_FONTS.get(str(n.get("font", "body")), NOTICE_FONTS["body"])
+	var col: VBoxContainer = _open_sheet(760, "center")
+	col.add_child(UI.para(_notice_lang(n.get("title", {})), UI.S_HEAD, UI.INK, str(fonts[1])))
+	var img_holder: VBoxContainer = UI.vbox(0)
+	col.add_child(img_holder)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(700, 200)
+	col.add_child(scroll)
+	var rt: RichTextLabel = RichTextLabel.new()
+	rt.bbcode_enabled = true
+	rt.fit_content = true
+	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rt.add_theme_font_override("normal_font", UI.font(str(fonts[0])))
+	rt.add_theme_font_override("bold_font", UI.font(str(fonts[1])))
+	rt.add_theme_font_override("italics_font", UI.font(str(fonts[0])))
+	rt.add_theme_font_size_override("normal_font_size", UI.S_BODY)
+	rt.add_theme_font_size_override("bold_font_size", UI.S_BODY)
+	rt.add_theme_color_override("default_color", UI.INK)
+	rt.text = Markdown.to_bbcode(_notice_lang(n.get("body", {})))
+	rt.meta_clicked.connect(func(meta: Variant) -> void:
+		var url: String = str(meta)
+		if url.begins_with("https://") or url.begins_with("http://"):
+			OS.shell_open(url))
+	scroll.add_child(rt)
+	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
+	close.pressed.connect(_close_sheet)
+	col.add_child(close)
+	var path: String = str(n.get("image", ""))
+	if path != "":
+		var tex: Texture2D = await _load_notice_image(path)
+		if tex != null and is_instance_valid(img_holder):
+			var tr_img: TextureRect = TextureRect.new()
+			tr_img.texture = tex
+			tr_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr_img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+			var w: float = 700.0
+			tr_img.custom_minimum_size = Vector2(w, minf(300.0, w * float(tex.get_height()) / maxf(1.0, float(tex.get_width()))))
+			img_holder.add_child(tr_img)
+
+
+func _load_notice_image(path: String) -> Texture2D:
+	if _notice_tex.has(path):
+		return _notice_tex[path]
+	var req: HTTPRequest = HTTPRequest.new()
+	req.timeout = 10.0
+	req.body_size_limit = 3 * 1024 * 1024
+	add_child(req)
+	if req.request(api.base_url() + path) != OK:
+		req.queue_free()
+		return null
+	var r: Array = await req.request_completed
+	req.queue_free()
+	if int(r[0]) != HTTPRequest.RESULT_SUCCESS or int(r[1]) != 200:
+		return null
+	var bytes: PackedByteArray = r[3]
+	var img: Image = Image.new()
+	var err: int = img.load_png_from_buffer(bytes) if path.ends_with(".png") else img.load_jpg_from_buffer(bytes)
+	if err != OK:
+		return null
+	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	_notice_tex[path] = tex
+	return tex
 
 
 ## タイトル: 店頭に貼られた求人ポスター
@@ -1604,11 +1695,14 @@ func _build_title() -> void:
 	_notice_box.offset_bottom = -44
 	_notice_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_notice_box.rotation_degrees = -1.2
-	_notice_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_notice_box.visible = false
 	_title.add_child(_notice_box)
+	var nb_col: VBoxContainer = UI.vbox(2)
+	_notice_box.add_child(nb_col)
 	_notice_text = UI.para("", UI.S_SMALL, UI.INK, UI.F_HAND)
-	_notice_box.add_child(_notice_text)
+	nb_col.add_child(_notice_text)
+	_notice_list = UI.vbox(0)
+	nb_col.add_child(_notice_list)
 	# 下の真ん中: いまの背景の名前（要件#86）
 	_bg_label = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_BOLD)
 	_bg_label.anchor_left = 0.5

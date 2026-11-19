@@ -20,13 +20,14 @@ import { config } from "./config.ts";
 import { log } from "./log.ts";
 import {
   openDb, playerById, sanctionOf, setSanction, isActiveBan, renamePlayer, setPlayerTitle, cleanName, matchLog, aiUsage,
-  announcements, addAnnouncement, setAnnouncementActive, deleteAnnouncement, adminLog, adminLogs, adminLogById,
+  announcements, addAnnouncement, updateAnnouncement, setAnnouncementActive, deleteAnnouncement, adminLog, adminLogs, adminLogById, NOTICE_FONTS,
 } from "./db.ts";
 import { listSettings, setSetting, SettingError, settingDef, currentValue, costUsd, runtime } from "./settings.ts";
 import { llmEnabled, llmName, cacheStats, pingLlm } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { kickPlayer, onlinePlayers } from "./ws.ts";
 import { VERSION } from "./http.ts";
+import { saveNoticeImage, readNoticeImage, ImageError } from "./notices.ts";
 import type { Lobby } from "./lobby.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -173,13 +174,22 @@ export function createAdminServer(lobby: Lobby): http.Server {
         send(200, fs.readFileSync(PAGE, "utf-8"));
         return;
       }
+      // お知らせのプレビュー用に、ゲームと同じフォントを配る（要件#100: フォントを選べる）
+      const fm = /^\/fonts\/(body|hand|dot|sign)\.ttf$/.exec(url.pathname);
+      if (method === "GET" && fm) {
+        const file = { body: "NotoSansJP_500Medium.ttf", hand: "YuseiMagic.ttf", dot: "DotGothic16.ttf", sign: "DelaGothicOne.ttf" }[fm[1] as "body"];
+        res.writeHead(200, { ...headers, "content-type": "font/ttf", "cache-control": "max-age=86400" });
+        res.end(fs.readFileSync(path.join(here, "..", "..", "assets", "fonts", file)));
+        return;
+      }
       if (method === "GET" && url.pathname === "/app.js") {
         res.writeHead(200, { ...headers, "content-type": "text/javascript; charset=utf-8" });
         res.end(fs.readFileSync(SCRIPT, "utf-8"));
         return;
       }
       if (!url.pathname.startsWith("/api/")) throw new AdminError(404, "ありません");
-      const body = method === "GET" ? {} : await readJson(req);
+      // 画像の送信だけは大きめ（base64 で 2MB の画像）
+      const body = method === "GET" ? {} : await readJson(req, url.pathname === "/api/announcements/image" ? 3 * 1024 * 1024 : 64 * 1024);
       // ログイン（パスワード）
       if (method === "POST" && url.pathname === "/api/login") {
         const now = Date.now();
@@ -221,12 +231,12 @@ export function createAdminServer(lobby: Lobby): http.Server {
   return server;
 }
 
-async function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+async function readJson(req: http.IncomingMessage, limit = 64 * 1024): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const c of req) {
     size += (c as Buffer).length;
-    if (size > 64 * 1024) throw new AdminError(413, "大きすぎます");
+    if (size > limit) throw new AdminError(413, "大きすぎます");
     chunks.push(c as Buffer);
   }
   if (size === 0) return {};
@@ -446,21 +456,49 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     };
   }
 
-  // ---- お知らせ
-  if (method === "GET" && p === "/api/announcements") return { announcements: announcements(false) };
+  // ---- お知らせ（要件#100: 言語ごとの見出しと本文（Markdown）・画像・フォント）
+  if (method === "GET" && p === "/api/announcements") return { announcements: announcements(false), fonts: NOTICE_FONTS };
+  if (method === "POST" && p === "/api/announcements/image") {
+    try {
+      return { name: saveNoticeImage(str(body.data, 3 * 1024 * 1024)) };
+    } catch (e) {
+      if (e instanceof ImageError) throw new AdminError(400, e.message);
+      throw e;
+    }
+  }
+  const noticeInput = () => ({
+    title_ja: str(body.title_ja, 80), title_en: str(body.title_en, 80), title_zh: str(body.title_zh, 80),
+    text_ja: str(body.text_ja, 4000), text_en: str(body.text_en, 4000), text_zh: str(body.text_zh, 4000),
+    font: str(body.font, 10), image: str(body.image, 40),
+  });
   if (method === "POST" && p === "/api/announcements") {
-    const ja = str(body.ja, 300);
-    if (ja === "") throw new AdminError(400, "日本語の文を入れてください");
-    const id = addAnnouncement(ja, str(body.en, 300), str(body.zh, 300));
-    adminLog("announce", `#${id}`, `お知らせを出した: ${ja}`);
-    return { ok: true };
+    const a = noticeInput();
+    if (a.title_ja === "" && a.text_ja === "") throw new AdminError(400, "日本語の見出しか本文を入れてください");
+    const id = addAnnouncement(a);
+    adminLog("announce", `#${id}`, `お知らせを出した: ${a.title_ja || a.text_ja.slice(0, 60)}`);
+    return { ok: true, id };
   }
   const an = /^\/api\/announcements\/(\d+)$/.exec(p);
   if (method === "POST" && an) {
-    if (body.delete === true) deleteAnnouncement(Number(an[1]));
-    else setAnnouncementActive(Number(an[1]), body.active === true);
-    adminLog("announce", `#${an[1]}`, body.delete === true ? "お知らせを消した" : body.active === true ? "お知らせを出した" : "お知らせを下げた");
+    const id = Number(an[1]);
+    if (body.delete === true) {
+      deleteAnnouncement(id);
+      adminLog("announce", `#${id}`, "お知らせを消した");
+    } else if (typeof body.active === "boolean") {
+      setAnnouncementActive(id, body.active);
+      adminLog("announce", `#${id}`, body.active ? "お知らせを出した" : "お知らせを下げた");
+    } else {
+      const a = noticeInput();
+      updateAnnouncement(id, a);
+      adminLog("announce", `#${id}`, `お知らせを直した: ${a.title_ja || a.text_ja.slice(0, 60)}`);
+    }
     return { ok: true };
+  }
+  const ni = /^\/api\/notice_image\/([0-9a-f]{32}\.(?:png|jpg))$/.exec(p);
+  if (method === "GET" && ni) {
+    const f = readNoticeImage(ni[1]);
+    if (!f) throw new AdminError(404, "画像がありません");
+    return { data: f.bytes.toString("base64"), type: f.type };
   }
 
   // ---- 操作の記録

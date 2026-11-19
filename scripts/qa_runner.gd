@@ -217,11 +217,20 @@ func _round5() -> void:
 	GameSettings.apply_video()
 	# 運営からのお知らせ・メンテナンス（要件#100）
 	var keep_info: Dictionary = main.get("_server_info")
-	main.set("_server_info", {"maintenance": true, "maintenance_message": "22時まで", "notices": [{"ja": "新しい背景", "en": "New backdrops", "zh": "新背景"}]})
+	var notice: Dictionary = {"id": 1, "title": {"ja": "新しい背景", "en": "New backdrops", "zh": "新背景"}, "font": "hand", "image": "",
+		"body": {"ja": "## 期間限定\n**背景ガチャ**に[新作](https://example.com)\n- メダル\n- *ビデオ*\n[b]タグ[/b]", "en": "**New**", "zh": "**新**"}}
+	main.set("_server_info", {"maintenance": true, "maintenance_message": "22時まで", "notices": [notice]})
 	main.call("_refresh_notices")
 	var nb = main.get("_notice_box")
-	check("notice board shows news and maintenance", nb != null and bool(nb.visible) and str((main.get("_notice_text") as Label).text).contains(tr("運営からのお知らせ")))
+	check("notice board shows news and maintenance", nb != null and bool(nb.visible) and str((main.get("_notice_text") as Label).text).contains(tr("運営からのお知らせ")) and (main.get("_notice_list") as VBoxContainer).get_child_count() == 1)
 	await _snap("notice_board")
+	var bb: String = load("res://scripts/markdown.gd").to_bbcode(str(notice["body"]["ja"]))
+	check("markdown to bbcode", bb.contains("[b]背景ガチャ[/b]") and bb.contains("[url=https://example.com]") and bb.contains("[lb]b]タグ[lb]/b]") and bb.contains("•"), bb)
+	main.call("show_notice", notice)
+	await _wait(0.3)
+	check("notice sheet opens", main.get("_sheet") != null)
+	await _snap("notice_sheet")
+	main.call("_close_sheet")
 	main.set("_server_info", keep_info)
 	main.call("_refresh_notices")
 	main.call("_show_settings")

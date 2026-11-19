@@ -141,10 +141,31 @@ test("管理画面: 利用停止・対戦だけの停止・警告・メンテナ
   await req("POST", "/api/settings", { cookie, csrf, body: { key: "maintenance", value: false } });
   assert.equal(runtime.maintenance, false);
   // お知らせ
-  await req("POST", "/api/announcements", { cookie, csrf, body: { ja: "新しい背景が出ました", en: "New backdrops are out" } });
+  // 画像: PNG・JPEG だけ。だれでも読める URL で配る
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8cf00000301010018dd8db00000000049454e44ae426082", "hex");
+  const bad = await req("POST", "/api/announcements/image", { cookie, csrf, body: { data: Buffer.from("<script>alert(1)</script>").toString("base64") } });
+  assert.equal(bad.status, 400, "画像でないものは断る");
+  const up = await req("POST", "/api/announcements/image", { cookie, csrf, body: { data: png.toString("base64") } });
+  assert.equal(up.status, 200);
+  assert.match(up.body.name, /^[0-9a-f]{32}\.png$/);
+  await req("POST", "/api/announcements", { cookie, csrf, body: { title_ja: "新しい背景が出ました", title_en: "New backdrops are out", text_ja: "**10種類**の背景を追加しました", font: "hand", image: up.body.name } });
   const info2 = await api(srv.base, "GET", "/api/v1/info");
-  assert.equal(info2.body.notices[0].ja, "新しい背景が出ました");
-  assert.equal(info2.body.notices[0].zh, "New backdrops are out", "中国語が空なら英語");
+  const n = info2.body.notices[0];
+  assert.equal(n.title.ja, "新しい背景が出ました");
+  assert.equal(n.title.zh, "New backdrops are out", "中国語が空なら英語");
+  assert.equal(n.body.en, "**10種類**の背景を追加しました", "英語の本文が空なら日本語");
+  assert.equal(n.font, "hand");
+  const imgRes = await fetch(srv.base + n.image);
+  assert.equal(imgRes.status, 200);
+  assert.equal(imgRes.headers.get("content-type"), "image/png");
+  assert.equal((await fetch(srv.base + "/api/v1/notice_image/../../etc/passwd")).status !== 200, true, "画像のほかのファイルは読めない");
+  // 直す・下げる
+  const list = await req("GET", "/api/announcements", { cookie });
+  const nid = list.body.announcements[0].id;
+  await req("POST", `/api/announcements/${nid}`, { cookie, csrf, body: { title_ja: "直した見出し", text_ja: "本文", font: "sign", image: "" } });
+  assert.equal((await api(srv.base, "GET", "/api/v1/info")).body.notices[0].title.ja, "直した見出し");
+  await req("POST", `/api/announcements/${nid}`, { cookie, csrf, body: { active: false } });
+  assert.ok(!(await api(srv.base, "GET", "/api/v1/info")).body.notices.some((x: any) => x.id === nid), "下げたら出ない");
   g2.c.close();
   try { g.c.close(); } catch { /* 切れている */ }
 });

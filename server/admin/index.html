@@ -10,6 +10,18 @@
     --paper: #f3eee3; --paper-dim: #d9d1c0; --ink: #24212b; --ink-soft: #6b6574; --shu: #d23f2f; --pop: #ffd23f; --ok: #2f8f5b;
     --line: #c9c0ad;
   }
+  /* お知らせのプレビュー用（ゲームと同じフォント） */
+  @font-face { font-family: "G-body"; src: url("/fonts/body.ttf"); }
+  @font-face { font-family: "G-hand"; src: url("/fonts/hand.ttf"); }
+  @font-face { font-family: "G-dot"; src: url("/fonts/dot.ttf"); }
+  @font-face { font-family: "G-sign"; src: url("/fonts/sign.ttf"); }
+  .preview { background: #fffdf6; border: 1px solid var(--line); padding: 14px 18px; min-height: 120px; }
+  .preview img { max-width: 100%; max-height: 260px; display: block; margin: 8px 0; }
+  .preview h1, .preview h2, .preview h3 { margin: 6px 0; }
+  .ltabs button { border: 1px solid var(--line); background: var(--paper-dim); padding: 4px 12px; cursor: pointer; font: inherit; }
+  .ltabs button.on { background: var(--paper); border-color: var(--ink); font-weight: 700; }
+  .editor { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .editor textarea { min-height: 220px; font-family: inherit; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #e7e0d2; color: var(--ink); font: 15px/1.6 "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
   header { display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; background: var(--ink); color: var(--paper); }

@@ -10,6 +10,7 @@ import { judgeStaff } from "./keyword_judge.ts";
 import { moderate } from "./moderation.ts";
 import { runtime } from "./settings.ts";
 import { markReported } from "./matchlogs.ts";
+import { readNoticeImage } from "./notices.ts";
 import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
@@ -153,7 +154,15 @@ export function info(lobby: Lobby) {
     // お知らせとメンテナンス（要件#100。管理画面から）
     maintenance: runtime.maintenance,
     maintenance_message: runtime.maintenance ? runtime.maintenanceMessage : "",
-    notices: announcements(true).slice(0, 3).map((a) => ({ id: a.id, ja: a.text_ja, en: a.text_en || a.text_ja, zh: a.text_zh || a.text_en || a.text_ja })),
+    // 言語ごとの見出しと本文（Markdown）。その言語が空なら英語 → 日本語の順で使う
+    notices: announcements(true).slice(0, 5).map((a) => ({
+      id: a.id,
+      title: { ja: a.title_ja, en: a.title_en || a.title_ja, zh: a.title_zh || a.title_en || a.title_ja },
+      body: { ja: a.text_ja, en: a.text_en || a.text_ja, zh: a.text_zh || a.text_en || a.text_ja },
+      font: a.font,
+      image: a.image ? `/api/v1/notice_image/${a.image}` : "",
+      at: a.created_at,
+    })),
   };
 }
 
@@ -373,6 +382,19 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
 export function createHttpServer(lobby: Lobby): http.Server {
   return http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
+    // お知らせの画像（要件#100）。だれでも読める（名前は推測できない）
+    const img = /^\/api\/v1\/notice_image\/([0-9a-f]{32}\.(?:png|jpg))$/.exec(url.pathname);
+    if (req.method === "GET" && img) {
+      const f = readNoticeImage(img[1]);
+      if (!f) {
+        res.writeHead(404, { "content-type": "text/plain" });
+        res.end("not found");
+        return;
+      }
+      res.writeHead(200, { "content-type": f.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "content-length": String(f.bytes.length) });
+      res.end(f.bytes);
+      return;
+    }
     route(req, url, lobby)
       .then((body) => {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });

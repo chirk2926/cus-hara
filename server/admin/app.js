@@ -264,27 +264,135 @@ async function loadUsage(el) {
 
 // ---------------------------------------------------------------- お知らせ・メンテナンス
 
+const FONT_LABELS = { body: "本文（ふつう）", hand: "手書き", dot: "ドット文字", sign: "看板（極太）" };
+const LANGS = [["ja", "日本語"], ["en", "English"], ["zh", "中文"]];
+const emptyNotice = () => ({ id: 0, title_ja: "", title_en: "", title_zh: "", text_ja: "", text_en: "", text_zh: "", font: "body", image: "" });
+let noticeDraft = emptyNotice();
+let noticeLang = "ja";
+
+/** Markdown の一部（ゲームと同じ: 見出し・太字・斜体・コード・リンク・箇条書き・改行）を、文字として安全に表示する */
+function mdToDom(md) {
+  const box = h("div", {});
+  const inline = (text) => {
+    const out = [];
+    const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\((https?:\/\/[^)\s]+)\))/g;
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) out.push(text.slice(last, m.index));
+      const t = m[0];
+      if (t.startsWith("**")) out.push(h("b", {}, t.slice(2, -2)));
+      else if (t.startsWith("`")) out.push(h("code", {}, t.slice(1, -1)));
+      else if (t.startsWith("[")) out.push(h("a", { href: m[2], target: "_blank", rel: "noopener noreferrer" }, t.slice(1, t.indexOf("]"))));
+      else out.push(h("i", {}, t.slice(1, -1)));
+      last = m.index + t.length;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  };
+  let list = null;
+  for (const raw of md.split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    const hm = /^(#{1,3})\s+(.*)$/.exec(line);
+    const lm = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (lm) {
+      if (!list) { list = h("ul", {}); box.append(list); }
+      list.append(h("li", {}, inline(lm[1])));
+      continue;
+    }
+    list = null;
+    if (hm) box.append(h("h" + hm[1].length, {}, inline(hm[2])));
+    else if (line === "") box.append(h("div", { style: "height:8px" }));
+    else box.append(h("div", {}, inline(line)));
+  }
+  return box;
+}
+
+async function imageDataUrl(name) {
+  if (!name) return "";
+  const r = await api("GET", "/api/notice_image/" + name);
+  return `data:${r.type};base64,${r.data}`;
+}
+
 async function loadNotice(el) {
   const [a, st] = await Promise.all([api("GET", "/api/announcements"), api("GET", "/api/settings")]);
   const m = st.settings.find((x) => x.key === "maintenance");
   const mm = st.settings.find((x) => x.key === "maintenanceMessage");
-  const ja = h("textarea", { placeholder: "日本語（必須）" });
-  const en = h("textarea", { placeholder: "English（空なら日本語のまま）" });
-  const zh = h("textarea", { placeholder: "中文（空なら英語→日本語）" });
   const mmsg = h("input", { value: mm.value, style: "width:100%" });
+  const d = noticeDraft;
+  // 言語のタブ
+  const ltabs = h("div", { class: "row ltabs" }, ...LANGS.map(([k, l]) => h("button", { class: k === noticeLang ? "on" : "", onclick: () => { noticeLang = k; show("notice"); } },
+    l, (d["title_" + k] || d["text_" + k]) ? " ●" : "")));
+  const title = h("input", { placeholder: noticeLang === "ja" ? "見出し（必須）" : "見出し（空なら英語 → 日本語を出す）", value: d["title_" + noticeLang], style: "width:100%" });
+  const body = h("textarea", { placeholder: "本文（Markdown）\n# 見出し\n**太字** *斜体* `コード`\n- 箇条書き\n[リンク](https://example.com)" });
+  body.value = d["text_" + noticeLang];
+  const font = h("select", {}, ...Object.entries(FONT_LABELS).map(([k, l]) => h("option", { value: k }, l)));
+  font.value = d.font;
+  const file = h("input", { type: "file", accept: "image/png,image/jpeg" });
+  const preview = h("div", { class: "preview" });
+  const renderPreview = async () => {
+    d["title_" + noticeLang] = title.value;
+    d["text_" + noticeLang] = body.value;
+    d.font = font.value;
+    clear(preview);
+    preview.style.fontFamily = `"G-${d.font}", sans-serif`;
+    preview.append(h("h2", {}, title.value || d.title_ja || "（見出し）"));
+    if (d.image) preview.append(h("img", { src: await imageDataUrl(d.image), alt: "" }));
+    preview.append(mdToDom(body.value || d.text_ja));
+  };
+  for (const x of [title, body]) x.addEventListener("input", renderPreview);
+  font.addEventListener("change", renderPreview);
+  file.addEventListener("change", async () => {
+    const f = file.files[0];
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) return toast("画像は 2MB までにしてください", true);
+    const b64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.readAsDataURL(f); });
+    try {
+      const up = await api("POST", "/api/announcements/image", { data: b64 });
+      d.image = up.name;
+      toast("画像を載せました");
+      renderPreview();
+    } catch (e) { toast(e.message, true); }
+  });
+  const save = h("button", { class: "main", onclick: async () => {
+    await renderPreview();
+    const payload = { ...d };
+    try {
+      if (d.id) await api("POST", `/api/announcements/${d.id}`, payload);
+      else await api("POST", "/api/announcements", payload);
+      toast(d.id ? "直しました" : "お知らせを出しました");
+      noticeDraft = emptyNotice();
+      noticeLang = "ja";
+      show("notice");
+    } catch (e) { toast(e.message, true); }
+  } }, d.id ? "直して保存" : "お知らせを出す");
+  const reset = d.id || d.title_ja || d.text_ja ? h("button", { class: "link", onclick: () => { noticeDraft = emptyNotice(); show("notice"); } }, d.id ? "直すのをやめる" : "消して書き直す") : null;
   clear(el).append(
     h("div", { class: "sheet" }, h("h2", {}, "メンテナンス"),
       h("p", {}, m.value ? h("span", { class: "warn" }, "いまメンテナンス中です（対戦を止めています。1人用は遊べます）") : "ふだんどおり動いています"),
       h("div", { class: "row" }, h("span", {}, "お知らせの文:"), mmsg),
       h("div", { class: "row" },
         h("button", { class: "main", onclick: async () => { await setSetting("maintenanceMessage", mmsg.value); await setSetting("maintenance", !m.value); show("notice"); } }, m.value ? "メンテナンスを終える" : "メンテナンスを始める"))),
-    h("div", { class: "sheet" }, h("h2", {}, "お知らせ（タイトル画面に出る。新しい3つまで）"), ja, en, zh,
-      h("div", { class: "row" }, h("button", { class: "main", onclick: async () => { await api("POST", "/api/announcements", { ja: ja.value, en: en.value, zh: zh.value }); toast("出しました"); show("notice"); } }, "お知らせを出す")),
-      h("table", {}, a.announcements.map((x) => h("tr", {}, h("td", {}, fmtTime(x.created_at)), h("td", {}, x.text_ja, h("div", { class: "muted" }, x.text_en), h("div", { class: "muted" }, x.text_zh)),
+    h("div", { class: "sheet" }, h("h2", {}, d.id ? `お知らせを直す（#${d.id}）` : "お知らせを書く"),
+      h("p", { class: "muted" }, "タイトル画面に見出しが並び、押すと本文・画像が出ます（新しい5つまで）。言語ごとに書けます（空の言語は英語 → 日本語を出します）。本文は Markdown（見出し・太字・斜体・コード・箇条書き・リンク）。"),
+      ltabs,
+      h("div", { class: "editor" },
+        h("div", {}, title, body,
+          h("div", { class: "row" }, h("span", {}, "フォント:"), font),
+          h("div", { class: "row" }, h("span", {}, "画像（PNG・JPEG、2MB まで）:"), file,
+            d.image ? h("button", { class: "link", onclick: () => { d.image = ""; show("notice"); } }, "画像をはずす") : null),
+          h("div", { class: "row" }, save, reset)),
+        h("div", {}, h("div", { class: "muted" }, "プレビュー（ゲームでの見え方に近い）"), preview))),
+    h("div", { class: "sheet" }, h("h2", {}, "出したお知らせ"),
+      h("table", {}, a.announcements.map((x) => h("tr", {}, h("td", {}, fmtTime(x.created_at)),
+        h("td", {}, h("b", {}, x.title_ja || "（見出しなし）"), h("div", { class: "muted" }, (x.text_ja || "").slice(0, 80)),
+          h("div", { class: "muted" }, `${FONT_LABELS[x.font] || x.font}${x.image ? "・画像あり" : ""}${x.title_en || x.text_en ? "・EN" : ""}${x.title_zh || x.text_zh ? "・中" : ""}`)),
         h("td", {}, x.active ? h("span", { class: "okc" }, "出している") : h("span", { class: "muted" }, "下げた")),
-        h("td", {}, h("button", { class: "act", onclick: async () => { await api("POST", `/api/announcements/${x.id}`, { active: !x.active }); show("notice"); } }, x.active ? "下げる" : "出す"),
-          " ", h("button", { class: "act", onclick: async () => { if (confirm("消しますか？")) { await api("POST", `/api/announcements/${x.id}`, { delete: true }); show("notice"); } } }, "消す")))))),
+        h("td", {}, h("button", { class: "act", onclick: () => { noticeDraft = { ...emptyNotice(), ...x }; noticeLang = "ja"; show("notice"); } }, "直す"), " ",
+          h("button", { class: "act", onclick: async () => { await api("POST", `/api/announcements/${x.id}`, { active: !x.active }); show("notice"); } }, x.active ? "下げる" : "出す"), " ",
+          h("button", { class: "act", onclick: async () => { if (confirm("消しますか？")) { await api("POST", `/api/announcements/${x.id}`, { delete: true }); show("notice"); } } }, "消す")))))),
   );
+  renderPreview();
 }
 
 // ---------------------------------------------------------------- 設定

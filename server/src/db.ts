@@ -130,6 +130,12 @@ export function openDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_matches_created ON matches(created_at);
   `);
+  // お知らせの見出し・フォント・画像（要件#100: Markdown で書け、画像を載せ、フォントを選べる）
+  const acols = db.prepare("PRAGMA table_info(announcements)").all() as Array<{ name: string }>;
+  for (const [col, def] of [["title_ja", "TEXT NOT NULL DEFAULT ''"], ["title_en", "TEXT NOT NULL DEFAULT ''"], ["title_zh", "TEXT NOT NULL DEFAULT ''"],
+    ["font", "TEXT NOT NULL DEFAULT 'body'"], ["image", "TEXT NOT NULL DEFAULT ''"]] as const) {
+    if (!acols.some((c) => c.name === col)) db.exec(`ALTER TABLE announcements ADD COLUMN ${col} ${def}`);
+  }
   return db;
 }
 
@@ -200,20 +206,54 @@ export function aiUsage(days: number): Array<{ day: string; model: string; calls
 
 export interface Announcement {
   id: number;
+  title_ja: string;
+  title_en: string;
+  title_zh: string;
+  /** 本文（Markdown） */
   text_ja: string;
   text_en: string;
   text_zh: string;
+  /** フォント: body（本文）/ hand（手書き）/ dot（ドット）/ sign（看板の極太） */
+  font: string;
+  /** 画像のファイル名（var/notice_images の中。無ければ ""） */
+  image: string;
   active: number;
   created_at: number;
+}
+
+export const NOTICE_FONTS = ["body", "hand", "dot", "sign"] as const;
+
+export interface AnnouncementInput {
+  title_ja: string; title_en: string; title_zh: string;
+  text_ja: string; text_en: string; text_zh: string;
+  font: string; image: string;
 }
 
 export function announcements(activeOnly: boolean): Announcement[] {
   return openDb().prepare(`SELECT * FROM announcements ${activeOnly ? "WHERE active = 1" : ""} ORDER BY id DESC LIMIT 50`).all() as never;
 }
 
-export function addAnnouncement(ja: string, en: string, zh: string): number {
-  const r = openDb().prepare("INSERT INTO announcements (text_ja, text_en, text_zh, active, created_at) VALUES (?, ?, ?, 1, ?)").run(ja.slice(0, 300), en.slice(0, 300), zh.slice(0, 300), Date.now());
+function cleanAnnouncement(a: AnnouncementInput): AnnouncementInput {
+  const t = (v: string, n: number) => String(v ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").slice(0, n);
+  return {
+    title_ja: t(a.title_ja, 80), title_en: t(a.title_en, 80), title_zh: t(a.title_zh, 80),
+    text_ja: t(a.text_ja, 4000), text_en: t(a.text_en, 4000), text_zh: t(a.text_zh, 4000),
+    font: (NOTICE_FONTS as readonly string[]).includes(a.font) ? a.font : "body",
+    image: /^[0-9a-f]{32}\.(png|jpg)$/.test(a.image) ? a.image : "",
+  };
+}
+
+export function addAnnouncement(input: AnnouncementInput): number {
+  const a = cleanAnnouncement(input);
+  const r = openDb().prepare(`INSERT INTO announcements (title_ja, title_en, title_zh, text_ja, text_en, text_zh, font, image, active, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`).run(a.title_ja, a.title_en, a.title_zh, a.text_ja, a.text_en, a.text_zh, a.font, a.image, Date.now());
   return Number(r.lastInsertRowid);
+}
+
+export function updateAnnouncement(id: number, input: AnnouncementInput): void {
+  const a = cleanAnnouncement(input);
+  openDb().prepare("UPDATE announcements SET title_ja = ?, title_en = ?, title_zh = ?, text_ja = ?, text_en = ?, text_zh = ?, font = ?, image = ? WHERE id = ?")
+    .run(a.title_ja, a.title_en, a.title_zh, a.text_ja, a.text_en, a.text_zh, a.font, a.image, id);
 }
 
 export function setAnnouncementActive(id: number, active: boolean): void {
