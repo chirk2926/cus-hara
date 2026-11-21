@@ -35,6 +35,10 @@ export const runtime = {
   maintenanceMessage: "",
   /** コンビニを開けるか（要件#102: 準備ができるまで閉じておく）。閉じている間は対戦の舞台にも使わない */
   konbiniOpen: process.env.KONBINI_OPEN === "1",
+  /** 1人用の「キレるまでの秒数」（要件#106）。怒り 0 から 100 まで、気の長さふつうのお客さんの1人目。返事の時間の設定ごと */
+  snapSlow: 300,
+  snapNormal: 180,
+  snapFast: 128,
   /** 不適切な発言で負けになる回数 */
   modMax: 3,
   /** AI の料金の目安（1M トークンあたりのドル）。モデル名 → [入力, 出力, キャッシュ読み, キャッシュ書き] */
@@ -87,6 +91,9 @@ export const SETTINGS: SettingDef[] = [
   { key: "match.anyoneAfterSec", group: "マッチング", label: "誰とでも組むまでの秒数", help: "", type: "number", min: 0, max: 600, path: "match.anyoneAfterSec" },
   // 運営
   { key: "maintenance", group: "運営", label: "メンテナンス中（対戦を止める）", help: "オンの間はマッチング・部屋づくりを受け付けない。1人用は遊べる", type: "bool", path: "runtime.maintenance" },
+  { key: "snapSlow", group: "1人用", label: "キレるまでの秒数（かめ・イージー）", help: "怒り 0 から 100 になるまでの秒数。気の長さがふつうのお客さんの1人目の目安（2人目からは少しずつ短くなる）。サーバーにつないでいるゲームにだけ効く", type: "number", min: 30, max: 900, path: "runtime.snapSlow" },
+  { key: "snapNormal", group: "1人用", label: "キレるまでの秒数（うさぎ・ノーマル）", help: "同上", type: "number", min: 30, max: 900, path: "runtime.snapNormal" },
+  { key: "snapFast", group: "1人用", label: "キレるまでの秒数（チーター・ハード）", help: "同上", type: "number", min: 30, max: 900, path: "runtime.snapFast" },
   { key: "konbiniOpen", group: "運営", label: "コンビニを開ける", help: "オフの間は、ゲームのコンビニが「準備中」になり、対戦の舞台もゲームセンターだけになる", type: "bool", path: "runtime.konbiniOpen" },
   { key: "maintenanceMessage", group: "運営", label: "メンテナンス中のお知らせ", help: "ゲームのタイトル画面と、対戦を始めようとした人に出す", type: "text", path: "runtime.maintenanceMessage" },
   { key: "monthlyBudgetUsd", group: "運営", label: "AI料金の目安の上限（ドル/月）", help: "超えそうなら管理画面に警告。0 = 見ない", type: "number", min: 0, max: 1000000, path: "runtime.monthlyBudgetUsd" },

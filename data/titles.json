@@ -941,10 +941,10 @@
 				"ko": "경품 배치의 프로"
 			},
 			"desc": {
-				"ja": "「景品を取りやすい位置へ」で取らせた 10回",
-				"en": "Let customers win via \"Move the prize closer\" 10 times",
-				"zh": "通过“把奖品挪到好抓的位置”让顾客抓到10次",
-				"ko": "「경품을 가까이 옮기기」로 손님이 뽑게 한 것이 10번"
+				"ja": "「景品を取りやすい位置へ」で対応を10回終えた",
+				"en": "Handled customers with \"Move the prize closer\" 10 times",
+				"zh": "用“把奖品移到好抓的位置”处理了10次",
+				"ko": "「경품을 가까이 옮기기」로 10번 대응했다"
 			},
 			"rarity": 2,
 			"joke": false,

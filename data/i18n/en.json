@@ -804,5 +804,10 @@
 	"退職しました": "You have resigned",
 	"（準備中）": "(Coming soon)",
 	"返事の時間はふつう": "Standard time to reply",
-	"名無しのスタッフ": "Nameless Staff"
+	"名無しのスタッフ": "Nameless Staff",
+	"※ペイアウト率が高く、景品代とスタッフの時給・電気代で赤字。給与は少なめです": "* The payout rate is high, so prizes plus staff wages and electricity put the store in the red. Your wages are lower.",
+	"顔が見えた。身分証の写真と見比べよう。": "Now you can see their face. Compare it with the ID photo.",
+	"これで頑張ってもらう": "Let them keep trying",
+	"先に景品を動かしてください": "Move a prize first",
+	"（帽子・マスクは外してもらうと、本人か確実に分かる）": "(Asking them to remove a cap or mask makes it certain the ID is theirs.)"
 }

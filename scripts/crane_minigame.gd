@@ -232,7 +232,8 @@ func _build_ui() -> void:
 		trow.add_child(_test_btn)
 		_test_label = UI.text("", UI.S_SMALL, UI.INK_SOFT, UI.F_DOT)
 		trow.add_child(_test_label)
-	_play_btn = UI.primary(tr("この台で遊んでもらう"), UI.S_BODY)
+	# 景品を動かしたときは、お客さんはその場では遊ばない（要件#106）。「これで頑張ってもらう」で対応を終える
+	_play_btn = UI.primary(tr("この台で遊んでもらう") if adjust else tr("これで頑張ってもらう"), UI.S_BODY)
 	_play_btn.focus_mode = Control.FOCUS_NONE
 	_play_btn.pressed.connect(_start_play)
 	col.add_child(_play_btn)
@@ -463,6 +464,14 @@ func _update_marker() -> void:
 
 func _start_play() -> void:
 	if _phase != "adjust":
+		return
+	if _mode == "move":
+		if _held != null:
+			_drop_held()
+		if not _moved:
+			_chance_label.text = tr("先に景品を動かしてください")
+			return
+		_finish(_result("moved"))
 		return
 	if _held != null:
 		_drop_held()

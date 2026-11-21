@@ -338,6 +338,8 @@ export class Match {
       }
       this.broadcastLine("staff", staff, reply, input.via);
       usedStaff.push(reply);
+      // 対戦は1回の返事で決まりすぎないように、納得の増え方は 40 まで（1人用は話がまとまれば一気に埋めてよい。要件#106）
+      j.resolve_delta = Math.min(j.resolve_delta, 40);
       this.anger = clamp(this.anger + j.anger_delta, 0, 100);
       this.resolveVal = clamp(this.resolveVal + j.resolve_delta, 0, 100);
       this.broadcastJudged(j.anger_delta, j.resolve_delta, j.comment, "staff");

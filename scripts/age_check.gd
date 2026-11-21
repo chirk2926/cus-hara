@@ -110,7 +110,7 @@ static func _pick(weights: Dictionary) -> String:
 
 ## お客さんを1人作る。clock_min: 来店した時刻（0:00 からの分）
 ## mode: "arcade"（夜の入店制限）| "konbini"（お酒・たばこの販売。20歳未満は不可）
-static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dictionary:
+static func make(clock_min: int, lang: String, mode: String = "arcade", force_cover: bool = false) -> Dictionary:
 	var en: bool = lang == "en"
 	var zh: bool = lang == "zh"
 	var ko: bool = lang == "ko"
@@ -143,12 +143,17 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		"body_color": ["#3a6ea5", "#a5463a", "#3aa57a", "#7a3aa5", "#d08a2a"][randi() % 5],
 		"skin_color": ["#f2cba8", "#e8b890", "#f5d3b5"][randi() % 3],
 		"hair_color": hair_colors[randi() % hair_colors.size()],
-		"hair": ["short", "cap", "long", "perm"][randi() % 4],
+		"hair": ["short", "long", "perm"][randi() % 3],
 		"build": "slim",
 		"accessory": ["none", "headphones", "bag", "glasses"][randi() % 4],
 		"height": randf_range(0.86, 0.95),
 	}
-	# 身分証の写真: 本人なら同じ見た目、借り物なら別人
+	# 帽子・マスク（要件#106）: かぶっていると顔が本人か分かりにくい。「帽子を取ってもらう」「マスクを外してもらう」で外せる
+	var hat: bool = force_cover or randf() < 0.3
+	var mask: bool = force_cover or randf() < 0.2
+	var under_hair: String = str(look["hair"])
+	var under_acc: String = str(look["accessory"])
+	# 身分証の写真: 本人なら同じ見た目（帽子・マスクなし）、借り物なら別人
 	var photo: Dictionary = look.duplicate()
 	if not face_match:
 		var other: Array = hair_colors.filter(func(c: String) -> bool: return c != str(look["hair_color"]))
@@ -156,6 +161,10 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		photo["hair"] = "perm" if str(look["hair"]) != "perm" else "short"
 		photo["accessory"] = "none" if str(look["accessory"]) == "glasses" else "glasses"
 		photo["skin_color"] = "#d9a57e" if str(look["skin_color"]) != "#d9a57e" else "#f5d3b5"
+	if hat:
+		look["hair"] = "cap"
+	if mask:
+		look["accessory"] = "mask"
 	var names: Array = NAMES_EN if en else (NAMES_KO if ko else NAMES_JA)
 	var who: String = str(names[randi() % names.size()])
 	# 借り物の身分証は、同じ名字の年上の家族のもの
@@ -213,7 +222,7 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 	if not verifiable and randf() < 0.5:
 		var alt_type: String = "license" if (age >= 18 and randf() < 0.5) else ("mynumber" if randf() < 0.75 else "passport")
 		alt = {"type": alt_type, "public": true, "has_photo": true, "has_dob": true, "face_match": true, "dob": real_dob,
-			"shown_age": age_on(real_dob, today), "name": who, "photo": look.duplicate()}
+			"shown_age": age_on(real_dob, today), "name": who, "photo": look.merged({"hair": under_hair, "accessory": under_acc}, true)}
 	return {
 		"kind": "age_check",
 		"title": str((_tr(lang, titles_ja, titles_en, titles_zh, titles_ko) as Array)[randi() % 4]),
@@ -238,5 +247,6 @@ static func make(clock_min: int, lang: String, mode: String = "arcade") -> Dicti
 		},
 		"age": {"mode": mode, "item": item, "limit": limit, "clock": clock_min, "type": id_type, "public": bool(t["public"]), "has_photo": bool(t["photo"]),
 			"has_dob": bool(t["dob"]), "face_match": face_match, "dob": shown_dob, "shown_age": shown_age,
-			"name": shown_name, "photo": photo, "must_leave": must_leave, "real_age": age, "today": today, "alt": alt},
+			"name": shown_name, "photo": photo, "must_leave": must_leave, "real_age": age, "today": today, "alt": alt,
+			"hat": hat, "mask": mask, "under_hair": under_hair, "under_acc": under_acc},
 	}

@@ -514,3 +514,16 @@ test("韓国語（要件#102）: お金はウォン、店長の一言・行動�
   assert.equal(keywordModeration("01012345678로 전화해").category, "personal_info", "韓国の携帯番号");
   assert.equal(keywordModeration("죽여버린다").category, "hate");
 });
+
+test("要件#106: キレるまでの秒数をサーバーで決めて info で配る、取れないだけの客の景品は引っかかっていない", async () => {
+  const { runtime, setSetting } = await import("../src/settings.ts");
+  setSetting("snapNormal", 150, false);
+  const info = (await api(srv.base, "GET", "/api/v1/info")).body;
+  assert.equal(info.snap_seconds.normal, 150);
+  assert.equal(typeof info.snap_seconds.slow, "number");
+  assert.throws(() => setSetting("snapFast", 5, false), "短すぎる秒数は断る");
+  runtime.snapNormal = 180;
+  const { materializeSpend } = await import("../src/scenarios.ts");
+  const c = materializeSpend({ title: "t", name: "n", look: {} as any, memo: "", opening: "{spent}", demand: "", patience: 1, start_anger: 40, spend: true, actions: { crane_stuck: "good" } } as any, 30, "ja");
+  assert.equal(c.actions?.crane_stuck, "neutral");
+});

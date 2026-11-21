@@ -69,6 +69,10 @@ static func buttons(stage_id: String, customer: Dictionary, with_crane: bool) ->
 static func is_stuck(customer: Dictionary) -> bool:
 	if bool(customer.get("stuck", false)):
 		return true
+	# 「お金を使ったのに取れない」お客さんは引っかかっていない（要件#106: AI が crane_stuck を good にしても出さない）
+	var sp: Variant = customer.get("spend", null)
+	if typeof(sp) == TYPE_DICTIONARY or (typeof(sp) == TYPE_BOOL and sp) or customer.has("spend_data"):
+		return false
 	var acts: Variant = customer.get("actions", {})
 	return typeof(acts) == TYPE_DICTIONARY and str((acts as Dictionary).get("crane_stuck", "")) == "good"
 
@@ -116,7 +120,7 @@ static func is_minigame(id: String) -> bool:
 
 
 static func effect_kind(customer: Dictionary, id: String) -> String:
-	if id == "crane_won" or id == "crane_lost":
+	if id == "crane_won" or id == "crane_lost" or id == "crane_moved":
 		return id
 	var a: Variant = customer.get("actions", {})
 	if typeof(a) == TYPE_DICTIONARY and (a as Dictionary).has(id):

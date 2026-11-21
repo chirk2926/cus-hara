@@ -91,6 +91,8 @@ var _bg_label: Label = null
 var _current_variant: String = "day"
 ## テスト版のデバッグパネルで切り替える1人用のイベント（要件#85）: wild / manager / age / police / anger_stop
 var debug: Dictionary = {}
+## テスト版: 次のお客さんの種類（要件#106）。"" ならふつう。stuck / spend_true / spend_lie / jam / empty / lottery / button / button_lie / slam / loud / hatmask
+var debug_kind: String = ""
 var _last_hard: bool = false
 var _hard_on: bool = false
 var _hard_toggle: Button = null   # 直前のシフトがハードコアだったか（「もう一度」用）
@@ -271,6 +273,12 @@ func spawn_customer(look: Dictionary) -> void:
 	_customer.position = from
 	_customer.call("enter", from, to)
 	await _customer.arrived
+
+
+## 来ているお客さんの見た目を変える（帽子を取る・マスクを外す。要件#106）
+func update_customer_look(look: Dictionary) -> void:
+	if _customer != null and is_instance_valid(_customer):
+		_customer.call("setup", look)
 
 
 ## お客さんを退店させ、出ていくまで待つ。mood: "happy" | "angry" | "smug"
@@ -1384,6 +1392,8 @@ func _check_server() -> void:
 	var res: Dictionary = await api.request("GET", "/api/v1/info", null, false)
 	if bool(res.get("ok", false)):
 		_server_info = res["body"]
+		var snap: Variant = _server_info.get("snap_seconds", null)
+		GameSettings.server_snap_seconds = snap if typeof(snap) == TYPE_DICTIONARY else {}
 		var me: Dictionary = await api.ensure_login()
 		_sync_look()
 		# 利用停止・運営からの警告（要件#100）
@@ -3540,6 +3550,8 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		# 給与（要件#82）: オフラインは HP、オンラインは CUS
 		if sm.has("pay"):
 			_receipt_line(col, tr("給与"), Shop.pay_text(sm["pay"]), UI.S_BODY, STAMP_INK)
+			if bool(sm.get("pay_cut", false)):
+				col.add_child(UI.para(tr("※ペイアウト率が高く、景品代とスタッフの時給・電気代で赤字。給与は少なめです"), UI.S_SMALL, UI.SHU))
 	col.add_child(UI.rule(Paper.TimeCard.EDGE, 1))
 	var tot: HBoxContainer = UI.hbox(12)
 	col.add_child(tot)

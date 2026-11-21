@@ -46,6 +46,9 @@ const SCORE_EXPLODED: int = -300
 const SCORE_YIELDED: int = -600
 const SCORE_BREAKDOWN: int = -500
 ## 行動ボタンの店の負担（点数から引く）。台の調整で規定外の強さにしたら CHEAT
+## 話がまとまったとみなす納得・怒りの目安（要件#106）
+const SETTLE_AT: float = 70.0
+const SETTLE_ANGER: float = 40.0
 const ACTION_COST: Dictionary = {"discount": 100, "dogeza": 0, "medal_return": 100, "credit": 50, "maintenance": 0, "crane_stuck": 0}
 ## 売上と店舗レビュー（要件#56）。売上は1人を接客するごとに入る（円）
 const SALES_PER_CUSTOMER: Dictionary = {"konbini": 2500, "arcade": 2000}
@@ -80,7 +83,7 @@ const MENTAL_MAX: float = 100.0
 const ACTION_PREFIX: String = "\u0001action:"
 ## たまに起きるイベント（要件#52）
 ## 要注意人物: 2人目以降のお客さんが、この確率でとびきり突飛な人になる（1シフト1回まで）。納得させると点数 ×1.5
-const WILD_CHANCE: float = 0.18
+const WILD_CHANCE: float = 0.07   # 要件#106: 多すぎたので半分以下（0.18 → 0.07）
 const WILD_BONUS: float = 1.5
 ## 店長のアドバイス: 返事の番が来るとき、怒りが高い（または話が長引いている）と、この確率で店長が来る（1シフト1回まで）
 const MANAGER_CHANCE: float = 0.15    # 要件#86: 怒りが 80 以上のときだけ、この確率
@@ -257,7 +260,10 @@ func _finish_summary() -> void:
 		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 	_track_shift(review)
 	# 給与（要件#82）: オフラインは HP、オンラインは CUS。売上がマイナスでも減らない
-	summary["pay"] = Shop.pay_shift(int(float(_sales) * (HARD_REWARD_MUL if hardcore else 1.0)), not bool(summary["offline"]))
+	# ペイアウト率 60% 以上は、景品代にスタッフの時給・電気代が乗って赤字になるので、給与は少なめ（要件#106）
+	var pay_mul: float = Shop.payout_pay_mul(_payout) if _stage_id == "arcade" else 1.0
+	summary["pay_cut"] = pay_mul < 1.0
+	summary["pay"] = Shop.pay_shift(int(float(_sales) * (HARD_REWARD_MUL if hardcore else 1.0) * pay_mul), not bool(summary["offline"]))
 	summary["hardcore"] = hardcore
 	if hardcore:
 		_track_hardcore()
@@ -325,6 +331,9 @@ func _age_result(outcome: String) -> Dictionary:
 			points = SCORE_AGE["age_ok"]
 			hud.show_banner(tr("年齢確認OK") + "  +%d" % points, UI.LCD_ON)
 			hud.set_comment(tr("使える身分証で、年齢も足りていた。正しい判断だ。"))
+			var agd: Dictionary = _cust.get("age", {})
+			if not hardcore and (bool(agd.get("hat", false)) or bool(agd.get("mask", false))):
+				hud.set_comment(tr("使える身分証で、年齢も足りていた。正しい判断だ。") + "\n" + tr("（帽子・マスクは外してもらうと、本人か確実に分かる）"))
 			main.sfx.play("win")
 		"age_refused":
 			points = SCORE_AGE["age_refused"]
@@ -704,6 +713,12 @@ func _age_buttons() -> Array:
 	# 別の身分証は、まず身分証を見せてもらってから（要件#90）
 	if not _alt_id_asked and _id_seen:
 		out.append(["ask_other_id", ShopActions.label("ask_other_id")])
+	# 帽子・マスクで顔が分かりにくいときは、外してもらえる（要件#106）
+	var ag: Dictionary = _cust.get("age", {}) if typeof(_cust.get("age", null)) == TYPE_DICTIONARY else {}
+	if bool(ag.get("hat", false)):
+		out.append(["hat_off", ShopActions.label("hat_off")])
+	if bool(ag.get("mask", false)):
+		out.append(["mask_off", ShopActions.label("mask_off")])
 	if _age_mode() == "konbini":
 		out.append_array([["age_allow", ShopActions.label("sell_ok")], ["age_refuse", ShopActions.label("sell_refuse")]])
 	else:
@@ -879,6 +894,32 @@ func _nuisance(reporter_speaker: String, my_run: int) -> String:
 	return res_out
 
 
+## 帽子を取ってもらう・マスクを外してもらう（要件#106）。顔が見えて、身分証の写真と比べやすくなる。返事は台本
+func _uncover(speaker: String, id: String) -> void:
+	_turns += 1
+	var ag: Dictionary = _cust.get("age", {})
+	var look: Dictionary = (_cust.get("look", {}) as Dictionary).duplicate()
+	var line: String = ""
+	if id == "hat_off":
+		ag["hat"] = false
+		look["hair"] = str(ag.get("under_hair", "short"))
+		line = str(Judge.pick_lang(["え、帽子？……はい。", "髪ぺちゃんこなんだけど……はい。"], ["My cap? ...Fine.", "Ugh, hat hair... okay."], ["帽子？……好吧。", "头发都压扁了……给。"], ["모자요? ……네.", "머리 눌렸는데…… 네."]))
+	else:
+		ag["mask"] = false
+		look["accessory"] = str(ag.get("under_acc", "none"))
+		line = str(Judge.pick_lang(["マスク？……ちょっとだけね。", "……はい、これでいい？"], ["My mask? ...Just for a sec.", "...There. Happy?"], ["口罩？……就一下哦。", "……这样行了吧？"], ["마스크요? ……잠깐만요.", "……됐죠?"]))
+	_cust["age"] = ag
+	_cust["look"] = look
+	main.update_customer_look(look)
+	if not hardcore:
+		hud.set_comment(tr("顔が見えた。身分証の写真と見比べよう。"))
+	hud.set_actions(_age_buttons())
+	log_lines.append({"role": "staff", "text": tr("（行動: %s）") % ShopActions.label(id)})
+	log_lines.append({"role": "customer", "text": line})
+	_history.append({"role": "customer", "text": line})
+	await _customer_line(speaker, line, "")
+
+
 ## 退店・販売のお断りに、ちょっとだけ粘るときのセリフ（要件#97）
 func _resist_line() -> String:
 	if _age_mode() == "konbini":
@@ -1001,6 +1042,42 @@ func _wait(sec: float) -> void:
 	await get_tree().create_timer(sec).timeout
 
 
+## テスト版（要件#106）: デバッグパネルで選んだ種類のお客さんを、台本から作る。選んでいなければ {}
+func _debug_customer() -> Dictionary:
+	var kind: String = str(main.debug_kind)
+	if kind == "":
+		return {}
+	if kind == "hatmask":
+		var ac: Dictionary = AgeCheck.make(maxi(_clock(), 22 * 60 + 10), GameSettings.language, _stage_id, true)
+		return ac
+	if _stage_id != "arcade":
+		return {}
+	var list: Array = Scenarios.customers("arcade")
+	for _try in 40:
+		var c: Dictionary = (list[randi() % list.size()] as Dictionary).duplicate(true)
+		match kind:
+			"stuck":
+				if not ShopActions.is_stuck(c):
+					continue
+				return ShopActions.apply_problem(c)
+			"spend_true", "spend_lie":
+				if not bool(c.get("spend", false)):
+					continue
+				var m: Dictionary = Scenarios.materialize_spend(c, _payout)
+				if bool(m.get("_lie", false)) != (kind == "spend_lie"):
+					continue
+				return ShopActions.apply_problem(m)
+			_:
+				var want: String = "button" if kind == "button_lie" else kind
+				if str(c.get("problem", "")) != want:
+					continue
+				var p: Dictionary = ShopActions.apply_problem(c)
+				if str(p.get("problem", "")) != kind:
+					continue
+				return p
+	return {}
+
+
 func _next_offline() -> Dictionary:
 	if _wild:
 		var rares: Array = Scenarios.customers(_stage_id).filter(func(c: Variant) -> bool:
@@ -1015,6 +1092,8 @@ func _next_offline() -> Dictionary:
 	var sum: float = 0.0
 	for c in _pool:
 		var w: float = Scenarios.spend_weight(_payout) if (_stage_id == "arcade" and bool((c as Dictionary).get("spend", false))) else 1.0
+		if bool((c as Dictionary).get("rare", false)):
+			w *= 0.1   # 要注意人物はめったに来ない（要件#106: 多すぎた）
 		weights.append(w)
 		sum += w
 	var r: float = randf() * sum
@@ -1077,7 +1156,12 @@ func _play_customer(my_run: int) -> void:
 	var data: Dictionary = {}
 	var age_ok_here: bool = (_stage_id == "arcade" and AgeCheck.limit_for(_clock()) > 0) or _stage_id == "konbini"
 	var age_chance: float = AGE_CHANCE_KONBINI if _stage_id == "konbini" else AGE_CHANCE
-	if age_ok_here and not main.debug_flag("no_age") and (main.debug_flag("age") or (not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)))):
+	var forced: Dictionary = _debug_customer()
+	if not forced.is_empty():
+		_source = "offline"
+		_session_id = ""
+		data = forced
+	elif age_ok_here and not main.debug_flag("no_age") and (main.debug_flag("age") or (not _wild and _age_count < AGE_MAX and (randf() < age_chance or (main.smoke and _index == 3)))):
 		_age_count += 1
 		_source = "offline"
 		_session_id = ""
@@ -1111,7 +1195,9 @@ func _play_customer(my_run: int) -> void:
 	_turns = 0
 	_history = []
 	_used = []
-	_rate = BASE_ANGER_RATE * float(_cust.get("patience", 1.0)) * (1.0 + RATE_STEP * float(_index)) * GameSettings.answer_rate() * (HARD_ANGER_MUL if hardcore else 1.0)
+	# 1秒あたりの怒り。サーバーの管理画面で秒数が決まっていればそれを使う（要件#106）
+	var base_rate: float = (100.0 / GameSettings.snap_seconds()) if GameSettings.snap_seconds() > 0.0 else BASE_ANGER_RATE * GameSettings.answer_rate()
+	_rate = base_rate * float(_cust.get("patience", 1.0)) * (1.0 + RATE_STEP * float(_index)) * (HARD_ANGER_MUL if hardcore else 1.0)
 	_cost = 0
 	_sales_cost = 0
 	_crane_used = false
@@ -1140,13 +1226,13 @@ func _play_customer(my_run: int) -> void:
 		look = _vary_look(_cust["look"])
 	if _wild:
 		hud.show_banner(tr("！要注意人物が来店！"), UI.SHU)
+		hud.set_comment(tr("要注意人物だ。何を言い出すか分からないぞ。納得させれば点数 ×1.5！"))
+		main.sfx.play("warn", 0.8)
+		main.shake(0.12)
 	elif ShopActions.is_stuck(_cust) and _stage_id == "arcade":
 		# 景品が本当に引っかかっている（要件#91: しっかり表示）
 		hud.show_banner(tr("景品が引っかかっている！"), UI.POP)
 		hud.set_comment(tr("この台は景品が引っかかっている。「引っかかった景品をとる」が使える。"))
-		hud.set_comment(tr("要注意人物だ。何を言い出すか分からないぞ。納得させれば点数 ×1.5！"))
-		main.sfx.play("warn", 0.8)
-		main.shake(0.12)
 	await main.spawn_customer(look)
 	if my_run != _run:
 		return
@@ -1215,6 +1301,13 @@ func _play_customer(my_run: int) -> void:
 			if id == "deodorize":
 				if _smelly and not _smell_done:
 					await _deodorize(speaker)
+					if my_run != _run:
+						return
+				continue
+			if id == "hat_off" or id == "mask_off":
+				if _is_age_check():
+					hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
+					await _uncover(speaker, id)
 					if my_run != _run:
 						return
 				continue
@@ -1297,11 +1390,14 @@ func _play_customer(my_run: int) -> void:
 				var after: Array = ShopActions.buttons(_stage_id, _cust, str(cr.get("result", "")) != "won")
 				hud.set_actions(_with_smell(after.filter(func(b: Array) -> bool: return str(b[0]) != ShopActions.CRANE_ADJUST)))
 				_t_move_mode = str(cr.get("mode_kind", "")) == "move" or id == ShopActions.CRANE_MOVE
-				id = "crane_won" if str(cr["result"]) == "won" else "crane_lost"
+				# 景品を近づけたときは、お客さんはその場では遊ばない（要件#106）: 「近づけたので、もう少し頑張ってみてください」で対応を終える
+				id = "crane_moved" if str(cr["result"]) == "moved" else ("crane_won" if str(cr["result"]) == "won" else "crane_lost")
 				GameSettings.stat_add("crane_tests", int(cr.get("tests", 0)))
 				if int(cr.get("power", 0)) >= 10 and str(cr.get("mode", "")) == "power":
 					GameSettings.stat_add("crane_max_power")
 				_t_crane_lost = id == "crane_lost"
+				if id == "crane_moved":
+					GameSettings.stat_add("crane_move_won")   # 称号「景品配置のプロ」は、近づけて対応を終えた回数（要件#106）
 				if id == "crane_won":
 					_crane_wins += 1
 					GameSettings.stat_add("crane_won")
@@ -1331,7 +1427,7 @@ func _play_customer(my_run: int) -> void:
 			_t_last_action = id
 			_act_counts[id] = int(_act_counts.get(id, 0)) + 1
 			# 「景品を取りやすい位置へ」は、お客さんが本当に使った金額が目標金額の半分以上のときだけ（要件#91）
-			if id in ["crane_won", "crane_lost"] and _t_move_mode:
+			if id in ["crane_won", "crane_lost", "crane_moved"] and _t_move_mode:
 				var spd: Variant = _cust.get("spend", null)
 				if typeof(spd) == TYPE_DICTIONARY and float((spd as Dictionary).get("actual", 0)) < 0.5 * float((spd as Dictionary).get("expected", 1)):
 					_cost += 200
@@ -1420,12 +1516,17 @@ func _play_customer(my_run: int) -> void:
 		# 景品を渡したら（引っかかった景品を取った・台の調整で取れた）、景品が目当てのお客さんはそれで納得。
 		# 景品のほかにも求めている（土下座・返金など）お客さんは、大きく納得して話は続く（要件#86）
 		var last_act: String = str(res.get("action", ""))
-		if last_act in ["crane_stuck", "crane_won"] and ShopActions.effect_kind(_cust, last_act) in ["good", "crane_won"] and int(_act_counts.get(last_act, 0)) <= 1:
+		if last_act in ["crane_stuck", "crane_won", "crane_moved"] and ShopActions.effect_kind(_cust, last_act) in ["good", "crane_won", "crane_moved"] and int(_act_counts.get(last_act, 0)) <= 1:
 			if _prize_only():
 				r_delta = maxi(r_delta, int(ceil(100.0 - _resolve)))
 				res["customer_reply"] = Judge.line(_cust, "resolved")
 			else:
 				r_delta = maxi(r_delta, 60)
+		# 話はほぼまとまっているのに、納得の数字だけが足りなくて終わらない（要件#106）:
+		# 納得 70 以上・怒り 40 以下で、また正しい対応をしたら、そこで納得したことにする
+		if r_delta > 0 and a_delta <= 0 and not bool(res.get("yielded", false)) and _resolve + float(r_delta) >= SETTLE_AT and _anger + float(a_delta) <= SETTLE_ANGER:
+			r_delta = maxi(r_delta, int(ceil(100.0 - _resolve)))
+		var forced_close: bool = _resolve < 100.0 and _resolve + float(r_delta) >= 100.0
 		_anger = clampf(_anger + float(a_delta), 0.0, 100.0)
 		_resolve = clampf(_resolve + float(r_delta), 0.0, 100.0)
 		_refresh(false)
@@ -1460,6 +1561,9 @@ func _play_customer(my_run: int) -> void:
 		# AIのセリフが空のときは台本のセリフ（要件#86: お客さんの言葉が出ないことがあった）
 		if line == "":
 			line = Judge.line(_cust, "resolved" if outcome == "resolved" else ("explode" if outcome == "explode" else ("yielded" if outcome == "yield" else ("calm" if a_delta < 0 else ("angry" if a_delta > 0 else "neutral")))))
+		# 納得で終わるのに、セリフがまだ食い下がっている（問いかけ・怒り）ときは、少しだけ強引に締めの一言を足す（要件#106）
+		if outcome == "resolved" and forced_close and (a_delta > 0 or line.ends_with(char(0xFF1F)) or line.ends_with("?")):
+			line += "\n" + Judge.line(_cust, "resolved")
 		_history.append({"role": "customer", "text": line})
 		log_lines.append({"role": "customer", "text": line})
 		await _customer_line(speaker, line, kind)

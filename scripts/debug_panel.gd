@@ -111,7 +111,7 @@ func _build() -> void:
 
 	_section("1人用のイベント（次のお客さんから）")
 	for f in [["wild", "要注意人物（頭おかしい人）を毎回"], ["manager", "店長のアドバイスを毎回"], ["age", "年齢確認のお客さんを毎回（18時以降・コンビニ）"],
-			["police", "ゆるい年齢確認で必ず警察"], ["anger_stop", "怒りゲージを止める"]]:
+			["police", "ゆるい年齢確認で必ず警察"], ["smell", "においのイベントを毎回"], ["anger_stop", "怒りゲージを止める"]]:
 		var key: String = str(f[0])
 		var cb: CheckBox = UI.check(str(f[1]), main.call("debug_flag", key))
 		cb.add_theme_color_override("font_color", UI.PAPER)
@@ -120,6 +120,21 @@ func _build() -> void:
 			main.debug[key] = on
 			_refresh_info())
 		_list.add_child(cb)
+
+	# 次のお客さんの種類を選んで出す（要件#106。台本のお客さんから選ぶ。ゲームセンターのシフトで）
+	_section("次のお客さんの種類（毎回）")
+	var kinds: Array = [["", "ふつう（ランダム）"], ["stuck", "景品が引っかかった"], ["spend_true", "〇〇円使っても取れない（本当）"], ["spend_lie", "〇〇円使っても取れない（うそ）"],
+		["jam", "メダル詰まり"], ["empty", "メダル切れ"], ["lottery", "抽選機が止まった"], ["button", "ボタンが反応しない（本当）"], ["button_lie", "ボタンが反応しない（うそ）"],
+		["slam", "台パンの通報"], ["loud", "大声の通報"], ["hatmask", "年齢確認（帽子・マスク）"]]
+	var ob: OptionButton = OptionButton.new()
+	for i in kinds.size():
+		ob.add_item(str(kinds[i][1]), i)
+		if str(kinds[i][0]) == str(main.debug_kind):
+			ob.select(i)
+	ob.item_selected.connect(func(i: int) -> void:
+		main.debug_kind = str(kinds[i][0])
+		_refresh_info())
+	_list.add_child(ob)
 
 	_section("1人用の判定")
 	_row([["オフライン（台本）", func() -> void: _source("offline")], ["サーバー", func() -> void: _source("server")]])
@@ -178,6 +193,8 @@ func _refresh_info() -> void:
 	for k in main.debug:
 		if bool(main.debug[k]):
 			flags.append(str(k))
+	if str(main.debug_kind) != "":
+		flags.append("客: " + str(main.debug_kind))
 	_info.text = "セーブ: %s\nサーバー: %s\n1人用の判定: %s\nHP %d / CUS %d / メンタル %d / 称号 %d\nイベント: %s" % [
 		GameSettings._path(), GameSettings.server_url, GameSettings.solo_source, GameSettings.hp_points, GameSettings.kas_points,
 		GameSettings.mental_rank(), GameSettings.unlocked_titles.size(), ", ".join(flags) if not flags.is_empty() else "なし"]

@@ -540,6 +540,14 @@ func answer_rate() -> float:
 	return float(ANSWER_RATE.get(answer_time, 1.0))
 
 
+## サーバーの管理画面で決めた「キレるまでの秒数」（要件#106）。サーバーにつないでいるときだけ。無ければ 0
+var server_snap_seconds: Dictionary = {}
+
+
+func snap_seconds() -> float:
+	return float(server_snap_seconds.get(answer_time, 0.0))
+
+
 func get_high_score(stage_id: String) -> int:
 	return int(high_scores.get(stage_id, 0))
 

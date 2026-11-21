@@ -97,6 +97,9 @@ static func materialize_spend(c: Dictionary, payout: int, lang: String = "") -> 
 	c["spend"] = {"claimed": claimed, "actual": actual, "expected": expected, "payout": p}
 	c["_lie"] = lie
 	var acts: Dictionary = (c.get("actions", {}) as Dictionary).duplicate() if typeof(c.get("actions", null)) == TYPE_DICTIONARY else {}
+	# 「使ったのに取れない」だけのお客さんの景品は引っかかっていない（要件#106）
+	if str(acts.get("crane_stuck", "")) == "good":
+		acts["crane_stuck"] = "neutral"
 	if lie:
 		acts["credit"] = "yield"
 		var kw: Array = (c.get("solution_keywords", []) as Array).duplicate()

@@ -137,6 +137,13 @@ static func pay_shift(sales: int, online: bool) -> Dictionary:
 	return {"hp": h, "kas": 0}
 
 
+## ペイアウト率による給与の倍率（要件#106）: 60% 以上は赤字の店なので少なめ。60% → 0.7、70% → 0.5、80% 以上 → 0.3
+static func payout_pay_mul(payout: int) -> float:
+	if payout < 60:
+		return 1.0
+	return clampf(0.7 - float(payout - 60) * 0.02, 0.3, 0.7)
+
+
 ## 対戦の給与（CUS）
 static func pay_versus(won: bool) -> int:
 	var pay: Dictionary = data().get("pay", {})

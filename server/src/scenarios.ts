@@ -116,6 +116,8 @@ export function materializeSpend(c: Customer, payout: number, lang: Lang, rnd: (
   }
   c.spend_data = { claimed, actual, expected, payout: p, lie };
   c.actions = { ...(c.actions ?? {}) };
+  // 「使ったのに取れない」だけのお客さんの景品は引っかかっていない（要件#106）
+  if (c.actions.crane_stuck === "good") c.actions.crane_stuck = "neutral";
   if (lie) {
     c.actions.credit = "yield";
     const extra = lang === "ja" ? ["記録", "データ", "履歴", "実際"] : lang === "zh" ? ["记录", "数据", "实际"] : lang === "ko" ? ["기록", "데이터", "실제"] : ["record", "data", "log", "actually"];
@@ -172,7 +174,7 @@ function pickCustomer(stage: StageId, avoidTitles: string[], lang: Lang, wildOnl
   const fresh = list.filter((c) => !avoidTitles.includes(c.title));
   const pool = fresh.length > 0 ? fresh : list;
   // ネタ枠（rare）は出にくくする（重み 0.25）
-  const weights = pool.map((c) => (c.rare && !wildOnly ? 0.25 : 1) * (c.spend && stage === "arcade" ? spendWeight(payout) : 1));
+  const weights = pool.map((c) => (c.rare && !wildOnly ? 0.1 : 1) * (c.spend && stage === "arcade" ? spendWeight(payout) : 1));
   let r = Math.random() * weights.reduce((a, b) => a + b, 0);
   for (let i = 0; i < pool.length; i++) {
     r -= weights[i];

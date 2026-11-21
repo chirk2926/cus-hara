@@ -89,6 +89,15 @@ func _economy() -> void:
 	check("buy wooden frame with HP", Shop.buy("frame", "wood", "hp") and GameSettings.hp_points == 100 and Shop.owns("frame", "wood"))
 	check("cannot buy backdrop directly", not Shop.buy("bg", "bg_medal", "kas"))
 	check("cannot buy CUS-only item with HP", not Shop.buy("frame", "platinum", "hp"))
+	# 要件#106
+	check("payout 60%+ cuts wages", Shop.payout_pay_mul(50) == 1.0 and Shop.payout_pay_mul(60) < 1.0 and Shop.payout_pay_mul(80) >= 0.3 and Shop.payout_pay_mul(80) < Shop.payout_pay_mul(60))
+	var cov: Dictionary = AgeCheck.make(22 * 60 + 30, "ja", "arcade", true)
+	var cag: Dictionary = cov.get("age", {})
+	check("hat and mask can be forced", bool(cag.get("hat", false)) and bool(cag.get("mask", false)) and str(cov["look"]["hair"]) == "cap" and str(cov["look"]["accessory"]) == "mask")
+	check("ID photo shows no cap or mask", str((cag["photo"] as Dictionary).get("hair", "")) != "cap" and str((cag["photo"] as Dictionary).get("accessory", "")) != "mask")
+	check("hat/mask buttons have labels", ShopActions.label("hat_off") != "hat_off" and ShopActions.label("mask_off") != "mask_off")
+	check("moving the prize is its own result", ShopActions.effect_kind({}, "crane_moved") == "crane_moved")
+	check("spend customer is never 'stuck'", not ShopActions.is_stuck({"spend": {"claimed": 1}, "actions": {"crane_stuck": "good"}}) and ShopActions.is_stuck({"actions": {"crane_stuck": "good"}}))
 	GameSettings.kas_points = 2000
 	var res: Array = Shop.gacha_pull("kas", true)
 	check("10-pull gives 11", res.size() == 11, str(res.size()))

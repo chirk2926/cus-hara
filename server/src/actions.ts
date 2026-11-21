@@ -39,7 +39,7 @@ export function actions(): ActionTable {
   return table;
 }
 
-export const CRANE_RESULTS = ["crane_won", "crane_lost"] as const;
+export const CRANE_RESULTS = ["crane_won", "crane_lost", "crane_moved"] as const;
 
 /** そのステージ・そのお客さんで使える行動か */
 export function isAllowed(stage: StageId, c: Customer, id: string, versus = false): boolean {

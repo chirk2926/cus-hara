@@ -160,6 +160,7 @@ export function info(lobby: Lobby) {
     // お知らせとメンテナンス（要件#100。管理画面から）
     maintenance: runtime.maintenance,
     open_stages: openStages(),
+    snap_seconds: { slow: runtime.snapSlow, normal: runtime.snapNormal, fast: runtime.snapFast },
     maintenance_message: runtime.maintenance ? runtime.maintenanceMessage : "",
     // 言語ごとの見出しと本文（Markdown）。その言語が空なら英語 → 日本語の順で使う
     notices: announcements(true).slice(0, 5).map((a) => ({

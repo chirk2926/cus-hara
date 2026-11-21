@@ -148,12 +148,12 @@ test("台の種類ごとのボタンと、ペイアウト率・筐体のデー�
   assert.ok(count(10) > count(30) * 1.5 && count(30) > count(80) * 1.5, `${count(10)} ${count(30)} ${count(80)}`);
 });
 
-test("ネタ枠（rare）は出にくい", async () => {
+test("ネタ枠（rare）は出にくい（要件#106 でさらに半分以下に）", async () => {
   const { randomCustomer } = await import("../src/scenarios.ts");
   let rare = 0;
   for (let i = 0; i < 2000; i++) if (randomCustomer("konbini").rare) rare++;
   const share = rare / 2000;
-  assert.ok(share > 0.02 && share < 0.15, `ネタ枠の割合 ${share}`);
+  assert.ok(share > 0.003 && share < 0.06, `ネタ枠の割合 ${share}`);
 });
 
 test("キーワード判定の精度（要件#73）", async () => {
