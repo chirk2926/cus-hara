@@ -136,6 +136,7 @@ var _sales_cost: int = 0      # このお客さんでの行動で減った売上
 var _crane_used: bool = false
 var _queued: Array = []            # 筐体の前でした対応（要件#99）。会話の番を待たずに順に判定する
 var _repaired: bool = false        # 筐体の前に行ったか
+var _machine_fixed: bool = false   # 台を直したか（要件#110: もう一度見に行っても直ったまま）
 var _nuisance_done: bool = false   # 迷惑なお客さんの様子を見に行ったか
 var _in_nuisance: bool = false     # 迷惑なお客さん本人と話している
 var _data_seen: bool = false
@@ -1203,6 +1204,7 @@ func _play_customer(my_run: int) -> void:
 	_crane_used = false
 	_queued = []
 	_repaired = false
+	_machine_fixed = false
 	_nuisance_done = false
 	_in_nuisance = false
 	_data_seen = false
@@ -1355,7 +1357,7 @@ func _play_customer(my_run: int) -> void:
 				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
 				hud.set_status(tr("筐体の前へ行きます…"))
 				# 対応している間も怒りは上がる（要件#107: 筐体の前でゲージを見せ、遅いと「まだ？」と言う。戻ったあとにまとめて出さない）
-				var rr: Dictionary = await main.run_repair_scene(_cust, {"anger": _anger, "resolve": _resolve,
+				var rr: Dictionary = await main.run_repair_scene(_cust, {"anger": _anger, "resolve": _resolve, "fixed": _machine_fixed,
 					"rate": REPAIR_ANGER_RATE * (HARD_ANGER_MUL if hardcore else 1.0) * (0.0 if main.debug_flag("anger_stop") else 1.0)})
 				if my_run != _run:
 					return
@@ -1526,6 +1528,14 @@ func _play_customer(my_run: int) -> void:
 				res["customer_reply"] = Judge.line(_cust, "resolved")
 			else:
 				r_delta = maxi(r_delta, 60)
+		# 台を直したら（要件#110）: 覚えておき、もう一度見に行っても直ったまま。そのあと出なかった分を補填すれば、そこで納得して終わり
+		var lk: String = ShopActions.effect_kind(_cust, last_act) if last_act != "" else ""
+		if lk in ["fixed", "hit"]:
+			_machine_fixed = true
+		elif last_act in ["medal_return", "credit"] and _machine_fixed and ShopActions.problem_of(_cust) in ["jam", "empty", "lottery", "button"] and not bool(res.get("yielded", false)):
+			r_delta = maxi(r_delta, int(ceil(100.0 - _resolve)))
+			a_delta = mini(a_delta, 0)
+			res["customer_reply"] = Judge.line(_cust, "resolved")
 		# 話はほぼまとまっているのに、納得の数字だけが足りなくて終わらない（要件#106）:
 		# 納得 70 以上・怒り 40 以下で、また正しい対応をしたら、そこで納得したことにする
 		if r_delta > 0 and a_delta <= 0 and not bool(res.get("yielded", false)) and _resolve + float(r_delta) >= SETTLE_AT and _anger + float(a_delta) <= SETTLE_ANGER:

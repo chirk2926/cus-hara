@@ -101,6 +101,14 @@ func _build_medal_repair(problem: String) -> void:
 		_box(seg, Vector3(0.03, 0.03, 0.03), Vector3(0.08, 0.05, 0.05), _mat(Color(0.3, 0.3, 0.35), 0.0, 0.3, 0.9))   # ネジ
 		rail.append(seg)
 	parts["rail"] = rail
+	# まん中のレールを止めている4本のネジ（要件#110: ドライバーで1本ずつ外す）
+	var screws: Array = []
+	for si in range(4):
+		var sn: Node3D = _node(rail[1], Vector3(-0.09 + 0.18 * float(si % 2), 0.035, -0.045 + 0.09 * (1.0 if si >= 2 else 0.0)))
+		_cyl(sn, 0.012, 0.012, 0.012, Vector3.ZERO, _mat(Color(0.85, 0.85, 0.88), 0.0, 0.25, 0.95))
+		_box(sn, Vector3(0.018, 0.003, 0.004), Vector3(0.0, 0.007, 0.0), _mat(Color(0.2, 0.2, 0.22)))   # ネジの溝
+		screws.append(sn)
+	parts["rail_screws"] = screws
 	var jam: Node3D = _node(rail[1], Vector3(0.0, 0.04, 0.0))
 	parts["jam"] = jam
 	if problem == "jam":
@@ -296,6 +304,80 @@ func hit_rail(fixes: bool) -> void:
 		ham.visible = false
 	if fixes:
 		await _drop_jam()
+
+
+## ---- 払い出しレールの分解（要件#110）。ミニゲームの一手ごとに呼ぶ
+
+## ネジを1本外す（回りながら浮いて、消える）
+func unscrew(i: int) -> void:
+	var sc: Array = parts.get("rail_screws", [])
+	if i < 0 or i >= sc.size():
+		return
+	var n: Node3D = sc[i]
+	var t: Tween = create_tween().set_parallel(true)
+	t.tween_property(n, "rotation:y", n.rotation.y - TAU * 2.0, 0.5)
+	t.tween_property(n, "position:y", n.position.y + 0.05, 0.5)
+	t.chain().tween_callback(func() -> void: n.visible = false)
+
+
+## ネジを1本締める（現れて、回りながら沈む）
+func screw_in(i: int) -> void:
+	var sc: Array = parts.get("rail_screws", [])
+	if i < 0 or i >= sc.size():
+		return
+	var n: Node3D = sc[i]
+	n.visible = true
+	var t: Tween = create_tween().set_parallel(true)
+	t.tween_property(n, "rotation:y", n.rotation.y + TAU * 2.0, 0.5)
+	t.tween_property(n, "position:y", n.position.y - 0.05, 0.5)
+
+
+## まん中のレールを手前に引き出す／元に戻す
+func rail_out() -> void:
+	var rail: Array = parts.get("rail", [])
+	if rail.size() < 2:
+		return
+	var seg: Node3D = rail[1]
+	if not seg.has_meta("home"):
+		seg.set_meta("home", seg.position)
+	var t: Tween = _tw()
+	t.tween_property(seg, "position", (seg.get_meta("home") as Vector3) + Vector3(0.0, 0.03, 0.26), 0.8)
+
+
+func rail_in() -> void:
+	var rail: Array = parts.get("rail", [])
+	if rail.size() < 2:
+		return
+	var seg: Node3D = rail[1]
+	if seg.has_meta("home"):
+		var t: Tween = _tw()
+		t.tween_property(seg, "position", seg.get_meta("home") as Vector3, 0.8)
+
+
+## まだ詰まっているメダルの枚数
+func jam_count() -> int:
+	var jam: Node3D = parts.get("jam", null)
+	if jam == null or not jam.visible:
+		return 0
+	var n: int = 0
+	for c in jam.get_children():
+		if (c as Node3D).visible:
+			n += 1
+	return n
+
+
+## 詰まったメダルを1枚取る（上へ持ち上げて消える）
+func pick_jam() -> void:
+	var jam: Node3D = parts.get("jam", null)
+	if jam == null:
+		return
+	for c in jam.get_children():
+		var md: Node3D = c
+		if md.visible:
+			var t: Tween = create_tween().set_parallel(true)
+			t.tween_property(md, "position", md.position + Vector3(0.0, 0.12, 0.08), 0.3)
+			t.chain().tween_callback(func() -> void: md.visible = false)
+			return
 
 
 ## レールを分解して直す: 部品を外して並べ、戻す

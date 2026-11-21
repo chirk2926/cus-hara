@@ -153,6 +153,9 @@ func _repairs() -> void:
 	main.set("smoke", true)
 	var res: Dictionary = await main.call("run_repair_scene", jam)
 	check("medal scene: disassembled the rail", (res.get("actions", []) as Array).has("medal_rail") and float(res.get("seconds", 0.0)) > 10.0, str(res))
+	# 要件#110: 直した台にもう一度行っても直ったまま。そこでの対応は数えない
+	var res_fixed: Dictionary = await main.call("run_repair_scene", jam, {"fixed": true})
+	check("fixed machine stays fixed on a second visit", (res_fixed.get("actions", []) as Array).is_empty(), str(res_fixed))
 	var lie: Dictionary = ShopActions.apply_problem({"problem": "button", "title": "y"})
 	lie["problem"] = "button_lie"
 	lie = ShopActions.apply_problem(lie)
@@ -188,8 +191,9 @@ func _repairs() -> void:
 		sc.call("_minigame", "medal_rail")
 		await _wait(0.5)
 		await _snap("repair_medal_open")
+		sc.set("_cancel", true)
 		sc.emit_signal("_mini_done", true)
-		await _wait(0.2)
+		await _wait(0.4)
 		sc.queue_free()
 		var sc2 = load("res://scripts/repair_scene.gd").new()
 		main.get("_ui").add_child(sc2)

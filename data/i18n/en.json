@@ -819,5 +819,13 @@
 	"見つかった発言は（文字は）相手に見せず、あなたに警告します。3回で負けになり、自動で通報されます。": "Detected remarks are hidden from your opponent (as text) and you receive a warning. Three warnings mean you lose the match, and it is reported automatically.",
 	"コピー": "Copy",
 	"コピーしました": "Copied",
-	"運営より: ": "From the team: "
+	"運営より: ": "From the team: ",
+	"さっき直したところだ。今は問題なく動いている。": "You just fixed this. It's working fine now.",
+	"① ドライバーで、レールを止めているネジを4本外す": "① Use the screwdriver to remove the 4 screws holding the rail",
+	"ドライバーを回す（押したまま）": "Turn the screwdriver (hold)",
+	"② レールを手前に引き出す": "② Pull the rail out toward you",
+	"引き出す（押したまま）": "Pull (hold)",
+	"③ 斜めに重なって詰まったメダルを、1枚ずつ取る": "③ Pick out the jammed, stacked medals one by one",
+	"③ 詰まっているメダルは見当たらない": "③ No jammed medals to be found",
+	"④ レールを戻して、ネジを4本締める": "④ Put the rail back and tighten the 4 screws"
 }

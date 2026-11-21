@@ -37,6 +37,9 @@ var _busy: bool = false
 var _done_ids: Array = []
 var _seconds: float = 0.0
 var _dead_button: int = 2
+var _fixed: bool = false
+## やめるとき（テストで場面を閉じるときなど）。ミニゲームの待ちをすぐ終わらせる
+var _cancel: bool = false
 ## 右上のゲージ（要件#107）: 対応している間も、お客さんはカウンターで待っていて怒りが上がる。遅いと「まだ？」と言う
 var _anger: float = 0.0
 var _resolve: float = 0.0
@@ -57,6 +60,10 @@ func setup(m, customer: Dictionary, opts: Dictionary = {}) -> void:
 	_resolve = float(opts.get("resolve", 0.0))
 	_rate = float(opts.get("rate", 0.45))
 	_problem = ShopActions.problem_of(customer)
+	# もう直した台にもう一度来たとき（要件#110）: 詰まり・メダル切れ・抽選機は直ったまま。対応しても何も変わらない
+	_fixed = bool(opts.get("fixed", false))
+	if _fixed and _problem in ["jam", "empty", "lottery", "button"]:
+		_problem = ""
 	_kind = "medal" if str(customer.get("machine", "")) == "medal" else "video"
 	_dead_button = absi(str(customer.get("title", "")).hash()) % 4
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -142,6 +149,8 @@ func _first_look() -> String:
 
 
 func _inside_look() -> String:
+	if _fixed:
+		return tr("さっき直したところだ。今は問題なく動いている。")
 	match _problem:
 		"jam":
 			return tr("払い出しのレールの途中で、メダルが斜めに重なって詰まっている。")
@@ -300,7 +309,10 @@ func _do(id: String) -> void:
 			await _stage.call("hit_rail", _problem == "jam")
 			_status.text = tr("ガンッ！……詰まりが取れて、メダルが出てきた。（規定では、叩いて直すのは推奨されていない）") if _problem == "jam" else tr("叩いてみたが、何も変わらない。")
 		"medal_rail":
-			await _stage.call("disassemble_rail", _problem == "jam")
+			if main != null and bool(main.get("smoke")):
+				await _stage.call("disassemble_rail", _problem == "jam")
+			elif _problem == "jam":
+				await _stage.call("payout")   # ミニゲームの中で、外して・取って・戻した
 			_status.text = tr("レールを外して、詰まったメダルを取り除いた。元に戻すと、メダルが出てきた。") if _problem == "jam" else tr("レールを分解してみたが、詰まりはなかった。")
 		"medal_refill":
 			await _stage.call("refill", _problem == "empty")
@@ -319,8 +331,10 @@ func _do(id: String) -> void:
 		await get_tree().create_timer(0.6).timeout
 		await _focus("")
 	_seconds += float(WORK_SECONDS.get(id, 4.0))
-	if not _done_ids.has(id):
+	# 直したあとの台でした対応は、お客さんへの対応には数えない（要件#110）
+	if not _done_ids.has(id) and not (_fixed and id != "cab_open"):
 		_done_ids.append(id)
+	good = good and not _fixed
 	if good and main != null and main.get("sfx") != null:
 		main.sfx.play("win", 1.4)
 	_busy = false
@@ -335,6 +349,9 @@ func _auto() -> void:
 	var acts: Dictionary = ShopActions.problem_actions(_customer)
 	if not _opened and _kind == "medal":
 		_do("cab_open")
+		return
+	if _fixed:
+		_finish()   # もう直っている台は、開けて見たら戻る
 		return
 	for id in ["medal_rail", "medal_refill", "medal_repair", "video_check", "video_connector"]:
 		if str(acts.get(id, "")) in ["good", "fixed"] and not _done_ids.has(id):
@@ -358,11 +375,7 @@ func _minigame(id: String) -> void:
 		"medal_hit":
 			await _mini_tap(tr("レールを3回叩く！"), 3, true)
 		"medal_rail":
-			# 要件#107: もっと難しく、最低 15 秒くらい。ネジを回して外す → 詰まりを取る → 組み直す
-			var t0: float = _elapsed
-			await _mini_order(tr("ネジを1→6の順に外す（押したまま回す）"), 6, 0.7)
-			await _mini_pick(tr("詰まったメダルを取り除く"), 5)
-			await _mini_hold(tr("レールを組み直して、ネジを締める（押したまま）"), maxf(2.5, 15.0 - (_elapsed - t0)))
+			await _mini_rail()
 		"medal_refill":
 			await _mini_hold(tr("ボタンを押したままにして、メダルを流し込む"), 1.6)
 		"medal_repair":
@@ -381,7 +394,7 @@ func _minigame(id: String) -> void:
 
 
 ## 何回か押す（strike: 押すたびにハンマーでレールを叩く）
-func _mini_tap(title: String, n: int, strike: bool = false) -> void:
+func _mini_tap(title: String, n: int, strike: bool = false, on_tap: Callable = Callable()) -> void:
 	_mini.add_child(UI.text(title, UI.S_SMALL, UI.SHU, UI.F_BOLD))
 	var left: Array = [n]
 	var b: Button = UI.tag(tr("あと %d 回") % n, UI.S_LEAD)
@@ -392,6 +405,8 @@ func _mini_tap(title: String, n: int, strike: bool = false) -> void:
 		b.text = tr("あと %d 回") % left[0]
 		if strike:
 			_stage.call("strike_rail")
+		if on_tap.is_valid():
+			on_tap.call()
 		if left[0] <= 0:
 			_mini_done.emit(true))
 	_mini.add_child(b)
@@ -432,7 +447,7 @@ func _mini_order(title: String, n: int, hold: float = 0.0) -> void:
 
 
 ## 押したままにしてゲージをためる
-func _mini_hold(title: String, need: float) -> void:
+func _mini_hold(title: String, need: float, steps: int = 0, on_step: Callable = Callable(), label: String = "") -> void:
 	_mini.add_child(UI.text(title, UI.S_SMALL, UI.SHU, UI.F_BOLD))
 	var bar: ProgressBar = ProgressBar.new()
 	bar.show_percentage = false
@@ -440,16 +455,61 @@ func _mini_hold(title: String, need: float) -> void:
 	bar.add_theme_stylebox_override("background", UI.flat_style(UI.PAPER_DIM, 0, 0))
 	bar.add_theme_stylebox_override("fill", UI.flat_style(UI.OK, 0, 0))
 	_mini.add_child(bar)
-	var b: Button = UI.tag(tr("押したまま"), UI.S_LEAD)
+	var b: Button = UI.tag(label if label != "" else tr("押したまま"), UI.S_LEAD)
 	_mini.add_child(b)
 	var held: Array = [0.0]
+	var done_steps: int = 0
 	while held[0] < need:
 		await get_tree().process_frame
-		if not is_inside_tree():
+		if _cancel or not is_inside_tree():
 			return
 		if b.button_pressed or Input.is_action_pressed("ui_accept"):
 			held[0] += get_process_delta_time()
 			bar.value = 100.0 * held[0] / need
+			# 押している間に、ネジが1本ずつ回るなど（steps 回に分けて on_step を呼ぶ）
+			while steps > 0 and done_steps < steps and held[0] >= need * float(done_steps + 1) / float(steps):
+				if on_step.is_valid():
+					on_step.call(done_steps)
+				done_steps += 1
+
+
+## 払い出しレールの分解（要件#110: 操作はかんたんに、動きは本物らしく。全部で 15 秒くらい）
+## ドライバーでネジを4本外す → レールを手前に引き出す → 詰まったメダルを1枚ずつ取る → レールを戻してネジを締める
+func _mini_rail() -> void:
+	var t0: float = _elapsed
+	await _mini_hold(tr("① ドライバーで、レールを止めているネジを4本外す"), 4.0, 4, func(i: int) -> void:
+		_stage.call("unscrew", i)
+		_click(1.3), tr("ドライバーを回す（押したまま）"))
+	if _cancel:
+		return
+	_clear_mini()
+	await _mini_hold(tr("② レールを手前に引き出す"), 1.5, 1, func(_i: int) -> void: _stage.call("rail_out"), tr("引き出す（押したまま）"))
+	if _cancel:
+		return
+	_clear_mini()
+	var jams: int = int(_stage.call("jam_count"))
+	if jams > 0:
+		await _mini_tap(tr("③ 斜めに重なって詰まったメダルを、1枚ずつ取る"), jams, false, func() -> void: _stage.call("pick_jam"))
+	else:
+		_mini.add_child(UI.text(tr("③ 詰まっているメダルは見当たらない"), UI.S_SMALL, UI.INK_SOFT, UI.F_BOLD))
+		await get_tree().create_timer(1.0).timeout
+	if _cancel:
+		return
+	_clear_mini()
+	_stage.call("rail_in")
+	await _mini_hold(tr("④ レールを戻して、ネジを4本締める"), maxf(4.0, 15.0 - (_elapsed - t0)), 4, func(i: int) -> void:
+		_stage.call("screw_in", i)
+		_click(1.1), tr("ドライバーを回す（押したまま）"))
+
+
+func _clear_mini() -> void:
+	for c in _mini.get_children():
+		c.queue_free()
+
+
+func _click(pitch: float) -> void:
+	if main != null and main.get("sfx") != null:
+		main.sfx.play("click", pitch)
 
 
 ## 詰まったメダルを1枚ずつ取る（あちこちに出るボタン）
