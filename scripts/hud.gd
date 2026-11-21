@@ -557,10 +557,14 @@ func show_banner(t: String, color: Color) -> void:
 	_banner_tween.tween_property(_banner, "modulate", Color(1, 1, 1, 0), 0.4)
 
 
-## フキダシに1文字ずつ出す。出し終わるまで await できる。angry でギザギザ
-func say(speaker: String, t: String, angry: bool = false) -> void:
+## フキダシに1文字ずつ出す。出し終わるまで await できる。angry でギザギザ。skin はショップの吹き出し（要件#107。{} ならふつう）
+func say(speaker: String, t: String, angry: bool = false, skin: Dictionary = {}) -> void:
 	_bubble.visible = true
 	_bubble.jagged = angry
+	_bubble.skin = skin
+	_bubble_text.add_theme_color_override("default_color", Color(str(skin["text"])) if skin.has("text") else UI.INK)
+	var face: String = {"dot": UI.F_DOT, "hand": UI.F_HAND, "sign": UI.F_SIGN}.get(str(skin.get("font", "")), UI.F_BOLD)
+	_bubble_text.add_theme_font_override("normal_font", UI.font(face))
 	_bubble_name.text = speaker
 	_bubble_text.text = t
 	_bubble_text.visible_ratio = 0.0

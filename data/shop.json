@@ -48,6 +48,16 @@
 			}
 		},
 		{
+			"id": "bubble",
+			"group": "tag",
+			"name": {
+				"ja": "吹き出し",
+				"en": "Speech bubble",
+				"zh": "对话框",
+				"ko": "말풍선"
+			}
+		},
+		{
 			"id": "hair",
 			"group": "chara",
 			"name": {
@@ -648,6 +658,128 @@
 				"en": "\"Ultimate\" stamp",
 				"zh": "“極”印章",
 				"ko": "「極」(극) 도장"
+			}
+		},
+		{
+			"id": "b_plain",
+			"cat": "bubble",
+			"default": true,
+			"hp": 0,
+			"kas": 0,
+			"value": {},
+			"name": {
+				"ja": "ふつう",
+				"en": "Default",
+				"zh": "默认",
+				"ko": "기본"
+			}
+		},
+		{
+			"id": "b_pop",
+			"cat": "bubble",
+			"hp": 400,
+			"kas": 200,
+			"value": {
+				"fill": "#ffd23f",
+				"ink": "#24212b",
+				"shape": "round"
+			},
+			"name": {
+				"ja": "ポップ（黄色）",
+				"en": "Pop (yellow)",
+				"zh": "波普（黄色）",
+				"ko": "팝 (노랑)"
+			}
+		},
+		{
+			"id": "b_cloud",
+			"cat": "bubble",
+			"hp": 500,
+			"kas": 250,
+			"value": {
+				"fill": "#ffffff",
+				"ink": "#6b6574",
+				"shape": "cloud"
+			},
+			"name": {
+				"ja": "もこもこ雲",
+				"en": "Fluffy cloud",
+				"zh": "蓬松云朵",
+				"ko": "몽실몽실 구름"
+			}
+		},
+		{
+			"id": "b_receipt",
+			"cat": "bubble",
+			"hp": 500,
+			"kas": 250,
+			"value": {
+				"fill": "#fbf8f1",
+				"ink": "#24212b",
+				"shape": "square",
+				"font": "dot"
+			},
+			"name": {
+				"ja": "レシート",
+				"en": "Receipt",
+				"zh": "小票",
+				"ko": "영수증"
+			}
+		},
+		{
+			"id": "b_brush",
+			"cat": "bubble",
+			"hp": 600,
+			"kas": 300,
+			"value": {
+				"fill": "#f3eee3",
+				"ink": "#24212b",
+				"shape": "square",
+				"font": "hand",
+				"width": 4
+			},
+			"name": {
+				"ja": "手書きメモ",
+				"en": "Handwritten memo",
+				"zh": "手写便条",
+				"ko": "손글씨 메모"
+			}
+		},
+		{
+			"id": "b_neon",
+			"cat": "bubble",
+			"hp": 800,
+			"kas": 400,
+			"value": {
+				"fill": "#1b1030",
+				"ink": "#ff4fd8",
+				"text": "#ffe3fa",
+				"shape": "round",
+				"width": 4
+			},
+			"name": {
+				"ja": "ネオン",
+				"en": "Neon",
+				"zh": "霓虹",
+				"ko": "네온"
+			}
+		},
+		{
+			"id": "b_gold",
+			"cat": "bubble",
+			"hp": 0,
+			"kas": 900,
+			"value": {
+				"fill": "#fff3c0",
+				"ink": "#b8860b",
+				"shape": "round",
+				"width": 5
+			},
+			"name": {
+				"ja": "金ぶち（CUS限定）",
+				"en": "Gold rim (CUS only)",
+				"zh": "金边（仅限CUS）",
+				"ko": "금테 (CUS 한정)"
 			}
 		},
 		{

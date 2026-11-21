@@ -809,5 +809,12 @@
 	"顔が見えた。身分証の写真と見比べよう。": "Now you can see their face. Compare it with the ID photo.",
 	"これで頑張ってもらう": "Let them keep trying",
 	"先に景品を動かしてください": "Move a prize first",
-	"（帽子・マスクは外してもらうと、本人か確実に分かる）": "(Asking them to remove a cap or mask makes it certain the ID is theirs.)"
+	"（帽子・マスクは外してもらうと、本人か確実に分かる）": "(Asking them to remove a cap or mask makes it certain the ID is theirs.)",
+	"お客さん（カウンターから）: ": "Customer (from the counter): ",
+	"ネジを1→6の順に外す（押したまま回す）": "Remove screws 1 → 6 in order (hold to turn)",
+	"詰まったメダルを取り除く": "Pick out the jammed medals",
+	"レールを組み直して、ネジを締める（押したまま）": "Reassemble the rail and tighten the screws (hold)",
+	"抽選機の部品を合わせる：緑のところで止める（%d/3）": "Align the lottery parts: stop in the green (%d/3)",
+	"⊕ %d（もっと長く）": "⊕ %d (hold longer)",
+	"枠・名前の色・スタンプ・吹き出し": "Frame, name color, stamp, speech bubble"
 }

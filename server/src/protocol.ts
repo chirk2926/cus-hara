@@ -22,10 +22,10 @@ export function publicPlayer(p: Player, rating?: number) {
   return { id: p.id, name: p.name, rating: r, rank: rankName(r), wins: p.wins, losses: p.losses, draws: p.draws, title: p.title ?? "", tag: tagObject(p.tag ?? ""), avatar: avatarObject(p.avatar ?? "") };
 }
 
-/** 名札の飾り（要件#82）を {frame, color, stamp} にして渡す */
-export function tagObject(tag: string): { frame: string; color: string; stamp: string } {
-  const [frame = "", color = "", stamp = ""] = tag.split(":");
-  return { frame, color, stamp };
+/** 名札の飾り（要件#82）と吹き出し（要件#107）を {frame, color, stamp, bubble} にして渡す */
+export function tagObject(tag: string): { frame: string; color: string; stamp: string; bubble: string } {
+  const [frame = "", color = "", stamp = "", bubble = ""] = tag.split(":");
+  return { frame, color, stamp, bubble };
 }
 
 /** 対戦のキャラクター（要件#84）。まだ作っていなければ null */

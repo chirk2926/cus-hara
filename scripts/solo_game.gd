@@ -1354,12 +1354,16 @@ func _play_customer(my_run: int) -> void:
 			if id == "repair_visit":
 				hud.show_echo(tr("あなた: "), tr("（行動: %s）") % ShopActions.label(id))
 				hud.set_status(tr("筐体の前へ行きます…"))
-				var rr: Dictionary = await main.run_repair_scene(_cust)
+				# 対応している間も怒りは上がる（要件#107: 筐体の前でゲージを見せ、遅いと「まだ？」と言う。戻ったあとにまとめて出さない）
+				var rr: Dictionary = await main.run_repair_scene(_cust, {"anger": _anger, "resolve": _resolve,
+					"rate": REPAIR_ANGER_RATE * (HARD_ANGER_MUL if hardcore else 1.0) * (0.0 if main.debug_flag("anger_stop") else 1.0)})
 				if my_run != _run:
 					return
 				_repaired = true
-				var secs: float = float(rr.get("seconds", 0.0))
-				_anger = clampf(_anger + secs * REPAIR_ANGER_RATE * (HARD_ANGER_MUL if hardcore else 1.0), 0.0, 99.0)
+				_anger = clampf(float(rr.get("anger", _anger)), 0.0, 99.0)
+				for nag in (rr.get("nags", []) as Array):
+					log_lines.append({"role": "customer", "text": str(nag)})
+					_history.append({"role": "customer", "text": str(nag)})
 				_refresh(false)
 				_queued = (rr.get("actions", []) as Array).duplicate()
 				var did: String = ", ".join(PackedStringArray(_queued.map(func(a: String) -> String: return ShopActions.label(a))))

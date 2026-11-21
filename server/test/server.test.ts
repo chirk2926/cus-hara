@@ -339,11 +339,14 @@ test("称号（要件#79）: つけた称号は名前を変えずに保存され
 test("名札の飾り（要件#82）: 枠・名前の色・スタンプを保存して返し、形の違う値は空にする", async () => {
   const g = await api(srv.base, "POST", "/api/v1/guest", { name: "飾りの人" });
   const set = await api(srv.base, "POST", "/api/v1/me", { tag: { frame: "neon", color: "gold", stamp: "kami" } }, g.body.token);
-  assert.deepEqual(set.body.player.tag, { frame: "neon", color: "gold", stamp: "kami" });
+  assert.deepEqual(set.body.player.tag, { frame: "neon", color: "gold", stamp: "kami", bubble: "" });
   const me = await api(srv.base, "GET", "/api/v1/me", undefined, g.body.token);
   assert.equal(me.body.player.tag.frame, "neon");
+  // 吹き出し（要件#107）も名札の飾りと一緒に保存される
+  const withBubble = await api(srv.base, "POST", "/api/v1/me", { tag: { frame: "neon", color: "gold", stamp: "kami", bubble: "b_neon" } }, g.body.token);
+  assert.equal(withBubble.body.player.tag.bubble, "b_neon");
   const bad = await api(srv.base, "POST", "/api/v1/me", { tag: { frame: "<b>", color: "x".repeat(40) } }, g.body.token);
-  assert.deepEqual(bad.body.player.tag, { frame: "", color: "", stamp: "" });
+  assert.deepEqual(bad.body.player.tag, { frame: "", color: "", stamp: "", bubble: "" });
 });
 
 test("対戦のキャラクター（要件#84）: 決まった項目だけ保存し、身長は範囲に収め、おかしな値は捨てる", async () => {

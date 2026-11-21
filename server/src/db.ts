@@ -382,12 +382,12 @@ export function setPlayerTitle(id: string, title: string): void {
   openDb().prepare("UPDATE players SET title = ? WHERE id = ?").run(title, id);
 }
 
-/** 名札の飾り: {frame, color, stamp}（それぞれ英小文字・数字・_ の16文字まで）を "frame:color:stamp" にする。形の違う値は "" */
+/** 名札の飾り: {frame, color, stamp, bubble}（それぞれ英小文字・数字・_ の16文字まで）を "frame:color:stamp:bubble" にする。形の違う値は ""（吹き出しは要件#107） */
 export function cleanTag(raw: unknown): string {
   if (typeof raw !== "object" || raw === null) return "";
   const r = raw as Record<string, unknown>;
   const part = (v: unknown): string => (typeof v === "string" && /^[a-z0-9_]{1,16}$/.test(v) ? v : "");
-  const parts = [part(r.frame), part(r.color), part(r.stamp)];
+  const parts = [part(r.frame), part(r.color), part(r.stamp), part(r.bubble)];
   return parts.every((x) => x === "") ? "" : parts.join(":");
 }
 

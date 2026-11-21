@@ -475,7 +475,12 @@ func _on_line(msg: Dictionary) -> void:
 	var mark: String = tr("（声）") if str(msg.get("via", "")) == "voice" else ""
 	if role == "customer":
 		var speaker: String = "%s（%s）%s" % [str(_card.get("title", tr("お客さん"))), _who(by), mark]
-		main.customer_say(speaker, text, _anger >= 70.0)
+		# お客さん役のプレイヤーの吹き出し（ショップで買ったもの。要件#107）
+		var bub: String = str(Shop.tag_dict().get("bubble", ""))
+		if by != "you":
+			var op_tag: Variant = (_match.get("opponent", {}) as Dictionary).get("tag", null)
+			bub = str((op_tag as Dictionary).get("bubble", "")) if typeof(op_tag) == TYPE_DICTIONARY else ""
+		main.customer_say(speaker, text, _anger >= 70.0, Shop.bubble_skin(bub))
 	else:
 		hud.show_echo(tr("店員（%s）: ") % _who(by), text)
 		main.staff_talk(clampf(float(text.length()) * 0.08, 0.8, 3.0))

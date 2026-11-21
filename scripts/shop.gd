@@ -80,6 +80,12 @@ static func equipped(cat: String) -> String:
 	return id if owns(cat, id) else default_id(cat)
 
 
+## 吹き出しの見た目（要件#107）。id は shop.json の bubble の品物。無い・ふつうなら {}
+static func bubble_skin(id: String) -> Dictionary:
+	var v: Variant = item("bubble", id).get("value", {})
+	return (v as Dictionary).duplicate() if typeof(v) == TYPE_DICTIONARY else {}
+
+
 static func equipped_item(cat: String) -> Dictionary:
 	return item(cat, equipped(cat))
 
@@ -115,7 +121,7 @@ static func equip(cat: String, id: String) -> void:
 
 ## サーバーに送る名札の飾り
 static func tag_dict() -> Dictionary:
-	return {"frame": equipped("frame"), "color": equipped("color"), "stamp": equipped("stamp")}
+	return {"frame": equipped("frame"), "color": equipped("color"), "stamp": equipped("stamp"), "bubble": equipped("bubble")}
 
 
 ## タイトルの背景（店と時間帯）

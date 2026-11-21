@@ -377,8 +377,8 @@ func set_stink(on: bool) -> void:
 	_stink = p
 
 
-func customer_say(speaker: String, text: String, angry: bool = false) -> void:
-	await _hud.say(speaker, text, angry)
+func customer_say(speaker: String, text: String, angry: bool = false, skin: Dictionary = {}) -> void:
+	await _hud.say(speaker, text, angry, skin)
 
 
 func customer_react(kind: String) -> void:
@@ -474,12 +474,12 @@ func run_crane_minigame(opts: Dictionary = {}) -> Dictionary:
 var _repair: Control = null
 
 
-func run_repair_scene(cust: Dictionary) -> Dictionary:
+func run_repair_scene(cust: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	close_machine_data()
 	var sc: Control = RepairSceneScript.new()
 	_repair = sc
 	_ui.add_child(sc)
-	sc.call("setup", self, cust)
+	sc.call("setup", self, cust, opts)
 	_hud.visible = false
 	var res: Dictionary = await sc.call("run")
 	if is_instance_valid(sc):
@@ -2063,7 +2063,7 @@ func _show_shop() -> void:
 	var nav: VBoxContainer = UI.vbox(8)
 	nav.custom_minimum_size = Vector2(210, 0)
 	body.add_child(nav)
-	for tb in [["gacha", "背景ガチャ", "タイトルの背景が出る"], ["tag", "名札", "枠・名前の色・スタンプ"], ["chara", "キャラクター", "対戦で見える自分の姿"], ["exchange", "両替機", "CUS を HP に替える"]]:
+	for tb in [["gacha", "背景ガチャ", "タイトルの背景が出る"], ["tag", "名札", "枠・名前の色・スタンプ・吹き出し"], ["chara", "キャラクター", "対戦で見える自分の姿"], ["exchange", "両替機", "CUS を HP に替える"]]:
 		var tid: String = str(tb[0])
 		var on: bool = tid == _shop_tab
 		var btn: Button = Button.new()
@@ -2206,6 +2206,15 @@ func _shop_item(it: Dictionary) -> Control:
 			var tg: Dictionary = Shop.tag_dict()
 			tg[cat] = id
 			c.add_child(Shop.name_tag(pname, "", tg, UI.S_BODY))
+		"bubble":
+			# 吹き出し（要件#107）: 対戦でお客さん役のときのセリフに使われる
+			var bub = Paper.Bubble.new()
+			bub.skin = Shop.bubble_skin(id)
+			var sk: Dictionary = bub.skin
+			var face: String = {"dot": UI.F_DOT, "hand": UI.F_HAND, "sign": UI.F_SIGN}.get(str(sk.get("font", "")), UI.F_BOLD)
+			var sample: Label = UI.text(tr("責任者を出せ！"), UI.S_BODY, Color(str(sk["text"])) if sk.has("text") else UI.INK, face)
+			bub.add_child(sample)
+			c.add_child(bub)
 		"hair_color", "casual", "uniform":
 			var sw: ColorRect = ColorRect.new()
 			sw.color = Color(str(it.get("value", "#888888")))

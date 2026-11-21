@@ -19,6 +19,11 @@ class Bubble extends Container:
 		set(v):
 			tail_x = v
 			queue_redraw()
+	## ショップの吹き出し（要件#107）: {fill, ink, shape: round|square|cloud, width}。{} ならふつう
+	var skin: Dictionary = {}:
+		set(v):
+			skin = v
+			queue_redraw()
 
 	func _get_minimum_size() -> Vector2:
 		var m: Vector2 = Vector2.ZERO
@@ -35,10 +40,37 @@ class Bubble extends Container:
 
 	func _draw() -> void:
 		var body: Rect2 = Rect2(Vector2(0, TAIL), size - Vector2(0, TAIL))
-		var ink: Color = UI.INK
-		var fill: Color = UI.PAPER.lightened(0.6)
+		var ink: Color = Color(str(skin.get("ink", ""))) if skin.has("ink") else UI.INK
+		var fill: Color = Color(str(skin.get("fill", ""))) if skin.has("fill") else UI.PAPER.lightened(0.6)
+		var lw: float = float(skin.get("width", 3.0))
+		var shape: String = str(skin.get("shape", "round"))
 		var tx: float = clampf(size.x * tail_x, 40.0, size.x - 40.0)
-		if jagged:
+		if shape == "cloud" and not jagged:
+			# もこもこ: ふちに丸を並べてから、中を塗る
+			var step: float = 34.0
+			var r0: float = 20.0
+			var x: float = body.position.x + r0
+			while x <= body.end.x - r0 + 0.1:
+				draw_circle(Vector2(x, body.position.y + r0 * 0.6), r0 + lw, ink)
+				draw_circle(Vector2(x, body.end.y - r0 * 0.6), r0 + lw, ink)
+				x += step
+			var y: float = body.position.y + r0
+			while y <= body.end.y - r0 + 0.1:
+				draw_circle(Vector2(body.position.x + r0 * 0.6, y), r0 + lw, ink)
+				draw_circle(Vector2(body.end.x - r0 * 0.6, y), r0 + lw, ink)
+				y += step
+			x = body.position.x + r0
+			while x <= body.end.x - r0 + 0.1:
+				draw_circle(Vector2(x, body.position.y + r0 * 0.6), r0, fill)
+				draw_circle(Vector2(x, body.end.y - r0 * 0.6), r0, fill)
+				x += step
+			y = body.position.y + r0
+			while y <= body.end.y - r0 + 0.1:
+				draw_circle(Vector2(body.position.x + r0 * 0.6, y), r0, fill)
+				draw_circle(Vector2(body.end.x - r0 * 0.6, y), r0, fill)
+				y += step
+			draw_rect(body.grow(-r0 * 0.6), fill)
+		elif jagged:
 			var pts: PackedVector2Array = _burst(body)
 			draw_colored_polygon(pts, fill)
 			pts.append(pts[0])
@@ -46,9 +78,9 @@ class Bubble extends Container:
 		else:
 			var s: StyleBoxFlat = StyleBoxFlat.new()
 			s.bg_color = fill
-			s.set_corner_radius_all(int(minf(body.size.y * 0.5, 40.0)))
+			s.set_corner_radius_all(4 if shape == "square" else int(minf(body.size.y * 0.5, 40.0)))
 			s.corner_detail = 12
-			s.set_border_width_all(3)
+			s.set_border_width_all(int(lw))
 			s.border_color = ink
 			s.anti_aliasing = true
 			draw_style_box(s, body)
@@ -57,8 +89,8 @@ class Bubble extends Container:
 		var b: Vector2 = Vector2(tx + 10.0, TAIL + 4.0)
 		var tip: Vector2 = Vector2(tx + 6.0, 0.0)
 		draw_colored_polygon(PackedVector2Array([a, tip, b]), fill)
-		draw_line(a, tip, ink, 3.0, true)
-		draw_line(tip, b, ink, 3.0, true)
+		draw_line(a, tip, ink, lw, true)
+		draw_line(tip, b, ink, lw, true)
 
 	## 四角の周りをたどり、外向きのトゲを交互に出した多角形
 	func _burst(r: Rect2) -> PackedVector2Array:
@@ -219,13 +251,19 @@ class IdPhoto extends Control:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		custom_minimum_size = Vector2(84, 104)
+		# 横の文が長いと縦に伸ばされ、顔と首がずれていた（要件#107）。伸ばさない
+		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 
 	func _col(key: String, fallback: Color) -> Color:
 		return Color.from_string(str(look.get(key, "")), fallback)
 
 	func _draw() -> void:
-		var w: float = size.x
-		var h: float = size.y
+		# 写真は 84:104 の比のまま、枠の中に収めて描く（どんな大きさにされても顔の位置がずれない）
+		var k: float = minf(size.x / 84.0, size.y / 104.0)
+		var w: float = 84.0 * k
+		var h: float = 104.0 * k
+		draw_set_transform(Vector2((size.x - w) * 0.5, 0.0))
 		draw_rect(Rect2(0, 0, w, h), Color("#cfe3f0"))
 		var skin: Color = _col("skin_color", Color("#f1c9a5"))
 		var hair: Color = _col("hair_color", Color("#333333"))
