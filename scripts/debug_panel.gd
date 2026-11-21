@@ -256,18 +256,9 @@ func _wipe() -> void:
 	if GameSettings._path().find("test") < 0:
 		_note("テスト用のセーブではないので消しません")
 		return
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(GameSettings._path()))
-	GameSettings.stats = {}
-	GameSettings.unlocked_titles = []
-	GameSettings.equipped_title = ""
-	GameSettings.owned_items = []
-	GameSettings.equipped_items = {}
-	GameSettings.avatar = {}
-	GameSettings.hp_points = 0
-	GameSettings.kas_points = 0
-	GameSettings.mental_xp = 0
-	GameSettings.tutorial_seen = false
-	GameSettings.token = ""
-	GameSettings.last_profile = {}
+	# ゲームの「退職」と同じ消し方にする（高得点・レビュー・名前・同意なども。バグチェック B-12）。接続も切る
+	if main != null and main.get("api") != null:
+		main.api.close_socket()
+	GameSettings.wipe_all()
 	_saved()
 	_note("テスト用のセーブを消しました")

@@ -90,6 +90,9 @@ var _nod_tween: Tween = null
 func setup(look: Dictionary) -> void:
 	_kill_tween(_react_tween)
 	_kill_tween(_nod_tween)
+	# 歩いている途中で作り直したとき、前の移動が動き続けないように（バグチェック B-11）
+	_kill_tween(_walk_tween)
+	_walking = false
 	_built = false
 	for child in get_children():
 		remove_child(child)

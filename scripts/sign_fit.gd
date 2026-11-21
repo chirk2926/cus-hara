@@ -30,11 +30,13 @@ static func _fit(l: Label3D, boxes: Array) -> void:
 		var mi: MeshInstance3D = b
 		if not mi.is_inside_tree():
 			continue
-		var size: Vector3 = (mi.mesh as BoxMesh).size
+		# 共通の 1×1×1 の箱を scale で大きさを決めているものもあるので、実際の大きさで見る（バグチェック B-03）
+		var sc: Vector3 = mi.global_transform.basis.get_scale().abs()
+		var size: Vector3 = (mi.mesh as BoxMesh).size * sc
 		# 薄い板だけ（看板・ポスター）。文字はその板の表のすぐ前にある
 		if size.z > 0.12 or size.x < 0.15 or size.y < 0.1:
 			continue
-		var local: Vector3 = mi.global_transform.affine_inverse() * p
+		var local: Vector3 = (mi.global_transform.affine_inverse() * p) * sc
 		if absf(local.x) <= size.x * 0.5 + 0.02 and absf(local.y) <= size.y * 0.5 + 0.02 and absf(local.z) <= size.z * 0.5 + 0.08:
 			var area: float = size.x * size.y
 			if area < best_area:
@@ -44,9 +46,10 @@ static func _fit(l: Label3D, boxes: Array) -> void:
 		return
 	var font: Font = l.font if l.font != null else ThemeDB.fallback_font
 	var sz: Vector2 = font.get_multiline_string_size(l.text, HORIZONTAL_ALIGNMENT_CENTER, -1, l.font_size)
-	var w: float = sz.x * l.pixel_size + float(l.outline_size) * l.pixel_size * 2.0
-	var h: float = sz.y * l.pixel_size
-	var bsize: Vector3 = (best.mesh as BoxMesh).size
+	var lsc: Vector3 = l.global_transform.basis.get_scale().abs()
+	var w: float = (sz.x * l.pixel_size + float(l.outline_size) * l.pixel_size * 2.0) * lsc.x
+	var h: float = sz.y * l.pixel_size * lsc.y
+	var bsize: Vector3 = (best.mesh as BoxMesh).size * best.global_transform.basis.get_scale().abs()
 	var k: float = minf(bsize.x * 0.92 / maxf(w, 0.001), bsize.y * 0.92 / maxf(h, 0.001))
 	if k < 1.0:
 		l.pixel_size *= k

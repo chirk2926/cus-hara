@@ -269,16 +269,21 @@ func strike_rail() -> void:
 	if ham == null or rail.is_empty():
 		return
 	var seg: Node3D = rail[1]
+	# 揺れの途中で次を叩いても位置がずれていかないように、最初の位置を覚えて使う（バグチェック B-04）
+	if not seg.has_meta("home"):
+		seg.set_meta("home", seg.position)
+	var base: Vector3 = seg.get_meta("home")
 	ham.visible = true
-	var top: Vector3 = seg.position + Vector3(0.12, 0.25, 0.25)
-	var hit: Vector3 = seg.position + Vector3(0.02, 0.06, 0.12)
+	var top: Vector3 = base + Vector3(0.12, 0.25, 0.25)
+	var hit: Vector3 = base + Vector3(0.02, 0.06, 0.12)
 	ham.position = top
 	ham.rotation = Vector3(0.0, 0.0, -0.9)
 	var t: Tween = create_tween()
 	t.tween_property(ham, "position", hit, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	t.parallel().tween_property(ham, "rotation:z", 0.2, 0.09)
 	await t.finished
-	var base: Vector3 = seg.position
+	if not is_inside_tree():
+		return
 	var t2: Tween = create_tween()
 	t2.tween_property(seg, "position", base + Vector3(0.0, -0.018, 0.0), 0.04)
 	t2.tween_property(seg, "position", base, 0.07)
@@ -361,7 +366,7 @@ func jam_count() -> int:
 		return 0
 	var n: int = 0
 	for c in jam.get_children():
-		if (c as Node3D).visible:
+		if (c as Node3D).visible and not c.has_meta("picked"):
 			n += 1
 	return n
 
@@ -373,7 +378,9 @@ func pick_jam() -> void:
 		return
 	for c in jam.get_children():
 		var md: Node3D = c
-		if md.visible:
+		# 取りはじめたメダルは、消える前でも次は選ばない（連打で同じメダルを取り直していた。バグチェック B-04）
+		if md.visible and not md.has_meta("picked"):
+			md.set_meta("picked", true)
 			var t: Tween = create_tween().set_parallel(true)
 			t.tween_property(md, "position", md.position + Vector3(0.0, 0.12, 0.08), 0.3)
 			t.chain().tween_callback(func() -> void: md.visible = false)
@@ -390,6 +397,8 @@ func disassemble_rail(fixes: bool) -> void:
 	for i in rail.size():
 		t.tween_property(rail[i], "position", (bases[i] as Vector3) + Vector3(0.0, 0.0, 0.28 + 0.06 * float(i)), 0.6)
 	await t.finished
+	if not is_inside_tree():   # 途中でやめて場面が消えた（バグチェック B-08）
+		return
 	if fixes:
 		await _drop_jam()
 	var t2: Tween = _tw().set_parallel(true)
@@ -405,6 +414,8 @@ func _drop_jam() -> void:
 	var t: Tween = _tw()
 	t.tween_property(jam, "position:y", -0.5, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await t.finished
+	if not is_inside_tree():   # 途中でやめて場面が消えた（バグチェック B-08）
+		return
 	jam.visible = false
 	await payout()
 
@@ -441,6 +452,8 @@ func repair_lottery(fixes: bool) -> void:
 	t.tween_property(lot, "position:y", lot.position.y + 0.02, 0.1)
 	t.tween_property(lot, "position:y", lot.position.y, 0.1)
 	await t.finished
+	if not is_inside_tree():   # 途中でやめて場面が消えた（バグチェック B-08）
+		return
 	if fixes:
 		var lamp: MeshInstance3D = parts.get("lot_lamp", null)
 		if lamp != null:
@@ -473,7 +486,11 @@ func test_button(i: int, works: bool) -> void:
 	t.tween_property(b, "position:y", b.position.y - 0.01, 0.06)
 	t.tween_property(b, "position:y", b.position.y, 0.08)
 	await t.finished
+	if not is_inside_tree():   # 途中でやめて場面が消えた（バグチェック B-08）
+		return
 	await get_tree().create_timer(0.15).timeout
+	if not is_inside_tree():   # 途中でやめて場面が消えた（バグチェック B-08）
+		return
 	b.material_override = keep
 
 

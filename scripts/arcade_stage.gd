@@ -386,7 +386,9 @@ func _crane(pos: Vector3, yaw: float, theme: int, title: String, big: float, det
 	_box(root, Vector3(0.9, 0.02, 0.1), Vector3(0.0, 1.86, 0.3), _mat(Color(1.0, 0.98, 0.92), 3.0))
 	_box(root, Vector3(0.9, 0.02, 0.1), Vector3(0.0, 1.86, -0.3), _mat(Color(1.0, 0.98, 0.92), 3.0))
 
-	var prizes: Array = _fill_prizes(root, theme, detailed, big)
+	# 景品は看板の名前に合わせる（「うさねこ」の台にくまが入っていた。バグチェック B-10）
+	var prize_kind: int = int(PRIZE_KIND.get(title, theme % 7))
+	var prizes: Array = _fill_prizes(root, prize_kind, detailed, big)
 
 	# --- クレーン機構
 	var rail: MeshInstance3D = _box(root, Vector3(1.0, 0.03, 0.04), Vector3(0.0, 1.82, 0.0), chrome)
@@ -427,8 +429,13 @@ func _crane(pos: Vector3, yaw: float, theme: int, title: String, big: float, det
 
 
 ## ケースの中に景品を積む
+## 看板の名前 → 景品の種類（_fill_prizes の kind）
+const PRIZE_KIND: Dictionary = {"ぬいぐるみ": 0, "ぴよぴよ": 2, "フィギュア": 3, "おかし": 4, "うさねこ": 6}
+
+
 func _fill_prizes(root: Node3D, theme: int, detailed: bool, big: float) -> Array:
-	var kind: int = theme % 6
+	# 0〜6 の7種類（6 = うさぎとねこ）。% 6 だと 6 番の台がくまになっていた（バグチェック B-10）
+	var kind: int = theme % 7
 	var out: Array = []
 	if big > 1.2:
 		# ジャンボ機: 巨大ぬいぐるみを1体、どーんと置く

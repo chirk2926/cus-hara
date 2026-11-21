@@ -134,6 +134,8 @@ var _mental: float = MENTAL_MAX
 var _cost: int = 0            # このお客さんでの行動の負担
 var _sales_cost: int = 0      # このお客さんでの行動で減った売上（円）
 var _crane_used: bool = false
+var _crane_adjusted: bool = false   # 台の難易度を調整した（1回まで）
+var _crane_won: bool = false        # 台の調整で景品が取れた（もうクレーンのボタンは出さない）
 var _queued: Array = []            # 筐体の前でした対応（要件#99）。会話の番を待たずに順に判定する
 var _repaired: bool = false        # 筐体の前に行ったか
 var _machine_fixed: bool = false   # 台を直したか（要件#110: もう一度見に行っても直ったまま）
@@ -608,7 +610,18 @@ func _with_smell(btns: Array) -> Array:
 
 
 func _with_smell_refresh() -> void:
-	hud.set_actions(_with_smell(ShopActions.buttons(_stage_id, _cust, not _crane_used)))
+	hud.set_actions(_with_smell(_action_buttons()))
+
+
+## 今のお客さんに出す行動ボタン。台の調整は1回まで、景品の移動は取れるまで何回でも（要件#90）。
+## 「取りやすい位置へ」を使っても、まだ使っていない「難易度を調整」は消さない（バグチェック B-05）
+func _action_buttons() -> Array:
+	var out: Array = ShopActions.buttons(_stage_id, _cust, true)
+	return out.filter(func(b: Array) -> bool:
+		var bid: String = str(b[0])
+		if _crane_won and ShopActions.is_minigame(bid):
+			return false
+		return not (_crane_adjusted and bid == ShopActions.CRANE_ADJUST))
 
 
 ## しれっと消臭剤をかける（要件#92）: 30% でバレて怒られる。バレなければにおいが消えて少し落ち着く
@@ -737,6 +750,12 @@ func _wants_other_id(reply: String) -> bool:
 	return false
 
 
+## 見せてもらった身分証が、年齢を確かめられるもの（公的・顔写真・生年月日・本人）か
+func _shown_id_valid() -> bool:
+	var ag: Dictionary = _cust.get("age", {}) if typeof(_cust.get("age", null)) == TYPE_DICTIONARY else {}
+	return bool(ag.get("public", false)) and bool(ag.get("has_photo", false)) and bool(ag.get("has_dob", false)) and bool(ag.get("face_match", false))
+
+
 func _ask_other_id(speaker: String) -> void:
 	_turns += 1
 	# たまに渋る（要件#90）: 1回目は 30% で「なんでよ」。もう一度頼めば出す（または持っていないと言う）
@@ -763,6 +782,11 @@ func _ask_other_id(speaker: String) -> void:
 		main.show_id_card(_cust)
 		if not hardcore:
 			hud.set_comment(tr("別の身分証が出てきた。もう一度、種類・顔写真・生年月日を確かめよう。"))
+	elif _shown_id_valid():
+		# もう有効な身分証を見せている（バグチェック B-01: ここで「入店不可」に書きかわり、通すと警察が来ていた）
+		line = str(Judge.pick_lang(["え？さっきのでちゃんとわかるでしょ。", "それ、本物の免許証だけど……"], ["Huh? The one I showed you is enough.", "That's a real ID, you know..."], ["诶？刚才那个就够了吧。", "那可是真的证件……"], ["네? 아까 그걸로 충분하잖아요.", "그거 진짜 신분증인데요……"]))
+		if not hardcore:
+			hud.set_comment(tr("見せてもらった身分証で、もう年齢は確かめられる。"))
 	else:
 		ag["must_leave"] = true
 		ag["no_id"] = true
@@ -961,6 +985,8 @@ func _make_wild_look() -> void:
 	look["accessory"] = ["headphones", "glasses", "mask"][randi() % 3]
 	look["height"] = 1.15
 	_cust["look"] = look
+	# 元の呼び名も覚えておく（称号の「お客さんごとの記録」で台本と照らし合わせるため。バグチェック B-06）
+	_cust["_base_title"] = str(_cust.get("title", ""))
 	_cust["title"] = tr("【要注意】") + str(_cust.get("title", ""))
 
 
@@ -1202,6 +1228,8 @@ func _play_customer(my_run: int) -> void:
 	_cost = 0
 	_sales_cost = 0
 	_crane_used = false
+	_crane_adjusted = false
+	_crane_won = false
 	_queued = []
 	_repaired = false
 	_machine_fixed = false
@@ -1319,6 +1347,9 @@ func _play_customer(my_run: int) -> void:
 					await _ask_other_id(speaker)
 					if my_run != _run:
 						return
+				if _anger >= 100.0:
+					outcome = "explode"   # 渋って怒りが 100 になったら、そこでキレる（バグチェック B-09）
+					break
 				continue
 			if id == "age_refuse" and not _leave_resisted and not main.smoke and (randf() < LEAVE_RESIST_CHANCE or main.debug_flag("resist")):
 				# ちょっとだけ粘る（要件#97）: 少し怒って言い返す。決着はせず、もう一度お願いすれば従う
@@ -1338,6 +1369,9 @@ func _play_customer(my_run: int) -> void:
 					return
 				if not hardcore:
 					hud.set_comment(tr("少し粘られた。落ち着いて、もう一度はっきりお願いしよう。"))
+				if _anger >= 100.0:
+					outcome = "explode"   # 渋って怒りが 100 になったら、そこでキレる（バグチェック B-09）
+					break
 				continue
 			if id == "age_allow" or id == "age_refuse":
 				main.close_machine_data()
@@ -1392,9 +1426,12 @@ func _play_customer(my_run: int) -> void:
 				if str(cr.get("result", "cancelled")) == "cancelled":
 					continue
 				_crane_used = true
+				if id == ShopActions.CRANE_ADJUST:
+					_crane_adjusted = true
+				if str(cr.get("result", "")) == "won":
+					_crane_won = true
 				# 取れるまでは「景品を取りやすい位置へ」を何回でも押せる（要件#90）。台の調整は1回まで
-				var after: Array = ShopActions.buttons(_stage_id, _cust, str(cr.get("result", "")) != "won")
-				hud.set_actions(_with_smell(after.filter(func(b: Array) -> bool: return str(b[0]) != ShopActions.CRANE_ADJUST)))
+				hud.set_actions(_with_smell(_action_buttons()))
 				_t_move_mode = str(cr.get("mode_kind", "")) == "move" or id == ShopActions.CRANE_MOVE
 				# 景品を近づけたときは、お客さんはその場では遊ばない（要件#106）: 「近づけたので、もう少し頑張ってみてください」で対応を終える
 				id = "crane_moved" if str(cr["result"]) == "moved" else ("crane_won" if str(cr["result"]) == "won" else "crane_lost")
@@ -1472,13 +1509,16 @@ func _play_customer(my_run: int) -> void:
 				_change_mental(-20.0)
 			if crane_cheat:
 				res["comment"] = str(res.get("comment", "")) + "\n" + tr("（アームは規定外の強さ…店長には内緒だ）")
-		elif _is_age_check() and not _alt_id_asked and _id_seen and _wants_other_id(reply):
+		elif _is_age_check() and not _alt_id_asked and _id_seen and not _shown_id_valid() and _wants_other_id(reply):
 			# 話して別の身分証を頼んだ（要件#86）
 			hud.show_echo(tr("あなた: "), reply)
 			log_lines.append({"role": "staff", "text": reply})
 			await _ask_other_id(speaker)
 			if my_run != _run:
 				return
+			if _anger >= 100.0:
+				outcome = "explode"
+				break
 			continue
 		else:
 			_turns += 1
@@ -1803,8 +1843,9 @@ func _track_reply(reply: String, anger_delta: int = 0) -> void:
 		any = any or bool(f.get(k, false))
 	if not any and anger_delta > 0:
 		GameSettings.stat_add("miss_replies")
-	# 謝るだけ（共感・質問・メモの中身・はっきり断るが無い）で、怒りが下がらなかった
-	if bool(f.get("apology", false)) and anger_delta >= 0 and not (bool(f.get("empathy", false)) or bool(f.get("question", false)) or bool(f.get("memo", false)) or bool(f.get("firm", false))):
+	# 謝るだけ（共感・質問・メモの中身・はっきり断るが無い）で、怒りがほとんど下がらなかった
+	# （台本の判定は謝るだけの返事に -2 を返すので、そこまでは数える。バグチェック B-07）
+	if bool(f.get("apology", false)) and anger_delta >= -2 and not (bool(f.get("empathy", false)) or bool(f.get("question", false)) or bool(f.get("memo", false)) or bool(f.get("firm", false))):
 		GameSettings.stat_add("only_sorry_replies")
 	for k in [["apology", "apology_replies"], ["empathy", "empathy_replies"], ["question", "question_replies"], ["memo", "memo_replies"],
 			["repeat", "repeat_replies"], ["excuse", "excuse_replies"], ["rude", "rude_replies"], ["offtopic", "offtopic_replies"]]:
@@ -1838,6 +1879,9 @@ func _track_customer(outcome: String) -> void:
 				GameSettings.stat_add("resolved_" + m)
 			if _t_last_action == "crane_stuck":
 				GameSettings.stat_add("stuck_resolved")
+			# 土下座をしたのに納得で終わった（称号「土下座で解決した奇跡の人」。台本のお客さんでも取れるように。バグチェック B-02）
+			if int(_act_counts.get("dogeza", 0)) > 0:
+				GameSettings.stat_add("dogeza_good")
 			if _wild:
 				GameSettings.stat_add("wild_resolved")
 			if bool(_cust.get("rare", false)):

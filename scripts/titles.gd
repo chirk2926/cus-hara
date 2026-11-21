@@ -60,7 +60,8 @@ static func equipped_name() -> String:
 
 ## 台本のお客さんの日本語の呼び名（どの言語のお客さんでも、同じ順番の日本語の呼び名を返す。台本に無ければ ""）
 static func ja_title(stage_id: String, cust: Dictionary) -> String:
-	var t: String = str(cust.get("title", ""))
+	# 要注意人物は呼び名の頭に【要注意】がつくので、元の呼び名で探す（バグチェック B-06）
+	var t: String = str(cust.get("_base_title", cust.get("title", "")))
 	for lang in ["ja", "en", "zh", "ko"]:
 		var list: Array = Scenarios.customers(stage_id, lang)
 		for i in range(list.size()):

@@ -92,6 +92,9 @@ static func yen(n: int) -> String:
 	return ("-" if n < 0 else "") + s + out
 
 
+var _carried: Node3D = null   # 爪につかんで運んでいる景品
+
+
 func is_running() -> bool:
 	return _phase != ""
 
@@ -108,6 +111,11 @@ func abort() -> void:
 		_marker.queue_free()
 	_marker = null
 	_held = null
+	# 爪につかんだままの景品はケースの床に戻す（爪にくっついたまま残っていた。バグチェック B-08）
+	if _carried != null and is_instance_valid(_carried) and _root != null and is_instance_valid(_root):
+		_carried.reparent(_root, true)
+		_carried.position.y = Arcade.CASE_FLOOR_Y
+	_carried = null
 	if is_instance_valid(arcade):
 		arcade.set_crane_manual(_cr, false)
 	main.camera_release(0.0)
@@ -499,6 +507,8 @@ func _start_play() -> void:
 	if main.smoke:
 		won = true
 	await _play_claw(prize, won)
+	if _phase == "":
+		return   # 途中でやめた
 	_finish(_result("won" if won else "lost"))
 
 
@@ -570,28 +580,45 @@ func _play_claw(prize: Node3D, won: bool) -> void:
 	# 横 → 奥（お客さんのボタン操作）
 	var a: Dictionary = {"x": px, "z": -0.25, "d": 0.0, "o": 30.0}
 	await _tween_claw(s, a, 1.0)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	var b: Dictionary = {"x": px, "z": pz, "d": 0.0, "o": 34.0}
 	await _tween_claw(a, b, 0.8)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	await get_tree().create_timer(0.25).timeout
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	# 下りる → つかむ
 	var c: Dictionary = {"x": px, "z": pz, "d": grab_drop, "o": 34.0}
 	await _tween_claw(b, c, 0.9)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	var grip: float = 8.0 if (won or (_power >= 8 and not _prob)) else 16.0   # 弱いと爪が閉じきらない
 	var d: Dictionary = {"x": px, "z": pz, "d": grab_drop, "o": grip}
 	await _tween_claw(c, d, 0.35)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	# 景品を爪にくっつける
 	var claw: Node3D = _cr["claw"]
 	prize.reparent(claw, true)
+	_carried = prize
 	main.sfx.play("click", 0.7)
 	# 上がる
 	var e: Dictionary = {"x": px, "z": pz, "d": 0.0, "o": grip}
 	if not won and randf() < 0.5:
 		# 持ち上げる途中でずり落ちる
 		await _tween_claw(d, {"x": px, "z": pz, "d": grab_drop * 0.45, "o": grip}, 0.6)
+		if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+			return
 		await _drop_prize(prize, Vector3(px, Arcade.CASE_FLOOR_Y, pz) + Vector3(randf_range(-0.06, 0.06), 0.0, randf_range(-0.06, 0.06)), false)
+		if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+			return
 		await _tween_claw({"x": px, "z": pz, "d": grab_drop * 0.45, "o": 30.0}, {"x": 0.3, "z": -0.25, "d": 0.0, "o": 30.0}, 1.2)
 		return
 	await _tween_claw(d, e, 0.8)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	# 取り出し口へ運ぶ
 	var cx: float = Arcade.CHUTE.x
 	var cz: float = Arcade.CHUTE.y
@@ -600,23 +627,34 @@ func _play_claw(prize: Node3D, won: bool) -> void:
 		# 運ぶ途中で落とす
 		var mid: Dictionary = {"x": lerpf(px, cx, fail_at), "z": lerpf(pz, cz, fail_at), "d": 0.0, "o": grip}
 		await _tween_claw(e, mid, 1.1 * fail_at)
+		if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+			return
 		var land: Vector3 = Vector3(float(mid["x"]), Arcade.CASE_FLOOR_Y, float(mid["z"]))
 		# 穴のふちに当たったら柵の外へ
 		if land.x < cx + Arcade.CHUTE_HALF and land.z > cz - Arcade.CHUTE_HALF:
 			land.x = cx + Arcade.CHUTE_HALF + 0.05
 		await _drop_prize(prize, land, false)
+		if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+			return
 		await _tween_claw({"x": float(mid["x"]), "z": float(mid["z"]), "d": 0.0, "o": 30.0}, {"x": 0.3, "z": -0.25, "d": 0.0, "o": 30.0}, 1.0)
 		return
 	var f: Dictionary = {"x": cx, "z": cz, "d": 0.0, "o": grip}
 	await _tween_claw(e, f, 1.1)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	await _tween_claw(f, {"x": cx, "z": cz, "d": 0.0, "o": 34.0}, 0.25)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	await _drop_prize(prize, Vector3(cx, Arcade.CASE_FLOOR_Y - 0.55, cz), true)
+	if _phase == "" or not is_inside_tree():   # 途中でやめた（バグチェック B-08）
+		return
 	main.sfx.play("win")
 	await _tween_claw({"x": cx, "z": cz, "d": 0.0, "o": 34.0}, {"x": 0.3, "z": -0.25, "d": 0.0, "o": 30.0}, 1.0)
 
 
 ## 景品を落とす。into_chute なら取り出し口に吸い込まれて消える
 func _drop_prize(prize: Node3D, land_local: Vector3, into_chute: bool) -> void:
+	_carried = null
 	prize.reparent(_root, true)
 	var tw: Tween = create_tween()
 	tw.tween_property(prize, "position", land_local, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)

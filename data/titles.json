@@ -1929,10 +1929,10 @@
 				"ko": "도게자의 기적"
 			},
 			"desc": {
-				"ja": "土下座が「正解」だった（効果が good の客に土下座した）",
-				"en": "A dogeza was the right answer (used on a customer it works on)",
-				"zh": "下跪是“正确答案”（对下跪有效的顾客下跪）",
-				"ko": "도게자가 정답이었다 (통하는 손님에게 썼다)"
+				"ja": "土下座をしたのに、最後は納得して帰ってもらえた（または土下座が効くお客さんだった）",
+				"en": "Did a dogeza and still sent the customer home satisfied (or it actually worked on them)",
+				"zh": "下跪之后，最后还是让顾客满意地离开了（或者下跪真的有效）",
+				"ko": "도게자를 했는데도 결국 손님이 납득하고 돌아갔다 (또는 도게자가 통하는 손님이었다)"
 			},
 			"rarity": 2,
 			"joke": true,
@@ -2862,7 +2862,7 @@
 			"desc": {
 				"ja": "社員モードでシフトを最後まで勤めた",
 				"en": "Finished a shift in Employee mode",
-				"zh": "在正式员工模式模式下完成了一个班次",
+				"zh": "在正式员工模式下完成了一个班次",
 				"ko": "정직원 모드로 시프트를 마쳤다"
 			},
 			"rarity": 3,
@@ -2881,7 +2881,7 @@
 			"desc": {
 				"ja": "社員モードでシフトを 30回 勤めた",
 				"en": "Finished 30 shifts in Employee mode",
-				"zh": "在正式员工模式模式下完成30个班次",
+				"zh": "在正式员工模式下完成30个班次",
 				"ko": "정직원 모드로 시프트를 30번 마쳤다"
 			},
 			"rarity": 4,
@@ -2900,7 +2900,7 @@
 			"desc": {
 				"ja": "社員モードでパーフェクトシフト",
 				"en": "A perfect shift in Employee mode",
-				"zh": "在正式员工模式模式下完成完美班次",
+				"zh": "在正式员工模式下完成完美班次",
 				"ko": "정직원 모드에서 퍼펙트 시프트"
 			},
 			"rarity": 5,
@@ -2919,7 +2919,7 @@
 			"desc": {
 				"ja": "社員モードで屈服なしのシフトを 10回",
 				"en": "10 Employee mode shifts without giving in",
-				"zh": "正式员工模式模式下10个班次从未屈服",
+				"zh": "正式员工模式下10个班次从未屈服",
 				"ko": "정직원 모드에서 굴복하지 않은 시프트 10번"
 			},
 			"rarity": 4,
@@ -2938,7 +2938,7 @@
 			"desc": {
 				"ja": "社員モードの1シフトで 9,000点 以上",
 				"en": "9,000+ points in one Employee mode shift",
-				"zh": "正式员工模式模式单个班次9,000分以上",
+				"zh": "正式员工模式单个班次9,000分以上",
 				"ko": "정직원 모드 한 시프트에서 9,000점 이상"
 			},
 			"rarity": 5,
