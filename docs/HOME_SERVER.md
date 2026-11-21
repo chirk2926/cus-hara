@@ -70,7 +70,7 @@ sudo systemctl enable --now cloudflared
 
 コマンドで開くなら:
 ```bash
-ssh -N -L 8790:127.0.0.1:8790 cushara-admin@192.168.1.20
+ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8790:127.0.0.1:8790 cushara-admin@192.168.1.20
 ```
 
 ## 6. 守り（おすすめ）

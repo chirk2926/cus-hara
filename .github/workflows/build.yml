@@ -89,8 +89,6 @@ jobs:
 
   windows:
     name: Check client, play against the server, build Windows exe
-    permissions:
-      contents: write   # スクリーンショットを書き戻すため
     needs: [server, enc_template]
     runs-on: ubuntu-latest
     steps:
@@ -107,6 +105,18 @@ jobs:
           BASE=https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}
           curl -sSL -o godot.zip ${BASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip
           curl -sSL -o templates.tpz ${BASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz
+          # 落としたファイルが壊れていないか・すり替わっていないか（要件#108）: 同じリリースの SHA512-SUMS.txt と比べる
+          if curl -sSfL -o sums.txt ${BASE}/SHA512-SUMS.txt; then
+            for f in Godot_v${GODOT_RELEASE}_linux.x86_64.zip Godot_v${GODOT_RELEASE}_export_templates.tpz; do
+              want=$(grep " $f\$" sums.txt | cut -d' ' -f1)
+              local=$([ "$f" = "Godot_v${GODOT_RELEASE}_linux.x86_64.zip" ] && echo godot.zip || echo templates.tpz)
+              got=$(sha512sum "$local" | cut -d' ' -f1)
+              if [ -n "$want" ] && [ "$want" != "$got" ]; then echo "::error::$f のチェックサムが合いません"; exit 1; fi
+              [ -z "$want" ] && echo "::warning::$f のチェックサムが SHA512-SUMS.txt にありません"
+            done
+          else
+            echo "::warning::SHA512-SUMS.txt を取れなかったので、チェックサムを確かめていません"
+          fi
           unzip -q godot.zip -d "$RUNNER_TEMP/godot"
           mv "$RUNNER_TEMP/godot/Godot_v${GODOT_RELEASE}_linux.x86_64" "$RUNNER_TEMP/godot/godot"
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
@@ -152,20 +162,24 @@ jobs:
 
       - name: Versus smoke test (ranked, text, two clients)
         run: |
-          (timeout 300 godot --headless -- --vs-smoke=text --profile=vsA --lang=ja --server=http://127.0.0.1:8787 > vs_a.log 2>&1 &)
+          timeout 300 godot --headless -- --vs-smoke=text --profile=vsA --lang=ja --server=http://127.0.0.1:8787 > vs_a.log 2>&1 &
+          PID_A=$!
           sleep 1
           timeout 300 godot --headless -- --vs-smoke=text --profile=vsB --lang=ja --server=http://127.0.0.1:8787 2>&1 | tee vs_b.log
-          sleep 5
+          # 先に起動したほうが終わるまで待つ（要件#109: 決まった秒数の sleep は、遅いランナーで不安定だった）
+          wait $PID_A || true
           echo "---- client A"; cat vs_a.log
           grep -q "VERSUS OK" vs_a.log
           grep -q "VERSUS OK" vs_b.log
 
       - name: Versus smoke test (ranked, voice, English, two clients)
         run: |
-          (timeout 300 godot --headless -- --vs-smoke=voice --profile=vvA --lang=en --server=http://127.0.0.1:8787 > vv_a.log 2>&1 &)
+          timeout 300 godot --headless -- --vs-smoke=voice --profile=vvA --lang=en --server=http://127.0.0.1:8787 > vv_a.log 2>&1 &
+          PID_A=$!
           sleep 1
           timeout 300 godot --headless -- --vs-smoke=voice --profile=vvB --lang=en --server=http://127.0.0.1:8787 2>&1 | tee vv_b.log
-          sleep 5
+          # 先に起動したほうが終わるまで待つ（要件#109: 決まった秒数の sleep は、遅いランナーで不安定だった）
+          wait $PID_A || true
           echo "---- client A"; cat vv_a.log
           grep -q "VERSUS OK" vv_a.log
           grep -q "VERSUS OK" vv_b.log
@@ -201,15 +215,21 @@ jobs:
             echo "::error::暗号化用のひな形がありません（enc_template のジョブを確かめてください）"
             exit 1
           fi
-          if [ -z "$KEY" ]; then KEY=$(cat ~/enc-tpl/key.txt); fi
-          echo "::add-mask::$KEY"
-          echo "GODOT_SCRIPT_ENCRYPTION_KEY=$KEY" >> "$GITHUB_ENV"
+          if [ -z "$KEY" ]; then
+            # 配る版は Secrets の鍵で作ること（要件#108）。自動の鍵はキャッシュが消えると変わる
+            echo "::warning::GODOT_SCRIPT_ENCRYPTION_KEY が Secrets にないので、自動で作った鍵を使っています。ストアに出す版は Secrets に鍵を入れてから作ってください"
+          fi
           python3 tools/enable_encryption.py export_presets.cfg ~/enc-tpl/windows_release_x86_64.exe
 
+      # 鍵は書き出しの2つの手順の中だけで使う（要件#108: ほかの手順から見えないように）
       - name: Export Windows build
+        env:
+          KEY: ${{ secrets.GODOT_SCRIPT_ENCRYPTION_KEY }}
         run: |
+          if [ -z "$KEY" ]; then KEY=$(cat ~/enc-tpl/key.txt); fi
+          echo "::add-mask::$KEY"
           mkdir -p build/windows
-          godot --headless --export-release "Windows Desktop" build/windows/CusHara.exe 2>&1 | tee export.log
+          GODOT_SCRIPT_ENCRYPTION_KEY="$KEY" godot --headless --export-release "Windows Desktop" build/windows/CusHara.exe 2>&1 | tee export.log
           test -s build/windows/CusHara.exe
           # 暗号化できているか: スクリプトの中の名前が exe の中にそのまま見えないこと（要件#94）
           if grep -a -q -e "_offer_difficulty" -e "res://scripts/main.gd" build/windows/CusHara.exe; then
@@ -224,12 +244,16 @@ jobs:
 
       # テスト版（要件#85）: デバッグパネル付きの exe と、手元で動かすゲームサーバー一式
       - name: Export Windows test build (debug panel + local server)
+        env:
+          KEY: ${{ secrets.GODOT_SCRIPT_ENCRYPTION_KEY }}
         run: |
+          if [ -z "$KEY" ]; then KEY=$(cat ~/enc-tpl/key.txt); fi
+          echo "::add-mask::$KEY"
           mkdir -p build/windows_test
-          godot --headless --export-release "Windows Desktop (Test)" build/windows_test/CusHara_Test.exe 2>&1 | tee export_test.log
+          GODOT_SCRIPT_ENCRYPTION_KEY="$KEY" godot --headless --export-release "Windows Desktop (Test)" build/windows_test/CusHara_Test.exe 2>&1 | tee export_test.log
           test -s build/windows_test/CusHara_Test.exe
           mkdir -p build/windows_test/server build/windows_test/data
-          cp -r server/src server/package.json server/package-lock.json build/windows_test/server/
+          cp -r server/src server/public server/admin server/package.json server/package-lock.json build/windows_test/server/
           (cd build/windows_test/server && npm ci --omit=dev --ignore-scripts --no-audit --no-fund)
           cp data/*.json build/windows_test/data/
           cp tools/test_bundle/* build/windows_test/
@@ -239,10 +263,45 @@ jobs:
           name: CusHara-windows-TEST
           path: build/windows_test/
 
+  # スクリーンショット（コミットに [shots] があるときだけ）。リポジトリに書き戻すので、書く権限はこのジョブだけ（要件#108）
+  shots:
+    name: Render screenshots
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[shots]')
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Godot and export templates
+        run: |
+          set -e
+          BASE=https://github.com/godotengine/godot/releases/download/${GODOT_RELEASE}
+          curl -sSL -o godot.zip ${BASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip
+          curl -sSL -o templates.tpz ${BASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz
+          # 落としたファイルが壊れていないか・すり替わっていないか（要件#108）: 同じリリースの SHA512-SUMS.txt と比べる
+          if curl -sSfL -o sums.txt ${BASE}/SHA512-SUMS.txt; then
+            for f in Godot_v${GODOT_RELEASE}_linux.x86_64.zip Godot_v${GODOT_RELEASE}_export_templates.tpz; do
+              want=$(grep " $f\$" sums.txt | cut -d' ' -f1)
+              local=$([ "$f" = "Godot_v${GODOT_RELEASE}_linux.x86_64.zip" ] && echo godot.zip || echo templates.tpz)
+              got=$(sha512sum "$local" | cut -d' ' -f1)
+              if [ -n "$want" ] && [ "$want" != "$got" ]; then echo "::error::$f のチェックサムが合いません"; exit 1; fi
+              [ -z "$want" ] && echo "::warning::$f のチェックサムが SHA512-SUMS.txt にありません"
+            done
+          else
+            echo "::warning::SHA512-SUMS.txt を取れなかったので、チェックサムを確かめていません"
+          fi
+          unzip -q godot.zip -d "$RUNNER_TEMP/godot"
+          mv "$RUNNER_TEMP/godot/Godot_v${GODOT_RELEASE}_linux.x86_64" "$RUNNER_TEMP/godot/godot"
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -q templates.tpz -d "$RUNNER_TEMP/tpl"
+          mv "$RUNNER_TEMP"/tpl/templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+          rm -f godot.zip templates.tpz
+          echo "$RUNNER_TEMP/godot" >> "$GITHUB_PATH"
+      - name: Import project
+        run: godot --headless --import > /dev/null 2>&1 || true
       # コミットメッセージに [shots] を含むときだけ、実際に描画した画面を docs/screenshots/ に保存してコミットする
       - name: Render screenshots
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[shots]')
-        continue-on-error: true
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libgl1-mesa-dri libvulkan1
@@ -268,11 +327,15 @@ jobs:
           git add -f docs/store
           cat shots_*.log > docs/screenshots/render.log || true
           grep -E "SCRIPT ERROR|ERROR|SHOT" docs/screenshots/render.log | head -80 || true
+          # 撮影の途中でスクリプトのエラーが出たら、書き戻さずに失敗にする（要件#109: 見落とさないように）
+          if grep -E "SCRIPT ERROR|Parse Error|Invalid call|Invalid access|SHOTS TIMEOUT" docs/screenshots/render.log; then
+            echo "::error::撮影中にスクリプトのエラーが出ました"
+            exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f docs/screenshots
           git commit -m "スクリーンショットを更新 [skip ci]" || exit 0
-          # 暗号化の手順で書きかえた export_presets.cfg などが残っていると pull できないので、コミットした後に捨てる
           git reset -q --hard HEAD
           # 前の実行のスクリーンショットとぶつかったら、こちら（新しい方）を使う。押し合いで負けたら少し待ってやり直す
           for i in 1 2 3; do

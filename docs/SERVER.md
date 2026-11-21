@@ -63,10 +63,11 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | `DB_PATH` | `server/var/cushara.db` | SQLite のファイル |
 | `SCENARIOS_PATH` | `data/scenarios.json` | 台本（英語は同じ場所の `scenarios.en.json`、判定語は `judge_words.json`） |
 | `GUESTS_PER_HOUR` | 20 | 1つのIPから1時間に作れるアカウント数 |
-| `TRUST_PROXY` | なし | `1` ならリバースプロキシの `X-Forwarded-For` を信じる |
+| `TRUST_PROXY` | なし | `1` なら、信じてよいプロキシ（同じマシンの 127.0.0.1 と `TRUSTED_PROXIES`）から来た接続だけ、`CF-Connecting-IP`（無ければ `X-Forwarded-For` の一番右）をプレイヤーの IP にする（要件#108） |
+| `TRUSTED_PROXIES` | なし | 転送ヘッダーを信じるプロキシの住所（カンマ区切り）。Docker で動かすときのブリッジ（`172.17.0.1`）など |
 | `VS_*` / `MM_ANYONE_AFTER_SEC` | | 対戦の秒数・マッチングの設定（`src/config.ts`） |
 | `TIME_SCALE` | 1 | テスト用に時間を速める倍率 |
-| `ALLOW_RANKED_ROOMS` | `1` | EOS で組んだ部屋をランクマッチにしてよいか（`0` で禁止） |
+| `ALLOW_RANKED_ROOMS` | `0` | EOS で組んだ部屋をランクマッチにしてよいか（`0` で禁止） |
 | `RANKED_ROOM_MAX_GAP` | 400 | ランクの部屋に入れるレート差の上限 |
 | `ALLOW_SAME_IP_RANKED` | `0` | `1` なら同じIPどうしでもランクマッチを組む（テスト用。本番は `0`） |
 | `SAME_PAIR_LIMIT_24H` | 3 | 同じ2人が24時間に何試合までレーティングを動かせるか |

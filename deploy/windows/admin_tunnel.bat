@@ -8,5 +8,5 @@ set SERVER=cushara@192.168.1.20
 
 start "" http://127.0.0.1:8790/
 echo 管理画面につないでいます。終わったらこの窓を閉じてください。
-ssh -N -L 8790:127.0.0.1:8790 %SERVER%
+ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8790:127.0.0.1:8790 %SERVER%
 pause

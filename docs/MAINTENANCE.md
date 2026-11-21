@@ -151,7 +151,7 @@ steamcmd +login <アカウント名> +run_app_build <app_build.vdf の絶対パ�
 4. パートナーセンターに MSIX をアップロードして審査に出す。ストア提出用は署名不要（ストアが署名する）。手元で試すときだけ、自己署名証明書で `signtool` 署名し、証明書を信頼済みに入れる必要がある。
 
 注意:
-- マニフェストは `runFullTrust`（通常のデスクトップアプリ）、`internetClient` / `internetClientServer`（サーバーとの通信）、`microphone`（音声対戦）を宣言している。`runFullTrust` はストア提出時に利用理由の入力を求められる。
+- マニフェストは `runFullTrust`（通常のデスクトップアプリ）、`internetClient`（サーバーとの通信。要件#108 で使っていない `internetClientServer` を外した）、`microphone`（音声対戦）を宣言している。`runFullTrust` はストア提出時に利用理由の入力を求められる。
 - ストアの説明とプライバシーポリシーに、ゲームサーバーと通信すること（名前・対戦の記録・入力した文章・音声が送られ、AIの判定に使われること）、自分のAPIキーを入れた場合は Anthropic と直接通信することを書く必要がある。
 - MSIX を実際にインストールして起動する確認は、まだ誰も行っていない。
 - 掲載の文（3言語）・画像・年齢レーティング（IARC）の答えの案・提出前の確認の一覧は [STORE_LISTING.md](STORE_LISTING.md)。プライバシーポリシーの URL はゲームサーバーの `https://<ドメイン>/privacy`（`server/public/privacy.*.html` の〔運営者名〕〔連絡先メールアドレス〕を書きかえてから）。

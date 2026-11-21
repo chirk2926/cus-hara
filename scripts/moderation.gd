@@ -49,9 +49,20 @@ static func _is_ascii_word(w: String) -> bool:
 
 ## 全角英数を半角・小文字にし、空白や区切りの記号をのぞく（「え ろ」「e.r.o」も拾う。サーバーの normalize と同じ）
 static func normalize(text: String) -> String:
-	var out: String = _half(text).to_lower()
+	var out: String = _half(strip_invisible(text)).to_lower()
 	for ch in [" ", "　", ".", "_", "・", "*", "＊", "-", "~", "〜", "\t", "\n"]:
 		out = out.replace(ch, "")
+	return out
+
+
+## 見えない字（ゼロ幅の文字・ソフトハイフンなど）を消す（要件#108）
+static func strip_invisible(text: String) -> String:
+	var out: String = ""
+	for i in text.length():
+		var c: int = text.unicode_at(i)
+		if c == 0xAD or c == 0x34F or c == 0x61C or (c >= 0x180B and c <= 0x180E) or (c >= 0x200B and c <= 0x200F) or (c >= 0x202A and c <= 0x202E) or (c >= 0x2060 and c <= 0x206F) or c == 0x3164 or (c >= 0xFE00 and c <= 0xFE0F) or c == 0xFEFF or c == 0xFFA0:
+			continue
+		out += text[i]
 	return out
 
 

@@ -10,6 +10,7 @@ process.env.QUIET = "1";
 process.env.GUESTS_PER_HOUR = "1000";
 process.env.ALLOW_SAME_IP_RANKED = "1";
 process.env.KONBINI_OPEN = "1";   // 既存のテストはコンビニを使う（閉じたときの動きは server.test.ts で確かめる）
+process.env.ALLOW_RANKED_ROOMS = "1";   // 部屋のランクマッチのテストのため（既定は 0。要件#108）
 
 const { openDb } = await import("../src/db.ts");
 const { Lobby } = await import("../src/lobby.ts");
@@ -93,7 +94,7 @@ export class Client {
 export async function guest(base: string, wsUrl: string, name: string, consent = true) {
   const g = await api(base, "POST", "/api/v1/guest", { name });
   // 対戦の同意（要件#101）。テストではふつう同意しておく
-  if (consent) await api(base, "POST", "/api/v1/me/consent", { agree: true, version: 1 }, g.body.token);
+  if (consent) await api(base, "POST", "/api/v1/me/consent", { agree: true, version: 2 }, g.body.token);
   const c = new Client(wsUrl);
   await c.open();
   c.send({ t: "auth", token: g.body.token });

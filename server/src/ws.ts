@@ -16,6 +16,7 @@ const MAX_AUTH_MESSAGE = 4 * 1024; // ログイン前に受け付ける大きさ
 const perIp = new Map<string, number>();
 
 export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketServer {
+  lobbyRef = lobby;
   const wss = new WebSocketServer({ server, path: "/ws", maxPayload: MAX_MESSAGE });
   const alive = new WeakMap<WebSocket, boolean>();
 
@@ -93,6 +94,11 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
         }
         clearTimeout(authTimer);
         conn = { player, lang: toLang(msg.lang), ip, send: sendRaw, close: (c, r) => ws.close(c, r) };
+        // 同じアカウントの古い接続は切る（要件#108: 1つのアカウントで同時に1つだけ）
+        for (const old of [...(live.get(player.id) ?? [])]) {
+          old.send({ t: "error", code: "replaced", message: "ほかの場所でつながったので、こちらは切りました" });
+          old.close(4001, "replaced");
+        }
         registerConn(conn);
         ws.on("close", () => unregisterConn(conn!));
         const resumed = lobby.resume(conn);
@@ -124,27 +130,27 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
           lobby.cancel(c);
           break;
         case "say": {
-          const f = lobby.matchOf(c.player.id);
+          const f = activeMatch(c);
           f?.match.onSay(f.seat, msg.text);
           break;
         }
         case "eos_voice": {
-          const f = lobby.matchOf(c.player.id);
+          const f = activeMatch(c);
           f?.match.onEosVoiceRoom(f.seat, msg.lobby_id);
           break;
         }
         case "eos_voice_ready": {
-          const f = lobby.matchOf(c.player.id);
+          const f = activeMatch(c);
           f?.match.onEosVoiceReady(f.seat, msg.ok);
           break;
         }
         case "voice": {
-          const f = lobby.matchOf(c.player.id);
+          const f = activeMatch(c);
           f?.match.onVoice(f.seat, msg.audio, msg.debug_text);
           break;
         }
         case "act": {
-          const f = lobby.matchOf(c.player.id);
+          const f = activeMatch(c);
           f?.match.onAction(f.seat, msg.id);
           break;
         }
@@ -168,6 +174,14 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
   });
   return wss;
 }
+
+/** その接続が今の席の接続のときだけ、対戦を返す（要件#108: 古い接続からの発言・行動は受け付けない） */
+function activeMatch(c: Conn) {
+  const f = lobbyRef?.matchOf(c.player.id);
+  return f && f.match.seats[f.seat].conn === c ? f : undefined;
+}
+
+let lobbyRef: Lobby | null = null;
 
 // ---------------------------------------------------------------- つながっている人（管理画面の利用停止で切るため。要件#100）
 

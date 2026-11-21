@@ -1,3 +1,27 @@
+# 引き継ぎ書
+
+## 0. 最新の状況（2026-11-21・要件#109 まで）
+
+この文書の 1 節より下は、2026-11-17（要件#48 ごろ）の時点のまとめ。その後の指示（要件#49〜#109）は [REQUIREMENTS_LOG.md](REQUIREMENTS_LOG.md) の表と [SPEC.md](SPEC.md) の 20 節以降にある。いまの主なもの:
+
+| 分野 | どこを見るか |
+|---|---|
+| ショップ・ガチャ・名札・吹き出し・キャラクター・両替（CUS / HP） | SPEC 20〜21・34 節、`data/shop.json`、`scripts/shop.gd` |
+| 称号 155 個・EOS の実績 | SPEC 19 節、`data/titles.json`、`scripts/titles.gd` |
+| 年齢確認（帽子・マスク）・警察・社員モード | SPEC 23〜27・33 節、`scripts/age_check.gd` |
+| メダル・ビデオの台の修理（筐体の前の場面） | SPEC 29・34 節、`scripts/repair_scene.gd`・`scripts/repair_stage.gd` |
+| 管理画面（サーバーの中だけ）・お知らせ・設定 | SPEC 30 節、SERVER.md 11 節、`server/src/admin.ts`・`server/admin/` |
+| 対戦の発言の同意・プライバシーポリシー・退職 | SPEC 31 節、`server/public/`、`tools/privacy_gen.py`（同意の版は 2） |
+| 4 言語（日・英・中・韓） | SPEC 32 節、MAINTENANCE 9 節 |
+| コンビニは「準備中」（管理画面で開ける） | SPEC 32 節 |
+| 自宅サーバー・Cloudflare Tunnel | HOME_SERVER.md |
+| Microsoft Store・紹介サイト | STORE_LISTING.md・SITE.md・`site/` |
+| セキュリティの見直し（要件#108）・全体の見直し（要件#109） | REQUIREMENTS_LOG #108・#109 |
+
+テスト: サーバーは `cd server && npm test`（53 件）。ゲームは CI（`.github/workflows/build.yml`）がスモーク（日・中・韓・英）・対戦（文字・声）・QA を回す。バージョンはゲーム・サーバーとも 0.2.0。
+
+---
+
 # 引き継ぎ書（2026-11-17 時点・第3回の指示まで）
 
 次に作業する人（依頼者本人、または Opus など）が、ここだけ読めば続きを始められるようにまとめる。

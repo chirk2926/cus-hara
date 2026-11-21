@@ -781,11 +781,9 @@
 	"外部のAIへの送信": "Sending to external AI services",
 	"チェックと採点のため、発言の文字（声は文字に起こしたもの）を、ゲームサーバーからAIの事業者（Anthropic など、運営が設定した事業者）に送ります。声の対戦では、文字に起こすために声を文字起こしのサービスに送ります。": "For checking and scoring, the text of what you say (voice is transcribed first) is sent from the game server to an AI provider chosen by the operator (such as Anthropic). In voice matches, your voice is sent to a speech-to-text service to be transcribed.",
 	"相手への中継": "Delivery to your opponent",
-	"発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャット、またはゲームサーバーを通して届けます。": "What you say is delivered to your opponent. Voice is delivered through Epic Online Services (Epic Games) voice chat or through the game server.",
 	"保存": "Storage",
 	"発言は、試合中と試合の終わりから1時間だけ、サーバーのメモリに置きます。通報（相手からの通報、または自動の不適切発言の検出）があった試合だけ、会話の文字を30日保存し、運営が通報の確認に使います。声そのものは保存しません。": "What you say is kept in the server's memory only during the match and for 1 hour after it ends. Only for matches that are reported (by your opponent or by automatic detection of inappropriate remarks) is the text of the conversation stored for 30 days, for the operator to review the report. Voice recordings themselves are never stored.",
 	"不適切な発言": "Inappropriate remarks",
-	"見つかった発言は相手に見せず、あなたに警告します。3回で負けになり、自動で通報されます。": "Detected remarks are hidden from your opponent and you receive a warning. Three warnings mean you lose the match, and it is reported automatically.",
 	"対戦の前に確認してください": "Please read before playing versus",
 	"オンライン対戦での、あなたの発言（文字・声）の取り扱いです。同意すると対戦できます。同意しなくても、1人用は遊べます。": "This explains how what you say (text and voice) in online versus matches is handled. You can play versus once you agree. Solo play is available even if you don't.",
 	"同意はいつでも「設定」から取り消せます（取り消すと対戦できなくなります）。くわしくはプライバシーポリシーをご覧ください。": "You can withdraw your consent at any time in Settings (you won't be able to play versus after withdrawing). See the privacy policy for details.",
@@ -799,7 +797,6 @@
 	"同意を取り消しました。対戦するときに、もう一度確かめます。": "Consent withdrawn. We'll ask again the next time you play versus.",
 	"サーバーにつながらないため、取り消せませんでした。": "Couldn't withdraw because the server is unreachable.",
 	"対戦の前に、発言の取り扱いへの同意が必要です": "You need to agree to how your remarks are handled before playing versus.",
-	"ゲームサーバーにあるあなたのアカウント（名前・レート・同意の記録・通報の記録・保存された会話）も消します。": "Your account on the game server (name, rating, consent record, report records, stored conversations) will also be deleted.",
 	"サーバーにつながらなかったため、サーバーのアカウントは消せませんでした。プライバシーポリシーの連絡先から、削除をお申し込みください。": "Couldn't reach the server, so your server account wasn't deleted. Please request deletion via the contact in the privacy policy.",
 	"退職しました": "You have resigned",
 	"（準備中）": "(Coming soon)",
@@ -816,5 +813,11 @@
 	"レールを組み直して、ネジを締める（押したまま）": "Reassemble the rail and tighten the screws (hold)",
 	"抽選機の部品を合わせる：緑のところで止める（%d/3）": "Align the lottery parts: stop in the green (%d/3)",
 	"⊕ %d（もっと長く）": "⊕ %d (hold longer)",
-	"枠・名前の色・スタンプ・吹き出し": "Frame, name color, stamp, speech bubble"
+	"枠・名前の色・スタンプ・吹き出し": "Frame, name color, stamp, speech bubble",
+	"ゲームサーバーにあるあなたのアカウント（名前・レート・称号・同意の記録など）も消します。あなたへの通報と、通報された試合の会話は、迷惑行為への対応のため保存期間まで残ります。": "Your account on the game server (name, rating, titles, consent record and so on) will also be deleted. Reports against you and the conversations of reported matches are kept until their retention period ends, to deal with abuse.",
+	"発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャットで、話している間そのまま相手に聞こえます（チェックは文字に起こしてから行うため、声そのものは止められません）。Epic が使えないときはゲームサーバーを通し、チェックを通った声だけを届けます。": "What you say is delivered to your opponent. Through Epic Online Services (Epic Games) voice chat, your voice is heard live while you talk (checks run after transcription, so the voice itself can't be stopped). When Epic isn't available, voice goes through the game server and only voice that passes the check is delivered.",
+	"見つかった発言は（文字は）相手に見せず、あなたに警告します。3回で負けになり、自動で通報されます。": "Detected remarks are hidden from your opponent (as text) and you receive a warning. Three warnings mean you lose the match, and it is reported automatically.",
+	"コピー": "Copy",
+	"コピーしました": "Copied",
+	"運営より: ": "From the team: "
 }

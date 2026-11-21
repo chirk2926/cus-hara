@@ -75,16 +75,27 @@ func stop() -> void:
 	_current = ""
 	if _fade != null and _fade.is_valid():
 		_fade.kill()
+	# 止めるフェードも _fade で持つ（要件#109: 止めてすぐ play すると、古いフェードが新しい曲を止めていた）
+	var tw: Tween = create_tween().set_parallel(true)
+	_fade = tw
+	var playing: Array = []
 	for p in _players:
 		var pl: AudioStreamPlayer = p
 		if pl.playing:
-			var tw: Tween = create_tween()
+			playing.append(pl)
 			tw.tween_property(pl, "volume_db", -60.0, FADE)
-			tw.tween_callback(pl.stop)
+	if playing.is_empty():
+		tw.kill()
+		return
+	tw.chain().tween_callback(func() -> void:
+		for pl2 in playing:
+			(pl2 as AudioStreamPlayer).stop())
 
 
 ## 0..1。怒りが高いと少しだけ速く（高く）なる
 func set_tension(t: float) -> void:
-	_tension = lerpf(_tension, clampf(t, 0.0, 1.0), 0.05)
+	# フレームの速さに関係なく同じ速さで近づける（要件#109: 144Hz などで速すぎた）
+	var k: float = 1.0 - exp(-3.0 * get_process_delta_time())
+	_tension = lerpf(_tension, clampf(t, 0.0, 1.0), k)
 	var p: AudioStreamPlayer = _players[_active]
 	p.pitch_scale = 1.0 + 0.06 * _tension

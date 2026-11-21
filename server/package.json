@@ -1,6 +1,6 @@
 {
   "name": "cushara-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "カスハラ防衛線のゲームサーバー（AI判定・マッチング・対戦進行・レーティング）",
   "type": "module",

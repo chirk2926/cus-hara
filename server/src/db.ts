@@ -23,12 +23,22 @@ export interface Player {
 
 let db: DatabaseSync | null = null;
 
+/** 終わるときに DB を閉じる（要件#109） */
+export function closeDb(): void {
+  if (db !== null) {
+    db.close();
+    db = null;
+  }
+}
+
 export function openDb(): DatabaseSync {
   if (db !== null) return db;
   if (config.dbPath !== ":memory:") fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
   db = new DatabaseSync(config.dbPath);
   db.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA busy_timeout = 5000;
     CREATE TABLE IF NOT EXISTS players (
       id TEXT PRIMARY KEY,
       token_hash TEXT NOT NULL UNIQUE,
@@ -131,6 +141,8 @@ export function openDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_matches_created ON matches(created_at);
+    CREATE INDEX IF NOT EXISTS idx_matches_p1 ON matches(p1, created_at);
+    CREATE INDEX IF NOT EXISTS idx_matches_p2 ON matches(p2, created_at);
   `);
   // お知らせの見出し・フォント・画像（要件#100: Markdown で書け、画像を載せ、フォントを選べる）
   const acols = db.prepare("PRAGMA table_info(announcements)").all() as Array<{ name: string }>;
@@ -180,9 +192,10 @@ export function deletePlayer(id: string): void {
   const d = openDb();
   d.exec("BEGIN");
   try {
-    const ms = d.prepare("SELECT id FROM matches WHERE p1 = ? OR p2 = ?").all(id, id) as Array<{ id: string }>;
-    for (const m of ms) d.prepare("DELETE FROM match_logs WHERE match_id = ?").run(m.id);
-    d.prepare("DELETE FROM reports WHERE reporter_id = ? OR target_id = ?").run(id, id);
+    // 迷惑行為への対応のため（要件#108: 通報の直後に退職して証拠を消せないように）、
+    // この人への通報と、通報された試合の会話は、決まった保存期間（通報 365 日・会話 30 日）まで残す。
+    // この人がした通報は、だれがしたかを消して残す
+    d.prepare("UPDATE reports SET reporter_id = 'deleted-' || id WHERE reporter_id = ?").run(id);
     d.prepare("DELETE FROM players WHERE id = ?").run(id);
     d.exec("COMMIT");
   } catch (e) {
@@ -197,7 +210,7 @@ export function deletePlayer(id: string): void {
  * 対戦の発言（ユーザーどうしの通信）を、チェック・AIの判定・外部のAIへの送信・通報された試合の保存に使うことへの同意の版。
  * 同意の画面の文（ゲームの scripts/consent.gd）を大きく変えたら上げる（もう一度同意してもらう）
  */
-export const VS_CONSENT_VERSION = 1;
+export const VS_CONSENT_VERSION = 2;   // 要件#108: 声の中継の説明を直した
 
 export function consentOf(id: string): { version: number; at: number } {
   const r = openDb().prepare("SELECT vs_consent_version, vs_consent_at FROM players WHERE id = ?").get(id) as { vs_consent_version: number; vs_consent_at: number } | undefined;
@@ -359,12 +372,20 @@ export function createPlayer(name: string): { player: Player; token: string } {
   return { player: { id, name, rating: RATING_START, wins: 0, losses: 0, draws: 0 }, token };
 }
 
+const lastSeenWritten = new Map<string, number>();
+
 export function playerByToken(token: string): Player | null {
   const row = openDb()
     .prepare("SELECT id, name, rating, wins, losses, draws, title, tag, avatar FROM players WHERE token_hash = ?")
     .get(hashToken(token)) as Player | undefined;
   if (!row) return null;
-  openDb().prepare("UPDATE players SET last_seen = ? WHERE id = ?").run(Date.now(), row.id);
+  // 最後に来た時刻は、同じ人なら 5 分に 1 回だけ書く（要件#109: 毎回の書きこみで DB が混まないように）
+  const now = Date.now();
+  if (now - (lastSeenWritten.get(row.id) ?? 0) > 5 * 60_000) {
+    lastSeenWritten.set(row.id, now);
+    if (lastSeenWritten.size > 100_000) lastSeenWritten.clear();
+    openDb().prepare("UPDATE players SET last_seen = ? WHERE id = ?").run(now, row.id);
+  }
   return { ...row };
 }
 

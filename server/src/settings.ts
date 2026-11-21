@@ -206,7 +206,12 @@ function parse(d: SettingDef, raw: unknown): unknown {
         }
         return o;
       }
-      if ((d.key === "llmBaseUrl" || d.key === "sttUrl") && v !== "" && !/^https?:\/\/[^\s]+$/.test(v)) throw new SettingError("http:// か https:// で始まる URL にしてください");
+      if ((d.key === "llmBaseUrl" || d.key === "sttUrl") && v !== "") {
+        if (!/^https?:\/\/[^\s]+$/.test(v)) throw new SettingError("http:// か https:// で始まる URL にしてください");
+        // クラウドのメタデータの住所などには送らない（要件#108）
+        const host = (() => { try { return new URL(v).hostname.toLowerCase(); } catch { return ""; } })();
+        if (host === "" || /^169\.254\./.test(host) || host === "metadata.google.internal" || host === "[fd00:ec2::254]" || host === "100.100.100.200") throw new SettingError("その住所には送れません");
+      }
       return v;
     }
   }

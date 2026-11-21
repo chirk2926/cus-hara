@@ -19,6 +19,7 @@ var _built: bool = false
 var _arcade: Node3D = null
 var _env: Environment = null
 var _base_ambient: Color = Color(1.0, 1.0, 1.0)
+var _lit_tension: float = 0.0
 var _lights: Array[Light3D] = []
 var _light_colors: Array[Color] = []
 var _light_energy: Array[float] = []
@@ -113,6 +114,9 @@ func _apply_hard() -> void:
 			var env: Environment = (n as WorldEnvironment).environment
 			env.ambient_light_color = Color(0.6, 0.1, 0.08)
 			env.background_color = Color(0.06, 0.0, 0.0)
+			# 毎フレームの照明（_apply_lighting）がこの色から計算するように（要件#109: コンビニでは赤みがすぐ消えていた）
+			if env == _env:
+				_base_ambient = env.ambient_light_color
 
 
 func _find_env_owner() -> Node:
@@ -184,7 +188,10 @@ func _process(delta: float) -> void:
 	for i in range(_anim_mats.size()):
 		var wave: float = 0.5 + 0.5 * sin(_time * _anim_speed[i] + _anim_phase[i])
 		_anim_mats[i].emission_energy_multiplier = _anim_base[i] * (0.35 + 0.65 * wave)
-	_apply_lighting()
+	# 照明は、緊張しているときと、緊張が解けた直後の1回だけ計算する（要件#109: ふだんは毎フレーム全部の明かりを触らない）
+	if _tension > 0.0 or _lit_tension > 0.0:
+		_apply_lighting()
+		_lit_tension = _tension
 
 
 func _apply_lighting() -> void:
@@ -277,22 +284,31 @@ func _box(parent: Node3D, sz: Vector3, pos: Vector3, mat: Material, shadow: bool
 	return _add_mesh(parent, bm, pos, mat, shadow)
 
 
+## 円柱・球も、同じ大きさならメッシュを使い回す（要件#109: 棚の商品などで同じ形を何百個も作っていた）
 func _cyl(parent: Node3D, r_top: float, r_bot: float, h: float, pos: Vector3, mat: Material, shadow: bool = true, seg: int = 16) -> MeshInstance3D:
-	var cm: CylinderMesh = CylinderMesh.new()
-	cm.top_radius = r_top
-	cm.bottom_radius = r_bot
-	cm.height = h
-	cm.radial_segments = seg
-	cm.rings = 1
+	var key: String = "c%.3f_%.3f_%.3f_%d" % [r_top, r_bot, h, seg]
+	var cm: CylinderMesh = _mesh_cache.get(key, null) as CylinderMesh
+	if cm == null:
+		cm = CylinderMesh.new()
+		cm.top_radius = r_top
+		cm.bottom_radius = r_bot
+		cm.height = h
+		cm.radial_segments = seg
+		cm.rings = 1
+		_mesh_cache[key] = cm
 	return _add_mesh(parent, cm, pos, mat, shadow)
 
 
 func _sphere(parent: Node3D, r: float, pos: Vector3, mat: Material, shadow: bool = true, seg: int = 16) -> MeshInstance3D:
-	var sm: SphereMesh = SphereMesh.new()
-	sm.radius = r
-	sm.height = r * 2.0
-	sm.radial_segments = seg
-	sm.rings = maxi(int(float(seg) * 0.5), 4)
+	var key: String = "s%.3f_%d" % [r, seg]
+	var sm: SphereMesh = _mesh_cache.get(key, null) as SphereMesh
+	if sm == null:
+		sm = SphereMesh.new()
+		sm.radius = r
+		sm.height = r * 2.0
+		sm.radial_segments = seg
+		sm.rings = maxi(int(float(seg) * 0.5), 4)
+		_mesh_cache[key] = sm
 	return _add_mesh(parent, sm, pos, mat, shadow)
 
 

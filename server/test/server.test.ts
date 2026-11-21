@@ -438,14 +438,14 @@ test("対戦の同意（要件#101）: 同意していないと対戦できず�
   const a = await guest(srv.base, srv.wsUrl, "同意まだ", false);
   const me = await api(srv.base, "GET", "/api/v1/me", undefined, a.token);
   assert.equal(me.body.vs_consent, 0);
-  assert.equal(me.body.vs_consent_required, 1);
+  assert.equal(me.body.vs_consent_required, 2);
   a.c.send({ t: "queue", format: "text" });
   assert.equal((await a.c.wait((m) => m.t === "error")).code, "consent_required");
   a.c.inbox.length = 0;
   const old = await api(srv.base, "POST", "/api/v1/me/consent", { agree: true, version: 0 }, a.token);
   assert.equal(old.status, 409, "古い版の文への同意は受け付けない");
-  const ok = await api(srv.base, "POST", "/api/v1/me/consent", { agree: true, version: 1 }, a.token);
-  assert.equal(ok.body.consent.version, 1);
+  const ok = await api(srv.base, "POST", "/api/v1/me/consent", { agree: true, version: 2 }, a.token);
+  assert.equal(ok.body.consent.version, 2);
   assert.ok(ok.body.consent.at > 0, "いつ同意したかを残す");
   a.c.send({ t: "queue", format: "text" });
   assert.equal((await a.c.wait((m) => m.t === "queued" || m.t === "error")).t, "queued");
@@ -467,7 +467,9 @@ test("退職（要件#101）: サーバーのアカウントと通報を消し�
   assert.equal(del.status, 200);
   assert.equal((await api(srv.base, "GET", "/api/v1/me", undefined, a.token)).status, 401, "消したアカウントは使えない");
   const { reportCount } = await import("../src/db.ts");
-  assert.equal(reportCount(b.player.id), 0, "この人がした通報も消える");
+  assert.equal(reportCount(b.player.id), 1, "この人がした通報は、だれがしたかを消して残る（要件#108）");
+  const { openDb } = await import("../src/db.ts");
+  assert.equal((openDb().prepare("SELECT COUNT(*) AS n FROM reports WHERE reporter_id = ?").get(a.player.id) as { n: number }).n, 0);
   a.c.close(); b.c.close();
 });
 

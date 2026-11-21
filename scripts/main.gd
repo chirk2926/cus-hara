@@ -33,7 +33,7 @@ const Markdown = preload("res://scripts/markdown.gd")
 const RepairStageScript = preload("res://scripts/repair_stage.gd")
 
 const CAMERA_POS: Vector3 = Vector3(0.0, 1.55, 1.9)
-const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.28, -0.35)
+const CAMERA_TARGET: Vector3 = Vector3(0.0, 1.18, -0.35)   # 要件#109: 1.28 → 1.18（16:9 でフキダシのしっぽが口元にかからないよう、顔を少し上に）
 ## 対戦の店員役のキャラクターの位置と、客役のときのカメラ（要件#84）
 const STAFF_POS: Vector3 = Vector3(0.0, 0.0, 1.2)
 const CUSTOMER_VIEW_POS: Vector3 = Vector3(1.15, 1.8, -1.75)
@@ -98,6 +98,7 @@ var _hard_on: bool = false
 var _hard_toggle: Button = null   # 直前のシフトがハードコアだったか（「もう一度」用）
 var _lobby_status: Label = null
 var _lobby_code: Label = null
+var _lobby_copy: Button = null
 var _current_stage: String = ""
 var _shake: float = 0.0
 var _time: float = 0.0
@@ -120,13 +121,18 @@ func _ready() -> void:
 	# Godot の既定のまま残っていた部品を店の見た目にそろえる（要件#96）
 	UI.install_theme()
 	var args: PackedStringArray = OS.get_cmdline_user_args()
+	# 開発・テスト用の起動引数は、エディタ・デバッグ版・テスト版の exe でだけ効く（要件#108: 配る版で自動の対戦ボットや別のサーバーを使わせない）。
+	# 配る版で使えるのは、ひとりで遊ぶ自動テスト（--smoke。台本のお客さんだけ、サーバーにつながない）と --lang だけ
+	var dev: bool = GameSettings.dev_args_allowed()
 	for a in args:
 		if a.begins_with("--lang="):
 			GameSettings.language = a.substr(7)
 			GameSettings.apply_language()
-		elif a.begins_with("--source="):
+		elif a.begins_with("--source=") and dev:
 			GameSettings.solo_source = a.substr(9)
-	smoke = args.has("--smoke") or _arg("--vs-smoke=") != ""
+	smoke = args.has("--smoke") or (dev and _arg("--vs-smoke=") != "")
+	if smoke and not dev:
+		GameSettings.solo_source = "offline"
 
 	sfx = SfxScript.new()
 	add_child(sfx)
@@ -174,11 +180,11 @@ func _ready() -> void:
 
 	if args.has("--smoke"):
 		_run_smoke()
-	elif _arg("--vs-smoke=") != "":
+	elif dev and _arg("--vs-smoke=") != "":
 		_run_versus_smoke(_arg("--vs-smoke="))
-	elif args.has("--shots"):
+	elif dev and args.has("--shots"):
 		_run_shots()
-	elif args.has("--qa"):
+	elif dev and args.has("--qa"):
 		# 自動の動作確認（ボタンを実際に押す。scripts/qa_runner.gd）
 		var qa: Node = (load("res://scripts/qa_runner.gd") as GDScript).new()
 		add_child(qa)
@@ -1426,13 +1432,13 @@ func _sync_eos_achievements() -> void:
 ## 対戦の発言の取り扱いへの同意（要件#101）。総務省の考え方に合わせ、利用規約にまとめた同意ではなく、
 ## 対戦の前に、何に使い・どこに送り・どれだけ保存するかを具体的に見せて、チェックと「同意して進む」で明確に同意してもらう。
 ## 文を大きく変えたら VS_CONSENT_VERSION とサーバーの VS_CONSENT_VERSION を上げる（もう一度同意してもらう）
-const VS_CONSENT_VERSION: int = 1
+const VS_CONSENT_VERSION: int = 2   # 要件#108: 声の中継の説明を直したので、もう一度同意してもらう
 const VS_CONSENT_POINTS: Array = [
 	["発言のチェックと判定", "対戦での発言（文字・声）は、不適切な内容（性的な内容・差別・脅し・個人情報）のチェックと、AIによる採点に使います。"],
 	["外部のAIへの送信", "チェックと採点のため、発言の文字（声は文字に起こしたもの）を、ゲームサーバーからAIの事業者（Anthropic など、運営が設定した事業者）に送ります。声の対戦では、文字に起こすために声を文字起こしのサービスに送ります。"],
-	["相手への中継", "発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャット、またはゲームサーバーを通して届けます。"],
+	["相手への中継", "発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャットで、話している間そのまま相手に聞こえます（チェックは文字に起こしてから行うため、声そのものは止められません）。Epic が使えないときはゲームサーバーを通し、チェックを通った声だけを届けます。"],
 	["保存", "発言は、試合中と試合の終わりから1時間だけ、サーバーのメモリに置きます。通報（相手からの通報、または自動の不適切発言の検出）があった試合だけ、会話の文字を30日保存し、運営が通報の確認に使います。声そのものは保存しません。"],
-	["不適切な発言", "見つかった発言は相手に見せず、あなたに警告します。3回で負けになり、自動で通報されます。"],
+	["不適切な発言", "見つかった発言は（文字は）相手に見せず、あなたに警告します。3回で負けになり、自動で通報されます。"],
 ]
 
 
@@ -1553,7 +1559,7 @@ func _refresh_notices() -> void:
 	var head: PackedStringArray = PackedStringArray([tr("運営からのお知らせ")])
 	if bool(_server_info.get("maintenance", false)):
 		var mm: String = str(_server_info.get("maintenance_message", ""))
-		head.append(tr("【メンテナンス中】対戦はお休みしています。1人用は遊べます。") + ("\n" + mm if mm != "" and GameSettings.language == "ja" else ""))
+		head.append(tr("【メンテナンス中】対戦はお休みしています。1人用は遊べます。") + ("\n" + (tr("運営より: ") if GameSettings.language != "ja" else "") + mm if mm != "" else ""))
 	var notices: Array = _server_info.get("notices", [])
 	for n in notices:
 		var d: Dictionary = n
@@ -1607,8 +1613,9 @@ func show_notice(n: Dictionary) -> void:
 	rt.add_theme_color_override("default_color", UI.INK)
 	rt.text = Markdown.to_bbcode(_notice_lang(n.get("body", {})))
 	rt.meta_clicked.connect(func(meta: Variant) -> void:
+		# お知らせのリンクは https だけ開く（要件#108）
 		var url: String = str(meta)
-		if url.begins_with("https://") or url.begins_with("http://"):
+		if url.begins_with("https://") and url.length() < 500 and not url.contains(" "):
 			OS.shell_open(url))
 	scroll.add_child(rt)
 	var close: Button = UI.link(tr("閉じる"), UI.S_BODY)
@@ -1630,6 +1637,10 @@ func show_notice(n: Dictionary) -> void:
 func _load_notice_image(path: String) -> Texture2D:
 	if _notice_tex.has(path):
 		return _notice_tex[path]
+	# サーバーのお知らせ画像の決まった形の住所だけ（要件#108）
+	var ok_path: RegEx = RegEx.create_from_string("^/api/v1/notice_image/[0-9a-f]{32}\\.(png|jpg)$")
+	if ok_path.search(path) == null:
+		return null
 	var req: HTTPRequest = HTTPRequest.new()
 	req.timeout = 10.0
 	req.body_size_limit = 3 * 1024 * 1024
@@ -3102,6 +3113,7 @@ func _close_sheet() -> void:
 	_sheet = null
 	_lobby_status = null
 	_lobby_code = null
+	_lobby_copy = null
 	_solo.paused = false
 	_sheet_is_receipt = false
 	_sheet_is_lobby = false
@@ -3348,7 +3360,7 @@ func _confirm_resign(step: int) -> void:
 	_sheet_title(col, tr("退職届") if step == 1 else tr("本当に退職しますか？"))
 	if step == 1:
 		col.add_child(UI.para(tr("退職すると、このパソコンに保存した記録・称号・HP/CUS・持ち物・キャラクター・設定がすべて消えます。元には戻せません。"), UI.S_BODY, UI.INK))
-		col.add_child(UI.para(tr("ゲームサーバーにあるあなたのアカウント（名前・レート・同意の記録・通報の記録・保存された会話）も消します。"), UI.S_SMALL, UI.INK_SOFT))
+		col.add_child(UI.para(tr("ゲームサーバーにあるあなたのアカウント（名前・レート・称号・同意の記録など）も消します。あなたへの通報と、通報された試合の会話は、迷惑行為への対応のため保存期間まで残ります。"), UI.S_SMALL, UI.INK_SOFT))
 	else:
 		col.add_child(UI.para(tr("最後の確認です。すべてのデータを消して、新人からやり直します。"), UI.S_BODY, UI.SHU))
 	var row: HBoxContainer = UI.hbox(20)
@@ -3761,8 +3773,18 @@ func _show_versus_lobby() -> void:
 			sfx.play("click")
 			_versus.request_eos("invite", _vs_format))
 		fc.add_child(invite)
+	# 部屋コードと、ワンクリックでコピーするボタン（要件#109: Discord などで送りやすく）
+	var code_row: HBoxContainer = UI.hbox(10)
+	fc.add_child(code_row)
 	_lobby_code = UI.text("", UI.S_HEAD, UI.INK, UI.F_DOT)
-	fc.add_child(_lobby_code)
+	code_row.add_child(_lobby_code)
+	_lobby_copy = UI.link(tr("コピー"), UI.S_SMALL)
+	_lobby_copy.visible = false
+	_lobby_copy.pressed.connect(func() -> void:
+		if _lobby_code != null and is_instance_valid(_lobby_code) and _lobby_code.text != "":
+			DisplayServer.clipboard_set(_lobby_code.text)
+			_lobby_copy.text = tr("コピーしました"))
+	code_row.add_child(_lobby_copy)
 	var join_row: HBoxContainer = UI.hbox(8)
 	fc.add_child(join_row)
 	var code_edit: LineEdit = UI.field(tr("部屋コード"), UI.S_BODY)
@@ -3860,6 +3882,9 @@ func _on_lobby_event(kind: String, data: Dictionary) -> void:
 		"room_created":
 			if _lobby_code != null and is_instance_valid(_lobby_code):
 				_lobby_code.text = str(data.get("code", ""))
+				if _lobby_copy != null and is_instance_valid(_lobby_copy):
+					_lobby_copy.visible = true
+					_lobby_copy.text = tr("コピー")
 			_set_lobby_status(tr("部屋を作りました。コードを友達に伝えて、参加を待っています…"), false)
 		"cancelled":
 			_set_lobby_status(tr("やめました"), false)

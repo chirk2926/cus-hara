@@ -199,3 +199,14 @@ test("AIの使用量を日ごとに数え、料金の目安を出す", async () 
   assert.ok(row);
   assert.ok(Math.abs(row.cost_usd - (0.1 + 0.2 * 0.5)) < 0.0001, `目安 ${row.cost_usd}`);
 });
+
+test("管理画面（要件#108）: ほかのサイトからの書きかえ（ログイン含む）は断る。メタデータの住所は設定できない", async () => {
+  const foreign = await req("POST", "/api/login", { body: { password: "x" }, headers: { origin: "https://evil.example" } });
+  assert.equal(foreign.status, 403, "ほかのオリジン");
+  const plain = await req("POST", "/api/login", { body: { password: "x" }, headers: { "content-type": "text/plain" } });
+  assert.equal(plain.status, 403, "JSON でない送信");
+  const cross = await req("POST", "/api/login", { body: { password: "x" }, headers: { "sec-fetch-site": "cross-site" } });
+  assert.equal(cross.status, 403, "Sec-Fetch-Site: cross-site");
+  const { setSetting } = await import("../src/settings.ts");
+  assert.throws(() => setSetting("llmBaseUrl", "http://169.254.169.254/latest", false));
+});

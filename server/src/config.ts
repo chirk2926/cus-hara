@@ -57,7 +57,8 @@ export const config = {
   wsPerIp: num("WS_PER_IP", 16),
   // EOS（Epic Online Services）のロビーで組んだ相手と、ランクマッチの部屋を作ることを許すか（要件#32, #48）。
   // 部屋に入るときに、同じ回線・レーティング差・同じ相手との連戦を確かめる（チート対策）。0 で無効
-  allowRankedRooms: str("ALLOW_RANKED_ROOMS", "1") === "1",
+  // EOS のロビーをサーバーで確かめられるようになるまでは、部屋でのランクマッチは閉じておく（要件#108: 知り合いどうしでレートを操作できないように）
+  allowRankedRooms: str("ALLOW_RANKED_ROOMS", "0") === "1",
   // ランクの部屋に入れるレーティング差の上限
   rankedRoomMaxGap: num("RANKED_ROOM_MAX_GAP", 400),
   // チート対策（要件#47。docs/SERVER.md「チート対策」）

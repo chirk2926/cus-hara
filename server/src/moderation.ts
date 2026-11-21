@@ -28,10 +28,15 @@ const EMAIL = /[\w.+-]+@[\w-]+\.[\w.]+/;
 
 function normalize(text: string): string {
   // 全角英数を半角に、空白・記号をのぞく（「え ろ」「e.r.o」のような分け書きも拾う）
-  return text
+  return stripInvisible(text)
     .normalize("NFKC")
     .toLowerCase()
     .replace(/[\s　._・*＊\-~〜]/g, "");
+}
+
+/** 見えない字（ゼロ幅の文字・ソフトハイフンなど）を消す（要件#108: 「せ\u200bっくす」のように挟んですり抜けられないように） */
+export function stripInvisible(text: string): string {
+  return text.replace(/[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0]/g, "");
 }
 
 /** 英語の語は単語の区切りで見る（「cocktail」で「cock」を拾わない）。それ以外は区切りを消した文の中に含まれるかで見る */
@@ -51,7 +56,7 @@ function hit(raw: string, norm: string, w: string): boolean {
 }
 
 export function keywordModeration(text: string): ModerationResult {
-  const raw = text.normalize("NFKC").toLowerCase();
+  const raw = stripInvisible(text).normalize("NFKC").toLowerCase();
   const t = normalize(text);
   if (SEXUAL.some((w) => hit(raw, t, w))) return { flagged: true, category: "sexual", by: "keyword" };
   if (HATE.some((w) => hit(raw, t, w))) return { flagged: true, category: "hate", by: "keyword" };

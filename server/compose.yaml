@@ -7,10 +7,15 @@ services:
       context: ..
       dockerfile: server/Dockerfile
     ports:
-      - "8787:8787"
+      # このマシンの中だけで待つ。外へは Cloudflare Tunnel や HTTPS のプロキシ（Caddy など）を通して出す（要件#108）
+      - "127.0.0.1:8787:8787"
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-opus-5-5}
+      # 既定は安いモデル（要件#108: 高いモデルが既定だと料金がふくらむ）
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-haiku-5-5}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      # コンテナの中から見ると、プロキシは Docker のブリッジの住所から来る
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.17.0.1}
       STT_PROVIDER: ${STT_PROVIDER:-none}
       STT_URL: ${STT_URL:-http://stt:8080}
     volumes:

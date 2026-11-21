@@ -262,9 +262,10 @@ func _on_message(msg: Dictionary) -> void:
 			var shown: Dictionary = msg.duplicate()
 			if ERROR_TEXT.has(code):
 				shown["message"] = tr(str(ERROR_TEXT[code]))
-				# 運営が書いた理由・お知らせ（日本語）は、日本語のときだけ添える（要件#100）
-				if code in ["maintenance", "versus_banned", "banned"] and GameSettings.language == "ja" and str(msg.get("message", "")) != "":
-					shown["message"] = str(msg.get("message", ""))
+				# 運営が書いた理由・お知らせは、どの言語でも添える（要件#109: 日本語のときだけだと、予定や理由が伝わらなかった）
+				if code in ["maintenance", "versus_banned", "banned"] and str(msg.get("message", "")) != "":
+					var own: String = str(msg.get("message", ""))
+					shown["message"] = own if GameSettings.language == "ja" else (str(shown["message"]) + "\n" + tr("運営より: ") + own)
 			lobby_event.emit("error", shown)
 			# 同意がない（取り消した・別のPCで遊んだなど）: 同意の画面を出す（要件#101）
 			if code == "consent_required" and not main.smoke:
@@ -273,6 +274,7 @@ func _on_message(msg: Dictionary) -> void:
 			if _eos_flow != "" and state != "match":
 				_on_eos_failed(shown.get("message", ""))
 		"match_found":
+			_eos_voice_joined = false
 			_on_match_found(msg)
 		"round_start":
 			_on_round_start(msg)
@@ -290,6 +292,9 @@ func _on_message(msg: Dictionary) -> void:
 			var secs: float = voice.play_base64(str(msg.get("audio", "")))
 			if secs > 0.0:
 				hud.set_status(tr("相手の声: %.1f 秒") % secs)
+				# 相手の声が聞こえる間は BGM を小さく（要件#109）
+				main.bgm.duck(0.25)
+				get_tree().create_timer(secs + 0.2).timeout.connect(func() -> void: main.bgm.duck(1.0))
 		"judged":
 			_on_judged(msg)
 		"round_end":
@@ -547,6 +552,7 @@ func _leave_later(mood: String) -> void:
 
 func _on_match_end(msg: Dictionary) -> void:
 	_voice_mode = "relay"
+	_eos_voice_joined = false
 	if eos != null:
 		eos.voice_leave()
 	main.free_staff()
@@ -602,6 +608,7 @@ func _on_text(text: String) -> void:
 
 # ---------------------------------------------------------------- EOS のボイス（要件#100）
 var _voice_mode: String = "relay"   # "eos" のとき、声は EOS で相手に届き、サーバーは中継しない
+var _eos_voice_joined: bool = false
 
 
 func _eos_ok() -> bool:
@@ -621,8 +628,10 @@ func _start_eos_voice_host() -> void:
 
 
 func _join_eos_voice(lobby_id: String) -> void:
-	if not _eos_ok():
+	# 1試合に1回だけ（要件#108: 何度も別の部屋に入らせられないように）
+	if not _eos_ok() or _eos_voice_joined:
 		return
+	_eos_voice_joined = true
 	var ok: bool = await eos.voice_join(lobby_id, GameSettings.player_name)
 	if ok:
 		ok = await eos.voice_wait_connected(15.0)

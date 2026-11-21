@@ -12,7 +12,7 @@ import { sttEnabled, transcribe } from "./stt.ts";
 import { MAX_BYTES, mulawToPcm16, isNearlySilent } from "./audio.ts";
 import { eloDelta, rankName } from "./rating.ts";
 import { type Player, playerById, recordMatch, recentPairCount, addReport } from "./db.ts";
-import { moderate, keywordModeration, type ModerationCategory } from "./moderation.ts";
+import { moderate, keywordModeration, stripInvisible, type ModerationCategory } from "./moderation.ts";
 import { allow } from "./ratelimit.ts";
 import { type Conn, type Format, type Kind, type Role, publicPlayer } from "./protocol.ts";
 import { log } from "./log.ts";
@@ -32,6 +32,8 @@ interface Input {
   action?: string;
   pcm?: Int16Array;
   debugText?: string;
+  /** 相手に届ける声（サーバーの中継のとき）。不適切な発言のチェックを通ってから送る（要件#108） */
+  audio?: string;
 }
 
 interface Waiting {
@@ -156,12 +158,15 @@ export class Match {
   /** 両方が EOS のボイスの部屋につながった。声はサーバーで中継しない（文字起こしには使う） */
   private eosVoice = false;
   private eosReady: [boolean, boolean] = [false, false];
+  private eosRoomSent = false;
 
   /** 席 0 が作った EOS のボイスの部屋の ID を、相手に渡す */
   onEosVoiceRoom(seat: number, lobbyId: unknown): void {
-    if (this.format !== "voice" || seat !== 0 || typeof lobbyId !== "string") return;
+    // 1試合に1回だけ（要件#108: 何度も別の部屋に入らせられないように）
+    if (this.format !== "voice" || seat !== 0 || typeof lobbyId !== "string" || this.eosRoomSent) return;
     const id = lobbyId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 128);
     if (id === "") return;
+    this.eosRoomSent = true;
     this.send(1, { t: "eos_voice", lobby_id: id });
   }
 
@@ -211,9 +216,14 @@ export class Match {
   private async pickCard(): Promise<Customer> {
     if (llmEnabled()) {
       try {
-        const timeout = new Promise<null>((r) => setTimeout(() => r(null), 12000));
-        const c = await Promise.race([generateCustomer(this.stage, this.usedTitles, this.lang), timeout]);
-        if (c) return applyProblem(c);
+        let timer: NodeJS.Timeout | undefined;
+        const timeout = new Promise<null>((r) => { timer = setTimeout(() => r(null), 12000); });
+        try {
+          const c = await Promise.race([generateCustomer(this.stage, this.usedTitles, this.lang), timeout]);
+          if (c) return applyProblem(c);
+        } finally {
+          clearTimeout(timer);   // 要件#109: 待ちのタイマーを残さない
+        }
       } catch (e) {
         log("card generation failed, using scenario", String(e));
       }
@@ -336,6 +346,7 @@ export class Match {
         if (this.finished) return null;
         continue;
       }
+      this.relayVoice(staff, input);
       this.broadcastLine("staff", staff, reply, input.via);
       usedStaff.push(reply);
       // 対戦は1回の返事で決まりすぎないように、納得の増え方は 40 まで（1人用は話がまとまれば一気に埋めてよい。要件#106）
@@ -381,6 +392,7 @@ export class Match {
         history.push({ role: "customer", text: shown });
         cj = { anger_delta: 0, resolve_delta: 15, comment: pick(this.lang, { ja: "不適切な発言。店員側に有利になった。", en: "Inappropriate remark. Advantage to the clerk.", zh: "不当发言。对店员有利。", ko: "부적절한 발언. 직원 쪽이 유리해졌다." }) };
       }
+      if (cflag === "none") this.relayVoice(customer, cin);
       this.broadcastLine("customer", customer, shown, cin.via);
       if (line !== "") usedCustomer.push(line);
       this.anger = clamp(this.anger + cj.anger_delta, 0, 100);
@@ -504,7 +516,7 @@ export class Match {
   // ---------------------------------------------------------------- 入力の受け口
 
   onSay(seat: number, raw: unknown): void {
-    const text = typeof raw === "string" ? raw.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
+    const text = typeof raw === "string" ? stripInvisible(raw).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
     if (!this.waiting || this.waiting.seat !== seat || text === "") return;
     this.inputs[seat]++;
     this.resolveWaiting({ text, via: "text" });
@@ -521,6 +533,11 @@ export class Match {
     this.resolveWaiting({ text: actionLabel(id, this.lang), via: "action", action: id });
   }
 
+  /** チェックを通った声を相手に届ける（サーバーの中継のとき） */
+  private relayVoice(seat: number, input: { audio?: string }): void {
+    if (input.audio) this.send(1 - seat, { t: "voice", role: this.roleOf(seat), by: "opponent", audio: input.audio });
+  }
+
   onVoice(seat: number, b64: unknown, debugText: unknown): void {
     if (this.format !== "voice" || !this.waiting || this.waiting.seat !== seat || typeof b64 !== "string") return;
     let bytes: Buffer;
@@ -535,12 +552,11 @@ export class Match {
       this.sendPhase();
       return;
     }
-    // 相手にはすぐ声を届ける（ボイスチャットとして聞こえる）。EOS のボイスで届いているときは、サーバーからは送らない（要件#100）
-    const role = this.roleOf(seat);
-    if (!this.eosVoice) this.send(1 - seat, { t: "voice", role, by: "opponent", audio: b64 });
+    // サーバーの中継のときは、文字にして不適切な発言のチェックを通ってから相手に届ける（要件#108: チェックの前の声をそのまま流さない）。
+    // EOS のボイスで届いているときは、サーバーからは送らない（要件#100）
     const debug = config.sttProvider === "mock" && typeof debugText === "string" ? debugText : undefined;
     this.inputs[seat]++;
-    this.resolveWaiting({ text: "", via: "voice", pcm: mulawToPcm16(new Uint8Array(bytes)), debugText: debug });
+    this.resolveWaiting({ text: "", via: "voice", pcm: mulawToPcm16(new Uint8Array(bytes)), debugText: debug, audio: this.eosVoice ? undefined : bytes.toString("base64") });
   }
 
   // ---------------------------------------------------------------- 切断・再接続・終了
@@ -550,6 +566,7 @@ export class Match {
     s.conn = null;
     if (this.finished) return;
     this.send(1 - seat, { t: "opponent_status", connected: false, grace_seconds: config.versus.reconnectGraceMs / 1000 });
+    if (s.graceTimer) clearTimeout(s.graceTimer);   // 要件#109: 何回も切れたとき、前のタイマーを残さない
     s.graceTimer = setTimeout(() => this.forfeit(seat, "disconnected"), config.versus.reconnectGraceMs);
   }
 

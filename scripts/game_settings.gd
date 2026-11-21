@@ -140,9 +140,11 @@ func _ready() -> void:
 			# 同じPCで2つ起動して対戦を試すとき、ログイン情報を分ける
 			_profile = a.substr(10) if not is_test else "test_" + a.substr(10)
 			load_settings()
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--server="):
-			server_url = a.substr(9)
+	# 接続先を変える引数は、開発・テスト版だけ（要件#108: 配る版では、保存したログイン情報をほかのサーバーへ送らない）
+	if dev_args_allowed():
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--server="):
+				server_url = a.substr(9)
 	if language == "":
 		var os_lang: String = OS.get_locale_language()
 		language = os_lang if os_lang in ["ja", "zh", "ko"] else "en"
@@ -199,7 +201,11 @@ func load_settings() -> void:
 	language = str(cfg.get_value("ui", "language", language))
 	if not ["ja", "en", "zh", "ko"].has(language):
 		language = ""
-	token = str(cfg.get_value("server", "token", ""))
+	# ログインの合言葉も暗号化ファイルへ（要件#108）。古い版の平文の値があれば読んで移す
+	token = _load_secret("server", "token")
+	if token == "" and str(cfg.get_value("server", "token", "")) != "":
+		token = str(cfg.get_value("server", "token", ""))
+		_migrate_key = true
 	player_name = str(cfg.get_value("server", "name", ""))
 	var lp: Variant = cfg.get_value("server", "profile", {})
 	if typeof(lp) == TYPE_DICTIONARY:
@@ -260,7 +266,6 @@ func load_settings() -> void:
 func save_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
 	cfg.set_value("ui", "language", language)
-	cfg.set_value("server", "token", token)
 	cfg.set_value("server", "name", player_name)
 	cfg.set_value("server", "profile", last_profile)
 	cfg.set_value("ai", "source", solo_source)
@@ -411,15 +416,21 @@ func _secret_path() -> String:
 
 
 func _load_secret_key() -> String:
+	return _load_secret("ai", "api_key")
+
+
+func _load_secret(section: String, key: String) -> String:
 	var c: ConfigFile = ConfigFile.new()
 	if c.load_encrypted_pass(_secret_path(), OS.get_unique_id() + "cushara") != OK:
 		return ""
-	return str(c.get_value("ai", "api_key", ""))
+	return str(c.get_value(section, key, ""))
 
 
+## API キーとログインの合言葉（要件#108）を、このPCだけで開ける暗号化ファイルに書く
 func _save_secret_key(key: String) -> void:
 	var c: ConfigFile = ConfigFile.new()
 	c.set_value("ai", "api_key", key)
+	c.set_value("server", "token", token)
 	c.save_encrypted_pass(_secret_path(), OS.get_unique_id() + "cushara")
 
 
@@ -534,6 +545,11 @@ static func money_in(yen: int, lang: String) -> String:
 	if cents > 0:
 		num += ".%02d" % cents
 	return ("-" if neg else "") + str(c["prefix"]) + num + str(c["suffix"])
+
+
+## 開発・テスト用の起動引数を受け付けるか（エディタ・デバッグ版・テスト版の exe）。配る版は false（要件#108）
+func dev_args_allowed() -> bool:
+	return OS.is_debug_build() or OS.has_feature("testbuild")
 
 
 func answer_rate() -> float:

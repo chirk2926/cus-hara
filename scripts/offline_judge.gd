@@ -122,29 +122,29 @@ static func is_off_topic(text: String) -> bool:
 
 ## 文を節に分ける（「、」「。」や「but」で区切る）。否定が同じ節にあるかを見るため
 static func _clauses(text: String, lang: String) -> PackedStringArray:
-	var re: RegEx = RegEx.new()
+	var re: RegEx = null
 	if lang == "en":
-		re.compile("[.,!?;\\n]|\\bbut\\b")
+		re = _rx("[.,!?;\\n]|\\bbut\\b")
 	else:
-		re.compile("[。、！？!?，,．\\n]")
+		re = _rx("[。、！？!?，,．\\n]")
 	return PackedStringArray(re.sub(text, "|", true).split("|", false))
 
 
 ## 中身のある語のかたまり: 日本語は漢字・カタカナの2文字の並び、中国語は漢字の2文字の並び、英語は4文字以上の単語
 static func _tokens(text: String, lang: String) -> Dictionary:
 	var out: Dictionary = {}
-	var re: RegEx = RegEx.new()
+	var re: RegEx = null
 	if lang == "en":
-		re.compile("[a-z]{4,}")
+		re = _rx("[a-z]{4,}")
 		for m in re.search_all(text.to_lower()):
 			out[m.get_string()] = true
 		return out
 	if lang == "zh":
-		re.compile("[\\x{4E00}-\\x{9FFF}]{2,}")
+		re = _rx("[\\x{4E00}-\\x{9FFF}]{2,}")
 	elif lang == "ko":
-		re.compile("[\\x{AC00}-\\x{D7A3}]{2,}")
+		re = _rx("[\\x{AC00}-\\x{D7A3}]{2,}")
 	else:
-		re.compile("[\\x{4E00}-\\x{9FFF}\\x{30A0}-\\x{30FF}]{2,}")
+		re = _rx("[\\x{4E00}-\\x{9FFF}\\x{30A0}-\\x{30FF}]{2,}")
 	for m in re.search_all(text):
 		var run: String = m.get_string()
 		for i in range(run.length() - 1):
@@ -191,8 +191,8 @@ static func flags(customer: Dictionary, reply: String, used: Array) -> Dictionar
 	var w: Dictionary = words(lang)
 	var raw: String = reply.strip_edges()
 	var text: String = _norm(raw, lang)
-	var re: RegEx = RegEx.new()
-	re.compile(str(w.get("polite_pattern", "です|ます")))
+	var re: RegEx = null
+	re = _rx(str(w.get("polite_pattern", "です|ます")))
 	var polite: bool = re.search(text) != null or _count(text, w.get("polite", []), lang) > 0
 	var ex_text: String = text
 	for e in (w.get("excuse_exempt", []) as Array):
@@ -212,6 +212,7 @@ static func flags(customer: Dictionary, reply: String, used: Array) -> Dictionar
 		"repeat": near,
 		"excuse": _count(ex_text, w.get("excuse", []), lang) > 0,
 		"offtopic": is_off_topic(raw),
+		# 称号「0.2秒の店員」用（3文字以下）。採点の「短すぎる」（6文字未満）とは別の目安（要件#109）
 		"short": (raw.split(" ", false).size() < 3) if lang == "en" else raw.length() <= 3,
 	}
 
@@ -294,8 +295,8 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 	if excuse > 0:
 		a += 8.0
 		comment = str(cm["excuse"])
-	var re: RegEx = RegEx.new()
-	re.compile(str(w.get("polite_pattern", "です|ます")))
+	var re: RegEx = null
+	re = _rx(str(w.get("polite_pattern", "です|ます")))
 	if re.search(text) == null:
 		a += 8.0
 		comment = str(cm["casual"])
@@ -355,3 +356,13 @@ static func judge(customer: Dictionary, reply: String, used: Array, anger: float
 		"customer_reply": line(customer, key),
 		"comment": comment,
 	}
+
+
+## 正規表現はコンパイルして使い回す（要件#109: 判定のたびにコンパイルしていた）
+static var _rx_cache: Dictionary = {}
+
+
+static func _rx(pattern: String) -> RegEx:
+	if not _rx_cache.has(pattern):
+		_rx_cache[pattern] = RegEx.create_from_string(pattern)
+	return _rx_cache[pattern]

@@ -45,9 +45,9 @@ JA = """<h1>カスハラ防衛線 プライバシーポリシー</h1>
 <ol>
 <li><b>発言のチェックと判定</b>: 対戦での発言（文字・声）は、不適切な内容（性的な内容・差別・脅し・個人情報）のチェックと、AIによる採点に使います。</li>
 <li><b>外部のAIへの送信</b>: チェックと採点のため、発言の文字（声は文字に起こしたもの）を、ゲームサーバーからAIの事業者（Anthropic など、運営が設定した事業者）に送ります。声の対戦では、文字に起こすために声を文字起こしのサービスに送ります。</li>
-<li><b>相手への中継</b>: 発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャット、またはゲームサーバーを通して届けます。</li>
+<li><b>相手への中継</b>: 発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャットで、話している間そのまま相手に聞こえます（チェックは文字に起こしてから行うため、声そのものは止められません）。Epic が使えないときはゲームサーバーを通し、チェックを通った声だけを届けます。</li>
 <li><b>保存</b>: 発言は、試合中と試合の終わりから1時間だけ、サーバーのメモリに置きます。通報（相手からの通報、または自動の不適切発言の検出）があった試合だけ、会話の文字を30日保存し、運営が通報の確認に使います。声そのものは保存しません。</li>
-<li><b>不適切な発言</b>: 見つかった発言は相手に見せず、発言した人に警告します。3回で負けになり、自動で通報されます。</li>
+<li><b>不適切な発言</b>: 見つかった発言は（文字は）相手に見せず、発言した人に警告します。3回で負けになり、自動で通報されます。</li>
 </ol>
 <p>同意の内容を変えるときは、もう一度同意をいただきます。</p>
 
@@ -58,7 +58,7 @@ JA = """<h1>カスハラ防衛線 プライバシーポリシー</h1>
 <p>通信の暗号化、ログイン用の合言葉の元に戻せない形での保存、APIキーなどの秘密の値の分離、管理用の画面への外部からの接続の遮断、保存期間を過ぎた情報の自動の削除を行います。</p>
 
 <h2>6. 削除・開示などのご請求</h2>
-<p>ゲームの「設定」→「退職する（データ削除）」で、このパソコンの記録と、ゲームサーバーのアカウント（名前・レート・同意の記録・通報の記録・あなたが出た試合の保存された会話）を消せます。対戦の結果の記録は、相手のレーティングの計算のため、名前のない形で残ります。サーバーにつながらないときや、開示・訂正・利用停止などのご請求は、上の連絡先へご連絡ください。</p>
+<p>ゲームの「設定」→「退職する（データ削除）」で、このパソコンの記録と、ゲームサーバーのアカウント（名前・レート・称号・同意の記録など）を消せます。ただし、迷惑行為への対応のため、あなたへの通報の記録（1年）と、通報された試合の会話（30日）は、保存期間が過ぎるまで残ります。あなたがした通報は、だれがしたかを消して残ります。対戦の結果の記録は、相手のレーティングの計算のため、名前のない形で残ります。サーバーにつながらないときや、開示・訂正・利用停止などのご請求は、上の連絡先へご連絡ください。</p>
 
 <h2>7. 未成年の方へ</h2>
 <p>未成年の方は、保護者の方の同意を得てからご利用ください。</p>
@@ -98,9 +98,9 @@ EN = """<h1>Kasuhara Defense Line – Calm the Angry Customer — Privacy Policy
 <ol>
 <li><b>Checking and scoring</b>: What you say in versus matches (text and voice) is checked for inappropriate content (sexual content, discrimination, threats, personal information) and scored by AI.</li>
 <li><b>Sending to external AI</b>: For checking and scoring, the text of what you say (voice is transcribed first) is sent from the game server to an AI provider chosen by the operator (such as Anthropic). In voice matches, your voice is sent to a speech-to-text service.</li>
-<li><b>Delivery to your opponent</b>: What you say is delivered to your opponent. Voice goes through Epic Online Services (Epic Games) voice chat or through the game server.</li>
+<li><b>Delivery to your opponent</b>: What you say is delivered to your opponent. Through Epic Online Services (Epic Games) voice chat, your voice is heard live while you talk (checks run after transcription, so the voice itself can't be stopped). When Epic isn't available, voice goes through the game server and only voice that passes the check is delivered.</li>
 <li><b>Storage</b>: Remarks are kept in server memory only during the match and for 1 hour after it ends. Only for reported matches (reported by your opponent or by automatic detection) is the conversation text stored for 30 days, for the operator to review the report. Voice itself is never stored.</li>
-<li><b>Inappropriate remarks</b>: Detected remarks are hidden from your opponent and you receive a warning. Three warnings mean you lose, and the match is reported automatically.</li>
+<li><b>Inappropriate remarks</b>: Detected remarks are hidden from your opponent (as text) and the speaker receives a warning. Three warnings mean a loss, and the match is reported automatically.</li>
 </ol>
 <p>If these terms change, we will ask for your consent again.</p>
 
@@ -111,7 +111,7 @@ EN = """<h1>Kasuhara Defense Line – Calm the Angry Customer — Privacy Policy
 <p>We encrypt traffic, store login tokens in a non-reversible form, keep secrets such as API keys separate, block outside access to the admin screen, and delete data automatically when its retention period ends.</p>
 
 <h2>6. Deletion and other requests</h2>
-<p>In Settings → "Resign (delete data)", you can delete the data on your PC and your game-server account (name, rating, consent record, report records, stored conversations of your matches). Match results remain without your name, for calculating opponents' ratings. If the server is unreachable, or for disclosure, correction or other requests, please use the contact above.</p>
+<p>In Settings → "Resign (delete data)", you can delete the data on your PC and your game-server account (name, rating, titles, consent record and so on). However, to deal with abuse, reports made against you (1 year) and the conversations of reported matches (30 days) are kept until their retention period ends. Reports you made are kept with your identity removed. Match results are kept without names so opponents' ratings stay correct. If the server is unreachable, or for requests to disclose, correct or stop using your data, contact us at the address above.</p>
 
 <h2>7. Minors</h2>
 <p>If you are a minor, please obtain consent from a parent or guardian before using the Game.</p>
@@ -151,9 +151,9 @@ ZH = """<h1>《顾客骚扰防线 – 安抚愤怒的顾客》隐私政策</h1>
 <ol>
 <li><b>发言的检查与判定</b>：对战中的发言（文字和语音）会用于检查不当内容（色情内容、歧视、威胁、个人信息）以及由AI评分。</li>
 <li><b>发送给外部AI</b>：为了检查和评分，游戏服务器会把发言的文字（语音会先转成文字）发送给运营方设定的AI服务商（如 Anthropic）。语音对战中，会把语音发送给语音转文字服务。</li>
-<li><b>传达给对手</b>：发言会传达给对战对手。语音通过 Epic Online Services（Epic Games）的语音聊天或游戏服务器传达。</li>
+<li><b>传达给对手</b>：发言会传达给对战对手。通过 Epic Online Services（Epic Games）的语音聊天时，说话的声音会直接被对手听到（检查是在转成文字之后进行，因此无法拦截声音本身）。无法使用 Epic 时，经由游戏服务器，只传达通过检查的语音。</li>
 <li><b>保存</b>：发言只在比赛中以及比赛结束后1小时内保存在服务器内存中。只有被举报的比赛（对手举报或自动检测到不当发言），对话文字才会保存30天，供运营方核实举报。语音本身不会保存。</li>
-<li><b>不当发言</b>：检测到的发言不会显示给对手，并会警告发言者。累计3次将判负，并自动举报。</li>
+<li><b>不当发言</b>：检测到的发言（文字）不会显示给对手，并警告发言者。3次警告判负，并自动举报。</li>
 </ol>
 <p>上述内容变更时，会再次请你同意。</p>
 
@@ -164,7 +164,7 @@ ZH = """<h1>《顾客骚扰防线 – 安抚愤怒的顾客》隐私政策</h1>
 <p>我们对通信加密，以不可还原的形式保存登录凭证，分开保管API密钥等机密信息，阻止外部连接管理画面，并在保存期限届满后自动删除信息。</p>
 
 <h2>6. 删除与其他请求</h2>
-<p>在游戏的“设置”→“离职（删除数据）”中，可以删除电脑中的记录以及游戏服务器上的账号（名字、等级分、同意记录、举报记录、你参加的比赛中保存的对话）。为了计算对手的等级分，比赛结果会以不含名字的形式保留。无法连接服务器时，或需要申请查阅、更正、停止使用等，请通过上方联系方式联系我们。</p>
+<p>在游戏的“设置”→“离职（删除数据）”中，可以删除电脑中的记录以及游戏服务器上的账号（名字、等级分、称号、同意记录等）。但为了处理骚扰行为，针对你的举报记录（1年）和被举报比赛的对话（30天）会保留到保存期限结束。你提交的举报会在删除提交者身份后保留。为了计算对手的等级分，比赛结果会以不含名字的形式保留。无法连接服务器时，或需要申请查阅、更正、停止使用等，请通过上方联系方式联系我们。</p>
 
 <h2>7. 未成年人</h2>
 <p>未成年人请在征得监护人同意后使用本游戏。</p>
@@ -204,9 +204,9 @@ KO = """<h1>카스하라 방어선 – 화난 손님 달래기 개인정보 처�
 <ol>
 <li><b>발언의 확인과 판정</b>: 대전에서의 발언(글자·음성)은 부적절한 내용(성적인 내용·차별·협박·개인정보) 확인과 AI 채점에 씁니다.</li>
 <li><b>외부 AI로의 전송</b>: 확인과 채점을 위해 발언의 글자(음성은 글자로 변환한 것)를 게임 서버에서 AI 사업자(Anthropic 등 운영이 설정한 사업자)에게 보냅니다. 음성 대전에서는 글자로 바꾸기 위해 음성을 음성 인식 서비스에 보냅니다.</li>
-<li><b>상대에게 중계</b>: 발언은 대전 상대에게 전달됩니다. 음성은 Epic Online Services(Epic Games)의 보이스 채팅 또는 게임 서버를 통해 전달됩니다.</li>
+<li><b>상대에게 중계</b>: 발언은 대전 상대에게 전달됩니다. Epic Online Services(Epic Games)의 보이스 채팅에서는 말하는 동안 목소리가 그대로 상대에게 들립니다(확인은 글자로 바꾼 뒤에 하므로 목소리 자체는 막을 수 없습니다). Epic을 쓸 수 없을 때는 게임 서버를 통해 확인을 통과한 음성만 전달합니다.</li>
 <li><b>보관</b>: 발언은 경기 중과 경기가 끝난 뒤 1시간 동안만 서버 메모리에 둡니다. 신고(상대의 신고 또는 부적절한 발언의 자동 검출)가 있었던 경기만 대화의 글자를 30일간 보관하고, 운영이 신고 확인에 씁니다. 음성 자체는 저장하지 않습니다.</li>
-<li><b>부적절한 발언</b>: 발견된 발언은 상대에게 보이지 않게 하고, 발언한 사람에게 경고합니다. 3번이면 패배가 되고 자동으로 신고됩니다.</li>
+<li><b>부적절한 발언</b>: 발견된 발언은 (글자로는) 상대에게 보이지 않게 하고, 발언한 사람에게 경고합니다. 3번이면 패배가 되고 자동으로 신고됩니다.</li>
 </ol>
 <p>동의 내용을 바꿀 때는 다시 동의를 받습니다.</p>
 
@@ -217,7 +217,7 @@ KO = """<h1>카스하라 방어선 – 화난 손님 달래기 개인정보 처�
 <p>통신 암호화, 로그인용 암호를 되돌릴 수 없는 형태로 저장, API 키 등 비밀 값의 분리, 관리용 화면에 대한 외부 접속 차단, 보관 기간이 지난 정보의 자동 삭제를 합니다.</p>
 
 <h2>6. 삭제·열람 등의 청구</h2>
-<p>게임의 「설정」→「퇴직 (데이터 삭제)」에서 이 PC의 기록과 게임 서버의 계정(이름·레이팅·동의 기록·신고 기록·당신이 참가한 경기의 보관된 대화)을 지울 수 있습니다. 대전 결과 기록은 상대의 레이팅 계산을 위해 이름이 없는 형태로 남습니다. 서버에 연결할 수 없을 때나 열람·정정·이용 정지 등의 청구는 위 연락처로 연락해 주세요.</p>
+<p>게임의 「설정」→「퇴직 (데이터 삭제)」에서 이 PC의 기록과 게임 서버의 계정(이름·레이팅·칭호·동의 기록 등)을 지울 수 있습니다. 다만 민폐 행위 대응을 위해, 당신에 대한 신고 기록(1년)과 신고된 경기의 대화(30일)는 보관 기간이 끝날 때까지 남습니다. 당신이 한 신고는 누가 했는지를 지운 채 남습니다. 대전 결과 기록은 상대의 레이팅 계산을 위해 이름이 없는 형태로 남습니다. 서버에 연결할 수 없을 때나 열람·정정·이용 정지 등의 청구는 위 연락처로 연락해 주세요.</p>
 
 <h2>7. 미성년자에게</h2>
 <p>미성년자는 보호자의 동의를 받은 뒤 이용해 주세요.</p>

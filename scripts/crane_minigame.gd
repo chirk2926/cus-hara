@@ -134,7 +134,11 @@ func run() -> Dictionary:
 	var front: Vector3 = _root.to_global(Vector3(0.0, 0.0, 0.0))
 	main.camera_to(front + Vector3(0.12, 1.78, 1.55), front + Vector3(-0.05, 0.95, -0.05), 0.9)
 	main.sfx.play("door", 1.3)
+	# 台の前へ動いている間にやめられたら（タイトルへ戻るなど）、調整の画面を出さずに終わる（要件#109）
+	_phase = "intro"
 	await get_tree().create_timer(0.9).timeout
+	if _phase != "intro":
+		return {"result": "cancelled", "cheat": false, "moved": false}
 
 	# 2. 調整
 	_phase = "adjust"

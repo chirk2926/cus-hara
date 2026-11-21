@@ -47,7 +47,7 @@ ensure_ready(): config/eos.cfg を読む → HPlatform.setup_eos_async(HCredenti
 - プラグインの名前（`HLobbies`, `EOS` など）は直接書かず、`/root/HLobbies` の取得や `load("res://addons/.../eos.gd")` で実行時に使う。こうしないと、プラグインが無い環境でスクリプトがコンパイルできない。
 
 ## サーバー側（ランクの部屋のチェック）
-- `room_create` に `ranked: true` を付けた部屋はランクマッチとして記録される（`ALLOW_RANKED_ROOMS`、既定 `1`）。
+- `room_create` に `ranked: true` を付けた部屋はランクマッチとして記録される（`ALLOW_RANKED_ROOMS`、既定 `0`。EOS のロビーをサーバーで確かめられるまでは閉じておく。要件#108）。
 - サーバーは EOS のロビーが本物かを確かめられないので、仲間どうしでのレーティング稼ぎを防ぐため、参加のときに次を断る:
   - 同じ回線（同じIP）どうし → `same_network`（`ALLOW_SAME_IP_RANKED=1` で解除。テスト用）
   - レート差が `RANKED_ROOM_MAX_GAP`（既定 400）より大きい → `rating_gap`

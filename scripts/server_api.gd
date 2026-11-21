@@ -81,9 +81,9 @@ func ensure_login() -> Dictionary:
 		if int(me.get("status", 0)) != 401:
 			return {"error": str(me.get("message", ""))}
 		GameSettings.token = ""
+	# 名前が無いときは空で送り、サーバーの既定の名前（名無しのスタッフ）にする。
+	# パソコンのユーザー名（本名のことがある）は送らない（要件#108）
 	var name_to_use: String = GameSettings.player_name
-	if name_to_use == "":
-		name_to_use = OS.get_environment("USERNAME")
 	var res: Dictionary = await request("POST", "/api/v1/guest", {"name": name_to_use}, false)
 	if not bool(res.get("ok", false)):
 		return {"error": str(res.get("message", ""))}

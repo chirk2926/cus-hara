@@ -1,6 +1,6 @@
 // サーバーの起動。使い方は docs/SERVER.md。
 import { config } from "./config.ts";
-import { openDb, purgeMatchLogs } from "./db.ts";
+import { openDb, closeDb, purgeMatchLogs } from "./db.ts";
 import { loadStoredSettings } from "./settings.ts";
 import { createAdminServer, ADMIN_HOST } from "./admin.ts";
 import { Lobby } from "./lobby.ts";
@@ -13,7 +13,7 @@ openDb();
 loadStoredSettings();
 const lobby = new Lobby();
 const server = createHttpServer(lobby);
-attachWebSocket(server, lobby);
+const wss = attachWebSocket(server, lobby);
 server.listen(config.port, config.host, () => {
   const i = info(lobby);
   log(`cushara-server ${i.version} listening on ${config.host}:${config.port}`);
@@ -22,8 +22,9 @@ server.listen(config.port, config.host, () => {
 
 // 管理画面（要件#100）。このマシンの中（127.0.0.1）だけで待ち受ける。ADMIN_PORT=0 で使わない
 const adminPort = Number(process.env.ADMIN_PORT ?? 8790);
+let admin: ReturnType<typeof createAdminServer> | null = null;
 if (adminPort > 0) {
-  const admin = createAdminServer(lobby);
+  admin = createAdminServer(lobby);
   admin.listen(adminPort, ADMIN_HOST, () => log(`管理画面: http://${ADMIN_HOST}:${adminPort}/ （このマシンの中だけ。家のPCからは SSH のトンネルで）`));
 }
 
@@ -31,10 +32,25 @@ if (adminPort > 0) {
 purgeMatchLogs();
 setInterval(() => purgeMatchLogs(), 6 * 3_600_000).unref();
 
+// 止めるとき（要件#109）: 新しい接続を断り、今の応答が終わるのを待ってから DB を閉じる。10 秒たっても終わらなければ止める
+let stopping = false;
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
+    if (stopping) return;
+    stopping = true;
     log("shutting down");
-    server.close();
-    process.exit(0);
+    const force = setTimeout(() => {
+      closeDb();
+      process.exit(0);
+    }, 10_000);
+    force.unref();
+    wss.clients.forEach((c) => c.close(1001, "server shutting down"));
+    const closeHttp = new Promise<void>((r) => server.close(() => r()));
+    const closeAdmin = admin ? new Promise<void>((r) => admin!.close(() => r())) : Promise.resolve();
+    server.closeIdleConnections();
+    void Promise.all([closeHttp, closeAdmin]).then(() => {
+      closeDb();
+      process.exit(0);
+    });
   });
 }

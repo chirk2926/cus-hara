@@ -27,7 +27,7 @@ static func to_bbcode(md: String) -> String:
 static func _inline(text: String) -> String:
 	# リンクを先に取り出し（URL は http/https だけ）、残りの「[」を無害にしてから太字などを変える
 	var links: Array = []
-	var link_re: RegEx = _re("\\[([^\\]]+)\\]\\((https?://[^)\\s]+)\\)")
+	var link_re: RegEx = _re("\\[([^\\]]+)\\]\\((https://[^)\\s]+)\\)")
 	var t: String = text
 	var m: RegExMatch = link_re.search(t)
 	while m != null:

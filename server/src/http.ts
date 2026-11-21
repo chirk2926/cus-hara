@@ -7,7 +7,7 @@ import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
-import { moderate } from "./moderation.ts";
+import { moderate, stripInvisible } from "./moderation.ts";
 import { runtime } from "./settings.ts";
 import { openStages } from "./stages.ts";
 import { markReported } from "./matchlogs.ts";
@@ -59,6 +59,8 @@ interface SoloSession {
   lastAt: number;
   finished: boolean;
   hinted?: boolean;
+  /** 判定中（要件#108: 同時に来た返事は断る） */
+  inFlight?: boolean;
 }
 
 const soloSessions = new Map<string, SoloSession>();
@@ -85,14 +87,25 @@ function clientIp(req: http.IncomingMessage): string {
  * どのプレイヤーの接続も cloudflared（127.0.0.1）から来るため）
  */
 export function requestIp(req: http.IncomingMessage): string {
-  if (process.env.TRUST_PROXY === "1") {
+  const remote = req.socket.remoteAddress ?? "unknown";
+  // 転送ヘッダーを信じるのは、TRUST_PROXY=1 で、しかも接続が同じマシンのプロキシ（cloudflared など）から来たときだけ（要件#108）。
+  // 外から直接つながれたときにヘッダーを偽って、回数制限や同じ回線のランクマッチ禁止をすり抜けられないように
+  if (process.env.TRUST_PROXY === "1" && TRUSTED_PROXIES.has(remote)) {
     const cf = req.headers["cf-connecting-ip"];
-    if (typeof cf === "string" && cf !== "") return cf.trim();
+    if (typeof cf === "string" && /^[0-9a-fA-F:.]{2,45}$/.test(cf.trim())) return cf.trim();
+    // Cloudflare 以外のプロキシ: 一番右（自分のプロキシが足した値）だけを使う。左側はクライアントが好きに書ける
     const fwd = req.headers["x-forwarded-for"];
-    if (typeof fwd === "string" && fwd !== "") return fwd.split(",")[0].trim();
+    if (typeof fwd === "string" && fwd !== "") {
+      const last = fwd.split(",").map((x) => x.trim()).filter(Boolean).pop() ?? "";
+      if (/^[0-9a-fA-F:.]{2,45}$/.test(last)) return last;
+    }
   }
-  return req.socket.remoteAddress ?? "unknown";
+  return remote;
 }
+
+// 転送ヘッダーを信じるプロキシの住所。同じマシンのほか、TRUSTED_PROXIES（カンマ区切り。Docker のブリッジの 172.17.0.1 など）で足せる
+const TRUSTED_PROXIES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1",
+  ...(process.env.TRUSTED_PROXIES ?? "").split(",").map((x) => x.trim()).filter(Boolean).flatMap((x) => [x, `::ffff:${x}`])]);
 
 async function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
@@ -208,6 +221,10 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
   // 退職（要件#101）: サーバーのアカウントとデータを消す
   if (method === "POST" && p === "/api/v1/me/delete") {
     deletePlayer(player.id);
+    // 残っている接続（対戦・順番待ち）と1人用の会話も終わらせる（要件#108）
+    const { kickPlayer } = await import("./ws.ts");
+    kickPlayer(player.id, "アカウントを削除しました");
+    for (const [sid, sess] of soloSessions) if (sess.playerId === player.id) soloSessions.delete(sid);
     log("account deleted", player.id);
     return { ok: true };
   }
@@ -350,64 +367,84 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       s.finished = true;
       throw new HttpError(409, "too_long", "やりとりが長すぎるので、このお客さんは帰りました");
     }
-    // チート対策（要件#47）: 納得はサーバーの値だけを使う。怒りは、待っている間に上がる分だけ
-    // クライアントの値を受け入れる（サーバーが覚えている値より下げることはできない）
-    const resolve = s.resolve;
-    const anger = Math.max(s.anger, clamp(num(body.anger, s.anger), 0, 100));
-    // 店の行動ボタン（要件#34, #37）: 点数は表どおり。AIがあればお客さんの反応のセリフだけAIに作らせる
-    if (typeof body.action === "string" && body.action !== "") {
-      const id = body.action;
-      if (!isAllowed(s.stage, s.customer, id)) throw new HttpError(400, "bad_action", "この場面では使えない行動です");
-      const fixed = judgeAction(s.customer, id, anger, resolve, s.lang);
-      s.history.push({ role: "staff", text: actionAsStaffLine(id, s.lang) });
-      let line = fixed.customer_reply;
-      let judgedBy: "ai" | "keyword" = "keyword";
-      if (s.source === "ai" && allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
-        try {
-          const ai = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false, s.lang);
-          line = ai.customer_reply;
-          judgedBy = "ai";
-        } catch {
-          // 台本のセリフのまま
-        }
-      }
-      s.history.push({ role: "customer", text: line });
-      s.updated = Date.now();
-      settle(s, anger, fixed);
-      return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id, anger: s.anger, resolve: s.resolve };
+    // 同じお客さんへの返事を同時に何回も送って、終わった会話や回数の上限をすり抜けられないように（要件#108）
+    if (s.inFlight) throw new HttpError(409, "busy", "前の返事を判定しています。少し待ってください");
+    s.inFlight = true;
+    try {
+      return await soloTurn(s, body, player);
+    } finally {
+      s.inFlight = false;
     }
-    const reply = typeof body.reply === "string" ? body.reply.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
-    if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
-    s.history.push({ role: "staff", text: reply });
-    let result = null;
-    let judgedBy: "ai" | "keyword" = "keyword";
-    let notice = "";
-    if (s.source === "ai") {
-      if (allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
-        try {
-          result = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false, s.lang);
-          judgedBy = "ai";
-        } catch (e) {
-          notice = e instanceof LlmError ? `${e.message}（簡易判定）` : "AIの判定に失敗したので簡易判定にしました";
-        }
-      } else {
-        notice = "AIの利用回数の上限に達したので簡易判定にしました";
-      }
-    }
-    if (result === null) result = judgeStaff(s.customer, reply, s.used, anger, resolve, s.lang);
-    s.used.push(reply);
-    s.history.push({ role: "customer", text: result.customer_reply });
-    s.updated = Date.now();
-    settle(s, anger, result);
-    return { ...result, judged_by: judgedBy, notice, anger: s.anger, resolve: s.resolve };
   }
 
   throw new HttpError(404, "not_found", "そのAPIはありません");
 }
 
+/** 1人用の1ターン（店の行動・返事）。呼ぶ側が s.inFlight で同時に1つだけにする */
+async function soloTurn(s: SoloSession, body: Record<string, unknown>, player: Player): Promise<Record<string, unknown>> {
+  // チート対策（要件#47）: 納得はサーバーの値だけを使う。怒りは、待っている間に上がる分だけ
+  // クライアントの値を受け入れる（サーバーが覚えている値より下げることはできない）
+  const resolve = s.resolve;
+  const anger = Math.max(s.anger, clamp(num(body.anger, s.anger), 0, 100));
+  // 店の行動ボタン（要件#34, #37）: 点数は表どおり。AIがあればお客さんの反応のセリフだけAIに作らせる
+  if (typeof body.action === "string" && body.action !== "") {
+    const id = body.action;
+    if (!isAllowed(s.stage, s.customer, id)) throw new HttpError(400, "bad_action", "この場面では使えない行動です");
+    const fixed = judgeAction(s.customer, id, anger, resolve, s.lang);
+    s.history.push({ role: "staff", text: actionAsStaffLine(id, s.lang) });
+    let line = fixed.customer_reply;
+    let judgedBy: "ai" | "keyword" = "keyword";
+    if (s.source === "ai" && allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
+      try {
+        const ai = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false, s.lang);
+        line = ai.customer_reply;
+        judgedBy = "ai";
+      } catch {
+        // 台本のセリフのまま
+      }
+    }
+    s.history.push({ role: "customer", text: line });
+    s.updated = Date.now();
+    settle(s, anger, fixed);
+    return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id, anger: s.anger, resolve: s.resolve };
+  }
+  const reply = typeof body.reply === "string" ? stripInvisible(body.reply).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
+  if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
+  s.history.push({ role: "staff", text: reply });
+  let result = null;
+  let judgedBy: "ai" | "keyword" = "keyword";
+  let notice = "";
+  if (s.source === "ai") {
+    if (allow(`llm:${player.id}`, config.llmPerMinute, 60_000)) {
+      try {
+        result = await judgeStaffTurn(s.stage, s.customer, s.history, anger, resolve, false, s.lang);
+        judgedBy = "ai";
+      } catch (e) {
+        notice = e instanceof LlmError ? `${e.message}（簡易判定）` : "AIの判定に失敗したので簡易判定にしました";
+      }
+    } else {
+      notice = "AIの利用回数の上限に達したので簡易判定にしました";
+    }
+  }
+  if (result === null) result = judgeStaff(s.customer, reply, s.used, anger, resolve, s.lang);
+  s.used.push(reply);
+  s.history.push({ role: "customer", text: result.customer_reply });
+  s.updated = Date.now();
+  settle(s, anger, result);
+  return { ...result, judged_by: judgedBy, notice, anger: s.anger, resolve: s.resolve };
+}
+
 export function createHttpServer(lobby: Lobby): http.Server {
-  return http.createServer((req, res) => {
-    const url = new URL(req.url ?? "/", "http://localhost");
+  const server = http.createServer((req, res) => {
+    // 解釈できないリクエストの行で、プロセス全体が落ちないように（要件#108）
+    let url: URL;
+    try {
+      url = new URL(req.url ?? "/", "http://localhost");
+    } catch {
+      res.writeHead(400, { "content-type": "application/json; charset=utf-8", "x-content-type-options": "nosniff" });
+      res.end(JSON.stringify({ error: { code: "bad_request", message: "リクエストの形が正しくありません" } }));
+      return;
+    }
     // プライバシーポリシー（要件#101）。/privacy?lang=ja|en|zh
     if (req.method === "GET" && (url.pathname === "/privacy" || url.pathname === "/privacy/")) {
       const lang = ["ja", "en", "zh", "ko"].includes(url.searchParams.get("lang") ?? "") ? url.searchParams.get("lang") : "ja";
@@ -437,14 +474,21 @@ export function createHttpServer(lobby: Lobby): http.Server {
     }
     route(req, url, lobby)
       .then((body) => {
-        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...API_HEADERS });
         res.end(JSON.stringify(body));
       })
       .catch((e: unknown) => {
         const he = e instanceof HttpError ? e : new HttpError(500, "server_error", "サーバー内部のエラーです。しばらくしてからもう一度お試しください");
         if (!(e instanceof HttpError)) log("http error", req.method, url.pathname, e);
-        res.writeHead(he.status, { "content-type": "application/json; charset=utf-8" });
+        res.writeHead(he.status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...API_HEADERS });
         res.end(JSON.stringify({ error: { code: he.code, message: he.message } }));
       });
   });
+  // 遅いクライアントで接続を埋められないように（要件#108）
+  server.headersTimeout = 15_000;
+  server.requestTimeout = 30_000;
+  server.keepAliveTimeout = 5_000;
+  return server;
 }
+
+const API_HEADERS = { "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer" } as const;

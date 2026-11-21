@@ -93,7 +93,11 @@ function checkPassword(pw: string): boolean {
 interface Session {
   csrf: string;
   last: number;
+  /** ログインした時刻（要件#108: 使い続けても 12 時間で切れる） */
+  created: number;
 }
+
+const SESSION_MAX_MS = 12 * 3_600_000;
 
 const sessions = new Map<string, Session>();
 const loginFails: number[] = [];
@@ -107,7 +111,7 @@ function sessionOf(req: http.IncomingMessage): Session | null {
   const id = cookieOf(req);
   const s = id ? sessions.get(id) : undefined;
   if (!s) return null;
-  if (Date.now() - s.last > SESSION_IDLE_MS) {
+  if (Date.now() - s.last > SESSION_IDLE_MS || Date.now() - s.created > SESSION_MAX_MS) {
     sessions.delete(id);
     return null;
   }
@@ -136,6 +140,32 @@ export function rejectReason(req: http.IncomingMessage, port: number): string | 
   return null;
 }
 
+// 切れたセッションを定期的に捨てる（要件#108）
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, s] of sessions) if (now - s.last > SESSION_IDLE_MS || now - s.created > SESSION_MAX_MS) sessions.delete(id);
+}, 10 * 60_000).unref();
+
+/** 文字列を一定の時間で比べる（要件#108） */
+function sameSecret(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
+/**
+ * 書きかえる要求（POST など）が、この管理画面のページから来たものか（要件#108）。
+ * 管理者が同じブラウザでほかのサイトを開いたとき、そのサイトからログインを何回も失敗させる（ロックさせる）ことなどを防ぐ
+ */
+function writeRequestOk(req: http.IncomingMessage, port: number): string | null {
+  if (!originOk(req, port)) return "origin";
+  const site = req.headers["sec-fetch-site"];
+  if (site !== undefined && !["same-origin", "none"].includes(String(site))) return "sec-fetch-site";
+  const ct = String(req.headers["content-type"] ?? "");
+  if (!ct.toLowerCase().startsWith("application/json")) return "content-type";
+  return null;
+}
+
 function originOk(req: http.IncomingMessage, port: number): boolean {
   const o = req.headers.origin;
   if (o === undefined) return true; // 同じページからの fetch では付かないこともある（CSRF の印で守る）
@@ -153,7 +183,7 @@ export function createAdminServer(lobby: Lobby): http.Server {
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
       "referrer-policy": "no-referrer",
-      "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     };
     const send = (status: number, body: unknown, extra: Record<string, string> = {}) => {
       const isHtml = typeof body === "string";
@@ -188,6 +218,10 @@ export function createAdminServer(lobby: Lobby): http.Server {
         return;
       }
       if (!url.pathname.startsWith("/api/")) throw new AdminError(404, "ありません");
+      if (method !== "GET") {
+        const bad = writeRequestOk(req, port);
+        if (bad) throw new AdminError(403, "この画面の外からの操作は受け付けません（" + bad + "）");
+      }
       // 画像の送信だけは大きめ（base64 で 2MB の画像）
       const body = method === "GET" ? {} : await readJson(req, url.pathname === "/api/announcements/image" ? 3 * 1024 * 1024 : 64 * 1024);
       // ログイン（パスワード）
@@ -201,7 +235,7 @@ export function createAdminServer(lobby: Lobby): http.Server {
           throw new AdminError(401, "パスワードがちがいます");
         }
         const id = crypto.randomBytes(32).toString("base64url");
-        const s: Session = { csrf: crypto.randomBytes(24).toString("base64url"), last: now };
+        const s: Session = { csrf: crypto.randomBytes(24).toString("base64url"), last: now, created: now };
         sessions.set(id, s);
         adminLog("login", "", "");
         send(200, { ok: true, csrf: s.csrf }, { "set-cookie": `cushara_admin=${id}; HttpOnly; SameSite=Strict; Path=/` });
@@ -210,7 +244,7 @@ export function createAdminServer(lobby: Lobby): http.Server {
       const s = sessionOf(req);
       if (!s) throw new AdminError(401, "ログインしてください");
       if (method !== "GET") {
-        if (req.headers["x-admin-csrf"] !== s.csrf || !originOk(req, port)) throw new AdminError(403, "画面を読み込み直してください（CSRF）");
+        if (!sameSecret(String(req.headers["x-admin-csrf"] ?? ""), s.csrf)) throw new AdminError(403, "画面を読み込み直してください（CSRF）");
       }
       const out = await route(method, url, body, lobby, s);
       if (out === "__logout__") {
@@ -224,7 +258,7 @@ export function createAdminServer(lobby: Lobby): http.Server {
       else if (e instanceof SettingError) send(400, { error: e.message });
       else {
         log("admin error", String(e));
-        send(500, { error: "サーバーの中でエラーが起きました: " + String(e).slice(0, 200) });
+        send(500, { error: "サーバーの中でエラーが起きました（くわしくはサーバーのログ）" });
       }
     }
   });
@@ -262,6 +296,8 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     if (pw.length < 12) throw new AdminError(400, "12文字以上にしてください");
     if (typeof body.current !== "string" || !checkPassword(body.current)) throw new AdminError(401, "今のパスワードがちがいます");
     savePassword(pw);
+    // ほかのログイン（盗まれていたかもしれないもの）は全部切る。今の画面だけ残す（要件#108）
+    for (const [id, other] of sessions) if (other !== s) sessions.delete(id);
     const f = authFile();
     if (f) fs.rmSync(path.join(path.dirname(f), "admin_initial_password.txt"), { force: true });
     adminLog("password", "", "管理画面のパスワードを変えた");

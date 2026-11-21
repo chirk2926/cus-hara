@@ -37,6 +37,7 @@ var _score: Label
 var _memo_title: Label
 var _memo_body: Label
 var _memo_demand: Label
+var _memo_demand_box: PanelContainer
 var _note: Label
 var _lcd
 var _bubble
@@ -197,7 +198,8 @@ func _build() -> void:
 	nt.add_child(nt2)
 	_progress = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_DOT)
 	nt2.add_child(_progress)
-	_score = UI.text("", UI.S_SMALL, UI.PAPER, UI.F_DOT)
+	nt2.add_child(UI.spacer())   # 「1 / 4」と「0 点」がくっついて「40 点」に読めないように左右に分ける（要件#109）
+	_score = UI.text("", UI.S_SMALL, UI.POP, UI.F_DOT)
 	nt2.add_child(_score)
 	# 店員のメンタル（要件#38）
 	_mental_row = UI.hbox(8)
@@ -246,8 +248,14 @@ func _build() -> void:
 	_memo_body = UI.para("", UI.S_BODY, UI.INK, UI.F_HAND)
 
 	mb.add_child(_memo_body)
+	# 「※ 要求」（飲んではいけない要求）はスクロールの外の下に置き、いつも見えるようにする（要件#109）
+	_memo_demand_box = UI.paper(Color("#fff6e8"), 10, 2)
+	_memo_demand_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_child(_memo_demand_box)
+	left.move_child(_memo_demand_box, memo_box.get_index() + 1)
 	_memo_demand = UI.para("", UI.S_SMALL, UI.SHU, UI.F_HAND)
-	mb.add_child(_memo_demand)
+	_memo_demand_box.add_child(_memo_demand)
+	_memo_demand_box.visible = false
 
 	var note: PanelContainer = UI.paper(UI.POP, 12, 3)
 	_parts["note"] = note
@@ -426,6 +434,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func set_top(shop_text: String, progress_text: String, score_text: String) -> void:
 	_shop.text = shop_text
+	# 長い店名は1行に収まるよう小さく（要件#109: 1文字だけ次の行に落ちていた）
+	_shop.add_theme_font_size_override("font_size", UI.S_BODY if shop_text.length() <= 14 else UI.S_SMALL)
 	_progress.text = progress_text
 	_score.text = score_text
 
@@ -439,6 +449,7 @@ func set_memo(title: String, body: String, demand: String) -> void:
 	var long_memo: bool = body.length() + demand.length() > (200 if GameSettings.language == "en" else 80)
 	_memo_body.add_theme_font_size_override("font_size", UI.S_SMALL if long_memo else UI.S_BODY)
 	_memo_demand.text = (tr("※ 要求: ") + demand) if demand != "" else ""
+	_memo_demand_box.visible = demand != ""
 
 
 ## 店員のメンタル（0〜100）。負の値を渡すと隠す
@@ -489,7 +500,8 @@ func set_comment(t: String) -> void:
 	for part in t.split("\n"):
 		lines += maxf(1.0, ceilf(float(part.length()) / per_line))
 	var line_h: float = fs * 1.5
-	_note_scroll.custom_minimum_size.y = clampf(line_h * lines + 4.0, line_h, line_h * 5.0)
+	# 見積もりは少し多めに（要件#109: 英語の3行の文に、いらないスクロールバーが出ていた）
+	_note_scroll.custom_minimum_size.y = clampf(line_h * lines * 1.15 + 6.0, line_h, line_h * 5.0)
 	_note_scroll.scroll_vertical = 0
 
 
@@ -596,6 +608,7 @@ func show_echo(prefix: String, t: String) -> void:
 func clear_round() -> void:
 	hide_bubble()
 	show_echo("", "")
+	set_comment("")   # 前のお客さん・前のステージの店長コメントを残さない（要件#109）
 	set_memo("", "", "")
 	set_gauges(0.0, 0.0, -1.0)
 	set_input_enabled(false, "")
@@ -662,7 +675,9 @@ func _on_tag(phrase: String) -> void:
 		return
 	if sfx != null:
 		sfx.play("click")
-	_field.text = _field.text + phrase
+	# 文字数の上限を超えないように（要件#109）
+	var joined: String = _field.text + phrase
+	_field.text = joined.left(_field.max_length) if _field.max_length > 0 else joined
 	_field.caret_column = _field.text.length()
 	_focus_field()
 
