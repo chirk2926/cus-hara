@@ -13,6 +13,16 @@ test("Elo: 同じ強さなら ±16、格上に勝つと多く上がる", () => {
   assert.equal(eloDelta(1000, 1000, 0.5), 0);
 });
 
+test("設定: AI の料金表はオブジェクトでも戻せる（再起動の読み込み・「前に戻す」。レビュー1-4）", async () => {
+  const { setSetting } = await import("../src/settings.ts");
+  const { runtime } = await import("../src/settings.ts");
+  const before = structuredClone(runtime.aiPrices);
+  setSetting("aiPrices", { "claude-test": [1, 2, 0.1, 1.25] }, false);
+  assert.deepEqual(runtime.aiPrices, { "claude-test": [1, 2, 0.1, 1.25] });
+  setSetting("aiPrices", JSON.stringify(before), false);
+  assert.deepEqual(runtime.aiPrices, before);
+});
+
 test("ランク名", () => {
   assert.equal(rankName(1000), "アルバイト");
   assert.equal(rankName(850), "研修生");

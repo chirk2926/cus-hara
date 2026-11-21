@@ -315,6 +315,12 @@ async function imageDataUrl(name) {
   return `data:${r.type};base64,${r.data}`;
 }
 
+const imageCache = new Map();
+async function cachedImage(name) {
+  if (!imageCache.has(name)) imageCache.set(name, await imageDataUrl(name));
+  return imageCache.get(name);
+}
+
 async function loadNotice(el) {
   const [a, st] = await Promise.all([api("GET", "/api/announcements"), api("GET", "/api/settings")]);
   const m = st.settings.find((x) => x.key === "maintenance");
@@ -331,14 +337,19 @@ async function loadNotice(el) {
   font.value = d.font;
   const file = h("input", { type: "file", accept: "image/png,image/jpeg" });
   const preview = h("div", { class: "preview" });
+  // 画像を読み込んでいる間に次の入力が来ても、古い描画を重ねない（レビュー3）。画像は一度読んだら覚えておく
+  let gen = 0;
   const renderPreview = async () => {
     d["title_" + noticeLang] = title.value;
     d["text_" + noticeLang] = body.value;
     d.font = font.value;
+    const my = ++gen;
+    const img = d.image ? await cachedImage(d.image) : "";
+    if (my !== gen) return;
     clear(preview);
     preview.style.fontFamily = `"G-${d.font}", sans-serif`;
     preview.append(h("h2", {}, title.value || d.title_ja || "（見出し）"));
-    if (d.image) preview.append(h("img", { src: await imageDataUrl(d.image), alt: "" }));
+    if (img) preview.append(h("img", { src: img, alt: "" }));
     preview.append(mdToDom(body.value || d.text_ja));
   };
   for (const x of [title, body]) x.addEventListener("input", renderPreview);

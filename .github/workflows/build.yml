@@ -384,6 +384,7 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item -Recurse packaging/msix/Assets msix_root/Assets
+          Get-ChildItem msix_root/Assets -Filter *.import | Remove-Item   # Godot の取り込み記録は入れない
           $m = Get-Content packaging/msix/AppxManifest.xml -Raw -Encoding UTF8
           $m = $m.Replace('__IDENTITY_NAME__', $env:MSIX_IDENTITY_NAME).Replace('__PUBLISHER__', $env:MSIX_PUBLISHER)
           $m = $m.Replace('__PUBLISHER_DISPLAY__', $env:MSIX_PUBLISHER_DISPLAY).Replace('__VERSION__', $env:MSIX_VERSION)

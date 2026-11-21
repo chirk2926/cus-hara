@@ -16,13 +16,14 @@ import json, re, sys, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LANGS = ["en", "zh", "ko"]
-UI_FILES = ["main.gd", "hud.gd", "solo_game.gd", "versus_game.gd", "game_settings.gd", "ui_paper.gd", "server_api.gd", "shop_actions.gd", "crane_minigame.gd", "eos_matchmaker.gd", "tutorial.gd", "titles.gd"]
+UI_FILES = ["main.gd", "hud.gd", "solo_game.gd", "versus_game.gd", "game_settings.gd", "ui_paper.gd", "server_api.gd", "shop_actions.gd", "crane_minigame.gd", "eos_matchmaker.gd", "tutorial.gd", "titles.gd", "shop.gd"]
+# age_check.gd・repair_scene.gd・moderation.gd は言語ごとの表を持つ（tr を通さない）ので、ここには入れない。それらの tr("…") は上で集める
 SKIP_FUNCS = ("_smoke_autoplay", "_run_shots", "_run_smoke", "_run_versus_smoke", "_auto_reply",
               # 言語ごとの言葉の表・ゲームの中の言葉（翻訳しない）
               "_tally", "_wants_other_id", "_prize_only", "_ask_other_id", "_says_amount", "_smell_talk", "_deodorize", "_resist_line", "_uncover")
 JA = re.compile(r"[぀-ヿ㐀-鿿！-｠]")
 STR = re.compile(r'"((?:[^"\\]|\\.)*)"')
-TR = re.compile(r'tr\("((?:[^"\\]|\\.)*)"\)')
+TR = re.compile(r'(?:\btr|TranslationServer\.translate)\("((?:[^"\\]|\\.)*)"\)')
 
 
 def unescape(s):

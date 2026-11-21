@@ -351,11 +351,13 @@ func voice_set_talking(on: bool) -> void:
 func voice_leave() -> void:
 	if _voice_lobby == null:
 		return
+	# 送るのを止めてから部屋を出る（_voice_lobby を空にしたあとだと何もしなかった。レビュー2-9）
+	if is_instance_valid(_voice_lobby):
+		voice_set_talking(false)
 	var l = _voice_lobby
 	_voice_lobby = null
 	if not is_instance_valid(l):
 		return
-	voice_set_talking(false)
 	if bool(l.call("is_owner")):
 		l.destroy_async()
 	else:

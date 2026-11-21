@@ -464,8 +464,8 @@ func set_mental(v: float) -> void:
 func set_actions(items: Array) -> void:
 	for c in _actions.get_children():
 		c.queue_free()
-	# 4つ以上なら専用の行へ（入力の行に並べると記入欄が狭くなる）
-	var wide: bool = items.size() > 3
+	# 4つ以上なら専用の行へ（入力の行に並べると記入欄が狭くなる）。音声モードは入力の行を隠すので、いつも専用の行へ（レビュー2-1）
+	var wide: bool = items.size() > 3 or (_voice_mode and not items.is_empty())
 	var want: Node = _actions_row if wide else _text_row
 	if _actions.get_parent() != want:
 		_actions.get_parent().remove_child(_actions)
@@ -631,6 +631,11 @@ func set_quick_phrases(phrases: Array) -> void:
 func set_voice_mode(on: bool) -> void:
 	_voice_mode = on
 	_voice_row.visible = on
+	# 行動ボタンが入力の行にあると一緒に隠れてしまうので、置き場所を選び直す
+	if on and _actions.get_parent() == _text_row and _actions.get_child_count() > 0:
+		_text_row.remove_child(_actions)
+		_actions_row.add_child(_actions)
+		_actions_row.visible = true
 	_text_row.visible = not on
 	_tags.visible = not on
 

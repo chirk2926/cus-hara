@@ -85,7 +85,8 @@ static func check(text: String) -> String:
 	var t: String = normalize(text)
 	if t == "":
 		return ""
-	var raw: String = _half(text).to_lower()
+	# 見えない文字をはさんで、英語の禁止語・電話番号・メールをすり抜けられないように（レビュー2-8）
+	var raw: String = _half(strip_invisible(text)).to_lower()
 	for k in ["sexual", "hate"]:
 		for w in _words[k]:
 			if t.contains(str(w)):

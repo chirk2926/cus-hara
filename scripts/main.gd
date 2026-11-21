@@ -242,7 +242,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _crane_mg != null and is_instance_valid(_crane_mg) and _crane_mg.is_running():
 			return
 		if _sheet != null:
-			if _sheet_is_receipt:
+			# 結果のレシートと、風営法のクイズ（閉じると答えられないまま時間切れになる。レビュー2-5）は Esc で閉じない
+			if _sheet_is_receipt or _quiz_open:
 				return
 			if _sheet_is_lobby:
 				_versus.cancel()
@@ -478,6 +479,11 @@ func run_crane_minigame(opts: Dictionary = {}) -> Dictionary:
 ## 筐体の前で対応する（要件#99）。メダルゲーム・ビデオゲームの台の問題があるお客さん。
 ## 結果: {"actions": [した対応], "seconds": かかった時間, "opened": bool}
 var _repair: Control = null
+
+
+## 一時停止の画面などのシートが開いているか（筐体修理の場面が時間を止めるのに使う）
+func is_paused() -> bool:
+	return _solo != null and _solo.paused
 
 
 func run_repair_scene(cust: Dictionary, opts: Dictionary = {}) -> Dictionary:
@@ -1282,8 +1288,13 @@ func show_report(target: Dictionary, back_to_result: Dictionary = {}) -> void:
 signal _quiz_answered(ok: bool)
 
 
+var _quiz_open: bool = false
+var _quiz_done: Array = []
+
+
 func show_quiz(title: String, question: String, choices: Array, correct: int, seconds: float) -> bool:
 	var col: VBoxContainer = _open_sheet(620, "center")
+	_quiz_open = true
 	_sheet_title(col, title)
 	col.add_child(UI.para(question, UI.S_LEAD, UI.INK, UI.F_BOLD))
 	var timer_label: Label = UI.text("", UI.S_BODY, UI.SHU, UI.F_DOT)
@@ -1291,6 +1302,7 @@ func show_quiz(title: String, question: String, choices: Array, correct: int, se
 	var order: Array = range(choices.size())
 	order.shuffle()
 	var done: Array = [false]
+	_quiz_done = done
 	for i in order:
 		var idx: int = int(i)
 		var b: Button = UI.tag(str(choices[idx]), UI.S_BODY)
@@ -1323,7 +1335,9 @@ func show_quiz(title: String, question: String, choices: Array, correct: int, se
 			_quiz_answered.emit(false))
 	t.start()
 	var ok: bool = await _quiz_answered
-	t.queue_free()
+	_quiz_open = false
+	if is_instance_valid(t):
+		t.queue_free()
 	return ok
 
 
@@ -1364,12 +1378,22 @@ func debug_preview_result() -> void:
 
 func _quit_to_title() -> void:
 	_tutorial.abort()
+	# 出ているクイズはここで終わり（裏のタイマーがあとで別のシートを閉じないように。レビュー2-5）
+	var quiz_was_open: bool = _quiz_open
+	if _quiz_open:
+		if not _quiz_done.is_empty():
+			_quiz_done[0] = true
+		_quiz_open = false
 	_abort_crane()
 	hide_talk_backdrop()
 	if _repair != null and is_instance_valid(_repair):
+		_repair.call("abort")
 		_repair.queue_free()
 		_repair = null
 	_solo.abort()
+	# 待っている側は、ゲームを止めたあとに終わらせる（止まったゲームは結果を使わない）
+	if quiz_was_open:
+		_quiz_answered.emit(false)
 	if _versus.is_active():
 		_versus.leave_match()
 	_versus.cancel()
@@ -3376,15 +3400,25 @@ func _confirm_resign(step: int) -> void:
 			var del: Dictionary = await api.request("POST", "/api/v1/me/delete", {})
 			if not bool(del.get("ok", false)):
 				server_note = tr("サーバーにつながらなかったため、サーバーのアカウントは消せませんでした。プライバシーポリシーの連絡先から、削除をお申し込みください。")
+		api.close_socket()
 		GameSettings.wipe_all()
 		GameSettings.save_settings()
 		_close_sheet()
-		if server_note != "":
-			_show_admin_message(tr("退職しました"), server_note, false)
 		_server_info = {}
 		_rebuild_ui()
 		_check_server()
-		_offer_first_run())
+		# サーバーのアカウントを消せなかったときは、そのお知らせを読んでから最初の案内へ（レビュー2-7: すぐ上書きされて読めなかった）
+		if server_note != "":
+			var note_col: VBoxContainer = _open_sheet(560, "center")
+			_sheet_title(note_col, tr("退職しました"))
+			note_col.add_child(UI.para(server_note, UI.S_BODY, UI.INK))
+			var note_ok: Button = UI.primary(tr("わかりました"), UI.S_BODY)
+			note_ok.pressed.connect(func() -> void:
+				_close_sheet()
+				_offer_first_run())
+			note_col.add_child(note_ok)
+		else:
+			_offer_first_run())
 	row.add_child(yes)
 	var no: Button = UI.link(tr("やめる"), UI.S_BODY)
 	no.pressed.connect(_show_settings)

@@ -201,11 +201,11 @@ function unregisterConn(c: Conn): void {
 }
 
 /** そのプレイヤーの接続を切る（利用停止にしたとき） */
-export function kickPlayer(id: string, message: string): number {
+export function kickPlayer(id: string, message: string, code: "banned" | "versus_banned" = "banned"): number {
   const set = live.get(id);
   if (!set) return 0;
   for (const c of [...set]) {
-    c.send({ t: "error", code: "banned", message });
+    c.send({ t: "error", code, message });
     c.close(4003, "banned");
   }
   return set.size;

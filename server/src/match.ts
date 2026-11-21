@@ -131,6 +131,8 @@ export class Match {
         anger: this.anger,
         resolve: this.resolveVal,
         rate: this.phase === "staff_turn" ? this.rate : 0,
+        // 音声の店員の番は、はじめの数秒は怒りが上がらない（ゲームの表示を合わせる。レビュー2-2）
+        grace: this.phase === "staff_turn" && this.format === "voice" ? config.versus.voiceExtraSec : 0,
       });
     }
   }
@@ -268,6 +270,9 @@ export class Match {
       if (sc.flagged) {
         openingText = sc.text;
         this.resolveVal = clamp(this.resolveVal + 15, 0, 100);
+      } else {
+        // 最初のクレームの声も、確かめて問題がなければ相手に流す（レビュー1-3）
+        this.relayVoice(customer, opening);
       }
     }
     usedCustomer.push(openingText);
@@ -293,6 +298,8 @@ export class Match {
         break;
       }
       this.setPhase("judging", -1, 0);
+      // 行動ボタンでも返事でも、そのあとは同じく往復数を数えて客役の番へ（レビュー1-2: 行動ボタンだと客役の番と往復の上限を飛ばしていた）
+      staffTurn: {
       if (input.via === "action" && input.action) {
         // 店の行動ボタン（要件#34）: 点数は表どおり
         const j = judgeAction(card, input.action, this.anger, this.resolveVal, this.lang);
@@ -306,10 +313,7 @@ export class Match {
         else if (this.anger >= 100) outcome = "explode";
         else if (this.resolveVal >= 100) outcome = "resolved";
         if (outcome !== "") break;
-        exchanges++;
-        await sleep(config.versus.pauseAfterLineMs);
-        if (this.finished) return null;
-        continue;
+        break staffTurn;
       }
       const reply = await this.inputToText(staff, input, "staff");
       if (this.finished) return null;
@@ -358,6 +362,7 @@ export class Match {
       else if (this.anger >= 100) outcome = "explode";
       else if (this.resolveVal >= 100) outcome = "resolved";
       if (outcome !== "") break;
+      }
       exchanges++;
       if (exchanges >= config.versus.maxExchanges) {
         outcome = this.resolveVal > this.anger ? "resolved" : "explode";

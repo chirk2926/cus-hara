@@ -236,6 +236,9 @@ func _process(delta: float) -> void:
 		return
 	if main.get("debug") != null and main.call("debug_flag", "anger_stop"):
 		return
+	# 一時停止（Esc）の間は時間を止める（レビュー2-6）
+	if _cancel or (main.has_method("is_paused") and main.call("is_paused")):
+		return
 	_elapsed += delta
 	_anger = minf(99.0, _anger + _rate * delta)
 	_update_gauges()
@@ -274,6 +277,14 @@ func run() -> Dictionary:
 	return res
 
 
+## タイトルに戻るなどで途中でやめる（レビュー2-6）。待っている側には今の怒りを返して終わらせる
+func abort() -> void:
+	if _cancel:
+		return
+	_cancel = true
+	_done.emit({"actions": [], "seconds": _seconds, "opened": _opened, "anger": _anger, "nags": _nags.duplicate(), "aborted": true})
+
+
 func _finish() -> void:
 	if _busy:
 		return
@@ -295,41 +306,67 @@ func _do(id: String) -> void:
 	var focus: String = {"medal_repair": "focus_lottery", "medal_hit": "focus_rail", "medal_rail": "focus_rail", "video_connector": "focus_connector"}.get(id, "")
 	if focus != "":
 		await _focus(focus)
+		if _cancel or not is_inside_tree():
+			return
 	if not (main != null and bool(main.get("smoke"))):
 		await _minigame(id)
+		if _cancel or not is_inside_tree():
+			return
 	match id:
 		"cab_open":
 			_opened = true
 			if _kind == "medal":
 				await _stage.call("open_door")
+				if _cancel or not is_inside_tree():
+					return
 			else:
 				await _stage.call("open_panel")
+				if _cancel or not is_inside_tree():
+					return
 			_status.text = _inside_look()
 		"medal_hit":
 			await _stage.call("hit_rail", _problem == "jam")
+			if _cancel or not is_inside_tree():
+				return
 			_status.text = tr("ガンッ！……詰まりが取れて、メダルが出てきた。（規定では、叩いて直すのは推奨されていない）") if _problem == "jam" else tr("叩いてみたが、何も変わらない。")
 		"medal_rail":
 			if main != null and bool(main.get("smoke")):
 				await _stage.call("disassemble_rail", _problem == "jam")
+				if _cancel or not is_inside_tree():
+					return
 			elif _problem == "jam":
 				await _stage.call("payout")   # ミニゲームの中で、外して・取って・戻した
+				if _cancel or not is_inside_tree():
+					return
 			_status.text = tr("レールを外して、詰まったメダルを取り除いた。元に戻すと、メダルが出てきた。") if _problem == "jam" else tr("レールを分解してみたが、詰まりはなかった。")
 		"medal_refill":
 			await _stage.call("refill", _problem == "empty")
+			if _cancel or not is_inside_tree():
+				return
 			_status.text = tr("補充口からメダルを入れた。払い出しが戻った。") if _problem == "empty" else tr("メダルを足してみたが、問題はそこではなかった。")
 		"medal_repair":
 			await _stage.call("repair_lottery", _problem == "lottery")
+			if _cancel or not is_inside_tree():
+				return
 			_status.text = tr("抽選機の部品を締め直した。ランプが緑になり、ドラムが回りだした。") if _problem == "lottery" else tr("抽選機はもともと動いていた。")
 		"video_check":
 			for i in range(4):
 				await _stage.call("test_button", i, _problem != "button" or i != _dead_button)
+				if _cancel or not is_inside_tree():
+					return
 			_status.text = (tr("%d番のボタンだけ反応しない。本当に壊れている。") % (_dead_button + 1)) if _problem == "button" else tr("ボタンはぜんぶ反応する。壊れていないようだ。")
 		"video_connector":
 			await _stage.call("reseat_connector")
+			if _cancel or not is_inside_tree():
+				return
 			_status.text = tr("コネクタを差し直した。ボタンがぜんぶ反応するようになった。") if _problem == "button" else tr("コネクタを差し直したが、もともと問題はなかった。")
 	if focus != "":
 		await get_tree().create_timer(0.6).timeout
+		if _cancel or not is_inside_tree():
+			return
 		await _focus("")
+		if _cancel or not is_inside_tree():
+			return
 	_seconds += float(WORK_SECONDS.get(id, 4.0))
 	# 直したあとの台でした対応は、お客さんへの対応には数えない（要件#110）
 	if not _done_ids.has(id) and not (_fixed and id != "cab_open"):

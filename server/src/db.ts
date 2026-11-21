@@ -516,6 +516,12 @@ export function addReport(reporterId: string, targetId: string, matchId: string,
   return Number(r.changes) > 0;
 }
 
+/** その試合の2人（記録が無ければ null） */
+export function matchPlayers(matchId: string): [string, string] | null {
+  const r = openDb().prepare("SELECT p1, p2 FROM matches WHERE id = ?").get(matchId) as { p1: string; p2: string } | undefined;
+  return r ? [r.p1, r.p2] : null;
+}
+
 /** 運営が見る用: そのプレイヤーへの通報の数 */
 export function reportCount(targetId: string): number {
   const row = openDb().prepare("SELECT COUNT(*) AS n FROM reports WHERE target_id = ?").get(targetId) as { n: number };

@@ -167,6 +167,9 @@ test("1人用の行動ボタンと、対戦の行動・フレンド部屋の返�
   const act = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: start.body.session_id, action: "dogeza", anger: 40, resolve: 0 }, g.body.token);
   assert.equal(act.status, 200);
   assert.equal(act.body.action, "dogeza");
+  // 行動の効果の種類を返す（台を直した・土下座が効いたをゲームが知るため。レビュー1-1）
+  assert.ok(["good", "neutral", "bad", "yield"].includes(act.body.effect_kind), String(act.body.effect_kind));
+  assert.equal(typeof start.body.customer.stuck, "boolean");
 
   const a = await guest(srv.base, srv.wsUrl, "部屋主");
   const b = await guest(srv.base, srv.wsUrl, "客");
@@ -190,6 +193,12 @@ test("1人用の行動ボタンと、対戦の行動・フレンド部屋の返�
   staffClient.send({ t: "act", id });
   const line = await custClient.wait((m) => m.t === "line" && m.via === "action");
   assert.ok(line.text.includes(table.labels.ja[id]), `${line.text} に ${table.labels.ja[id]}`);
+  // 行動ボタンのあとは客役の番になる（レビュー1-2: 客役を飛ばして店員の番に戻っていた）
+  const next = await Promise.race([
+    custClient.wait((m) => m.t === "phase" && m.phase === "customer_turn" && m.turn === "you").then(() => "customer", () => "timeout"),
+    custClient.wait((m) => m.t === "round_end").then(() => "round_end", () => "timeout"),
+  ]);
+  assert.ok(next === "customer" || next === "round_end", next);
   a.c.send({ t: "leave" });
   await b.c.wait((m) => m.t === "match_end");
   a.c.close(); b.c.close();
@@ -292,6 +301,30 @@ test("チート対策: 1人用は納得をサーバーの値で検証し、決�
     assert.equal(r3.status, 409, "決着後は受け付けない");
   }
   assert.ok(lecturer.title);
+});
+
+test("1人用: 怒りはサーバーの値より下げられないが、店長が来た分（1回・10まで）は合わせる（レビュー1-5）", async () => {
+  const g = await api(srv.base, "POST", "/api/v1/guest", { name: "店長来訪" });
+  const t = g.body.token;
+  const start = await api(srv.base, "POST", "/api/v1/solo/start", { stage: "konbini" }, t);
+  const sid = start.body.session_id;
+  const a0 = start.body.customer.start_anger;
+  const r1 = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: sid, reply: "えっと", anger: 0, resolve: 0, manager: true }, t);
+  assert.equal(r1.status, 200);
+  // 店長の分（10）だけ下がった値から判定される。返事の怒りの増減はそのあと
+  assert.ok(r1.body.anger >= a0 - 10 + Math.min(0, r1.body.anger_delta), `${r1.body.anger} / ${a0}`);
+  const before = r1.body.anger;
+  const r2 = await api(srv.base, "POST", "/api/v1/solo/turn", { session_id: sid, reply: "えっと", anger: 0, resolve: 0, manager: true }, t);
+  if (r2.status === 200) assert.ok(r2.body.anger >= before + Math.min(0, r2.body.anger_delta), "2回目は下げられない");
+});
+
+test("通報: 試合の番号は、2人がその試合にいたときだけ使う（レビュー3）", async () => {
+  const a = await api(srv.base, "POST", "/api/v1/guest", { name: "通報A" });
+  const b = await api(srv.base, "POST", "/api/v1/guest", { name: "通報B" });
+  const r1 = await api(srv.base, "POST", "/api/v1/report", { player_id: b.body.player.id, match_id: "fake1", reason: "abuse" }, a.body.token);
+  const r2 = await api(srv.base, "POST", "/api/v1/report", { player_id: b.body.player.id, match_id: "fake2", reason: "abuse" }, a.body.token);
+  assert.equal(r1.body.saved, true);
+  assert.equal(r2.body.saved, false, "でたらめな試合番号を変えても、件数は増えない");
 });
 
 test("要注意人物のイベントと店長のアドバイス（要件#52）", async () => {

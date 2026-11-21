@@ -31,6 +31,13 @@ export function endMatch(matchId: string): void {
   if (e.reported) saveMatchLog(matchId, e.body);
 }
 
+/** 試合中・終わって間もない試合の2人のID（覚えていなければ null） */
+export function trackedPlayers(matchId: string): string[] | null {
+  const e = recent.get(matchId);
+  const ps = e?.body.players;
+  return Array.isArray(ps) ? ps.map((p) => String((p as { id?: unknown }).id ?? "")) : null;
+}
+
 /** 通報があった。試合中なら終わったときに、終わっていれば今すぐ保存する */
 export function markReported(matchId: string): void {
   const e = recent.get(matchId);

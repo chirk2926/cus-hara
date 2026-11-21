@@ -61,6 +61,7 @@ var _anger: float = 0.0
 var _resolve: float = 0.0
 var _rate: float = 0.0
 var _phase: String = ""
+var _grace_left: float = 0.0   # 音声の店員の番で、怒りが上がりはじめるまでの秒
 var _my_turn: bool = false
 var _seconds_left: float = -1.0
 var _totals: Dictionary = {"you": 0, "opponent": 0}
@@ -197,6 +198,7 @@ func cancel() -> void:
 
 
 func leave_match() -> void:
+	voice.release_mic()
 	if state == "match":
 		api.send({"t": "leave"})
 
@@ -416,8 +418,11 @@ func _on_phase(msg: Dictionary) -> void:
 	_rate = float(msg.get("rate", 0.0))
 	var elapsed: float = float(msg.get("elapsed", 0.0))
 	_seconds_left = maxf(0.0, float(msg.get("seconds", 0.0)) - elapsed)
+	# 音声の店員の番は、はじめの数秒（grace）は怒りが上がらない（サーバーと同じ。レビュー2-2）
+	var grace: float = float(msg.get("grace", 0.0))
+	_grace_left = maxf(0.0, grace - elapsed)
 	if _phase == "staff_turn":
-		_anger = minf(100.0, _anger + _rate * elapsed)
+		_anger = minf(100.0, _anger + _rate * maxf(0.0, elapsed - grace))
 	var can_input: bool = _my_turn and (_phase == "customer_turn" or _phase == "staff_turn")
 	if can_input:
 		if _phase == "staff_turn":
@@ -456,7 +461,11 @@ func _process(delta: float) -> void:
 	if state != "match":
 		return
 	if _phase == "staff_turn":
-		_anger = minf(100.0, _anger + _rate * delta)
+		var d: float = delta
+		if _grace_left > 0.0:
+			d = maxf(0.0, delta - _grace_left)
+			_grace_left = maxf(0.0, _grace_left - delta)
+		_anger = minf(100.0, _anger + _rate * d)
 		_refresh()
 	elif _phase == "customer_turn" and _seconds_left > 0.0:
 		var before: int = int(ceil(_seconds_left))
@@ -468,7 +477,7 @@ func _process(delta: float) -> void:
 func _refresh() -> void:
 	var left: float = -1.0
 	if _phase == "staff_turn" and _rate > 0.0:
-		left = (100.0 - _anger) / _rate
+		left = (100.0 - _anger) / _rate + _grace_left
 	hud.set_gauges(_anger, _resolve, left)
 	main.display_anger = _anger
 
@@ -551,6 +560,7 @@ func _leave_later(mood: String) -> void:
 
 
 func _on_match_end(msg: Dictionary) -> void:
+	voice.release_mic()
 	_voice_mode = "relay"
 	_eos_voice_joined = false
 	if eos != null:

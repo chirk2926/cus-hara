@@ -1116,7 +1116,7 @@ func _prepare_customer() -> Dictionary:
 	var src: String = GameSettings.solo_source
 	if src == "server":
 		hud.set_status(tr("お客さんが来ます…"))
-		var req: Dictionary = {"stage": _stage_id, "avoid": _titles, "lang": GameSettings.language, "payout": _payout}
+		var req: Dictionary = {"stage": _stage_id, "avoid": _titles, "lang": GameSettings.language, "payout": _payout, "hardcore": hardcore}
 		if _wild:
 			req["event"] = "wild"
 		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/start", req)
@@ -1678,19 +1678,34 @@ func _customer_line(speaker: String, text: String, kind: String) -> void:
 ## 行動ボタンの判定。点数は表どおり（サーバーでも同じ表）。サーバーのお客さんはサーバーに送る
 func _judge_action(id: String) -> Dictionary:
 	if _source == "server":
-		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/turn", {"session_id": _session_id, "action": id, "anger": _anger, "resolve": _resolve})
+		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/turn", {"session_id": _session_id, "action": id, "anger": _anger, "resolve": _resolve, "manager": _manager_used})
 		if bool(res.get("ok", false)):
+			_learn_from_server(res["body"])
 			return res["body"]
 	await _wait(0.5)
 	return ShopActions.judge(_cust, id, _anger, _resolve)
 
 
+## サーバーのお客さんは採点の表を持たないので、返ってきた行動の効果とうその有無を覚える（レビュー1-1）。
+## 「台を直した」「土下座が効いた」「うそを見抜いた」をゲーム側で分かるように
+func _learn_from_server(body: Dictionary) -> void:
+	var id: String = str(body.get("action", ""))
+	var kind: String = str(body.get("effect_kind", ""))
+	if id != "" and kind != "":
+		if typeof(_cust.get("actions", null)) != TYPE_DICTIONARY:
+			_cust["actions"] = {}
+		(_cust["actions"] as Dictionary)[id] = kind
+	if body.has("spend_lie"):
+		_cust["_lie"] = bool(body["spend_lie"])
+
+
 ## 採点。サーバー／自分のキーで失敗したら、そのターンだけキーワード判定にする
 func _judge(reply: String) -> Dictionary:
 	if _source == "server":
-		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/turn", {"session_id": _session_id, "reply": reply, "anger": _anger, "resolve": _resolve})
+		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/turn", {"session_id": _session_id, "reply": reply, "anger": _anger, "resolve": _resolve, "manager": _manager_used})
 		if bool(res.get("ok", false)):
 			var body: Dictionary = res["body"]
+			_learn_from_server(body)
 			var notice: String = str(body.get("notice", ""))
 			if notice != "":
 				body["comment"] = "%s\n（%s）" % [str(body.get("comment", "")), notice]

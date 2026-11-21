@@ -6,7 +6,8 @@ rem SSH のトンネルで、この PC の 127.0.0.1:8790 をサーバーの 127
 rem ↓ 自分のサーバーのユーザー名と、家の中でのアドレス（例 192.168.1.20）に書きかえる
 set SERVER=cushara@192.168.1.20
 
-start "" http://127.0.0.1:8790/
 echo 管理画面につないでいます。終わったらこの窓を閉じてください。
+rem トンネルがつながってからブラウザを開く（先に開くとつながらない画面になる）。パスワードを入れている間も待つ
+start "" /min powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 300;$i++){try{$c=New-Object Net.Sockets.TcpClient('127.0.0.1',8790);$c.Close();Start-Process 'http://127.0.0.1:8790/';break}catch{Start-Sleep 1}}"
 ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8790:127.0.0.1:8790 %SERVER%
 pause

@@ -53,7 +53,7 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | `LLM_MODEL` | なし | `openai_compatible` のときのモデル名（各社の名前をそのまま） |
 | `LLM_API_KEY` | なし | `openai_compatible` のときのキー（ローカルの Ollama などは不要）。**サーバーにだけ置く** |
 | `LLM_JSON_MODE` | `json_schema` | `json_schema`=スキーマどおりに出させる（対応していれば確実）/ `json_object`=JSON だけ出させ、形は指示文で伝える（スキーマ指定に対応していないAI向け） |
-| `LLM_TIMEOUT_MS` | 45000 | AIの応答待ちの上限 |
+| `LLM_TIMEOUT_MS` | 15000 | AIの応答待ちの上限（やり直しなし。ゲームは35秒で待つのをやめる） |
 | `LLM_PER_MINUTE` | 20 | 1人のプレイヤーが1分間に使えるAI呼び出し回数（運営の料金を守る。超えるとキーワード判定） |
 | `STT_PROVIDER` | `none` | 音声の文字起こし。`none` / `openai_compatible` / `whisper_cpp` / `mock`（テスト用） |
 | `STT_URL` | `http://127.0.0.1:8080` | 文字起こしサーバーのURL |
@@ -64,7 +64,7 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | `SCENARIOS_PATH` | `data/scenarios.json` | 台本（英語は同じ場所の `scenarios.en.json`、判定語は `judge_words.json`） |
 | `GUESTS_PER_HOUR` | 20 | 1つのIPから1時間に作れるアカウント数 |
 | `TRUST_PROXY` | なし | `1` なら、信じてよいプロキシ（同じマシンの 127.0.0.1 と `TRUSTED_PROXIES`）から来た接続だけ、`CF-Connecting-IP`（無ければ `X-Forwarded-For` の一番右）をプレイヤーの IP にする（要件#108） |
-| `TRUSTED_PROXIES` | なし | 転送ヘッダーを信じるプロキシの住所（カンマ区切り）。Docker で動かすときのブリッジ（`172.17.0.1`）など |
+| `TRUSTED_PROXIES` | なし | 転送ヘッダーを信じるプロキシの住所（カンマ区切り）。Docker で動かすときのブリッジの出入口（compose.yaml の例は `172.30.0.1` に固定）など |
 | `VS_*` / `MM_ANYONE_AFTER_SEC` | | 対戦の秒数・マッチングの設定（`src/config.ts`） |
 | `TIME_SCALE` | 1 | テスト用に時間を速める倍率 |
 | `ALLOW_RANKED_ROOMS` | `0` | EOS で組んだ部屋をランクマッチにしてよいか（`0` で禁止） |

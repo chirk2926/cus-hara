@@ -38,7 +38,8 @@ export const config = {
   llmModel: str("LLM_MODEL", ""),
   // JSON の出させ方: "json_schema"（スキーマどおりに出させる。対応していれば一番確実）| "json_object"（JSON だけ出させ、形は指示文で伝える）
   llmJsonMode: str("LLM_JSON_MODE", "json_schema"),
-  llmTimeoutMs: num("LLM_TIMEOUT_MS", 45000),
+  // ゲームの待ち時間（35秒）より短く。やり直しはしない（レビュー1-6）
+  llmTimeoutMs: num("LLM_TIMEOUT_MS", 15000),
 
   // 音声の文字起こし（音声対戦に必要）
   sttProvider: str("STT_PROVIDER", "none") as SttProvider,

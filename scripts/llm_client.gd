@@ -7,7 +7,7 @@ extends Node
 const API_URL: String = "https://api.anthropic.com/v1/messages"
 const API_VERSION: String = "2026-10-21"
 const FALLBACK_BETA: String = "server-side-fallback-2026-07-01"
-const MAX_TOKENS: int = 16000
+const MAX_TOKENS: int = 4096
 const TIMEOUT_SEC: float = 60.0
 
 const Moderation = preload("res://scripts/moderation.gd")
@@ -66,6 +66,8 @@ const GEN_SYSTEM: String = """あなたはコミカルな接客ゲーム「カ�
 - memo: スタッフが把握している客観的事実と店の規定。1〜2文。プレイヤーが正しい解決策を考える手がかりになること（例: 何が実際に起きたか、規定では何ができて何ができないか）。
 - opening: 最初のクレームのセリフ。話し言葉の日本語、1〜3文、90文字以内。
 - demand: お客さんの不当な要求の要約（例:「店員の土下座と弁当10個の無料提供」）。明らかに度を越していること。
+- solution_keywords: 正しい解決策を述べた返答に含まれそうな短い語を4〜6個（例:「交換」「新しい」）。
+- yield_keywords: 不当な要求を受け入れた返答に含まれそうな短い語を3〜5個（例:「土下座」「無料」）。
 - patience: 気の長さ。0.7（気長）〜1.4（短気）。
 - start_anger: 最初の怒り。30〜55の整数。
 - problem: ゲームセンターの台の不具合のお客さんのときだけ入れる。jam（メダルが払い出しのレールで詰まった）/ empty（台のメダルが切れて払い出されない）/ lottery（メダルゲームの抽選機が動かない）/ button（ビデオゲームのボタンが反応しないと言う）/ slam（ビデオゲームのコーナーで台パンしている人がいると知らせに来た）/ loud（大声を出している人がいると知らせに来た）。それ以外は none。台の不具合のお客さんは、困っているのは本当（不当なのは要求の部分だけ）。slam・loud のお客さんは、迷惑な人を追い出せ・出入り禁止にしろ、などを要求する。
@@ -134,6 +136,9 @@ func _customer_schema() -> Dictionary:
 			"demand": {"type": "string"},
 			"patience": {"type": "number"},
 			"start_anger": {"type": "integer"},
+			# 簡易判定・店長のヒントに使う（サーバーの CustomerSchema と同じ。レビュー2-10）
+			"solution_keywords": {"type": "array", "items": {"type": "string"}},
+			"yield_keywords": {"type": "array", "items": {"type": "string"}},
 			"actions": {
 				"type": "object",
 				"properties": {
@@ -150,7 +155,7 @@ func _customer_schema() -> Dictionary:
 			"machine": {"type": "string", "enum": ["crane", "medal", "rhythm", "video", "purikura", "none"]},
 			"problem": {"type": "string", "enum": ["none", "jam", "empty", "lottery", "button", "slam", "loud"]},
 		},
-		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "actions", "machine", "problem"],
+		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "solution_keywords", "yield_keywords", "actions", "machine", "problem"],
 		"additionalProperties": false,
 	}
 
@@ -306,12 +311,26 @@ func _sanitize_customer(d: Dictionary, stage_id: String = "konbini") -> Dictiona
 		"demand": str(d.get("demand", "")).left(100),
 		"patience": clampf(float(d.get("patience", 1.0)), 0.7, 1.4),
 		"start_anger": clampi(int(d.get("start_anger", 40)), 30, 55),
+		"solution_keywords": _words(d.get("solution_keywords", []), 8),
+		"yield_keywords": _words(d.get("yield_keywords", []), 6),
 		"actions": actions,
 		"machine": str(d.get("machine", "none")) if stage_id == "arcade" else "none",
 		"crane": stage_id == "arcade" and str(d.get("machine", "")) == "crane",
 		# 台の問題（要件#99, #109: サーバーと同じく、AI のお客さんも台の不具合・迷惑なお客さんの通報になれる）
 		"problem": str(d.get("problem", "none")) if stage_id == "arcade" and str(d.get("problem", "none")) in ["jam", "empty", "lottery", "button", "slam", "loud"] else "",
 	}
+
+
+## キーワードの配列を整える（サーバーと同じく、多すぎ・長すぎを切る）
+static func _words(v: Variant, limit: int) -> Array:
+	var out: Array = []
+	if typeof(v) != TYPE_ARRAY:
+		return out
+	for w in (v as Array):
+		var s: String = str(w).strip_edges().left(12)
+		if s != "" and out.size() < limit:
+			out.append(s)
+	return out
 
 
 ## 筐体の記録（サーバーの spendFacts と同じ。要件#109）。「〇〇円使った」お客さんでなければ ""

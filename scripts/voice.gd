@@ -82,6 +82,16 @@ func stop_recording() -> PackedByteArray:
 	return encode_mulaw(_resample(_samples, _src_rate, float(RATE)))
 
 
+## マイクを閉じる（対戦が終わったら。レビュー2-9: 終わってもマイクが開いたままだった）。次に録音するときにまた開く
+func release_mic() -> void:
+	cancel_recording()
+	if _mic != null and is_instance_valid(_mic):
+		_mic.stop()
+		_mic.queue_free()
+	_mic = null
+	_capture = null
+
+
 func cancel_recording() -> void:
 	_recording = false
 	_samples = PackedFloat32Array()

@@ -9,7 +9,7 @@ extends Node
 signal message(msg: Dictionary)
 signal socket_state(state: String)   # "connecting" | "open" | "closed"
 
-const TIMEOUT_SEC: float = 20.0
+const TIMEOUT_SEC: float = 35.0   # サーバーの AI 待ち（最大25秒）より長く（レビュー1-6）
 
 var _ws: WebSocketPeer = null
 var _ws_state: String = "closed"
@@ -194,6 +194,9 @@ func _process(delta: float) -> void:
 			var parsed: Variant = JSON.parse_string(pkt.get_string_from_utf8())
 			if typeof(parsed) == TYPE_DICTIONARY:
 				var msg: Dictionary = parsed
+				# 利用停止・ほかの場所でつながった: つなぎ直さない（2つの窓が互いに切り合わないように。レビュー2-3）
+				if str(msg.get("t", "")) == "error" and str(msg.get("code", "")) in ["replaced", "banned", "unauthorized"]:
+					_want_socket = false
 				if str(msg.get("t", "")) == "hello":
 					_authed = true
 					_reconnect_tries = 0
@@ -202,6 +205,9 @@ func _process(delta: float) -> void:
 						_remember(p)
 				message.emit(msg)
 	elif st == WebSocketPeer.STATE_CLOSED:
+		# 4001 = ログインできない・ほかの場所でつながった、4003 = 利用停止。つなぎ直しても同じなのでやめる
+		if _ws.get_close_code() in [4001, 4003]:
+			_want_socket = false
 		_ws = null
 		_authed = false
 		_set_state("closed")

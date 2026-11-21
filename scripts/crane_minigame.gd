@@ -294,6 +294,12 @@ func _process(delta: float) -> void:
 	if _time_label != null:
 		_time_label.text = tr("お客さんが待っている: あと %d 秒") % int(ceil(maxf(_time_left, 0.0)))
 	if _time_left <= 0.0:
+		# 動かさないまま時間切れ: 何もしなかったことにして終わる（レビュー2-4: 毎フレーム呼び続けて終わらなかった）
+		if _mode == "move" and not _moved:
+			if _held != null:
+				_drop_held()
+			_finish(_result("cancelled"))
+			return
 		_start_play()
 		return
 	# つかんでいる景品・カーソルの下の景品を少し浮かせて見せる

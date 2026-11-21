@@ -61,7 +61,7 @@ export const SETTINGS: SettingDef[] = [
   { key: "llmModel", group: "AI", label: "OpenAI 互換: モデル名", help: "例 gpt-5-mini、llama3", type: "string", path: "llmModel" },
   { key: "LLM_API_KEY", group: "AI", label: "OpenAI 互換: APIキー", help: "Ollama など、キーが要らないものは空のまま", type: "secret", env: "LLM_API_KEY" },
   { key: "llmJsonMode", group: "AI", label: "OpenAI 互換: JSON の出させ方", help: "json_schema に対応していないAIは json_object", type: "enum", options: ["json_schema", "json_object"], path: "llmJsonMode" },
-  { key: "llmTimeoutMs", group: "AI", label: "AIの応答を待つ時間（ミリ秒）", help: "これを過ぎたらキーワード判定に切り替える", type: "number", min: 3000, max: 120000, path: "llmTimeoutMs" },
+  { key: "llmTimeoutMs", group: "AI", label: "AIの応答を待つ時間（ミリ秒）", help: "これを過ぎたらキーワード判定に切り替える。ゲームは35秒で待つのをやめるので、25秒まで", type: "number", min: 3000, max: 25000, path: "llmTimeoutMs" },
   // 音声
   { key: "sttProvider", group: "音声の文字起こし", label: "文字起こしの種類", help: "none = 声の対戦なし / whisper_cpp / openai_compatible / mock（テスト用）", type: "enum", options: ["none", "whisper_cpp", "openai_compatible", "mock"], path: "sttProvider" },
   { key: "sttUrl", group: "音声の文字起こし", label: "文字起こしの場所", help: "例 http://127.0.0.1:8080", type: "string", path: "sttUrl" },
@@ -190,6 +190,8 @@ function parse(d: SettingDef, raw: unknown): unknown {
     case "secret":
     case "string":
     case "text": {
+      // 料金表は保存するとき・記録から戻すときはオブジェクトのまま来る（レビュー1-4: 再起動で消え、「前に戻す」も失敗していた）
+      if (d.key === "aiPrices" && typeof raw === "object" && raw !== null) raw = JSON.stringify(raw);
       if (typeof raw !== "string") throw new SettingError("文字で入れてください");
       const v = raw.replace(/[\u0000-\u0008\u000b-\u001f]/g, "").trim();
       if (v.length > (d.type === "text" ? 2000 : 500)) throw new SettingError("長すぎます");

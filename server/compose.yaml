@@ -14,12 +14,21 @@ services:
       # 既定は安いモデル（要件#108: 高いモデルが既定だと料金がふくらむ）
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-haiku-5-5}
       TRUST_PROXY: ${TRUST_PROXY:-0}
-      # コンテナの中から見ると、プロキシは Docker のブリッジの住所から来る
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.17.0.1}
+      # コンテナの中から見ると、プロキシは Docker のブリッジの出入口（gateway）から来る。
+      # Compose の既定のネットワークは出入口の住所が毎回変わりうるので、下の networks で 172.30.0.1 に決めている（レビュー3）
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.30.0.1}
       STT_PROVIDER: ${STT_PROVIDER:-none}
       STT_URL: ${STT_URL:-http://stt:8080}
     volumes:
       - game-data:/var/lib/cushara
     restart: unless-stopped
+    networks:
+      - game-net
+networks:
+  game-net:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
 volumes:
   game-data:

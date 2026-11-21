@@ -125,6 +125,10 @@ static func effect_kind(customer: Dictionary, id: String) -> String:
 	var a: Variant = customer.get("actions", {})
 	if typeof(a) == TYPE_DICTIONARY and (a as Dictionary).has(id):
 		return str((a as Dictionary)[id])
+	# サーバーのお客さんは actions を持たない。台の問題の表から分かる分は表を見る（レビュー1-1）
+	var pa: Dictionary = problem_actions(customer)
+	if pa.has(id):
+		return str(pa[id])
 	return str((table().get("default", {}) as Dictionary).get(id, "neutral"))
 
 

@@ -3,14 +3,14 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { config } from "./config.ts";
 import { sanctionOf, isActiveBan, setSanction, announcements, VS_CONSENT_VERSION, consentOf, setConsent, hasConsent, deletePlayer } from "./db.ts";
-import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar, setPlayerAvatar, addReport, playerById, REPORT_REASONS, type ReportReason, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard } from "./db.ts";
+import { type Player, cleanName, cleanTitle, cleanTag, setPlayerTag, cleanAvatar, setPlayerAvatar, addReport, playerById, REPORT_REASONS, type ReportReason, createPlayer, playerByToken, renamePlayer, setPlayerTitle, leaderboard, matchPlayers } from "./db.ts";
 import { publicPlayer } from "./protocol.ts";
 import { type Customer, isStage, randomCustomer, publicCustomer, type StageId, clampPayout, materializeSpend, spendWeight } from "./scenarios.ts";
 import { judgeStaff } from "./keyword_judge.ts";
 import { moderate, stripInvisible } from "./moderation.ts";
 import { runtime } from "./settings.ts";
 import { openStages } from "./stages.ts";
-import { markReported } from "./matchlogs.ts";
+import { markReported, trackedPlayers } from "./matchlogs.ts";
 import { readNoticeImage } from "./notices.ts";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
-import { isAllowed, judgeAction, actionAsStaffLine } from "./actions.ts";
+import { isAllowed, judgeAction, actionAsStaffLine, effectKind } from "./actions.ts";
 import { type Lang, toLang, LANGS } from "./lang.ts";
 import type { Lobby } from "./lobby.ts";
 import { log } from "./log.ts";
@@ -59,6 +59,10 @@ interface SoloSession {
   lastAt: number;
   finished: boolean;
   hinted?: boolean;
+  /** 社員モード（納得の上がり方がゲームと同じになるように） */
+  hardcore?: boolean;
+  /** 店長が来て怒りを下げた分をもう使ったか */
+  calmed?: boolean;
   /** 判定中（要件#108: 同時に来た返事は断る） */
   inFlight?: boolean;
 }
@@ -66,12 +70,20 @@ interface SoloSession {
 const soloSessions = new Map<string, SoloSession>();
 
 /** 判定のあとの怒り・納得をセッションに覚える。決着したら以後の入力は受け付けない */
+// 怒りが100・納得が100で終わるかは、ゲーム側が決める（ゲームは臭い・金額・規定違反・店長などの決まりも足すので、
+// サーバーの数字だけで先に終わらせると、まだ続いている会話が断られてしまう。レビュー1-5）。屈したときだけここで終わり
 function settle(s: SoloSession, anger: number, r: { anger_delta: number; resolve_delta: number; yielded: boolean }): void {
   s.anger = Math.min(100, Math.max(0, anger + r.anger_delta));
-  s.resolve = Math.min(100, Math.max(0, s.resolve + r.resolve_delta));
+  const mul = r.resolve_delta > 0 ? RESOLVE_MUL * (s.hardcore ? HARD_RESOLVE_MUL : 1) : 1;
+  s.resolve = Math.min(100, Math.max(0, s.resolve + Math.round(r.resolve_delta * mul)));
   s.lastAt = Date.now();
-  if (r.yielded || s.anger >= 100 || s.resolve >= 100) s.finished = true;
+  if (r.yielded) s.finished = true;
 }
+/** ゲームと同じ納得の上がり方（solo_game.gd の RESOLVE_MUL / HARD_RESOLVE_MUL） */
+const RESOLVE_MUL = 1.3;
+const HARD_RESOLVE_MUL = 0.7;
+/** 店長が来ると怒りが 10 下がる（ゲーム側）。この分だけはゲームの値まで下げてよい */
+const MANAGER_CALM = 10;
 setInterval(() => {
   const now = Date.now();
   for (const [id, s] of soloSessions) if (now - s.updated > 30 * 60_000) soloSessions.delete(id);
@@ -103,7 +115,7 @@ export function requestIp(req: http.IncomingMessage): string {
   return remote;
 }
 
-// 転送ヘッダーを信じるプロキシの住所。同じマシンのほか、TRUSTED_PROXIES（カンマ区切り。Docker のブリッジの 172.17.0.1 など）で足せる
+// 転送ヘッダーを信じるプロキシの住所。同じマシンのほか、TRUSTED_PROXIES（カンマ区切り。Docker のブリッジの出入口など）で足せる
 const TRUSTED_PROXIES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1",
   ...(process.env.TRUSTED_PROXIES ?? "").split(",").map((x) => x.trim()).filter(Boolean).flatMap((x) => [x, `::ffff:${x}`])]);
 
@@ -277,7 +289,13 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
     if (reason === null) throw new HttpError(400, "bad_reason", "通報の理由を選んでください");
     if (target === "" || target === player.id || playerById(target) === null) throw new HttpError(400, "bad_target", "通報する相手が見つかりません");
     if (!allow(`report:${player.id}`, 10, 3_600_000)) throw new HttpError(429, "too_many_reports", "通報が多すぎます。しばらくしてからにしてください");
-    const matchId = typeof body.match_id === "string" ? body.match_id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) : "";
+    let matchId = typeof body.match_id === "string" ? body.match_id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) : "";
+    // 試合の番号を変えて、同じ相手への通報を何件も数えさせないように（レビュー3）。
+    // 2人がその試合にいなかったら（記録が無い番号も）、試合なしの通報として1件だけ残す
+    if (matchId !== "") {
+      const ps = trackedPlayers(matchId) ?? matchPlayers(matchId);
+      if (ps === null || !ps.includes(player.id) || !ps.includes(target)) matchId = "";
+    }
     const note = typeof body.note === "string" ? body.note.replace(/[\u0000-\u001f\u007f<>]/g, " ").trim().slice(0, 200) : "";
     const saved = addReport(player.id, target, matchId, reason, note);
     if (saved && matchId !== "") markReported(matchId);
@@ -334,6 +352,7 @@ async function route(req: http.IncomingMessage, url: URL, lobby: Lobby): Promise
       resolve: 0,
       lastAt: Date.now(),
       finished: false,
+      hardcore: body.hardcore === true,
     };
     // 全体の上限（メモリを使いきらないように。古いものから捨てる。要件#77）
     if (soloSessions.size >= 20000) {
@@ -385,7 +404,13 @@ async function soloTurn(s: SoloSession, body: Record<string, unknown>, player: P
   // チート対策（要件#47）: 納得はサーバーの値だけを使う。怒りは、待っている間に上がる分だけ
   // クライアントの値を受け入れる（サーバーが覚えている値より下げることはできない）
   const resolve = s.resolve;
-  const anger = Math.max(s.anger, clamp(num(body.anger, s.anger), 0, 100));
+  const sent = clamp(num(body.anger, s.anger), 0, 100);
+  let anger = Math.max(s.anger, sent);
+  // 店長が来て下げた分（1人のお客さんにつき1回、10 まで）はゲームの値に合わせる（レビュー1-5）
+  if (sent < s.anger && !s.calmed && body.manager === true) {
+    anger = Math.max(sent, s.anger - MANAGER_CALM);
+    s.calmed = true;
+  }
   // 店の行動ボタン（要件#34, #37）: 点数は表どおり。AIがあればお客さんの反応のセリフだけAIに作らせる
   if (typeof body.action === "string" && body.action !== "") {
     const id = body.action;
@@ -406,7 +431,8 @@ async function soloTurn(s: SoloSession, body: Record<string, unknown>, player: P
     s.history.push({ role: "customer", text: line });
     s.updated = Date.now();
     settle(s, anger, fixed);
-    return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id, anger: s.anger, resolve: s.resolve };
+    // effect_kind: ゲームが「台を直した」「土下座が効いた」などを知るのに使う（採点の表そのものは渡さない。レビュー1-1）
+    return { ...fixed, customer_reply: line, judged_by: judgedBy, notice: "", action: id, effect_kind: effectKind(s.customer, id), ...lieFlag(s), anger: s.anger, resolve: s.resolve };
   }
   const reply = typeof body.reply === "string" ? stripInvisible(body.reply).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 256) : "";
   if (reply === "") throw new HttpError(400, "empty_reply", "返事が空です");
@@ -431,7 +457,12 @@ async function soloTurn(s: SoloSession, body: Record<string, unknown>, player: P
   s.history.push({ role: "customer", text: result.customer_reply });
   s.updated = Date.now();
   settle(s, anger, result);
-  return { ...result, judged_by: judgedBy, notice, anger: s.anger, resolve: s.resolve };
+  return { ...result, judged_by: judgedBy, notice, ...lieFlag(s), anger: s.anger, resolve: s.resolve };
+}
+
+/** 「〇〇円使った」がうそか（称号の「うそを見抜いた」に使う）。金額はもう見せているので、ここで渡しても新しいことは分からない */
+function lieFlag(s: SoloSession): { spend_lie?: boolean } {
+  return s.customer.spend_data ? { spend_lie: s.customer.spend_data.lie === true } : {};
 }
 
 export function createHttpServer(lobby: Lobby): http.Server {

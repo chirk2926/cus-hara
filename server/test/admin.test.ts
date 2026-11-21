@@ -114,11 +114,11 @@ test("管理画面: 利用停止・対戦だけの停止・警告・メンテナ
   assert.equal(me.body.warning, "暴言はやめてください");
   await api(srv.base, "POST", "/api/v1/me/ack_warning", {}, g.token);
   assert.equal((await api(srv.base, "GET", "/api/v1/me", undefined, g.token)).body.warning, "");
-  // 対戦だけ止める
+  // 対戦だけ止める → つながっていた対戦の接続は切れ（レビュー3）、1人用（HTTP）は使える
+  const kicked = g.c.wait((m) => m.t === "error");
   await req("POST", `/api/players/${id}/action`, { cookie, csrf, body: { type: "suspend", scope: "versus", hours: 24, reason: "暴言" } });
-  g.c.send({ t: "queue", format: "text" });
-  const err = await g.c.wait((m) => m.t === "error");
-  assert.equal(err.code, "versus_banned");
+  assert.equal((await kicked).code, "versus_banned");
+  assert.equal((await api(srv.base, "GET", "/api/v1/me", undefined, g.token)).status, 200);
   // 全部止める → ログインできず、つながっていた接続も切れる
   await req("POST", `/api/players/${id}/action`, { cookie, csrf, body: { type: "ban", reason: "くり返しの暴言" } });
   const me2 = await api(srv.base, "GET", "/api/v1/me", undefined, g.token);

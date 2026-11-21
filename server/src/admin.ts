@@ -430,8 +430,11 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
       case "ban": {
         const forever = type === "ban";
         const t = forever ? -1 : until;
-        if (str(body.scope, 10) === "versus" && !forever) setSanction(id, { versusBannedUntil: t, reason });
-        else {
+        if (str(body.scope, 10) === "versus" && !forever) {
+          setSanction(id, { versusBannedUntil: t, reason });
+          // 対戦の接続（待ち行列・部屋・対戦中）からも外す。1人用は HTTP なので続けられる（レビュー3）
+          kickPlayer(id, "対戦の利用が停止されました", "versus_banned");
+        } else {
           setSanction(id, { bannedUntil: t, reason });
           kickPlayer(id, "このアカウントは利用停止になりました");
         }
@@ -484,8 +487,9 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     const now = new Date();
     const month = now.toISOString().slice(0, 7);
     const monthCost = rows.filter((r) => r.day.startsWith(month)).reduce((a, r) => a + r.cost_usd, 0);
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const projected = (monthCost / Math.max(1, now.getDate())) * daysInMonth;
+    // 使用量の日付は UTC なので、月の日数・今日が何日目かも UTC で数える（レビュー3: 日本時間の朝はずれていた）
+    const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+    const projected = (monthCost / Math.max(1, now.getUTCDate())) * daysInMonth;
     return {
       rows, month, month_cost_usd: Math.round(monthCost * 100) / 100, projected_usd: Math.round(projected * 100) / 100,
       budget_usd: runtime.monthlyBudgetUsd, over_budget: runtime.monthlyBudgetUsd > 0 && projected > runtime.monthlyBudgetUsd,

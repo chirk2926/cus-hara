@@ -197,6 +197,8 @@ export function publicCustomer(c: Customer) {
     crane: c.crane === true,
     machine: machineOf(c),
     rare: c.rare === true,
+    // 景品が本当に引っかかっているか（「引っかかった景品をとる」ボタンを出すのに使う）。お金を使ったのに取れない人は引っかかっていない
+    stuck: c.actions?.crane_stuck === "good" && !c.spend_data,
     // 台の問題（要件#99）。ゲームが筐体の前の場面と「確かめる」の結果を出すのに使う
     problem: c.problem ?? "",
     // 筐体のデータ（「筐体のデータを見る」で見せる。要件#57）
