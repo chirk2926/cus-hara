@@ -128,7 +128,40 @@ var last_profile: Dictionary = {}
 var is_test: bool = false
 
 
+## セーブの置き場所を「CusHara」に決めた（ゲームの名前を英語にしたので、名前で決まる置き場所だと変わってしまう）。
+## 前の置き場所（%APPDATA%/Godot/app_userdata/カスハラ防衛線）にセーブがあれば、初回だけ写す
+func _migrate_old_saves() -> void:
+	# Windows・macOS は「Godot」、Linux は「godot」
+	var old_dir: String = ""
+	for g in ["Godot", "godot"]:
+		var cand: String = OS.get_data_dir().path_join(g).path_join("app_userdata").path_join("カスハラ防衛線")
+		if DirAccess.dir_exists_absolute(cand):
+			old_dir = cand
+			break
+	var new_dir: String = OS.get_user_data_dir()
+	if old_dir == "" or old_dir == new_dir:
+		return
+	if FileAccess.file_exists("user://.migrated") or FileAccess.file_exists(PATH):
+		return
+	_copy_dir(old_dir, new_dir)
+	var f: FileAccess = FileAccess.open("user://.migrated", FileAccess.WRITE)
+	if f != null:
+		f.store_string("1")
+
+
+static func _copy_dir(from: String, to: String) -> void:
+	DirAccess.make_dir_recursive_absolute(to)
+	var d: DirAccess = DirAccess.open(from)
+	if d == null:
+		return
+	for name in d.get_files():
+		if not FileAccess.file_exists(to.path_join(name)):
+			DirAccess.copy_absolute(from.path_join(name), to.path_join(name))
+	# フォルダ（ログ・シェーダーのキャッシュなど）は写さない。セーブはどれも直下のファイル
+
+
 func _ready() -> void:
+	_migrate_old_saves()
 	# `--test` はデバッグ用のビルド（エディタ・CI）でだけ効く。リリース版の exe では引数をつけてもデバッグパネルは出ない（要件#93）
 	is_test = OS.has_feature("testbuild") or (OS.is_debug_build() and OS.get_cmdline_user_args().has("--test"))
 	if is_test:
@@ -174,10 +207,18 @@ func apply_language() -> void:
 	TranslationServer.set_locale(language)
 	# ウィンドウの名前も表示の言語で（要件#102）
 	if DisplayServer.get_name() != "headless":
-		DisplayServer.window_set_title(TranslationServer.translate("カスハラ防衛線"))
+		DisplayServer.window_set_title(short_app_name())
 
 
 var _translations: Array = []
+
+
+## ウィンドウ・タスクバーに出す短いゲームの名前（言語ごと。知らない言語は英語）
+const SHORT_NAMES: Dictionary = {"ja": "カスハラ防衛線", "en": "Kasuhara Defense Line", "zh": "顾客骚扰防线", "ko": "카스하라 방어선"}
+
+
+func short_app_name() -> String:
+	return str(SHORT_NAMES.get(language, SHORT_NAMES["en"]))
 var _profile: String = ""
 
 

@@ -392,6 +392,16 @@ jobs:
           $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter makeappx.exe |
             Where-Object { $_.FullName -match 'x64' } | Sort-Object FullName -Descending | Select-Object -First 1
           if (-not $makeappx) { throw "makeappx.exe not found" }
+          # スタートメニューの名前を言語ごとに（Strings/<言語>/Resources.resw → resources.pri。既定は英語）
+          $makepri = Join-Path $makeappx.DirectoryName "makepri.exe"
+          if (-not (Test-Path $makepri)) { throw "makepri.exe not found" }
+          # 文字列だけを別のフォルダで索引にする（ゲームのファイルまで索引に入れない）
+          New-Item -ItemType Directory -Force pri_src | Out-Null
+          Copy-Item -Recurse packaging/msix/Strings pri_src/Strings
+          & $makepri createconfig /cf priconfig.xml /dq en-US /pv 10.0.0 /o
+          if ($LASTEXITCODE -ne 0) { throw "makepri createconfig failed" }
+          & $makepri new /pr pri_src /cf priconfig.xml /mn msix_root/AppxManifest.xml /of msix_root/resources.pri /o
+          if ($LASTEXITCODE -ne 0) { throw "makepri new failed" }
           New-Item -ItemType Directory -Force out | Out-Null
           & $makeappx.FullName pack /d msix_root /p out/CusHara.msix /o
           if ($LASTEXITCODE -ne 0) { throw "makeappx failed" }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- スタートメニュー・設定のアプリ一覧に出る名前と説明（ja-JP）。CI が makepri で resources.pri にまとめる -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppDisplayName" xml:space="preserve"><value>カスハラ防衛線</value></data>
+  <data name="AppDescription" xml:space="preserve"><value>理不尽なクレームに、言葉で立ち向かえ。AIのお客さんと口げんかしない接客ゲーム。</value></data>
+</root>

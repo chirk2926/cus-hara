@@ -3,12 +3,19 @@ config_version=5
 
 [application]
 
-config/name="カスハラ防衛線"
+config/name="Kasuhara Defense Line"
+config/name_localized={
+"ja": "カスハラ防衛線",
+"ko": "카스하라 방어선",
+"zh": "顾客骚扰防线"
+}
 config/description="理不尽なお客さんがキレる前に、言葉で切り抜ける接客サバイバル"
 config/version="0.2.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="CusHara"
 
 [audio]
 

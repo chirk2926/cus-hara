@@ -25,4 +25,4 @@
   - データ: テスト用のセーブを消す（本番のセーブは消えません）
 
 ■ セーブの場所
-  %APPDATA%\Godot\app_userdata\カスハラ防衛線\settings_test.cfg（2人目は settings_test_p2.cfg）
+  %APPDATA%\CusHara\settings_test.cfg（2人目は settings_test_p2.cfg）
