@@ -148,4 +148,40 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/privacy/"/>
     <lastmod>2026-11-19</lastmod>
   </url>
+  <url>
+    <loc>https://example.pages.dev/ja/status/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/status/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/status/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/status/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/status/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/status/"/>
+    <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/en/status/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/status/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/status/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/status/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/status/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/status/"/>
+    <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/zh/status/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/status/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/status/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/status/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/status/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/status/"/>
+    <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://example.pages.dev/ko/status/</loc>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/status/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.pages.dev/en/status/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/status/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/status/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/status/"/>
+    <lastmod>2026-11-22</lastmod>
+  </url>
 </urlset>

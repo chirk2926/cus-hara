@@ -565,3 +565,20 @@ test("要件#106: キレるまでの秒数をサーバーで決めて info で�
   const c = materializeSpend({ title: "t", name: "n", look: {} as any, memo: "", opening: "{spent}", demand: "", patience: 1, start_anger: 40, spend: true, actions: { crane_stuck: "good" } } as any, 30, "ja");
   assert.equal(c.actions?.crane_stuck, "neutral");
 });
+
+test("サーバーの状況（紹介サイト用）: 状態の名前だけで、AI の会社・モデル・キーなどは出さない", async () => {
+  const r = await fetch(srv.base + "/api/v1/status");
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("access-control-allow-origin"), "*");
+  const d = await r.json();
+  assert.deepEqual(Object.keys(d).sort(), ["ai", "checked_at", "game", "message", "note", "voice"]);
+  assert.ok(["ok", "maintenance"].includes(d.game));
+  assert.ok(["ok", "degraded", "down"].includes(d.ai));
+  assert.ok(["ok", "off"].includes(d.voice));
+  const text = JSON.stringify(d).toLowerCase();
+  for (const w of ["anthropic", "openai", "claude", "model", "key", "sk-", "provider", "token"]) assert.ok(!text.includes(w), w);
+  // ゲーム用の情報にも、AI の会社やキャッシュの数は出さない
+  const info = await api(srv.base, "GET", "/api/v1/info");
+  assert.equal(info.body.ai_provider, undefined);
+  assert.equal(info.body.ai_cache, undefined);
+});

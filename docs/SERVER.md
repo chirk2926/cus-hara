@@ -98,6 +98,7 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 |---|---|---|
 | `GET /healthz` | | 生存確認 |
 | `GET /api/v1/info` | | `{version, ai, voice, langs, rules, online}` |
+| `GET /api/v1/status` | | 紹介サイトの「サーバーの状況」用。`{checked_at, game: ok\|maintenance, ai: ok\|degraded\|down, voice: ok\|off, message, note}` だけ。どのサイトからも読める（CORS `*`、1分30回まで、30秒キャッシュ）。AI の会社・モデル・キー・エラーの中身・バージョン・人数は出さない。ai は直近15分の AI の呼び出しの成功と失敗の数から決める（3割以上失敗で degraded、3回以上すべて失敗・未設定で down）。note は管理画面の 設定 → 運営 →「サーバーの状況のお知らせ」 |
 | `POST /api/v1/guest` | | `{name}` → `{token, player}`。ゲストのアカウントを作る（トークンはサーバーにはハッシュで保存） |
 | `GET /api/v1/me` | 要 | `{player}`（名前・レーティング・ランク名・勝敗） |
 | `POST /api/v1/me` | 要 | `{name}` → 名前を変える |
@@ -220,7 +221,7 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 - Claude Haiku 5.5 は 512 トークン以上の指示文からキャッシュされる。このゲームの指示文はそれより長い。
 - **会話の部分もキャッシュする（要件#93）**: 判定に送る文を「舞台・人物（変わらない）→ 会話を1行ずつ → 今の怒り・納得度（毎回変わる）」の順に並べ、会話の最後の行に `cache_control` を付ける。会話は後ろに1行ずつ足されるだけなので、次の判定では前回までの会話がキャッシュから読まれ、新しい行の分だけがふつうの料金になる。送る中身は前と同じなので、判定の質は変わらない。
 - **対戦の不適切な発言の確認を、採点と同じ1回の呼び出しにまとめた（要件#93）**: 前は「AIで不適切か確かめる」→「AIで採点する」の2回呼んでいた。今は採点の出力に `flag`（sexual / hate / threat / personal_info / none）を足し、1回で両方を返す。キーワードの確認はその前にそのまま行う。客役の最初のクレームは採点がないので、今までどおり別に確かめる。セリフを相手に見せるのは確かめた後なので、伏せ字の扱いも前と同じ。AI が使えない・上限に達したときはキーワードだけ（前と同じ）。
-- 効き具合は `GET /api/v1/info` の `ai_cache.cache_read_ratio`（入力のうちキャッシュから読めた割合）で見られる。0 のままなら、指示文が毎回変わってしまっている（日時などを指示文に入れないこと）。
+- 効き具合は管理画面の「状態」の AI の欄（キャッシュから読めた量）で見られる（だれでも読める `/api/v1/info` からは外した。要件#114）。0 のままなら、指示文が毎回変わってしまっている（日時などを指示文に入れないこと）。
 
 ### 9.2 Claude 以外のAI
 - `LLM_PROVIDER=openai_compatible` にして、`LLM_BASE_URL`・`LLM_MODEL`・`LLM_API_KEY` を入れる。OpenAI 互換の Chat Completions API（`/chat/completions`）を持つものなら使える。

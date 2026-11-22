@@ -71,6 +71,9 @@ def main():
         reps.append((cur["store"], a.store_url))
     if a.game_server:
         reps.append((cur["game"] + "/privacy?lang=", origin(a.game_server, "--game-server") + "/privacy?lang="))
+        # サーバーの状況のページが読む先と、それを許す CSP（_headers の connect-src）
+        reps.append((cur["game"] + "/api/v1/status", origin(a.game_server, "--game-server") + "/api/v1/status"))
+        reps.append(("connect-src 'self' " + cur["game"], "connect-src 'self' " + origin(a.game_server, "--game-server")))
     if a.email and not re.fullmatch(r"[^@\s<>\"']+@[^@\s<>\"']+\.[A-Za-z]{2,}", a.email):
         sys.exit("--email の形が正しくありません: %s" % a.email)
     changed = 0

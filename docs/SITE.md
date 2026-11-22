@@ -11,6 +11,7 @@ Godot がサイトの画像を取り込まないよう、`site/.gdignore`（空�
 | `site/{ja,en,zh,ko}/index.html` | トップ（言語ごとに別のページ）。`zh` は簡体字（`lang="zh-Hans"`） |
 | `site/{言語}/contact/` | お問い合わせ（メールだけ。フォームは無い） |
 | `site/{言語}/terms/` | 利用規約（日本語が正本。ほかの言語は「日本語版が優先」と書いた翻訳） |
+| `site/{言語}/status/` | サーバーの状況。ゲームサーバーの `/api/v1/status` を読み、ゲームサーバー・AI のお客さん・声の対戦が「使えます／不安定／使えません／メンテナンス中／つながりません」かと、運営のお知らせ（管理画面の「サーバーの状況のお知らせ」）を出す。開いている間は1分ごとに確かめる。AI の会社やキーなどは出さない（サーバーが返さない） |
 | `site/{言語}/privacy/` | プライバシーポリシー。`server/public/privacy.{言語}.html` の本文をそのまま写したもの（下の 5節） |
 | `site/404.html` | 見つからないとき（Cloudflare Pages が自動で使う） |
 | `site/sitemap.xml`・`site/robots.txt` | 検索エンジン用。sitemap には各ページの hreflang も入れている |
@@ -43,7 +44,7 @@ Git に接続しない場合は `npx wrangler pages deploy site --project-name <
 |---|---|---|
 | サイトのドメイン | `https://example.pages.dev` | canonical・hreflang・OGP の画像と URL・JSON-LD・sitemap.xml・robots.txt |
 | Microsoft Store のページ | `https://apps.microsoft.com/detail/XXXXXXXXXXXX` | 「Microsoft Store で入手」のボタン（各トップに2つ）・JSON-LD の offers |
-| ゲームサーバー | `https://game.example.com` | プライバシーポリシーのページの「ゲーム内と同じページ」へのリンク（`/privacy?lang=xx`） |
+| ゲームサーバー | `https://game.example.com` | プライバシーポリシーのページの「ゲーム内と同じページ」へのリンク（`/privacy?lang=xx`）、サーバーの状況のページが読む `/api/v1/status`、`_headers` の CSP の `connect-src` |
 | 連絡先メール | 〔連絡先メールアドレス〕（黄色の印） | フッター・お問い合わせ・利用規約・プライバシーポリシー |
 
 ```bash

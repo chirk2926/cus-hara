@@ -33,6 +33,7 @@ export interface SettingDef {
 export const runtime = {
   maintenance: false,
   maintenanceMessage: "",
+  statusNote: "",
   /** コンビニを開けるか（要件#102: 準備ができるまで閉じておく）。閉じている間は対戦の舞台にも使わない */
   konbiniOpen: process.env.KONBINI_OPEN === "1",
   /** 1人用の「キレるまでの秒数」（要件#106）。怒り 0 から 100 まで、気の長さふつうのお客さんの1人目。返事の時間の設定ごと */
@@ -95,6 +96,7 @@ export const SETTINGS: SettingDef[] = [
   { key: "snapNormal", group: "1人用", label: "キレるまでの秒数（うさぎ・ノーマル）", help: "同上", type: "number", min: 30, max: 900, path: "runtime.snapNormal" },
   { key: "snapFast", group: "1人用", label: "キレるまでの秒数（チーター・ハード）", help: "同上", type: "number", min: 30, max: 900, path: "runtime.snapFast" },
   { key: "konbiniOpen", group: "運営", label: "コンビニを開ける", help: "オフの間は、ゲームのコンビニが「準備中」になり、対戦の舞台もゲームセンターだけになる", type: "bool", path: "runtime.konbiniOpen" },
+  { key: "statusNote", group: "運営", label: "サーバーの状況のお知らせ（紹介サイト）", help: "紹介サイトの「サーバーの状況」のページに、そのまま出す（例: 「AIの調子が悪く、台本のお客さんになることがあります」）。キーやエラーの中身は書かない。空なら出さない", type: "text", path: "runtime.statusNote" },
   { key: "maintenanceMessage", group: "運営", label: "メンテナンス中のお知らせ", help: "ゲームのタイトル画面と、対戦を始めようとした人に出す", type: "text", path: "runtime.maintenanceMessage" },
   { key: "monthlyBudgetUsd", group: "運営", label: "AI料金の目安の上限（ドル/月）", help: "超えそうなら管理画面に警告。0 = 見ない", type: "number", min: 0, max: 1000000, path: "runtime.monthlyBudgetUsd" },
   { key: "aiPrices", group: "運営", label: "AIの料金表（1Mトークンあたりのドル）", help: "{\"モデル名\": [入力, 出力, キャッシュ読み, キャッシュ書き]}。Anthropic の料金ページで確かめて直す", type: "text", path: "runtime.aiPrices" },

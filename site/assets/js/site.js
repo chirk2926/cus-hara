@@ -1,7 +1,8 @@
 /* カスハラ防衛線 紹介サイトの仕掛け（ライブラリなし）
    1. 従業員証がゆれる      2. クレーンゲームのフロア案内
    3. スクロールで印字されるレシート  4. お客様表示（怒りメーター）
-   5. コルクボードの写真を大きく見る  6. シャッター（コンビニ）  7. 言語の記憶 */
+   5. コルクボードの写真を大きく見る  6. シャッター（コンビニ）  7. 言語の記憶
+   8. サーバーの状況 */
 (function () {
   "use strict";
   var doc = document.documentElement;
@@ -220,6 +221,71 @@
       b.setAttribute("aria-pressed", on ? "true" : "false");
     });
   });
+
+  /* 8. サーバーの状況（status のページ）。ゲームサーバーの /api/v1/status を読んで、状態の名前だけを出す。
+     文字は textContent で入れる（サーバーの文をそのまま HTML にしない） */
+  var board = $(".status-board");
+  if (board) {
+    var L = {};
+    try { L = JSON.parse(($(".st-labels", board) || {}).textContent || "{}"); } catch (e) { L = {}; }
+    var S = L.states || {};
+    var setRow = function (k, state) {
+      var v = $('[data-k="' + k + '"] .st-val', board);
+      if (!v) return;
+      v.setAttribute("data-state", state);
+      v.textContent = S[state] || state;
+    };
+    var setText = function (sel, label, text) {
+      var el = $(sel, board);
+      if (!el) return;
+      el.textContent = "";
+      if (!text) { el.hidden = true; return; }
+      var b = document.createElement("strong");
+      b.textContent = label + ": ";
+      el.appendChild(b);
+      el.appendChild(document.createTextNode(String(text).slice(0, 300)));
+      el.hidden = false;
+    };
+    var known = { ok: 1, maintenance: 1, degraded: 1, down: 1, off: 1 };
+    var pick = function (v) { return known[v] ? v : "down"; };
+    var stamp = function () {
+      var c = $(".st-checked", board);
+      if (!c) return;
+      var t = new Date();
+      c.textContent = (L.checked || "") + " " + ("0" + t.getHours()).slice(-2) + ":" + ("0" + t.getMinutes()).slice(-2);
+    };
+    var check = function () {
+      ["game", "ai", "voice"].forEach(function (k) { setRow(k, "loading"); });
+      var ctrl = window.AbortController ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 8000);
+      fetch(board.getAttribute("data-status"), { cache: "no-store", credentials: "omit", signal: ctrl ? ctrl.signal : undefined })
+        .then(function (r) { if (!r.ok) throw new Error("bad"); return r.json(); })
+        .then(function (d) {
+          clearTimeout(timer);
+          var game = d.game === "maintenance" ? "maintenance" : "ok";
+          setRow("game", game);
+          // メンテナンス中は AI・声も使えない扱い
+          setRow("ai", game === "maintenance" ? "down" : pick(d.ai));
+          setRow("voice", game === "maintenance" ? "down" : pick(d.voice));
+          setText(".st-msg", L.maint || "", d.message);
+          setText(".st-note", L.note || "", d.note);
+          stamp();
+        })
+        .catch(function () {
+          clearTimeout(timer);
+          ["game", "ai", "voice"].forEach(function (k) { setRow(k, "unreachable"); });
+          setText(".st-msg", "", "");
+          setText(".st-note", "", "");
+          stamp();
+        });
+    };
+    var btn = $(".st-refresh", board);
+    var last = 0;
+    if (btn) btn.addEventListener("click", function () { if (Date.now() - last > 5000) { last = Date.now(); check(); } });
+    check();
+    // 開いている間は1分ごとに確かめる（裏にあるときは確かめない）
+    setInterval(function () { if (!document.hidden) check(); }, 60000);
+  }
 
   /* 7. 言語を選んだら覚えておく（ルートのページが使う） */
   $$("[data-setlang]").forEach(function (a) {

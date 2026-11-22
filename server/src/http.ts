@@ -15,7 +15,7 @@ import { readNoticeImage } from "./notices.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { llmEnabled, llmName, cacheStats, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
+import { llmEnabled, aiHealth, generateCustomer, judgeStaffTurn, LlmError, type HistoryEntry } from "./llm.ts";
 import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
 import { isAllowed, judgeAction, actionAsStaffLine, effectKind } from "./actions.ts";
@@ -170,14 +170,26 @@ export function versusBlock(id: string): [string, string] | null {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const num = (v: unknown, def: number) => (typeof v === "number" && Number.isFinite(v) ? v : def);
 
+/** 紹介サイトに出すサーバーの状況。状態の名前だけ（細かいことは管理画面で見る） */
+export function publicStatus() {
+  const h = aiHealth();
+  return {
+    checked_at: Date.now(),
+    game: runtime.maintenance ? "maintenance" : "ok",
+    // まだ一度も AI を呼んでいないときは「使える」とする（設定はある）
+    ai: h === "idle" ? "ok" : h,
+    voice: sttEnabled() ? "ok" : "off",
+    message: runtime.maintenance ? runtime.maintenanceMessage.slice(0, 300) : "",
+    note: runtime.statusNote.slice(0, 300),
+  };
+}
+
 export function info(lobby: Lobby) {
   return {
     name: "cushara-server",
     version: VERSION,
     ai: llmEnabled(),
-    ai_provider: llmEnabled() ? llmName().split(":")[0] : "none",
-    // プロンプトのキャッシュの効き（要件#78）: 読めた割合が高いほど料金が下がっている
-    ai_cache: { calls: cacheStats.calls, cache_read_ratio: cacheStats.input + cacheStats.cacheRead > 0 ? Math.round((100 * cacheStats.cacheRead) / (cacheStats.input + cacheStats.cacheRead)) / 100 : 0 },
+    // AI のプロバイダーやキャッシュの効き具合は、だれでも読める所には出さない（管理画面の「状態」で見る）
     voice: sttEnabled(),
     langs: LANGS,
     rules: { rounds: config.versus.rounds, opening_seconds: config.versus.openingSec, customer_seconds: config.versus.customerSec },
@@ -501,6 +513,24 @@ export function createHttpServer(lobby: Lobby): http.Server {
       }
       res.writeHead(200, { "content-type": f.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "content-length": String(f.bytes.length) });
       res.end(f.bytes);
+      return;
+    }
+    // サーバーの状況（紹介サイトの「サーバーの状況」のページが読む）。だれでも、どのサイトからでも読める。
+    // 出すのは「使える・不安定・使えない」だけ。AI の会社・モデル・キー・エラーの中身・人数などは出さない
+    if (url.pathname === "/api/v1/status" && (req.method === "GET" || req.method === "OPTIONS")) {
+      const head = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET", "content-type": "application/json; charset=utf-8", ...API_HEADERS };
+      if (req.method === "OPTIONS") {
+        res.writeHead(204, head);
+        res.end();
+        return;
+      }
+      if (!allow(`status:${clientIp(req)}`, 30, 60_000)) {
+        res.writeHead(429, { ...head, "cache-control": "no-store" });
+        res.end(JSON.stringify({ error: { code: "rate_limited", message: "too many requests" } }));
+        return;
+      }
+      res.writeHead(200, { ...head, "cache-control": "public, max-age=30" });
+      res.end(JSON.stringify(publicStatus()));
       return;
     }
     route(req, url, lobby)

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>서버 상태 | 카스하라 방어선 – 화난 손님 달래기</title>
+<meta name="description" content="「카스하라 방어선」 게임 서버의 상태. 온라인 기능·AI 손님·음성 대전을 쓸 수 있는지 확인할 수 있습니다.">
+<link rel="canonical" href="https://example.pages.dev/ko/status/">
+<link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/status/">
+<link rel="alternate" hreflang="en" href="https://example.pages.dev/en/status/">
+<link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/status/">
+<link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/status/">
+<link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/status/">
+<meta name="theme-color" content="#24212b">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/assets/img/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/assets/img/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="카스하라 방어선 – 화난 손님 달래기">
+<meta property="og:title" content="서버 상태 | 카스하라 방어선 – 화난 손님 달래기">
+<meta property="og:description" content="「카스하라 방어선」 게임 서버의 상태. 온라인 기능·AI 손님·음성 대전을 쓸 수 있는지 확인할 수 있습니다.">
+<meta property="og:url" content="https://example.pages.dev/ko/status/">
+<meta property="og:image" content="https://example.pages.dev/assets/img/og-ko.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="카스하라 방어선 – 스태프 모집 포스터와 화난 손님 (게임 화면)">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="서버 상태 | 카스하라 방어선 – 화난 손님 달래기">
+<meta name="twitter:description" content="「카스하라 방어선」 게임 서버의 상태. 온라인 기능·AI 손님·음성 대전을 쓸 수 있는지 확인할 수 있습니다.">
+<meta name="twitter:image" content="https://example.pages.dev/assets/img/og-ko.jpg">
+<meta name="twitter:image:alt" content="카스하라 방어선 – 스태프 모집 포스터와 화난 손님 (게임 화면)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DotGothic16&family=Jua&family=Noto+Sans+KR:wght@500;800&amp;display=swap">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script src="/assets/js/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="sign">
+<div class="wrap">
+<a class="brand" href="/ko/"><img src="/assets/img/icon-64.png" width="32" height="32" alt=""><span>카스하라 방어선</span></a>
+<nav class="mainnav" aria-label="사이트 안내"><ul><li><a href="/ko/#play">플레이 방법</a></li><li><a href="/ko/#arcade">게임센터</a></li><li><a href="/ko/#versus">대전</a></li><li><a href="/ko/#photos">스크린샷</a></li><li><a href="/ko/#get">다운로드</a></li><li><a href="/ko/contact/">문의</a></li></ul></nav>
+<nav class="langs" aria-label="언어"><a href="/ja/status/" hreflang="ja" lang="ja" data-setlang="ja">日本語</a><a href="/en/status/" hreflang="en" lang="en" data-setlang="en">EN</a><a href="/zh/status/" hreflang="zh-Hans" lang="zh-Hans" data-setlang="zh">中文</a><a href="/ko/status/" hreflang="ko" lang="ko" data-setlang="ko" aria-current="true">한국어</a></nav>
+</div>
+</header>
+<main id="main" class="doc">
+<div class="wrap">
+<article class="sheet">
+<span class="tape" aria-hidden="true"></span>
+<h1>서버 상태</h1>
+<p>게임 서버의 현재 상태입니다. 게임에서 「연결되지 않는다」「대본 손님만 온다」 싶을 때 여기를 확인해 주세요.</p>
+<section class="status-board" data-status="https://game.example.com/api/v1/status" aria-live="polite">
+<ul class="st-rows"><li data-k="game"><span class="st-name">게임 서버 (온라인·대전)</span><span class="st-val" data-state="loading">확인하는 중…</span></li><li data-k="ai"><span class="st-name">AI 손님·AI 채점</span><span class="st-val" data-state="loading">확인하는 중…</span></li><li data-k="voice"><span class="st-name">음성 대전</span><span class="st-val" data-state="loading">확인하는 중…</span></li></ul>
+<p class="st-msg" hidden></p>
+<p class="st-note" hidden></p>
+<p class="st-meta"><span class="st-checked"></span><button type="button" class="st-refresh">다시 확인하기</button></p>
+<noscript><p class="muted">이 표시에는 JavaScript가 필요합니다.</p></noscript>
+<script type="application/json" class="st-labels">{"states": {"ok": "사용 가능", "maintenance": "점검 중", "degraded": "불안정", "down": "사용 불가", "off": "이 서버에서는 쉬는 중", "unreachable": "연결되지 않음", "loading": "확인하는 중…"}, "checked": "마지막 확인 시각", "note": "운영 공지", "maint": "점검 안내"}</script>
+</section>
+<h2>AI를 쓸 수 없을 때</h2>
+<p>AI 상태가 좋지 않아도 게임은 멈추지 않습니다. 1인용은 대본 손님·키워드 채점으로 자동으로 바뀌어 그대로 플레이할 수 있습니다 (채점이 조금 단순해집니다).</p>
+<h2>서버에 연결되지 않을 때</h2>
+<p>1인용(대본 손님)은 서버에 연결되지 않아도 플레이할 수 있습니다. 대전·랭킹·공지는 연결될 때까지 쓸 수 없습니다. 잠시 후 다시 시도해 주세요.</p>
+<h2>그래도 해결되지 않을 때</h2>
+<p>오래 계속되면 <a href="/ko/contact/">문의</a>로 알려 주세요.</p>
+</article>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div>
+<ul>
+<li><a href="/ko/contact/">문의</a></li>
+<li><a href="/ko/terms/">이용약관</a></li>
+<li><a href="/ko/privacy/">개인정보 처리방침</a></li>
+<li><a href="/ko/status/">서버 상태</a></li>
+</ul>
+<p class="foot-mail">연락처: <span class="mail ph">[연락처 이메일 주소]</span></p>
+</div>
+<div>
+<p>카스하라 방어선은 medal이 운영하는 Windows용 게임입니다.</p>
+<p>글꼴: Black Han Sans, Jua, DotGothic16, Noto Sans KR (SIL Open Font License 1.1, Google Fonts에서 제공).</p>
+<p>Microsoft, Windows, Microsoft Store는 Microsoft 그룹의 상표입니다.</p>
+<p class="copy">© 2026 medal</p>
+</div>
+</div>
+</footer>
+</body>
+</html>

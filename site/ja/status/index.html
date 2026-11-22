@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>サーバーの状況 | カスハラ防衛線</title>
+<meta name="description" content="「カスハラ防衛線」のゲームサーバーの状況。オンラインの機能・AIのお客さん・声の対戦が使えるかを確かめられます。">
+<link rel="canonical" href="https://example.pages.dev/ja/status/">
+<link rel="alternate" hreflang="ja" href="https://example.pages.dev/ja/status/">
+<link rel="alternate" hreflang="en" href="https://example.pages.dev/en/status/">
+<link rel="alternate" hreflang="zh-Hans" href="https://example.pages.dev/zh/status/">
+<link rel="alternate" hreflang="ko" href="https://example.pages.dev/ko/status/">
+<link rel="alternate" hreflang="x-default" href="https://example.pages.dev/en/status/">
+<meta name="theme-color" content="#24212b">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/assets/img/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/assets/img/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="カスハラ防衛線">
+<meta property="og:title" content="サーバーの状況 | カスハラ防衛線">
+<meta property="og:description" content="「カスハラ防衛線」のゲームサーバーの状況。オンラインの機能・AIのお客さん・声の対戦が使えるかを確かめられます。">
+<meta property="og:url" content="https://example.pages.dev/ja/status/">
+<meta property="og:image" content="https://example.pages.dev/assets/img/og-ja.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="カスハラ防衛線 ― スタッフ大募集のポスターと、怒ったお客さんのゲーム画面">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="サーバーの状況 | カスハラ防衛線">
+<meta name="twitter:description" content="「カスハラ防衛線」のゲームサーバーの状況。オンラインの機能・AIのお客さん・声の対戦が使えるかを確かめられます。">
+<meta name="twitter:image" content="https://example.pages.dev/assets/img/og-ja.jpg">
+<meta name="twitter:image:alt" content="カスハラ防衛線 ― スタッフ大募集のポスターと、怒ったお客さんのゲーム画面">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Noto+Sans+JP:wght@500;800&family=Yusei+Magic&amp;display=swap">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script src="/assets/js/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ移動</a>
+<header class="sign">
+<div class="wrap">
+<a class="brand" href="/ja/"><img src="/assets/img/icon-64.png" width="32" height="32" alt=""><span>カスハラ防衛線</span></a>
+<nav class="mainnav" aria-label="サイト内の案内"><ul><li><a href="/ja/#play">あそびかた</a></li><li><a href="/ja/#arcade">ゲームセンター</a></li><li><a href="/ja/#versus">対戦</a></li><li><a href="/ja/#photos">写真</a></li><li><a href="/ja/#get">入手</a></li><li><a href="/ja/contact/">お問い合わせ</a></li></ul></nav>
+<nav class="langs" aria-label="言語"><a href="/ja/status/" hreflang="ja" lang="ja" data-setlang="ja" aria-current="true">日本語</a><a href="/en/status/" hreflang="en" lang="en" data-setlang="en">EN</a><a href="/zh/status/" hreflang="zh-Hans" lang="zh-Hans" data-setlang="zh">中文</a><a href="/ko/status/" hreflang="ko" lang="ko" data-setlang="ko">한국어</a></nav>
+</div>
+</header>
+<main id="main" class="doc">
+<div class="wrap">
+<article class="sheet">
+<span class="tape" aria-hidden="true"></span>
+<h1>サーバーの状況</h1>
+<p>ゲームサーバーの今の状況です。ゲームの中で「つながらない」「台本のお客さんばかり来る」ときは、ここを見てください。</p>
+<section class="status-board" data-status="https://game.example.com/api/v1/status" aria-live="polite">
+<ul class="st-rows"><li data-k="game"><span class="st-name">ゲームサーバー（オンライン・対戦）</span><span class="st-val" data-state="loading">確かめています…</span></li><li data-k="ai"><span class="st-name">AIのお客さん・AIの採点</span><span class="st-val" data-state="loading">確かめています…</span></li><li data-k="voice"><span class="st-name">声の対戦</span><span class="st-val" data-state="loading">確かめています…</span></li></ul>
+<p class="st-msg" hidden></p>
+<p class="st-note" hidden></p>
+<p class="st-meta"><span class="st-checked"></span><button type="button" class="st-refresh">もう一度確かめる</button></p>
+<noscript><p class="muted">この表示には JavaScript が必要です。</p></noscript>
+<script type="application/json" class="st-labels">{"states": {"ok": "使えます", "maintenance": "メンテナンス中", "degraded": "不安定です", "down": "使えません", "off": "このサーバーでは休止中", "unreachable": "つながりません", "loading": "確かめています…"}, "checked": "最後に確かめた時刻", "note": "運営より", "maint": "メンテナンスのお知らせ"}</script>
+</section>
+<h2>AI が使えないとき</h2>
+<p>AI の調子が悪いときも、ゲームは止まりません。1人用は台本のお客さん・キーワードの採点に自動で切り替わり、そのまま遊べます（点数の付け方が少し簡単になります）。</p>
+<h2>サーバーにつながらないとき</h2>
+<p>1人用（台本のお客さん）は、サーバーにつながらなくても遊べます。対戦・ランキング・お知らせは、つながるまで使えません。しばらくしてからもう一度お試しください。</p>
+<h2>それでも直らないとき</h2>
+<p>長く続くときは、<a href="/ja/contact/">お問い合わせ</a>からお知らせください。</p>
+</article>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div>
+<ul>
+<li><a href="/ja/contact/">お問い合わせ</a></li>
+<li><a href="/ja/terms/">利用規約</a></li>
+<li><a href="/ja/privacy/">プライバシーポリシー</a></li>
+<li><a href="/ja/status/">サーバーの状況</a></li>
+</ul>
+<p class="foot-mail">連絡先: <span class="mail ph">〔連絡先メールアドレス〕</span></p>
+</div>
+<div>
+<p>「カスハラ防衛線」は medal が運営する Windows 向けのゲームです。</p>
+<p>フォント: Dela Gothic One・Yusei Magic・DotGothic16・Noto Sans JP（SIL Open Font License 1.1。Google Fonts から配信）</p>
+<p>Microsoft、Windows、Microsoft Store は Microsoft グループの商標です。</p>
+<p class="copy">© 2026 medal</p>
+</div>
+</div>
+</footer>
+</body>
+</html>

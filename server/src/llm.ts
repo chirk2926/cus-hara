@@ -219,7 +219,42 @@ const MAX_OUTPUT_TOKENS = 4096;
 /** user の文。配列のときは区切りごとに別の text ブロックにし、cache の印がついたところまでをキャッシュする（要件#93） */
 type UserPart = { text: string; cache?: boolean };
 
+/**
+ * AI の調子（サーバーの状況のページ用）。直近15分の成功・失敗の回数だけを覚える。
+ * エラーの中身・プロバイダー・モデル・キーは覚えないし、外にも出さない
+ */
+const HEALTH_WINDOW_MS = 15 * 60_000;
+const healthLog: Array<{ at: number; ok: boolean }> = [];
+
+function recordHealth(ok: boolean): void {
+  const now = Date.now();
+  healthLog.push({ at: now, ok });
+  while (healthLog.length > 0 && (now - healthLog[0].at > HEALTH_WINDOW_MS || healthLog.length > 500)) healthLog.shift();
+}
+
+/** "ok" = 使える / "degraded" = 失敗が多い / "down" = 使えない（設定が無い・直近がすべて失敗） / "idle" = まだ呼んでいない */
+export function aiHealth(): "ok" | "degraded" | "down" | "idle" {
+  if (!llmEnabled()) return "down";
+  const now = Date.now();
+  const recent = healthLog.filter((h) => now - h.at <= HEALTH_WINDOW_MS);
+  if (recent.length === 0) return "idle";
+  const fails = recent.filter((h) => !h.ok).length;
+  if (fails >= 3 && fails === recent.length) return "down";
+  return fails / recent.length >= 0.3 ? "degraded" : "ok";
+}
+
 async function callJson<T>(system: string, userIn: string | UserPart[], schema: z.ZodType<T>): Promise<T> {
+  try {
+    const r = await callJsonInner(system, userIn, schema);
+    recordHealth(true);
+    return r;
+  } catch (e) {
+    recordHealth(false);
+    throw e;
+  }
+}
+
+async function callJsonInner<T>(system: string, userIn: string | UserPart[], schema: z.ZodType<T>): Promise<T> {
   const parts: UserPart[] = typeof userIn === "string" ? [{ text: userIn }] : userIn;
   const user = parts.map((p) => p.text).join("");
   // サーバー全体の上限（要件#77）。超えたら呼ばずに、呼び出し側でキーワード判定・台本に切り替える

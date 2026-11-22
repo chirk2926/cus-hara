@@ -543,3 +543,22 @@ dialog.lightbox::backdrop { background: rgba(36, 33, 43, .82); }
   .sign, .floor, .demo, .foot, .idcard-hang { display: none; }
   .receipt { transform: none; }
 }
+
+/* サーバーの状況（status のページ）: お客様表示と同じ液晶の板に、行ごとの状態のランプ */
+.status-board { margin: 20px 0 8px; background: var(--lcd-bg); color: var(--lcd-on); border: 3px solid var(--ink); border-radius: 6px; padding: 16px; font-family: var(--f-dot); }
+.st-rows { list-style: none; padding: 0 !important; margin: 0; }
+.st-rows li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 10px 0; border-bottom: 1px dashed var(--lcd-off); margin: 0 !important; }
+.st-rows li:last-child { border-bottom: 0; }
+.st-name { min-width: 0; overflow-wrap: anywhere; }
+.st-val { font-weight: 700; white-space: nowrap; }
+.st-val::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: var(--lcd-off); vertical-align: 1px; }
+.st-val[data-state="ok"]::before { background: var(--lcd-on); }
+.st-val[data-state="degraded"], .st-val[data-state="maintenance"] { color: var(--pop); }
+.st-val[data-state="degraded"]::before, .st-val[data-state="maintenance"]::before { background: var(--pop); }
+.st-val[data-state="down"], .st-val[data-state="unreachable"] { color: #ff8a6a; }
+.st-val[data-state="down"]::before, .st-val[data-state="unreachable"]::before { background: #ff8a6a; }
+.st-val[data-state="off"] { color: var(--paper-dim); }
+.st-msg, .st-note { margin: 12px 0 0; padding: 10px 12px; background: var(--paper-hi); color: var(--ink); border-radius: 4px; font-family: var(--f-body); overflow-wrap: anywhere; }
+.st-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 0; font-size: 14px; color: var(--paper-dim); }
+.st-refresh { font: inherit; color: var(--ink); background: var(--pop); border: 2px solid var(--ink); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.st-refresh:focus-visible { outline: 3px solid var(--paper-hi); outline-offset: 2px; }
