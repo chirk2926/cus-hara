@@ -7,7 +7,7 @@ Godot がサイトの画像を取り込まないよう、`site/.gdignore`（空�
 
 | パス | 内容 |
 |---|---|
-| `site/index.html` | 入口。覚えている言語（`localStorage`）かブラウザの言語のページへ移る。JavaScript が無いときは4言語のリンクを出す。hreflang の x-default |
+| `site/index.html` | 入口。**毎回**ブラウザの言語のページへ移る（要件#126。前に選んだ言語は使わない）。JavaScript が無いときは4言語のリンクを出す。hreflang の x-default |
 | `site/{ja,en,zh,ko}/index.html` | トップ（言語ごとに別のページ）。`zh` は簡体字（`lang="zh-Hans"`） |
 | `site/{言語}/contact/` | お問い合わせ（メールだけ。フォームは無い） |
 | `site/{言語}/terms/` | 利用規約（日本語が正本。ほかの言語は「日本語版が優先」と書いた翻訳） |
@@ -18,6 +18,7 @@ Godot がサイトの画像を取り込まないよう、`site/.gdignore`（空�
 | `site/sitemap.xml`・`site/robots.txt` | 検索エンジン用。sitemap には各ページの hreflang も入れている |
 | `site/_headers` | Cloudflare Pages のヘッダー（CSP などのセキュリティ、画像・CSS・JS のキャッシュ） |
 | `site/assets/css/site.css` | 見た目のすべて |
+| `site/assets/js/first-lang.js` | 言語のページ（`/ja/` など）に、そのブラウザで**初めて**来たときだけ、ブラウザの言語の同じページ（hreflang の別ページ）へ移る。2回目からは URL のとおり（`localStorage` の `visited`）。クローラーは移さない。その言語の記事が無いページは移らない（要件#126） |
 | `site/assets/js/site.js` | 仕掛けのすべて（4節）。`pick-lang.js` は入口の言語選び |
 | `site/assets/img/` | 画像。`{言語}/*.webp` はスクリーンショット（640px と 1280px）、`og-{言語}.jpg` は SNS 用（1200×630）、`hero-*.webp`・`staff.webp`・アイコン |
 
