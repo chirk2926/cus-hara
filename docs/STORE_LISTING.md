@@ -7,7 +7,7 @@
 ## 1. 基本の情報
 | 項目 | 入れるもの |
 |---|---|
-| 発行者の表示名 | medal（著作権表示は ©2026 medal game corner） |
+| 発行者の表示名 | spsrv（パートナーセンターの発行元の表示名。MSIX の PublisherDisplayName もこれにそろえる。著作権表示は ©2026 medal game corner） |
 | アプリ名（予約） | カスハラ防衛線 ／ 英語: Kasuhara Defense Line – Calm the Angry Customer ／ 中国語: 顾客骚扰防线 – 安抚愤怒的顾客 ／ 韓国語: 카스하라 방어선 – 화난 손님 달래기 |
 | カテゴリ | ゲーム → シミュレーション（サブ: カジュアル・パーティ） |
 | 価格 | 790円（予定。ゲーム内の購入はなし。ゲーム内の通貨 HP・CUS はゲームの中だけのもので、お金では買えない） |
@@ -133,4 +133,7 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 - [x] プライバシーポリシーの連絡先を support@mgc-sv.com に（運営者名は medal）。ゲームサーバーで公開する（`server/public/privacy.*.html`。サーバーを更新すれば出る）
 - [x] ゲームの既定のサーバーの URL を https://game.mgc-sv.com にした
 - [ ] EOS の開発者ポータルに、実績 t001〜t155 を登録した（docs/HANDOVER.md 4b）。本番の ID は `config/eos.local.cfg`（リポジトリに入れない）
+- [ ] 制限付き機能 runFullTrust の理由（提出の「申請オプション」→「制限付き機能」の欄）に、次を書く:
+  「本アプリは Godot Engine で作られた通常の Windows デスクトップアプリ（Win32 の exe）を MSIX に入れたものです。デスクトップアプリとして起動するために runFullTrust が必要です。ファイルの読み書きはアプリ自身の設定・セーブデータだけで、ほかのアプリや OS の設定は変更しません。」
+  英語: "This app is a standard Windows desktop (Win32) game built with the Godot Engine and packaged as MSIX. runFullTrust is required to launch it as a desktop app. It only reads and writes its own settings and save data, and does not modify other apps or system settings."
 - [ ] 審査用のメモ: 「オンライン対戦の確認には、2台で同時にランクマッチに並ぶか、フレンド対戦の部屋コードを使ってください。1人用はサーバーなしでも遊べます」

@@ -145,7 +145,7 @@ steamcmd +login <アカウント名> +run_app_build <app_build.vdf の絶対パ�
 
 1. パートナーセンターの「製品 ID」ページで、パッケージ名（Identity Name）・発行者（Publisher、`CN=...`）・発行者表示名を控える。
 2. GitHub のリポジトリの Settings → Secrets and variables → Actions → Variables に登録する:
-   `MSIX_IDENTITY_NAME` / `MSIX_PUBLISHER` / `MSIX_PUBLISHER_DISPLAY` / `MSIX_VERSION`（例 `1.0.0.0`。4つの数字）。
+   `MSIX_IDENTITY_NAME` / `MSIX_PUBLISHER` / `MSIX_PUBLISHER_DISPLAY`（パートナーセンターの発行元の表示名。既定は spsrv）/ `MSIX_VERSION`（例 `1.0.0.0`。4つの数字）。
    未登録のときは仮の値（`CusHara.Dev` / `CN=CusHaraDev`）で作られる。**仮の値のままではストアに提出できない。**
 3. プッシュすると CI が `CusHara-msix`（`CusHara.msix`）を成果物として作る。
 4. パートナーセンターに MSIX をアップロードして審査に出す。ストア提出用は署名不要（ストアが署名する）。手元で試すときだけ、自己署名証明書で `signtool` 署名し、証明書を信頼済みに入れる必要がある。
