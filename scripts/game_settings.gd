@@ -214,7 +214,7 @@ var _translations: Array = []
 
 
 ## ウィンドウ・タスクバーに出す短いゲームの名前（言語ごと。知らない言語は英語）
-const SHORT_NAMES: Dictionary = {"ja": "カスハラ防衛線", "en": "Kasuhara Defense Line", "zh": "顾客骚扰防线", "ko": "카스하라 방어선"}
+const SHORT_NAMES: Dictionary = {"ja": "カスハラ防衛線", "en": "Kasuhara Defense Line", "zh": "顾客骚扰防线", "ko": "카스하라 방어선"}   # no-tr
 
 
 func short_app_name() -> String:

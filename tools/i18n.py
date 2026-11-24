@@ -40,7 +40,8 @@ def keys():
                 in_skip = raw[5:].startswith(SKIP_FUNCS)
             for m in TR.finditer(raw):
                 found.setdefault(unescape(m.group(1)), f"{path.name}:{n}")
-            if path.name not in UI_FILES or in_skip or "print(" in line:
+            # 行の終わりに「# no-tr」がある行は、言語ごとの値をそのまま持つ表（訳さない）
+            if path.name not in UI_FILES or in_skip or "print(" in line or "# no-tr" in raw:
                 continue
             for m in STR.finditer(line):
                 s = unescape(m.group(1))
