@@ -134,3 +134,37 @@ test("Claude: 送る量が目安を超えそうなら切り替え先のモデル
     srv.close();
   }
 });
+
+test("AI のお客さん: 景品が本当に引っかかっているときだけ「引っかかった景品をとる」を正解にする（要件#121）", async () => {
+  const make = (prize_stuck: boolean, memo: string) => ({
+    title: "アームの恋人", name: "恋塚 愛三郎", look: { body_color: "#333333", skin_color: "#f1c9a5", hair_color: "#aa22aa", hair: "spiky", build: "normal", accessory: "none", height: 1 },
+    memo, opening: "店員さん、このクレーンアームに一目惚れしました。", demand: "婚姻届の受理", patience: 1, start_anger: 40,
+    solution_keywords: ["できません"], yield_keywords: ["受理"], prize_stuck, machine: "crane", problem: "none",
+    actions: { discount: "neutral", dogeza: "bad", medal_return: "neutral", maintenance: "neutral", credit: "yield", crane_stuck: "good" },
+  });
+  let reply: unknown = null;
+  const srv = http.createServer((req, res) => {
+    req.on("data", () => {});
+    req.on("end", () => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(reply) }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+    });
+  });
+  await new Promise<void>((r) => srv.listen(0, r));
+  const url = `http://127.0.0.1:${(srv.address() as { port: number }).port}/v1`;
+  const slots = await import("../src/ai_slots.ts");
+  const llm = await import("../src/llm.ts");
+  slots.resetSlotHealth();
+  slots.setStoredSlots({ versusSame: true, versus: [], solo: [{ id: "ddddddd1", enabled: true, provider: "custom", model: "m", genModel: "", dailyLimit: 0, label: "", tokenLimit: 90000, longModel: "", baseUrl: url, jsonMode: "json_schema" }] });
+  try {
+    reply = make(false, "クレーンゲームのアームに恋をしたと言っている。結婚はできない。");
+    assert.equal((await llm.generateCustomer("arcade", [], "ja")).actions?.crane_stuck, "neutral", "引っかかっていない");
+    reply = make(true, "台に恋をしているだけ。景品の話はしていない。");
+    assert.equal((await llm.generateCustomer("arcade", [], "ja")).actions?.crane_stuck, "neutral", "メモに引っかかっていると書いていない");
+    reply = make(true, "景品のぬいぐるみが取り出し口の手前で引っかかっている。");
+    assert.equal((await llm.generateCustomer("arcade", [], "ja")).actions?.crane_stuck, "good", "本当に引っかかっている");
+  } finally {
+    srv.closeAllConnections();
+    srv.close();
+  }
+});

@@ -102,7 +102,7 @@ var mental_xp: int = 0
 var stats: Dictionary = {}
 var unlocked_titles: Array = []
 var equipped_title: String = ""
-## ショップ（要件#82）: HP（ハラスメントポイント・オフラインの給与）と CUS（カスポイント・オンラインの給与）、
+## ショップ（要件#82）: HP（ハラスメントポイント・1人用の給与）と CUS（カスポイント・対戦の給与。要件#122）、
 ## 持っているもの（"カテゴリ:ID"）、使っているもの（カテゴリ → ID）
 var hp_points: int = 0
 var kas_points: int = 0

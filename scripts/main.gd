@@ -3044,7 +3044,7 @@ func _show_licenses() -> void:
 	var body: VBoxContainer = UI.vbox(8)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(body)
-	body.add_child(UI.text(tr("カスハラ防衛線") + "  © 2026 medal", UI.S_LEAD, UI.INK, UI.F_BOLD))
+	body.add_child(UI.text(tr("カスハラ防衛線") + "  © 2026 medal game corner", UI.S_LEAD, UI.INK, UI.F_BOLD))
 	body.add_child(UI.text("Godot Engine", UI.S_LEAD, UI.INK, UI.F_BOLD))
 	body.add_child(UI.para(tr("このゲームは Godot Engine で作られています。") + " https://godotengine.org/license", UI.S_SMALL, UI.INK_SOFT))
 	body.add_child(UI.para(Engine.get_license_text(), UI.S_SMALL, UI.INK))
@@ -3602,7 +3602,7 @@ func _on_solo_finished(stage_id: String, results: Array, total: int) -> void:
 		_receipt_line(col, tr("売上"), "%s   %+d" % [GameSettings.money(int(sm.get("sales", 0))), int(sm.get("sales_bonus", 0))], UI.S_BODY)
 		var stars: float = float(sm.get("review", 3.0))
 		_receipt_line(col, tr("店舗レビュー"), "%s %.1f   %+d" % ["★".repeat(int(round(stars))) + "☆".repeat(5 - int(round(stars))), stars, int(sm.get("review_bonus", 0))])
-		# 給与（要件#82）: オフラインは HP、オンラインは CUS
+		# 給与（要件#122）: 1人用は HP、対戦は CUS
 		if sm.has("pay"):
 			_receipt_line(col, tr("給与"), Shop.pay_text(sm["pay"]), UI.S_BODY, STAMP_INK)
 			if bool(sm.get("pay_cut", false)):

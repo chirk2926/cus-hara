@@ -70,6 +70,7 @@ const GEN_SYSTEM: String = """あなたはコミカルな接客ゲーム「カ�
 - yield_keywords: 不当な要求を受け入れた返答に含まれそうな短い語を3〜5個（例:「土下座」「無料」）。
 - patience: 気の長さ。0.7（気長）〜1.4（短気）。
 - start_anger: 最初の怒り。30〜55の整数。
+- prize_stuck: クレーンゲームの景品が本当に引っかかっていて（取り出し口・アームの間・仕切りなど）、お客さんがそれを訴えているときだけ true。台に恋をした・台の話をしているだけ・取れないだけなら false。
 - problem: ゲームセンターの台の不具合のお客さんのときだけ入れる。jam（メダルが払い出しのレールで詰まった）/ empty（台のメダルが切れて払い出されない）/ lottery（メダルゲームの抽選機が動かない）/ button（ビデオゲームのボタンが反応しないと言う）/ slam（ビデオゲームのコーナーで台パンしている人がいると知らせに来た）/ loud（大声を出している人がいると知らせに来た）。それ以外は none。台の不具合のお客さんは、困っているのは本当（不当なのは要求の部分だけ）。slam・loud のお客さんは、迷惑な人を追い出せ・出入り禁止にしろ、などを要求する。
 - machine: ゲームセンターのとき、クレームの対象の台の種類。crane（クレーンゲーム）/ medal（メダルゲーム）/ rhythm（音楽ゲーム）/ video（ビデオゲーム・プリントシール機など）/ none（台と関係ない）。コンビニは none。
 - actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを補填）・maintenance（台のメンテナンス）・credit（クレジットを補填）・crane_stuck（引っかかった景品をとる）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
@@ -153,9 +154,10 @@ func _customer_schema() -> Dictionary:
 				"additionalProperties": false,
 			},
 			"machine": {"type": "string", "enum": ["crane", "medal", "rhythm", "video", "purikura", "none"]},
+			"prize_stuck": {"type": "boolean"},
 			"problem": {"type": "string", "enum": ["none", "jam", "empty", "lottery", "button", "slam", "loud"]},
 		},
-		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "solution_keywords", "yield_keywords", "actions", "machine", "problem"],
+		"required": ["title", "name", "look", "memo", "opening", "demand", "patience", "start_anger", "solution_keywords", "yield_keywords", "actions", "machine", "prize_stuck", "problem"],
 		"additionalProperties": false,
 	}
 
@@ -297,6 +299,12 @@ func _sanitize_customer(d: Dictionary, stage_id: String = "konbini") -> Dictiona
 			var v: String = str((raw_actions as Dictionary).get(k, ""))
 			if v in ACTION_EFFECTS:
 				actions[k] = v
+	# 「引っかかった景品をとる」は、景品が本当に引っかかっていると AI が答え、メモにもそう書いたときだけ正解（サーバーと同じ。要件#121）
+	if str(actions.get("crane_stuck", "")) == "good":
+		var told: String = str(d.get("memo", "")) + str(d.get("opening", ""))
+		var stuck_re: RegEx = RegEx.create_from_string("(?i)引っかか|引っ掛か|ひっかか|挟ま|はさま|詰まっ|stuck|wedged|caught|jammed|卡住|卡在|夹住|걸려|걸렸|끼었|끼어")
+		if not bool(d.get("prize_stuck", false)) or stuck_re.search(told) == null:
+			actions["crane_stuck"] = "neutral"
 	var look: Dictionary = {}
 	var raw_look: Variant = d.get("look", {})
 	if typeof(raw_look) == TYPE_DICTIONARY:

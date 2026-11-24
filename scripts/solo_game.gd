@@ -262,11 +262,11 @@ func _finish_summary() -> void:
 		"suspended": _suspended, "reviews": _make_reviews(), "offline": _offline_used or GameSettings.solo_source == "offline",
 		"clock_in": int(CLOCK.get(_stage_id, CLOCK["konbini"])[0]) - 30, "clock_out": _clock() + (20 if _suspended else 30)}
 	_track_shift(review)
-	# 給与（要件#82）: オフラインは HP、オンラインは CUS。売上がマイナスでも減らない
+	# 給与（要件#122）: 1人用（通常モード）はオンラインでもオフラインでも HP。CUS は対戦でだけもらえる。売上がマイナスでも減らない
 	# ペイアウト率 60% 以上は、景品代にスタッフの時給・電気代が乗って赤字になるので、給与は少なめ（要件#106）
 	var pay_mul: float = Shop.payout_pay_mul(_payout) if _stage_id == "arcade" else 1.0
 	summary["pay_cut"] = pay_mul < 1.0
-	summary["pay"] = Shop.pay_shift(int(float(_sales) * (HARD_REWARD_MUL if hardcore else 1.0) * pay_mul), not bool(summary["offline"]))
+	summary["pay"] = Shop.pay_shift(int(float(_sales) * (HARD_REWARD_MUL if hardcore else 1.0) * pay_mul))
 	summary["hardcore"] = hardcore
 	if hardcore:
 		_track_hardcore()

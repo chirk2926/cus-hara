@@ -2,8 +2,8 @@ extends RefCounted
 ## ショップ（要件#82）。品物は data/shop.json。持ち物・使っているもの・HP/CUS は GameSettings に保存する。
 ##
 ## お金（給与）:
-##   HP（ハラスメントポイント）: オフライン（台本・キーワード判定）のシフトの売上の一部
-##   CUS（カスポイント）: オンライン（サーバー・自分のAIキー）のシフトの売上の一部と、対戦の給与。HP より価値が高い
+##   HP（ハラスメントポイント）: 1人用（通常モード）のシフトの売上の一部（オンラインでもオフラインでも。要件#122）
+##   CUS（カスポイント）: 対戦の給与だけ。HP より価値が高い
 ##   売上がマイナスでも減らない。
 ## 品物: 背景（タイトルの背景の店と時間帯）・名札の枠・名前の色・スタンプ。
 ##   値段は hp と kas の2つ（0 はその通貨では買えない）。CUS でしか買えないものもある。
@@ -130,14 +130,10 @@ static func backdrop() -> Dictionary:
 	return {"stage": str(it.get("stage", "arcade")), "variant": str(it.get("variant", "day"))}
 
 
-## シフトの給与。オンラインなら CUS、オフラインなら HP。売上がマイナスでも減らない。もらった分を返す
-static func pay_shift(sales: int, online: bool) -> Dictionary:
+## 1人用（通常モード）のシフトの給与。いつも HP（CUS は対戦でだけもらえる。要件#122）。売上がマイナスでも減らない。もらった分を返す
+static func pay_shift(sales: int) -> Dictionary:
 	var pay: Dictionary = data().get("pay", {})
 	var s: float = float(maxi(0, sales))
-	if online:
-		var k: int = int(floor(s * float(pay.get("kas_per_sales", 0.005))))
-		GameSettings.kas_points += k
-		return {"hp": 0, "kas": k}
 	var h: int = int(floor(s * float(pay.get("hp_per_sales", 0.01))))
 	GameSettings.hp_points += h
 	return {"hp": h, "kas": 0}

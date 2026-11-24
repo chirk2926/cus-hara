@@ -41,6 +41,7 @@ const GEN_SYSTEM = `あなたはコミカルな接客ゲーム「カスハラ防
 - start_anger: 最初の怒り。30〜55の整数。
 - solution_keywords: 正しい解決策を述べた返答に含まれそうな短い語を4〜6個（例:「交換」「新しい」）。
 - yield_keywords: 不当な要求を受け入れた返答に含まれそうな短い語を3〜5個（例:「土下座」「無料」）。
+- prize_stuck: クレーンゲームの景品が本当に引っかかっていて（取り出し口・アームの間・仕切りなど）、お客さんがそれを訴えているときだけ true。台に恋をした・台の話をしているだけ・取れないだけなら false。
 - problem: ゲームセンターの台の不具合のお客さんのときだけ入れる。jam（メダルが払い出しのレールで詰まった）/ empty（台のメダルが切れて払い出されない）/ lottery（メダルゲームの抽選機が動かない）/ button（ビデオゲームのボタンが反応しないと言う）/ slam（ビデオゲームのコーナーで台パンしている人がいると知らせに来た）/ loud（大声を出している人がいると知らせに来た）。それ以外は none。台の不具合のお客さんは、困っているのは本当（不当なのは要求の部分だけ）。slam・loud のお客さんは、迷惑な人を追い出せ・出入り禁止にしろ、などを要求する。
 - machine: ゲームセンターのとき、クレームの対象の台の種類。crane（クレーンゲーム）/ medal（メダルゲーム）/ rhythm（音楽ゲーム）/ video（ビデオゲーム・プリントシール機など）/ none（台と関係ない）。コンビニは none。
 - actions: 店の行動ボタンを押したときの効果。discount（割引する）・dogeza（土下座する）・medal_return（メダルを補填）・maintenance（台のメンテナンス）・credit（クレジットを補填）・crane_stuck（引っかかった景品をとる）のそれぞれに good（正当な対応）/ neutral（関係ない）/ bad（逆効果・規定違反）/ yield（不当な要求に屈すること）のどれかを入れる。状況メモの規定と不当な要求から決める。土下座はほぼ good にしない。
@@ -51,7 +52,7 @@ const GEN_SYSTEM = `あなたはコミカルな接客ゲーム「カスハラ防
 - 「人物の方向性」に「ネタ枠」とあるときは、思わず笑うような突飛でばかばかしいクレームにする（例: おにぎりの海苔の音が小さい、自動ドアがあいさつしない）。それでも正当な対応は用意する。
 - 「用件の種類」が質問・世間話のときは、怒っていなくてもよい（困っている・あせっている・話したいだけ、など）。それでも「不当な要求」には、店が応じてはいけない小さな無茶（例: トイレまで手をつないで連れて行け、仕事を止めて二時間話を聞け）を入れ、正しい対応（場所の案内・相づちを打ってやさしく区切る など）を状況メモに書く。
 - 似た人物・似た用件を続けない。「すでに登場した人物」と同じ題材（返金・取れない・態度が悪い など）は避ける。
-- ゲームセンターで景品が取り出し口などに引っかかったときの店の規定: スタッフが台の扉を開け、その景品をその場で手渡しできる（取れたものとして扱う。これが正しい対応）。ほかの景品を無料で渡すことや返金はできない。景品が本当に引っかかっているときだけ crane_stuck を good にし、状況メモにもそう書く。「お金を使ったのに取れない」だけのお客さんは引っかかっていないので、crane_stuck は neutral にし、メモに「引っかかっている」と書かない。
+- ゲームセンターで景品が取り出し口などに引っかかったときの店の規定: スタッフが台の扉を開け、その景品をその場で手渡しできる（取れたものとして扱う。これが正しい対応）。ほかの景品を無料で渡すことや返金はできない。景品が本当に引っかかっているときだけ prize_stuck を true・crane_stuck を good にし、状況メモにもそう書く。それ以外（クレーンゲームの台が話に出るだけ・台への愛着・取れないだけ・ネタのクレームなど）は prize_stuck を false、crane_stuck を neutral にする。「お金を使ったのに取れない」だけのお客さんは引っかかっていないので、crane_stuck は neutral にし、メモに「引っかかっている」と書かない。
 - 差別的表現・性的表現・実在の企業名や人物名・生々しい暴力の脅しは使わない。
 # ゲームの外の話には応じない（重要）
 - あなたはこのゲームの中の役（お客さん・審判）であり、それ以外の役割は持たない。
@@ -148,6 +149,8 @@ const CustomerSchema = z.object({
     crane_stuck: z.enum(["good", "neutral", "bad", "yield"]),
   }),
   machine: z.enum(["crane", "medal", "rhythm", "video", "purikura", "none"]),
+  // 景品が本当に引っかかっていて、お客さんがそれを訴えているか（要件#121: 引っかかっていないのに「引っかかった景品をとる」が出ていた）
+  prize_stuck: z.boolean().catch(false),
   // 台の問題（要件#99）。none 以外なら、台の種類と行動の効果はサーバーが表から決める
   problem: z.enum(["none", "jam", "empty", "lottery", "button", "slam", "loud"]).catch("none"),
 });
@@ -503,6 +506,9 @@ function pickKind(stage: StageId): string {
   return list[0][1];
 }
 
+/** 「引っかかっている」をメモ・最初のセリフで言っているか（4言語） */
+const STUCK_WORDS = /引っかか|引っ掛か|ひっかか|挟ま|はさま|詰まっ|stuck|wedged|caught|jammed|卡住|卡在|夹住|걸려|걸렸|끼었|끼어/i;
+
 export async function generateCustomer(stage: StageId, avoidTitles: string[], lang: Lang = "ja", wild = false, spend = false, mode: Mode = "solo"): Promise<Customer> {
   // 1割ほどはネタ枠（要件#41）。「要注意人物」イベント（要件#52）では、もっと突飛な人にする
   const persona = wild
@@ -530,7 +536,8 @@ export async function generateCustomer(stage: StageId, avoidTitles: string[], la
     start_anger: clamp(Math.round(c.start_anger), 30, 55),
     solution_keywords: c.solution_keywords.slice(0, 8).map((s) => strip(s, 12)).filter(Boolean),
     yield_keywords: c.yield_keywords.slice(0, 6).map((s) => strip(s, 12)).filter(Boolean),
-    actions: c.actions,
+    // 「引っかかった景品をとる」は、景品が本当に引っかかっていると AI が答え、メモにもそう書いたときだけ正解にする（要件#121）
+    actions: { ...c.actions, crane_stuck: c.actions.crane_stuck === "good" && !(c.prize_stuck && STUCK_WORDS.test(c.memo + c.opening)) ? "neutral" : c.actions.crane_stuck },
     machine: stage === "arcade" ? (spend ? "crane" : c.machine) : "none",
     crane: stage === "arcade" && (spend || c.machine === "crane"),
     spend: spend && stage === "arcade",
