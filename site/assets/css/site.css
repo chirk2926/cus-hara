@@ -562,3 +562,17 @@ dialog.lightbox::backdrop { background: rgba(36, 33, 43, .82); }
 .st-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 0; font-size: 14px; color: var(--paper-dim); }
 .st-refresh { font: inherit; color: var(--ink); background: var(--pop); border: 2px solid var(--ink); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
 .st-refresh:focus-visible { outline: 3px solid var(--paper-hi); outline-offset: 2px; }
+
+/* ガイド・ブログ（要件#125）: 記事の一覧と記事の本文 */
+.post-list { list-style: none; padding: 0 !important; }
+.post-list li { padding: 12px 0; border-bottom: 1px dashed var(--paper-dim); margin: 0 !important; }
+.post-list a { font-weight: 800; }
+.post-list time { color: var(--ink-soft); font-size: 13px; margin-left: 8px; }
+.post-list .muted { margin: 4px 0 0; }
+.post.sheet img { max-width: 100%; height: auto; border: 2px solid var(--ink); border-radius: 4px; margin: 12px 0; }
+.post.sheet pre { background: var(--lcd-bg); color: var(--lcd-on); padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 14px; }
+.post.sheet code { font-family: var(--f-dot); }
+.post.sheet blockquote { margin: 12px 0; padding: 4px 16px; border-left: 4px solid var(--pop); background: var(--paper-hi); }
+.post.sheet h1 { overflow-wrap: anywhere; }
+.post-kind { display: inline-block; background: var(--pop); color: var(--ink); padding: 0 8px; border-radius: 3px; font-weight: 800; }
+.post-back { margin-top: 32px; }

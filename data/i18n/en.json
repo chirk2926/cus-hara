@@ -828,5 +828,7 @@
 	"③ 斜めに重なって詰まったメダルを、1枚ずつ取る": "③ Pick out the jammed, stacked medals one by one",
 	"③ 詰まっているメダルは見当たらない": "③ No jammed medals to be found",
 	"④ レールを戻して、ネジを4本締める": "④ Put the rail back and tighten the 4 screws",
-	"見せてもらった身分証で、もう年齢は確かめられる。": "The ID you were shown is already enough to confirm their age."
+	"見せてもらった身分証で、もう年齢は確かめられる。": "The ID you were shown is already enough to confirm their age.",
+	"サーバー接続正常・不正検出正常": "Server connection OK · Cheat detection OK",
+	"相手を探しています… %d 秒（待っている人 %d）": "Looking for an opponent... %d s (%d waiting)"
 }

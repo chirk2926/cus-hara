@@ -18,7 +18,13 @@ export function rankName(rating: number): string {
 }
 
 /** score: 勝ち=1 / 引き分け=0.5 / 負け=0 */
+/** 勝ったときに上がる最低の幅（要件#124: レートが離れていても、勝てば +3 以上。負けは下限なし、ただしプラスにはならない） */
+export const RATING_MIN_STEP = 3;
+
 export function eloDelta(mine: number, theirs: number, score: number): number {
   const expected = 1 / (1 + Math.pow(10, (theirs - mine) / 400));
-  return Math.round(RATING_K * (score - expected));
+  const d = Math.round(RATING_K * (score - expected));
+  if (score === 1) return Math.max(RATING_MIN_STEP, d);
+  if (score === 0) return Math.min(0, d);
+  return d;
 }

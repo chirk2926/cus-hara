@@ -652,7 +652,7 @@
 - **お金の名前**: KAS → **CUS**（カスポイント）。どの言語でも記号は CUS で、かっこの中だけ訳す（Kasu Points／顾客点数／카스 포인트）。セーブの中の名前（`kas_points`・`pay_kas`・ショップの `kas`）は今までのセーブを読めるように変えない。
 - **韓国語（ko）**: `data/i18n/ko.json`、`data/scenarios.ko.json`（台本のお客さん 56 人。順番・台・効果は英語版と同じ）、`data/titles.json`・`data/shop.json`・`data/actions.json`・`data/offenders.json`・`data/judge_words.json` の `ko`。サーバーは `lang.ts` の `LANGS` に ko（`pick` は ko が無ければ英語）、店長の一言・関係ない話の語・AI への言語の指定、お金はウォン（1プレイ = 1,000원）。ハングルは `assets/fonts/NotoSansKR_500Medium.ttf` をすべてのフォントの予備にする。プライバシーポリシーは `/privacy?lang=ko`（`tools/privacy_gen.py` で4言語を作る）。お知らせも韓国語で書ける。
 - **コンビニは準備中**: サーバーの `runtime.konbiniOpen`（管理画面 設定 → 運営 →「コンビニを開ける」。既定はオフ）。オフの間は `/api/v1/info` の `open_stages` にコンビニが入らず、ゲームはタイトル画面・社員モードの画面のコンビニを「（準備中）」にして押せなくする。サーバーにつながらないときも閉じたまま。対戦の舞台もゲームセンターだけ。自動テスト（`--smoke` など）では開ける。
-- **運営者**: medal（© 2026 medal game corner）。ライセンスの画面の先頭と、exe の会社名・著作権の欄（`export_presets.cfg`）、MSIX の発行者の表示名の既定値。
+- **運営者**: medal（©2026 medal game corner）。ライセンスの画面の先頭と、exe の会社名・著作権の欄（`export_presets.cfg`）、MSIX の発行者の表示名の既定値。
 
 ## 33. テスト後の修正 その4（要件#106）
 - **引っかかった景品**: 店の規定は「スタッフが台の扉を開けて、その景品をその場で手渡しできる（ほかの景品を無料で渡す・返金はできない）」。AI がお客さんを作る指示にも書いた。「〇〇円使っても取れない」お客さんは景品が引っかかっていないので、`crane_stuck` は neutral にし、ゲームは「景品が引っかかっています」の表示とボタンを出さない（`ShopActions.is_stuck`）。

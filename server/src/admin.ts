@@ -29,6 +29,7 @@ import { sttEnabled } from "./stt.ts";
 import { kickPlayer, onlinePlayers } from "./ws.ts";
 import { VERSION } from "./http.ts";
 import { saveNoticeImage, readNoticeImage, ImageError } from "./notices.ts";
+import { listPosts, getPost, savePost, setPostPublished, deletePost, PostError, startDeploy, deployState } from "./blog.ts";
 import type { Lobby } from "./lobby.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -520,6 +521,42 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
       budget_usd: runtime.monthlyBudgetUsd, over_budget: runtime.monthlyBudgetUsd > 0 && projected > runtime.monthlyBudgetUsd,
       prices: runtime.aiPrices,
     };
+  }
+
+  // ---- ガイド・ブログ（要件#125）: Markdown で書き、「サイトに反映」で Cloudflare Pages に上げる
+  try {
+    if (method === "GET" && p === "/api/posts") return { posts: listPosts(), deploy: deployState() };
+    if (method === "POST" && p === "/api/posts") {
+      const post = savePost(body);
+      adminLog("post", `#${post.id}`, `${body.id ? "記事を直した" : "記事を書いた"}: ${post.slug}`);
+      return { ok: true, post };
+    }
+    const pm = /^\/api\/posts\/(\d+)$/.exec(p);
+    if (method === "GET" && pm) {
+      const post = getPost(Number(pm[1]));
+      if (!post) throw new AdminError(404, "その記事はありません");
+      return { post };
+    }
+    if (method === "POST" && pm) {
+      const id = Number(pm[1]);
+      if (body.delete === true) {
+        deletePost(id);
+        adminLog("post", `#${id}`, "記事を消した");
+      } else if (typeof body.published === "boolean") {
+        setPostPublished(id, body.published);
+        adminLog("post", `#${id}`, body.published ? "記事を公開にした（サイトに反映で出る）" : "記事を非公開にした（サイトに反映で消える）");
+      }
+      return { ok: true, posts: listPosts() };
+    }
+    if (method === "GET" && p === "/api/site/deploy") return { deploy: deployState() };
+    if (method === "POST" && p === "/api/site/deploy") {
+      startDeploy({ project: runtime.siteProject, accountId: runtime.cfAccountId, token: process.env.CLOUDFLARE_API_TOKEN ?? "" });
+      adminLog("site_deploy", "", "紹介サイトに反映した（Cloudflare Pages）");
+      return { ok: true, deploy: deployState() };
+    }
+  } catch (e) {
+    if (e instanceof PostError) throw new AdminError(400, e.message);
+    throw e;
   }
 
   // ---- お知らせ（要件#100: 言語ごとの見出しと本文（Markdown）・画像・フォント）

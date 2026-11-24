@@ -60,7 +60,7 @@ const REASONS = { abuse: "暴言・嫌がらせ", sexual: "性的な内容", per
 
 const TABS = [
   ["status", "状態"], ["reports", "通報"], ["players", "プレイヤー"], ["matches", "対戦"], ["usage", "AIの料金"],
-  ["notice", "お知らせ・メンテナンス"], ["ai", "AIのAPI"], ["settings", "設定"], ["audit", "操作の記録"], ["account", "パスワード"],
+  ["notice", "お知らせ・メンテナンス"], ["blog", "ガイド・ブログ"], ["ai", "AIのAPI"], ["settings", "設定"], ["audit", "操作の記録"], ["account", "パスワード"],
 ];
 let current = "status";
 
@@ -418,6 +418,89 @@ async function setSetting(key, value) {
 let settingsQuery = "";
 
 /** 設定（要件#100: 見た目より使いやすさ）。探す・Enter で保存・変えた項目に印・まとめて保存 */
+// ---------------------------------------------------------------- ガイド・ブログ（要件#125）
+
+let blogEdit = null; // 書いている記事（null なら一覧）
+let blogLang = "ja";
+const KIND = { guide: "ガイド", blog: "ブログ" };
+
+async function loadBlog(el) {
+  const r = await api("GET", "/api/posts");
+  clear(el);
+  const dep = r.deploy;
+  const depText = dep.running ? "反映しています…" : dep.ok === null ? "まだ反映していません" : dep.ok ? `反映しました（${fmtTime(dep.at)}）` : `反映できませんでした（${fmtTime(dep.at)}）`;
+  const log = h("pre", { class: "muted", style: "white-space:pre-wrap;max-height:220px;overflow:auto;font-size:12px" }, dep.log || "");
+  const deploy = h("button", { class: "main", disabled: dep.running, onclick: async () => {
+    if (!confirm("公開中の記事で紹介サイトを作り直して、Cloudflare Pages に上げます。よいですか？")) return;
+    try { await api("POST", "/api/site/deploy", {}); toast("反映を始めました"); } catch (e) { toast(e.message, true); }
+    const poll = async () => { const s = await api("GET", "/api/site/deploy"); if (s.deploy.running) setTimeout(poll, 2000); else { show("blog"); toast(s.deploy.ok ? "反映しました" : "反映できませんでした（記録を見てください）", !s.deploy.ok); } };
+    setTimeout(poll, 1500);
+  } }, "サイトに反映");
+  el.append(h("div", { class: "sheet" }, h("h2", {}, "ガイド・ブログ"),
+    h("p", { class: "muted" }, "紹介サイトの「ガイド・ブログ」に出す記事を Markdown で書きます。言語ごとに見出しと本文を入れ、入れた言語のページだけができます。公開にしても、「サイトに反映」を押すまではサイトに出ません（反映すると、サイト全体をこのサーバーにある版で上げ直します）。上げる先は 設定 →「サイト」。"),
+    h("div", { class: "row" }, h("button", { class: "act", onclick: () => { blogEdit = { id: 0, slug: "", kind: "guide", title: { ja: "", en: "", zh: "", ko: "" }, body: { ja: "", en: "", zh: "", ko: "" } }; blogLang = "ja"; renderBlogEditor(el); } }, "新しく書く"),
+      deploy, h("span", { class: dep.ok === false ? "warn" : "muted" }, depText)),
+    dep.log ? log : null));
+  const tbl = h("table", {}, h("tr", {}, h("th", {}, "種類"), h("th", {}, "見出し"), h("th", {}, "URL 名"), h("th", {}, "言語"), h("th", {}, "状態"), h("th", {}, "更新"), h("th", {}, "")));
+  for (const p of r.posts) {
+    const langs = LANGS.filter(([k]) => p.title[k] && p.body[k]).map(([, l]) => l).join("・");
+    tbl.append(h("tr", {}, h("td", {}, KIND[p.kind]), h("td", {}, p.title.ja || p.title.en || p.title.zh || p.title.ko), h("td", {}, p.slug), h("td", {}, langs),
+      h("td", { class: p.published ? "okc" : "muted" }, p.published ? "公開" : "下書き"), h("td", {}, fmtTime(p.updated_at)),
+      h("td", {},
+        h("button", { class: "link", onclick: async () => { const g = await api("GET", `/api/posts/${p.id}`); blogEdit = g.post; blogLang = "ja"; renderBlogEditor(el); } }, "直す"),
+        " ", h("button", { class: "link", onclick: async () => { await api("POST", `/api/posts/${p.id}`, { published: !p.published }); show("blog"); } }, p.published ? "下書きに戻す" : "公開にする"),
+        " ", h("button", { class: "link", onclick: async () => { if (confirm("この記事を消しますか？（サイトからは、次に反映したときに消えます）")) { await api("POST", `/api/posts/${p.id}`, { delete: true }); show("blog"); } } }, "消す"))));
+  }
+  el.append(h("div", { class: "sheet" }, r.posts.length ? tbl : h("p", { class: "muted" }, "まだ記事はありません。")));
+}
+
+function renderBlogEditor(el) {
+  const d = blogEdit;
+  clear(el);
+  const kind = h("select", {}, ...Object.entries(KIND).map(([k, l]) => h("option", { value: k }, l)));
+  kind.value = d.kind;
+  kind.addEventListener("change", () => (d.kind = kind.value));
+  const slug = h("input", { value: d.slug, placeholder: "例 how-to-play（英小文字・数字・ハイフン）", style: "width:100%" });
+  slug.addEventListener("input", () => (d.slug = slug.value));
+  const ltabs = h("div", { class: "row ltabs" }, ...LANGS.map(([k, l]) => h("button", { class: k === blogLang ? "on" : "", onclick: () => { blogLang = k; renderBlogEditor(el); } }, l, d.title[k] && d.body[k] ? " ●" : "")));
+  const title = h("input", { value: d.title[blogLang], placeholder: "見出し", style: "width:100%" });
+  const body = h("textarea", { style: "width:100%;min-height:360px", placeholder: "本文（Markdown）\n## 見出し\n**太字** *斜体* `コード`\n- 箇条書き\n1. 番号つき\n> 引用\n[リンク](https://example.com)\n画像は下の「画像を入れる」で" });
+  body.value = d.body[blogLang];
+  const preview = h("div", { class: "preview" });
+  const draw = () => { d.title[blogLang] = title.value; d.body[blogLang] = body.value; clear(preview).append(h("h2", {}, title.value || "（見出し）"), mdToDom(body.value.replace(/!\[([^\]]*)\]\(image:[^)]+\)/g, "（画像: $1）"))); };
+  title.addEventListener("input", draw);
+  body.addEventListener("input", draw);
+  draw();
+  const file = h("input", { type: "file", accept: "image/png,image/jpeg" });
+  file.addEventListener("change", async () => {
+    const f = file.files[0];
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) return toast("画像は 2MB までにしてください", true);
+    const b64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.readAsDataURL(f); });
+    try {
+      const up = await api("POST", "/api/announcements/image", { data: b64 });
+      const snippet = `\n![画像の説明](image:${up.name})\n`;
+      const at = body.selectionStart ?? body.value.length;
+      body.value = body.value.slice(0, at) + snippet + body.value.slice(at);
+      draw();
+      toast("画像を入れました（説明の文を書きかえてください）");
+    } catch (e) { toast(e.message, true); }
+  });
+  const save = h("button", { class: "main", onclick: async () => {
+    draw();
+    const payload = { id: d.id || undefined, slug: d.slug, kind: d.kind };
+    for (const [k] of LANGS) { payload["title_" + k] = d.title[k]; payload["body_" + k] = d.body[k]; }
+    try { const r = await api("POST", "/api/posts", payload); blogEdit = r.post; toast("保存しました（公開と「サイトに反映」は一覧から）"); renderBlogEditor(el); } catch (e) { toast(e.message, true); }
+  } }, "保存");
+  el.append(h("div", { class: "sheet" },
+    h("div", { class: "row" }, h("h2", { style: "margin:0" }, d.id ? `記事 #${d.id} を直す` : "新しい記事"), h("button", { class: "link", onclick: () => { blogEdit = null; show("blog"); } }, "← 一覧へ")),
+    h("div", { class: "setting" }, h("div", {}, "種類"), kind, h("div", {})),
+    h("div", { class: "setting" }, h("div", {}, "URL 名", h("div", { class: "help" }, "サイトの /ja/blog/<URL名>/ になる")), slug, h("div", {})),
+    ltabs, title, body,
+    h("div", { class: "row" }, h("label", {}, "画像を入れる ", file), save),
+    h("p", { class: "muted" }, "見本（サイトでの見た目とは少しちがいます）"), preview));
+}
+
 // ---------------------------------------------------------------- AI の API の登録（要件#115）
 
 let aiMode = "solo";
@@ -635,7 +718,7 @@ async function loadAccount(el) {
     h("button", { class: "main", onclick: async () => { await api("POST", "/api/password", { current: cur.value, new_password: nw.value }); toast("変えました"); cur.value = ""; nw.value = ""; } }, "変える")));
 }
 
-const LOAD = { status: loadStatus, reports: loadReports, players: loadPlayers, matches: loadMatches, usage: loadUsage, notice: loadNotice, ai: loadAi, settings: loadSettings, audit: loadAudit, account: loadAccount };
+const LOAD = { status: loadStatus, reports: loadReports, players: loadPlayers, matches: loadMatches, usage: loadUsage, notice: loadNotice, blog: loadBlog, ai: loadAi, settings: loadSettings, audit: loadAudit, account: loadAccount };
 
 // ---------------------------------------------------------------- ログイン
 

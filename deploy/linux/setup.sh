@@ -49,6 +49,12 @@ fi
 [ -x /usr/bin/node ] || die "/usr/bin/node がありません（systemd はここを使います）"
 echo "Node.js: $(node -v)"
 
+say "wrangler（紹介サイトのガイド・ブログを Cloudflare Pages に上げる。要件#125）"
+if ! command -v wrangler >/dev/null; then
+  npm install -g --silent --no-audit --no-fund wrangler@4
+fi
+echo "wrangler: $(wrangler --version 2>/dev/null | head -1)"
+
 # 本番・テスト（名前 / 置き場所 / ゲームのポート / 管理画面のポート）
 ENVS=(
   "cushara /opt/cus-hara 8787 8790 本番"

@@ -1565,11 +1565,8 @@ func _refresh_title() -> void:
 		_server_label.text = tr("サーバーを確認しています…")
 		_server_label.add_theme_color_override("font_color", UI.INK_SOFT)
 	else:
-		var parts: PackedStringArray = PackedStringArray([tr("サーバー接続中")])
-		parts.append(tr("AI判定あり") if bool(_server_info.get("ai", false)) else tr("AIなし（簡易判定）"))
-		if bool(_server_info.get("voice", false)):
-			parts.append(tr("音声対戦あり"))
-		_server_label.text = "・".join(parts)
+		# つながっているときは、接続と不正の検出（サーバーでの検証）が正常なことだけを出す（要件#124）
+		_server_label.text = tr("サーバー接続正常・不正検出正常")
 		_server_label.add_theme_color_override("font_color", UI.LCD_ON)
 	_refresh_notices()
 
@@ -2255,7 +2252,10 @@ func _shop_item(it: Dictionary) -> Control:
 			sw.color = Color(str(it.get("value", "#888888")))
 			sw.custom_minimum_size = Vector2(0, 22)
 			c.add_child(sw)
-	var row: HBoxContainer = UI.hbox(8)
+	# 値札が2つ並ぶと幅が足りない（キャラクターは3列）ので、入らなければ折り返す（要件#124: ショップの右が見切れていた）
+	var row: HFlowContainer = HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 6)
 	c.add_child(row)
 	if using:
 		row.add_child(UI.text(tr("使用中"), UI.S_SMALL, UI.SHU, UI.F_BOLD))
@@ -3044,7 +3044,7 @@ func _show_licenses() -> void:
 	var body: VBoxContainer = UI.vbox(8)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(body)
-	body.add_child(UI.text(tr("カスハラ防衛線") + "  © 2026 medal game corner", UI.S_LEAD, UI.INK, UI.F_BOLD))
+	body.add_child(UI.text(tr("カスハラ防衛線") + "  ©2026 medal game corner", UI.S_LEAD, UI.INK, UI.F_BOLD))
 	body.add_child(UI.text("Godot Engine", UI.S_LEAD, UI.INK, UI.F_BOLD))
 	body.add_child(UI.para(tr("このゲームは Godot Engine で作られています。") + " https://godotengine.org/license", UI.S_SMALL, UI.INK_SOFT))
 	body.add_child(UI.para(Engine.get_license_text(), UI.S_SMALL, UI.INK))
@@ -3125,9 +3125,22 @@ func _fit_to_screen(c: Control, centered: bool) -> void:
 		return
 	# 上の端は動かさずに縮める（下にはみ出した分が収まる）
 	var room_y: float = vp.y - (56.0 if c.get_meta("leave_bottom", false) else 16.0) - maxf(c.global_position.y, 0.0)
-	var room_x: float = vp.x - 32.0
-	var k: float = clampf(minf(room_y / need.y, room_x / need.x), 0.5, 1.0)
-	c.pivot_offset = Vector2(need.x * 0.5, 0.0) if centered else Vector2.ZERO
+	var k: float = room_y / need.y
+	if centered:
+		# 画面の真ん中を中心に縮め、左右どちらの端も画面の内側（16px）に入るようにする
+		# （中身が画面より広いと、左に寄ったまま右がはみ出していた。要件#124）
+		var cx: float = vp.x * 0.5
+		var left: float = c.global_position.x
+		var right: float = left + need.x
+		if left < cx:
+			k = minf(k, (cx - 16.0) / (cx - left))
+		if right > cx:
+			k = minf(k, (vp.x - 16.0 - cx) / (right - cx))
+		c.pivot_offset = Vector2(cx - left, 0.0)
+	else:
+		k = minf(k, (vp.x - 32.0) / need.x)
+		c.pivot_offset = Vector2.ZERO
+	k = clampf(k, 0.5, 1.0)
 	c.scale = Vector2(k, k)
 
 
@@ -3910,9 +3923,8 @@ func _on_lobby_event(kind: String, data: Dictionary) -> void:
 		"queued":
 			_set_lobby_status(tr("相手を探しています…"), false)
 		"queue_status":
-			var rng: Variant = data.get("range", null)
-			var range_text: String = tr("誰とでも") if rng == null else tr("レート差 %d まで") % int(rng)
-			_set_lobby_status(tr("相手を探しています… %d 秒（%s・待っている人 %d）") % [int(data.get("seconds", 0)), range_text, int(data.get("waiting_players", 0))], false)
+			# レートの差は出さない（要件#124）
+			_set_lobby_status(tr("相手を探しています… %d 秒（待っている人 %d）") % [int(data.get("seconds", 0)), int(data.get("waiting_players", 0))], false)
 		"room_created":
 			if _lobby_code != null and is_instance_valid(_lobby_code):
 				_lobby_code.text = str(data.get("code", ""))
