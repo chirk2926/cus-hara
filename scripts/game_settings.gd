@@ -10,7 +10,10 @@ extends Node
 const PATH: String = "user://settings.cfg"
 ## 接続するゲームサーバー（1つだけ。要件#31）。運営するサーバーのURLが決まったらここを書き換える（docs/SERVER.md）。
 ## 設定画面からは変えられない。テストのときだけ起動引数 `-- --server=URL` で変える。
-const DEFAULT_SERVER_URL: String = "http://127.0.0.1:8787"
+## 配る版のゲームサーバー（本番。要件#119）
+const DEFAULT_SERVER_URL: String = "https://game.mgc-sv.com"
+## 開発（エディタ・CI）とテスト版の exe は、同じPCのテスト用サーバー（start_server.bat）につなぐ
+const LOCAL_SERVER_URL: String = "http://127.0.0.1:8787"
 ## 「自分のAPIキー」を選んだときだけ選べるモデル（要件#33。サーバーは Haiku だけを使う）
 const MODELS: Array = [
 	["claude-haiku-5-5", "Claude Haiku 5.5（高速・低コスト）"],
@@ -175,6 +178,7 @@ func _ready() -> void:
 			load_settings()
 	# 接続先を変える引数は、開発・テスト版だけ（要件#108: 配る版では、保存したログイン情報をほかのサーバーへ送らない）
 	if dev_args_allowed():
+		server_url = LOCAL_SERVER_URL
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("--server="):
 				server_url = a.substr(9)
