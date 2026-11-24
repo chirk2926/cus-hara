@@ -463,6 +463,8 @@ function renderAi(el, r) {
       const gen = h("input", { value: s.gen_model || "", list: dl, style: "width:100%", placeholder: "空なら上と同じ" });
       const limit = h("input", { type: "number", min: "0", step: "1", value: String(s.daily_limit || 0), style: "width:100%" });
       const memo = h("input", { value: s.label || "", maxlength: "40", style: "width:100%", placeholder: "例 予備のキー" });
+      const longM = h("input", { value: s.long_model || "", list: dl, style: "width:100%", placeholder: "空なら切り替えない" });
+      const tlim = h("input", { type: "number", min: "1000", step: "1000", value: String(s.token_limit || r.default_token_limit), style: "width:100%" });
       const url = h("input", { value: s.base_url, style: "width:100%", placeholder: "例 http://127.0.0.1:11434/v1" });
       const jm = h("select", {}, h("option", { value: "json_schema" }, "json_schema"), h("option", { value: "json_object" }, "json_object"));
       jm.value = s.json_mode;
@@ -470,11 +472,13 @@ function renderAi(el, r) {
         placeholder: s.key_set && !s.clear_key ? `設定済み（${s.key_mask}）。変えるときだけ入れる` : "APIキー" });
       const en = h("input", { type: "checkbox" });
       en.checked = s.enabled;
-      prov.addEventListener("change", () => { s.provider = prov.value; if (!provs[s.provider].models.includes(s.model)) s.model = provs[s.provider].models[0] || ""; s.gen_model = ""; draw(); });
+      prov.addEventListener("change", () => { s.provider = prov.value; if (!provs[s.provider].models.includes(s.model)) s.model = provs[s.provider].models[0] || ""; s.gen_model = ""; s.long_model = s.provider === "anthropic" ? r.default_long_model : ""; draw(); });
       model.addEventListener("input", () => (s.model = model.value));
       gen.addEventListener("input", () => (s.gen_model = gen.value));
       limit.addEventListener("input", () => (s.daily_limit = Number(limit.value || 0)));
       memo.addEventListener("input", () => (s.label = memo.value));
+      longM.addEventListener("input", () => (s.long_model = longM.value));
+      tlim.addEventListener("input", () => (s.token_limit = Number(tlim.value || 0)));
       url.addEventListener("input", () => (s.base_url = url.value));
       jm.addEventListener("change", () => (s.json_mode = jm.value));
       key.addEventListener("input", () => (s.key = key.value));
@@ -498,6 +502,8 @@ function renderAi(el, r) {
         field("AIの種類", "", prov),
         field("モデル", "採点・お客さんの返事に使う。候補から選ぶか、手で入れる", h("div", {}, model, h("datalist", { id: dl }, ...provs[s.provider].models.map((m) => h("option", { value: m }))))),
         field("お客さんづくりのモデル", "1人につき1回だけ呼ぶので、ここだけ賢いモデルにしてもよい", gen),
+        s.provider === "anthropic" ? field("送る量が多いときのモデル", "下の目安（入力トークン）を超えそうなら、このモデルに切り替える。目安の半分を超えそうなときだけ count_tokens（無料）で数える", longM) : null,
+        s.provider === "anthropic" ? field("切り替えの目安（トークン）", `既定 ${fmtNum(r.default_token_limit)}`, tlim) : null,
         s.provider === "custom" ? field("API の場所", "OpenAI 互換の API（…/v1 まで）", url) : null,
         s.provider === "custom" ? field("JSON の出させ方", "json_schema に対応していないAIは json_object", jm) : null,
         field("APIキー", s.provider === "custom" ? "キーが要らないもの（Ollama など）は空のまま" : "", key,
@@ -510,11 +516,11 @@ function renderAi(el, r) {
   };
   const saveBar = (rows) => {
     const add = h("button", { class: "act", disabled: rows.length >= r.max || (aiMode === "versus" && same), onclick: () => {
-      rows.push({ id: "", enabled: true, provider: "anthropic", model: provs.anthropic.models[0], gen_model: "", daily_limit: 0, label: "", base_url: "", json_mode: "json_schema", key: "", key_set: false, clear_key: false, fails: 0, skip_until: 0, used_today: 0 });
+      rows.push({ id: "", enabled: true, provider: "anthropic", model: provs.anthropic.models[0], gen_model: "", daily_limit: 0, label: "", long_model: r.default_long_model, token_limit: r.default_token_limit, base_url: "", json_mode: "json_schema", key: "", key_set: false, clear_key: false, fails: 0, skip_until: 0, used_today: 0 });
       draw();
     } }, `API を足す（${rows.length} / ${r.max}）`);
     const save = h("button", { class: "main", onclick: async () => {
-      const pack = (list) => list.map((s) => ({ id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.gen_model || "", daily_limit: s.daily_limit || 0, label: s.label || "", base_url: s.base_url, json_mode: s.json_mode, key: s.key, clear_key: s.clear_key }));
+      const pack = (list) => list.map((s) => ({ id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.gen_model || "", daily_limit: s.daily_limit || 0, label: s.label || "", long_model: s.long_model || "", token_limit: s.token_limit || r.default_token_limit, base_url: s.base_url, json_mode: s.json_mode, key: s.key, clear_key: s.clear_key }));
       try {
         const out = await api("POST", "/api/ai-slots", { solo: pack(lists.solo), versus: same ? [] : pack(lists.versus), versus_same: same });
         toast("保存しました");

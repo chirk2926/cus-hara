@@ -9,6 +9,10 @@ import { config } from "./config.ts";
 export type Provider = "anthropic" | "openai" | "gemini" | "deepseek" | "custom";
 export const PROVIDERS: Provider[] = ["anthropic", "openai", "gemini", "deepseek", "custom"];
 export const MAX_SLOTS = 5;
+/** Claude の切り替えの目安の既定（要件#117） */
+export const DEFAULT_TOKEN_LIMIT = 90_000;
+/** Claude の切り替え先の既定（新しく登録したとき・環境変数から作ったとき） */
+export const DEFAULT_LONG_MODEL = "claude-sonnet-5-5";
 
 export interface ProviderInfo {
   label: string;
@@ -46,6 +50,10 @@ export interface AiSlot {
   dailyLimit: number;
   /** 管理画面に出すメモ（例: 「予備のキー」） */
   label: string;
+  /** Claude だけ: 送る量（入力トークン）がこれを超えそうなら longModel に切り替える（要件#117。既定 90000） */
+  tokenLimit: number;
+  /** Claude だけ: 切り替え先のモデル（空なら切り替えない） */
+  longModel: string;
   /** custom のときだけ使う */
   baseUrl: string;
   /** custom のときだけ使う */
@@ -94,15 +102,15 @@ const ENV_KEY: Record<Provider, string> = {
 function envSlots(): AiSlot[] {
   const out: AiSlot[] = [];
   if (config.llmProvider === "openai_compatible" && config.llmBaseUrl !== "" && config.llmModel !== "") {
-    out.push({ id: "env-custom", enabled: true, provider: "custom", model: config.llmModel, baseUrl: config.llmBaseUrl, jsonMode: config.llmJsonMode === "json_object" ? "json_object" : "json_schema", genModel: "", dailyLimit: 0, label: "" });
+    out.push({ id: "env-custom", enabled: true, provider: "custom", model: config.llmModel, baseUrl: config.llmBaseUrl, jsonMode: config.llmJsonMode === "json_object" ? "json_object" : "json_schema", genModel: "", dailyLimit: 0, label: "", tokenLimit: DEFAULT_TOKEN_LIMIT, longModel: "" });
   }
   if (process.env.ANTHROPIC_API_KEY || (config.llmMode === "claude" && config.llmProvider !== "openai_compatible")) {
-    out.push({ id: "env-anthropic", enabled: true, provider: "anthropic", model: config.model, baseUrl: "", jsonMode: "json_schema", genModel: "", dailyLimit: 0, label: "" });
+    out.push({ id: "env-anthropic", enabled: true, provider: "anthropic", model: config.model, baseUrl: "", jsonMode: "json_schema", genModel: "", dailyLimit: 0, label: "", tokenLimit: DEFAULT_TOKEN_LIMIT, longModel: config.model === DEFAULT_LONG_MODEL ? "" : DEFAULT_LONG_MODEL });
   }
   for (const p of ["openai", "gemini", "deepseek"] as const) {
     if (process.env[ENV_KEY[p]]) {
       const m = process.env[`${p.toUpperCase()}_MODEL`] ?? PROVIDER_INFO[p].models[0];
-      out.push({ id: `env-${p}`, enabled: true, provider: p, model: m, baseUrl: "", jsonMode: "json_schema", genModel: "", dailyLimit: 0, label: "" });
+      out.push({ id: `env-${p}`, enabled: true, provider: p, model: m, baseUrl: "", jsonMode: "json_schema", genModel: "", dailyLimit: 0, label: "", tokenLimit: DEFAULT_TOKEN_LIMIT, longModel: "" });
     }
   }
   return out.slice(0, MAX_SLOTS);

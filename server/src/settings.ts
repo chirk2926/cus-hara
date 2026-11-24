@@ -7,7 +7,7 @@ import path from "node:path";
 import { config } from "./config.ts";
 import { storedSettings, storeSetting } from "./db.ts";
 import { resetLlmClient } from "./llm.ts";
-import { type AiSlot, type Mode, type Provider, type StoredSlots, PROVIDERS, PROVIDER_INFO, MAX_SLOTS, aiSlots, allSlots, versusSame, isStored, setStoredSlots, setSlotKey, slotKey, slotHealth, usedToday, resetSlotHealth, newSlotId, clearSlotKeys } from "./ai_slots.ts";
+import { type AiSlot, type Mode, type Provider, type StoredSlots, DEFAULT_TOKEN_LIMIT, DEFAULT_LONG_MODEL, PROVIDERS, PROVIDER_INFO, MAX_SLOTS, aiSlots, allSlots, versusSame, isStored, setStoredSlots, setSlotKey, slotKey, slotHealth, usedToday, resetSlotHealth, newSlotId, clearSlotKeys } from "./ai_slots.ts";
 
 export type SettingType = "string" | "number" | "bool" | "enum" | "secret" | "text";
 
@@ -307,6 +307,8 @@ function sanitizeList(v: unknown): AiSlot[] {
       model: typeof o.model === "string" && MODEL_RE.test(o.model) ? o.model : "",
       genModel: typeof o.genModel === "string" && MODEL_RE.test(o.genModel) ? o.genModel : "",
       dailyLimit: Number.isInteger(o.dailyLimit) && (o.dailyLimit as number) > 0 ? Math.min(1_000_000, o.dailyLimit as number) : 0,
+      tokenLimit: Number.isInteger(o.tokenLimit) && (o.tokenLimit as number) >= 0 ? Math.min(1_000_000, o.tokenLimit as number) : DEFAULT_TOKEN_LIMIT,
+      longModel: o.provider === "anthropic" && typeof o.longModel === "string" && MODEL_RE.test(o.longModel) ? o.longModel : "",
       label: typeof o.label === "string" ? o.label.replace(/[\u0000-\u001f\u007f<>]/g, "").slice(0, 40) : "",
       baseUrl: typeof o.baseUrl === "string" ? o.baseUrl : "",
       jsonMode: o.jsonMode === "json_object" ? "json_object" : "json_schema",
@@ -336,7 +338,7 @@ export function aiSlotsForAdmin() {
   const view = (s: AiSlot) => {
     const k = slotKey(s);
     return {
-      id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label,
+      id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label, token_limit: s.tokenLimit, long_model: s.longModel,
       base_url: s.baseUrl, json_mode: s.jsonMode, key_set: k !== "", key_mask: mask(k), used_today: usedToday(s.id), ...slotHealth(s.id),
     };
   };
@@ -346,6 +348,8 @@ export function aiSlotsForAdmin() {
     max: MAX_SLOTS,
     versus_same: same,
     providers: PROVIDERS.map((p) => ({ id: p, label: PROVIDER_INFO[p].label, models: PROVIDER_INFO[p].models, needs_url: p === "custom" })),
+    default_token_limit: DEFAULT_TOKEN_LIMIT,
+    default_long_model: DEFAULT_LONG_MODEL,
     solo: aiSlots("solo").map(view),
     versus: same ? [] : aiSlots("versus").map(view),
   };
@@ -367,6 +371,11 @@ function validateList(input: unknown, mode: Mode, before: Map<string, AiSlot>, k
     const dl = Number(o.daily_limit ?? 0);
     if (!Number.isFinite(dl) || dl < 0 || dl > 1_000_000 || Math.floor(dl) !== dl) throw new SettingError(`${at}: 1日の上限は 0（上限なし）か、1〜1000000 の整数にしてください`);
     const label = typeof o.label === "string" ? o.label.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 40) : "";
+    // Claude だけ: 送る量が多いときに切り替えるモデルと、その目安（要件#117）
+    const longModel = provider === "anthropic" && typeof o.long_model === "string" ? o.long_model.trim() : "";
+    if (longModel !== "" && !MODEL_RE.test(longModel)) throw new SettingError(`${at}: 切り替え先のモデル名は英数字と . _ : / - だけにしてください`);
+    const tl = o.token_limit === undefined || o.token_limit === "" ? DEFAULT_TOKEN_LIMIT : Number(o.token_limit);
+    if (!Number.isFinite(tl) || tl < 1000 || tl > 1_000_000 || Math.floor(tl) !== tl) throw new SettingError(`${at}: 切り替えの目安は 1000〜1000000 の整数（トークン）にしてください`);
     let baseUrl = "";
     if (provider === "custom") {
       baseUrl = typeof o.base_url === "string" ? o.base_url.trim() : "";
@@ -389,7 +398,7 @@ function validateList(input: unknown, mode: Mode, before: Map<string, AiSlot>, k
     }
     // 種類・モデル・場所・キーを変えたら、失敗の回数を消してすぐに使ってみる
     if (!old || old.provider !== provider || old.model !== model || old.genModel !== genModel || old.baseUrl !== baseUrl || key !== "") resetSlotHealth(id);
-    out.push({ id, enabled: o.enabled !== false, provider, model, genModel, dailyLimit: dl, label, baseUrl, jsonMode: o.json_mode === "json_object" ? "json_object" : "json_schema" });
+    out.push({ id, enabled: o.enabled !== false, provider, model, genModel, dailyLimit: dl, label, tokenLimit: tl, longModel, baseUrl, jsonMode: o.json_mode === "json_object" ? "json_object" : "json_schema" });
   }
   return out;
 }
@@ -433,7 +442,7 @@ export function copySoloToVersus(): string {
   const solo = aiSlots("solo");
   return saveAiSlots({
     versus_same: false,
-    versus: solo.map((s) => ({ provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label, base_url: s.baseUrl, json_mode: s.jsonMode, enabled: s.enabled, copy_key_from: s.id })),
+    versus: solo.map((s) => ({ provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label, token_limit: s.tokenLimit, long_model: s.longModel, base_url: s.baseUrl, json_mode: s.jsonMode, enabled: s.enabled, copy_key_from: s.id })),
   });
 }
 

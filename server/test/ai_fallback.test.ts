@@ -28,7 +28,7 @@ test("1位が失敗したら2位を使い、失敗した1位はしばらく飛�
   const h1: Hits = { n: 0 }, h2: Hits = { n: 0 };
   const bad = await fakeApi(500, h1);
   const good = await fakeApi(200, h2);
-  const x = { genModel: "", dailyLimit: 0, label: "" };
+  const x = { genModel: "", dailyLimit: 0, label: "", tokenLimit: 90000, longModel: "" };
   slots.setStoredSlots({ versusSame: true, versus: [], solo: [
     { ...x, id: "aaaaaaa1", enabled: true, provider: "custom", model: "first", baseUrl: bad.url, jsonMode: "json_schema" },
     { ...x, id: "aaaaaaa2", enabled: false, provider: "custom", model: "off", baseUrl: good.url, jsonMode: "json_schema" },
@@ -55,7 +55,7 @@ test("1位が失敗したら2位を使い、失敗した1位はしばらく飛�
   await assert.rejects(() => llm.judgeStaffTurn("konbini", c, hist, 40, 0, false, "ja"), /休ませて/);
   // 対戦は別の並び。お客さんづくりだけ別のモデル、1日の上限（要件#116）
   slots.setStoredSlots({ versusSame: false, solo: [{ ...x, id: "aaaaaaa1", enabled: true, provider: "custom", model: "first", baseUrl: bad.url, jsonMode: "json_schema" }], versus: [
-    { id: "aaaaaaa4", enabled: true, provider: "custom", model: "vs-judge", genModel: "vs-gen", dailyLimit: 1, label: "", baseUrl: good.url, jsonMode: "json_schema" },
+    { id: "aaaaaaa4", enabled: true, provider: "custom", model: "vs-judge", genModel: "vs-gen", dailyLimit: 1, label: "", tokenLimit: 90000, longModel: "", baseUrl: good.url, jsonMode: "json_schema" },
     { ...x, id: "aaaaaaa5", enabled: true, provider: "custom", model: "vs-second", baseUrl: good.url, jsonMode: "json_schema" },
   ] });
   assert.equal(llm.llmEnabled("versus"), true);
@@ -82,4 +82,55 @@ test("飛ばす時間: 連続10回目までは5分、そこから1回ごとに5�
   assert.ok(!slots.slotSkipped("bbbbbbb1", t0 + 10 * 60_000 + 1));
   slots.slotSucceeded("bbbbbbb1");
   assert.equal(slots.slotHealth("bbbbbbb1").fails, 0);
+});
+
+test("Claude: 送る量が目安を超えそうなら切り替え先のモデルで呼ぶ（count_tokens で数える。少ないときは数えない）", async () => {
+  const seen: Array<{ path: string; model: string }> = [];
+  let count = 0;
+  const srv = http.createServer((req, res) => {
+    let b = "";
+    req.on("data", (c) => (b += c));
+    req.on("end", () => {
+      const body = JSON.parse(b);
+      seen.push({ path: req.url ?? "", model: body.model });
+      res.setHeader("content-type", "application/json");
+      if ((req.url ?? "").includes("count_tokens")) return res.end(JSON.stringify({ input_tokens: count }));
+      res.end(JSON.stringify({
+        id: "msg_t", type: "message", role: "assistant", model: body.model, stop_reason: "end_turn", stop_sequence: null,
+        content: [{ type: "text", text: JSON.stringify({ anger_delta: 0, resolve_delta: 10, yielded: false, customer_reply: "ふむ", comment: "" }) }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }));
+    });
+  });
+  await new Promise<void>((r) => srv.listen(0, r));
+  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(srv.address() as { port: number }).port}`;
+  const slots = await import("../src/ai_slots.ts");
+  const llm = await import("../src/llm.ts");
+  const { allCustomers } = await import("../src/scenarios.ts");
+  llm.resetLlmClient();
+  slots.resetSlotHealth();
+  slots.setStoredSlots({ versusSame: true, versus: [], solo: [
+    { id: "ccccccc1", enabled: true, provider: "anthropic", model: "claude-haiku-5-5", genModel: "", dailyLimit: 0, label: "", tokenLimit: 20000, longModel: "claude-sonnet-5-5", baseUrl: "", jsonMode: "json_schema" },
+  ] });
+  slots.setSlotKey("ccccccc1", "test-key");
+  const c = allCustomers("konbini")[0];
+  // 長い会話（目安の半分 10000 を超える文字数）→ count_tokens で数える
+  const long = [{ role: "customer" as const, text: c.opening }, ...Array.from({ length: 30 }, (_, i) => ({ role: (i % 2 ? "customer" : "staff") as "customer" | "staff", text: "申し訳ございません。".repeat(50) }))];
+  try {
+  count = 30000;
+  await llm.judgeStaffTurn("konbini", c, long, 40, 0, false, "ja");
+  assert.ok(seen.some((x) => x.path.includes("count_tokens")), "数えた");
+  assert.equal(seen[seen.length - 1].model, "claude-sonnet-5-5", "目安を超えたので切り替えた");
+  count = 15000;
+  await llm.judgeStaffTurn("konbini", c, long, 40, 0, false, "ja");
+  assert.equal(seen[seen.length - 1].model, "claude-haiku-5-5", "目安以下ならそのまま");
+  // 短い会話は数えない
+  const before = seen.filter((x) => x.path.includes("count_tokens")).length;
+  await llm.judgeStaffTurn("konbini", c, [{ role: "customer", text: c.opening }, { role: "staff", text: "はい" }], 40, 0, false, "ja");
+  assert.equal(seen.filter((x) => x.path.includes("count_tokens")).length, before, "短いときは count_tokens を呼ばない");
+  assert.equal(seen[seen.length - 1].model, "claude-haiku-5-5");
+  } finally {
+    srv.closeAllConnections();
+    srv.close();
+  }
 });

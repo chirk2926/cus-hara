@@ -307,10 +307,11 @@ async function callJsonInner<T>(system: string, userIn: string | UserPart[], sch
 }
 
 /** 1つの API で1回呼ぶ */
-async function callSlot<T>(slot: AiSlot, model: string, system: string, parts: UserPart[], schema: z.ZodType<T>, timeoutMs: number): Promise<T> {
+async function callSlot<T>(slot: AiSlot, modelIn: string, system: string, parts: UserPart[], schema: z.ZodType<T>, timeoutMs: number): Promise<T> {
   // SDK の補助関数が、構造化出力で使えない制約（最小値など）を説明文に移してくれる
   const format = zodOutputFormat(schema as z.ZodType<T> & z.ZodObject);
   const jsonSchema = (format as unknown as { schema: Record<string, unknown> }).schema;
+  let model = modelIn;
   if (slot.provider !== "anthropic") return callOpenAiCompatible(slot, model, system, parts.map((p) => p.text).join(""), schema, jsonSchema, timeoutMs);
   const params: Record<string, unknown> = {
     model,
@@ -322,6 +323,13 @@ async function callSlot<T>(slot: AiSlot, model: string, system: string, parts: U
     messages: [{ role: "user", content: parts.map((p) => (p.cache ? { type: "text", text: p.text, cache_control: { type: "ephemeral" } } : { type: "text", text: p.text })) }],
     output_config: { effort: "low", format: { type: "json_schema", schema: jsonSchema } },
   };
+  // 送る量が多すぎるときは、別のモデルに切り替える（要件#117）
+  const switched = await longInputModel(slot, model, params, timeoutMs);
+  if (switched !== model) {
+    log("ai long input", `${model} -> ${switched}`);
+    model = switched;
+    params.model = model;
+  }
   if (supportsFallback(model)) {
     params.betas = [FALLBACK_BETA];
     params.fallbacks = "default";
@@ -349,6 +357,29 @@ async function callSlot<T>(slot: AiSlot, model: string, system: string, parts: U
     if (block.type === "text") return parseResult(block.text, schema);
   }
   throw new LlmError("AIの応答を読み取れませんでした");
+}
+
+/**
+ * Claude だけ: 送る量（入力トークン）が登録の目安（既定 90000）を超えそうなら、切り替え先のモデルを返す（要件#117）。
+ * まず文字数で見積もり（日本語は1文字1トークン前後なので、文字数を多めの見積もりとして使う）、
+ * 目安の半分に届かなければ数えずにそのまま（ふだんの呼び出しを遅くしない）。届きそうなときだけ
+ * count_tokens（料金のかからない数える API）で数える。数えられなかったら文字数の見積もりで決める
+ */
+async function longInputModel(slot: AiSlot, model: string, params: Record<string, unknown>, timeoutMs: number): Promise<string> {
+  if (slot.longModel === "" || slot.longModel === model || slot.tokenLimit <= 0) return model;
+  const estimate = JSON.stringify([params.system, params.messages, params.output_config]).length;
+  if (estimate < slot.tokenLimit * 0.5) return model;
+  let tokens = estimate;
+  try {
+    const r = await anthropicClient(slotKey(slot)).messages.countTokens(
+      { model, system: params.system, messages: params.messages, output_config: params.output_config } as unknown as Anthropic.Messages.MessageCountTokensParams,
+      { timeout: Math.min(3000, timeoutMs) },
+    );
+    tokens = r.input_tokens;
+  } catch {
+    // 数えられないときは見積もりのまま
+  }
+  return tokens > slot.tokenLimit ? slot.longModel : model;
 }
 
 /** JSON を読んでスキーマで確かめる。```json ... ``` で囲んで返すモデルもあるので外す */
