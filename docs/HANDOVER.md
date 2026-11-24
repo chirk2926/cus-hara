@@ -18,7 +18,7 @@
 | Microsoft Store・紹介サイト | STORE_LISTING.md・SITE.md・`site/` |
 | セキュリティの見直し（要件#108）・全体の見直し（要件#109） | REQUIREMENTS_LOG #108・#109 |
 
-テスト: サーバーは `cd server && npm test`（53 件）。ゲームは CI（`.github/workflows/build.yml`）がスモーク（日・中・韓・英）・対戦（文字・声）・QA を回す。バージョンはゲーム・サーバーとも 0.2.0。
+テスト: サーバーは `cd server && npm test`（53 件）。ゲームは CI（`.github/workflows/build.yml`）がスモーク（日・中・韓・英）・対戦（文字・声）・QA を回す。バージョンはゲーム・サーバーとも 1.0.0。
 
 ---
 

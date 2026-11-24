@@ -10,7 +10,7 @@ config/name_localized={
 "zh": "顾客骚扰防线"
 }
 config/description="理不尽なお客さんがキレる前に、言葉で切り抜ける接客サバイバル"
-config/version="0.2.0"
+config/version="1.0.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"

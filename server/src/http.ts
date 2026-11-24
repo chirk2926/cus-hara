@@ -23,7 +23,7 @@ import { type Lang, toLang, LANGS } from "./lang.ts";
 import type { Lobby } from "./lobby.ts";
 import { log } from "./log.ts";
 
-export const VERSION = "0.2.0";
+export const VERSION = "1.0.0";
 const MAX_BODY = 64 * 1024;
 
 /** 名前に不適切な言葉がないか（キーワード → AI が使えるときは AI も。要件#94） */

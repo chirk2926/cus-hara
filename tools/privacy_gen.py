@@ -15,7 +15,7 @@ def page(lang, title, nav, body):
 NAV = '<a href="/privacy?lang=ja">日本語</a><a href="/privacy?lang=en">English</a><a href="/privacy?lang=zh">中文</a><a href="/privacy?lang=ko">한국어</a>'
 
 JA = """<h1>カスハラ防衛線 プライバシーポリシー</h1>
-<p class="muted">制定日: 2026年11月19日　／　運営者: medal　／　お問い合わせ: <span class="ph">【連絡先メールアドレス】</span></p>
+<p class="muted">制定日: 2026年11月19日　／　改定日: 2026年11月24日　／　運営者: medal　／　お問い合わせ: <a href="mailto:support@mgc-sv.com">support@mgc-sv.com</a></p>
 <p>「カスハラ防衛線」（以下「本ゲーム」）の運営者（以下「運営」）は、本ゲームで扱う利用者の情報を、このポリシーのとおりに取り扱います。</p>
 
 <h2>1. 扱う情報</h2>
@@ -32,19 +32,19 @@ JA = """<h1>カスハラ防衛線 プライバシーポリシー</h1>
 
 <h2>2. 外部への送信（外部のサービス）</h2>
 <table><tr><th>送り先</th><th>送るもの</th><th>目的</th></tr>
-<tr><td>AIの事業者（Anthropic, PBC〔米国〕。運営の設定により、他のOpenAI互換のAI事業者）</td><td>採点・チェックする発言の文字、お客さんの設定、会話の流れ</td><td>採点、不適切な内容のチェック、お客さんのセリフづくり</td></tr>
+<tr><td>AIの事業者（運営が設定した次のいずれか。使えないときは順に切り替わります: Anthropic, PBC〔米国〕、OpenAI, L.L.C.〔米国〕、Google LLC〔米国〕（Gemini）、Hangzhou DeepSeek Artificial Intelligence Co., Ltd.〔中国〕（DeepSeek））</td><td>採点・チェックする発言の文字、お客さんの設定、会話の流れ</td><td>採点、不適切な内容のチェック、お客さんのセリフづくり</td></tr>
 <tr><td>文字起こしのサービス（運営が設定したもの）</td><td>声の対戦での声</td><td>声を文字に起こすため</td></tr>
 <tr><td>Epic Games, Inc.〔米国〕（Epic Online Services）</td><td>Epicアカウント、またはこのパソコン用の匿名のID、対戦相手探しの情報、声（ボイスチャット）、実績</td><td>対戦相手探し、フレンド招待、声の中継、実績</td></tr>
 <tr><td>Cloudflare, Inc.〔米国〕</td><td>ゲームサーバーとの通信（暗号化されています）</td><td>ゲームサーバーへの通信の経路</td></tr>
 <tr><td>Microsoft Corporation〔米国〕</td><td>（Microsoft Store での配信・購入に関する情報。本ゲームから送るものはありません）</td><td>配信</td></tr>
 </table>
-<p>各社での取り扱いは、それぞれのプライバシーポリシーによります。外国にある事業者に送るため、送り先の国の個人情報の保護の制度のもとで扱われます。</p>
+<p>各社での取り扱いは、それぞれのプライバシーポリシーによります。外国にある事業者に送るため、送り先の国の個人情報の保護の制度のもとで扱われます。米国には、日本の個人情報保護法に当たる全国共通の法律はなく、州ごとの法律などで保護されます。中国の事業者（DeepSeek）に送る場合は、中国の個人情報保護法のもとで扱われますが、政府機関による情報の取得を定めた法令があり、日本と同じ水準の保護が受けられないことがあります。各国の制度は、個人情報保護委員会のウェブサイト（外国における個人情報の保護に関する制度）でも確かめられます。</p>
 
 <h2>3. 対戦での発言の取り扱い（同意をいただく内容）</h2>
 <div class="box">オンライン対戦での発言は、ユーザーどうしの通信です。運営は、次の扱いについて、初めて対戦するときに、ゲームの画面で内容を示し、利用者から個別に明確な同意（チェックと「同意して対戦へ進む」）をいただいたうえで行います。同意しない場合は対戦できませんが、1人用モードは遊べます。同意は、ゲームの「設定」からいつでも取り消せます（取り消すと対戦できなくなります）。</div>
 <ol>
 <li><b>発言のチェックと判定</b>: 対戦での発言（文字・声）は、不適切な内容（性的な内容・差別・脅し・個人情報）のチェックと、AIによる採点に使います。</li>
-<li><b>外部のAIへの送信</b>: チェックと採点のため、発言の文字（声は文字に起こしたもの）を、ゲームサーバーからAIの事業者（Anthropic など、運営が設定した事業者）に送ります。声の対戦では、文字に起こすために声を文字起こしのサービスに送ります。</li>
+<li><b>外部のAIへの送信</b>: チェックと採点のため、発言の文字（声は文字に起こしたもの）を、ゲームサーバーからAIの事業者（上の表の事業者のうち、運営が設定したもの）に送ります。声の対戦では、文字に起こすために声を文字起こしのサービスに送ります。</li>
 <li><b>相手への中継</b>: 発言は対戦相手に届けます。声は Epic Online Services（Epic Games）のボイスチャットで、話している間そのまま相手に聞こえます（チェックは文字に起こしてから行うため、声そのものは止められません）。Epic が使えないときはゲームサーバーを通し、チェックを通った声だけを届けます。</li>
 <li><b>保存</b>: 発言は、試合中と試合の終わりから1時間だけ、サーバーのメモリに置きます。通報（相手からの通報、または自動の不適切発言の検出）があった試合だけ、会話の文字を30日保存し、運営が通報の確認に使います。声そのものは保存しません。</li>
 <li><b>不適切な発言</b>: 見つかった発言は（文字は）相手に見せず、発言した人に警告します。3回で負けになり、自動で通報されます。</li>
@@ -68,7 +68,7 @@ JA = """<h1>カスハラ防衛線 プライバシーポリシー</h1>
 """
 
 EN = """<h1>Kasuhara Defense Line – Calm the Angry Customer — Privacy Policy</h1>
-<p class="muted">Effective: November 19, 2026 / Operator: medal / Contact: <span class="ph">[Contact email]</span></p>
+<p class="muted">Effective: November 19, 2026 / Revised: November 24, 2026 / Operator: medal / Contact: <a href="mailto:support@mgc-sv.com">support@mgc-sv.com</a></p>
 <p>The operator of "Kasuhara Defense Line – Calm the Angry Customer" (the "Game") handles users' information as described in this policy. If this translation differs from the Japanese version, the Japanese version prevails.</p>
 
 <h2>1. Information we handle</h2>
@@ -85,19 +85,19 @@ EN = """<h1>Kasuhara Defense Line – Calm the Angry Customer — Privacy Policy
 
 <h2>2. Sending to external services</h2>
 <table><tr><th>Recipient</th><th>What</th><th>Purpose</th></tr>
-<tr><td>AI provider (Anthropic, PBC, USA; or another OpenAI-compatible provider set by the operator)</td><td>Text of remarks being scored/checked, customer settings, conversation context</td><td>Scoring, checking inappropriate content, writing customer lines</td></tr>
+<tr><td>AI provider (one of the following, set by the operator; if one is unavailable the next is used: Anthropic, PBC, USA; OpenAI, L.L.C., USA; Google LLC, USA (Gemini); Hangzhou DeepSeek Artificial Intelligence Co., Ltd., China (DeepSeek))</td><td>Text of remarks being scored/checked, customer settings, conversation context</td><td>Scoring, checking inappropriate content, writing customer lines</td></tr>
 <tr><td>Speech-to-text service (set by the operator)</td><td>Your voice in voice matches</td><td>Transcription</td></tr>
 <tr><td>Epic Games, Inc., USA (Epic Online Services)</td><td>Your Epic account or an anonymous ID for your PC, matchmaking data, voice (voice chat), achievements</td><td>Matchmaking, friend invites, voice delivery, achievements</td></tr>
 <tr><td>Cloudflare, Inc., USA</td><td>Encrypted traffic to the game server</td><td>Network route to the game server</td></tr>
 <tr><td>Microsoft Corporation, USA</td><td>(Distribution/purchase information through Microsoft Store; the Game itself sends nothing)</td><td>Distribution</td></tr>
 </table>
-<p>Each company handles data under its own privacy policy. Because recipients are located abroad, data is handled under the personal-information protection system of their countries.</p>
+<p>Each company handles data under its own privacy policy. Because recipients are located abroad, data is handled under the personal-information protection system of their countries. The United States has no single nationwide law equivalent to Japan's Act on the Protection of Personal Information; data is protected by state laws and others. When data is sent to the provider in China (DeepSeek), it is handled under China's Personal Information Protection Law, but there are also laws that allow government agencies to obtain information, so the same level of protection as in Japan may not be available.</p>
 
 <h2>3. How remarks in versus matches are handled (what you consent to)</h2>
 <div class="box">Remarks in online versus matches are communications between users. The first time you play versus, the Game shows the details below and asks for your specific, explicit consent (ticking a box and pressing "Agree and continue to versus"). Without consent you cannot play versus, but solo mode remains available. You can withdraw consent at any time in Settings (you won't be able to play versus after withdrawing).</div>
 <ol>
 <li><b>Checking and scoring</b>: What you say in versus matches (text and voice) is checked for inappropriate content (sexual content, discrimination, threats, personal information) and scored by AI.</li>
-<li><b>Sending to external AI</b>: For checking and scoring, the text of what you say (voice is transcribed first) is sent from the game server to an AI provider chosen by the operator (such as Anthropic). In voice matches, your voice is sent to a speech-to-text service.</li>
+<li><b>Sending to external AI</b>: For checking and scoring, the text of what you say (voice is transcribed first) is sent from the game server to an AI provider chosen by the operator (one of those in the table above). In voice matches, your voice is sent to a speech-to-text service.</li>
 <li><b>Delivery to your opponent</b>: What you say is delivered to your opponent. Through Epic Online Services (Epic Games) voice chat, your voice is heard live while you talk (checks run after transcription, so the voice itself can't be stopped). When Epic isn't available, voice goes through the game server and only voice that passes the check is delivered.</li>
 <li><b>Storage</b>: Remarks are kept in server memory only during the match and for 1 hour after it ends. Only for reported matches (reported by your opponent or by automatic detection) is the conversation text stored for 30 days, for the operator to review the report. Voice itself is never stored.</li>
 <li><b>Inappropriate remarks</b>: Detected remarks are hidden from your opponent (as text) and the speaker receives a warning. Three warnings mean a loss, and the match is reported automatically.</li>
@@ -121,7 +121,7 @@ EN = """<h1>Kasuhara Defense Line – Calm the Angry Customer — Privacy Policy
 """
 
 ZH = """<h1>《顾客骚扰防线 – 安抚愤怒的顾客》隐私政策</h1>
-<p class="muted">制定日期：2026年11月19日 ／ 运营方：medal ／ 联系方式：<span class="ph">【联系邮箱】</span></p>
+<p class="muted">制定日期：2026年11月19日 ／ 修订日期：2026年11月24日 ／ 运营方：medal ／ 联系方式：<a href="mailto:support@mgc-sv.com">support@mgc-sv.com</a></p>
 <p>《顾客骚扰防线 – 安抚愤怒的顾客》（以下称“本游戏”）的运营方按照本政策处理用户信息。若本译文与日文版有出入，以日文版为准。</p>
 
 <h2>1. 处理的信息</h2>
@@ -138,19 +138,19 @@ ZH = """<h1>《顾客骚扰防线 – 安抚愤怒的顾客》隐私政策</h1>
 
 <h2>2. 发送给外部服务</h2>
 <table><tr><th>接收方</th><th>发送内容</th><th>目的</th></tr>
-<tr><td>AI服务商（Anthropic, PBC〔美国〕；或运营方设定的其他兼容OpenAI的服务商）</td><td>需评分和检查的发言文字、顾客设定、对话上下文</td><td>评分、检查不当内容、生成顾客台词</td></tr>
+<tr><td>AI服务商（运营方设定的以下之一；无法使用时依次切换：Anthropic, PBC〔美国〕、OpenAI, L.L.C.〔美国〕、Google LLC〔美国〕（Gemini）、杭州深度求索人工智能基础技术研究有限公司〔中国〕（DeepSeek））</td><td>需评分和检查的发言文字、顾客设定、对话上下文</td><td>评分、检查不当内容、生成顾客台词</td></tr>
 <tr><td>语音转文字服务（运营方设定）</td><td>语音对战中的语音</td><td>转成文字</td></tr>
 <tr><td>Epic Games, Inc.〔美国〕（Epic Online Services）</td><td>Epic账号或此电脑的匿名ID、匹配信息、语音（语音聊天）、成就</td><td>匹配对手、好友邀请、传达语音、成就</td></tr>
 <tr><td>Cloudflare, Inc.〔美国〕</td><td>与游戏服务器的通信（已加密）</td><td>连接游戏服务器的通信路径</td></tr>
 <tr><td>Microsoft Corporation〔美国〕</td><td>（与 Microsoft Store 发行和购买相关的信息；本游戏本身不发送任何内容）</td><td>发行</td></tr>
 </table>
-<p>各公司按照其各自的隐私政策处理数据。由于接收方位于境外，数据将在接收方所在国家的个人信息保护制度下处理。</p>
+<p>各公司按照其各自的隐私政策处理数据。由于接收方位于境外，数据将在接收方所在国家的个人信息保护制度下处理。美国没有相当于日本《个人信息保护法》的全国统一法律，而是由各州法律等提供保护。发送给中国的服务商（DeepSeek）时，数据将在中国《个人信息保护法》下处理，但中国也有允许政府机关获取信息的法律，因此可能无法获得与日本同等水平的保护。</p>
 
 <h2>3. 对战发言的处理（需要你同意的内容）</h2>
 <div class="box">在线对战中的发言属于用户之间的通信。首次对战时，本游戏会在画面上展示以下内容，并请你给予具体、明确的同意（勾选并按下“同意并进入对战”）。不同意则无法对战，但可以玩单人模式。你可以随时在“设置”中撤回同意（撤回后将无法对战）。</div>
 <ol>
 <li><b>发言的检查与判定</b>：对战中的发言（文字和语音）会用于检查不当内容（色情内容、歧视、威胁、个人信息）以及由AI评分。</li>
-<li><b>发送给外部AI</b>：为了检查和评分，游戏服务器会把发言的文字（语音会先转成文字）发送给运营方设定的AI服务商（如 Anthropic）。语音对战中，会把语音发送给语音转文字服务。</li>
+<li><b>发送给外部AI</b>：为了检查和评分，游戏服务器会把发言的文字（语音会先转成文字）发送给运营方设定的AI服务商（上表中的服务商之一）。语音对战中，会把语音发送给语音转文字服务。</li>
 <li><b>传达给对手</b>：发言会传达给对战对手。通过 Epic Online Services（Epic Games）的语音聊天时，说话的声音会直接被对手听到（检查是在转成文字之后进行，因此无法拦截声音本身）。无法使用 Epic 时，经由游戏服务器，只传达通过检查的语音。</li>
 <li><b>保存</b>：发言只在比赛中以及比赛结束后1小时内保存在服务器内存中。只有被举报的比赛（对手举报或自动检测到不当发言），对话文字才会保存30天，供运营方核实举报。语音本身不会保存。</li>
 <li><b>不当发言</b>：检测到的发言（文字）不会显示给对手，并警告发言者。3次警告判负，并自动举报。</li>
@@ -174,7 +174,7 @@ ZH = """<h1>《顾客骚扰防线 – 安抚愤怒的顾客》隐私政策</h1>
 """
 
 KO = """<h1>카스하라 방어선 – 화난 손님 달래기 개인정보 처리방침</h1>
-<p class="muted">제정일: 2026년 11월 19일 ／ 운영자: medal ／ 문의: <span class="ph">[연락처 이메일 주소]</span></p>
+<p class="muted">제정일: 2026년 11월 19일 ／ 개정일: 2026년 11월 24일 ／ 운영자: medal ／ 문의: <a href="mailto:support@mgc-sv.com">support@mgc-sv.com</a></p>
 <p>「카스하라 방어선 – 화난 손님 달래기」(이하 「본 게임」)의 운영자(이하 「운영」)는 본 게임에서 다루는 이용자의 정보를 이 방침에 따라 취급합니다. 이 번역과 일본어판의 내용이 다를 경우 일본어판이 우선합니다.</p>
 
 <h2>1. 다루는 정보</h2>
@@ -191,19 +191,19 @@ KO = """<h1>카스하라 방어선 – 화난 손님 달래기 개인정보 처�
 
 <h2>2. 외부로의 전송(외부 서비스)</h2>
 <table><tr><th>받는 곳</th><th>보내는 것</th><th>목적</th></tr>
-<tr><td>AI 사업자(Anthropic, PBC〔미국〕. 운영 설정에 따라 다른 OpenAI 호환 AI 사업자)</td><td>채점·확인할 발언의 글자, 손님 설정, 대화의 흐름</td><td>채점, 부적절한 내용 확인, 손님 대사 생성</td></tr>
+<tr><td>AI 사업자(운영이 설정한 다음 중 하나. 쓸 수 없을 때는 차례로 바뀝니다: Anthropic, PBC〔미국〕, OpenAI, L.L.C.〔미국〕, Google LLC〔미국〕(Gemini), Hangzhou DeepSeek Artificial Intelligence Co., Ltd.〔중국〕(DeepSeek))</td><td>채점·확인할 발언의 글자, 손님 설정, 대화의 흐름</td><td>채점, 부적절한 내용 확인, 손님 대사 생성</td></tr>
 <tr><td>음성 인식 서비스(운영이 설정한 것)</td><td>음성 대전의 음성</td><td>음성을 글자로 바꾸기 위해</td></tr>
 <tr><td>Epic Games, Inc.〔미국〕(Epic Online Services)</td><td>Epic 계정 또는 이 PC용 익명 ID, 대전 상대 찾기 정보, 음성(보이스 채팅), 업적</td><td>대전 상대 찾기, 친구 초대, 음성 중계, 업적</td></tr>
 <tr><td>Cloudflare, Inc.〔미국〕</td><td>게임 서버와의 통신(암호화되어 있습니다)</td><td>게임 서버로 가는 통신 경로</td></tr>
 <tr><td>Microsoft Corporation〔미국〕</td><td>(Microsoft Store에서의 배포·구입에 관한 정보. 본 게임에서 보내는 것은 없습니다)</td><td>배포</td></tr>
 </table>
-<p>각 회사에서의 취급은 각 회사의 개인정보 처리방침에 따릅니다. 외국에 있는 사업자에게 보내므로, 받는 나라의 개인정보 보호 제도 아래에서 취급됩니다.</p>
+<p>각 회사에서의 취급은 각 회사의 개인정보 처리방침에 따릅니다. 외국에 있는 사업자에게 보내므로, 받는 나라의 개인정보 보호 제도 아래에서 취급됩니다. 미국에는 일본의 개인정보보호법에 해당하는 전국 공통의 법률이 없고, 주별 법률 등으로 보호됩니다. 중국의 사업자(DeepSeek)에게 보내는 경우 중국의 개인정보보호법 아래에서 취급되지만, 정부 기관이 정보를 취득할 수 있도록 정한 법령도 있어 일본과 같은 수준의 보호를 받지 못할 수 있습니다.</p>
 
 <h2>3. 대전 발언의 취급(동의를 받는 내용)</h2>
 <div class="box">온라인 대전에서의 발언은 이용자끼리의 통신입니다. 운영은 다음 취급에 대해, 처음 대전할 때 게임 화면에서 내용을 보여 주고 이용자에게 개별적이고 명확한 동의(체크와 「동의하고 대전으로」)를 받은 뒤에 행합니다. 동의하지 않으면 대전은 할 수 없지만 1인 플레이 모드는 즐길 수 있습니다. 동의는 게임의 「설정」에서 언제든 철회할 수 있습니다(철회하면 대전을 할 수 없게 됩니다).</div>
 <ol>
 <li><b>발언의 확인과 판정</b>: 대전에서의 발언(글자·음성)은 부적절한 내용(성적인 내용·차별·협박·개인정보) 확인과 AI 채점에 씁니다.</li>
-<li><b>외부 AI로의 전송</b>: 확인과 채점을 위해 발언의 글자(음성은 글자로 변환한 것)를 게임 서버에서 AI 사업자(Anthropic 등 운영이 설정한 사업자)에게 보냅니다. 음성 대전에서는 글자로 바꾸기 위해 음성을 음성 인식 서비스에 보냅니다.</li>
+<li><b>외부 AI로의 전송</b>: 확인과 채점을 위해 발언의 글자(음성은 글자로 변환한 것)를 게임 서버에서 AI 사업자(위 표의 사업자 중 운영이 설정한 곳)에게 보냅니다. 음성 대전에서는 글자로 바꾸기 위해 음성을 음성 인식 서비스에 보냅니다.</li>
 <li><b>상대에게 중계</b>: 발언은 대전 상대에게 전달됩니다. Epic Online Services(Epic Games)의 보이스 채팅에서는 말하는 동안 목소리가 그대로 상대에게 들립니다(확인은 글자로 바꾼 뒤에 하므로 목소리 자체는 막을 수 없습니다). Epic을 쓸 수 없을 때는 게임 서버를 통해 확인을 통과한 음성만 전달합니다.</li>
 <li><b>보관</b>: 발언은 경기 중과 경기가 끝난 뒤 1시간 동안만 서버 메모리에 둡니다. 신고(상대의 신고 또는 부적절한 발언의 자동 검출)가 있었던 경기만 대화의 글자를 30일간 보관하고, 운영이 신고 확인에 씁니다. 음성 자체는 저장하지 않습니다.</li>
 <li><b>부적절한 발언</b>: 발견된 발언은 (글자로는) 상대에게 보이지 않게 하고, 발언한 사람에게 경고합니다. 3번이면 패배가 되고 자동으로 신고됩니다.</li>

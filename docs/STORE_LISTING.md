@@ -10,10 +10,11 @@
 | 発行者の表示名 | medal（著作権表示は © 2026 medal） |
 | アプリ名（予約） | カスハラ防衛線 ／ 英語: Kasuhara Defense Line – Calm the Angry Customer ／ 中国語: 顾客骚扰防线 – 安抚愤怒的顾客 ／ 韓国語: 카스하라 방어선 – 화난 손님 달래기 |
 | カテゴリ | ゲーム → シミュレーション（サブ: カジュアル・パーティ） |
-| 価格 | 〔無料〕（ゲーム内の通貨 HP・CUS はゲームの中だけのもので、お金では買えない） |
+| 価格 | 790円（予定。ゲーム内の購入はなし。ゲーム内の通貨 HP・CUS はゲームの中だけのもので、お金では買えない） |
 | アプリ内購入 | なし |
-| プライバシーポリシーの URL | `https://〔ゲームサーバーのドメイン〕/privacy`（英語は `?lang=en`、中国語は `?lang=zh`、韓国語は `?lang=ko`。ゲームサーバーが配る） |
-| サポートの連絡先 | 〔連絡先メールアドレス〕 |
+| プライバシーポリシーの URL | `https://game.mgc-sv.com/privacy`（英語は `?lang=en`、中国語は `?lang=zh`、韓国語は `?lang=ko`。ゲームサーバーが配る） |
+| サポートの連絡先 | support@mgc-sv.com |
+| Web サイト | https://cus.mgc-sv.com/ |
 | 必要なもの | Windows 10 / 11（64ビット）、キーボード。マイクは声の対戦のときだけ |
 | 機能の宣言（Capabilities） | インターネット（クライアント）、マイク（声の対戦） |
 | 年齢 | 下の 4 節の答えで IARC が決める |
@@ -129,7 +130,7 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 
 ## 5. 審査に出す前の確認
 - [ ] パッケージの Identity（`MSIX_IDENTITY_NAME`・`MSIX_PUBLISHER`）を、パートナーセンターの「製品 ID」の値にした（GitHub の Variables。docs/MAINTENANCE.md 7節）
-- [ ] プライバシーポリシーの〔連絡先〕を書きかえ（運営者名は medal に設定済み）、ゲームサーバーで公開した（`server/public/privacy.*.html`）
-- [ ] ゲームの既定のサーバーの URL を、公開するドメインにした
+- [x] プライバシーポリシーの連絡先を support@mgc-sv.com に（運営者名は medal）。ゲームサーバーで公開する（`server/public/privacy.*.html`。サーバーを更新すれば出る）
+- [x] ゲームの既定のサーバーの URL を https://game.mgc-sv.com にした
 - [ ] EOS の開発者ポータルに、実績 t001〜t155 を登録した（docs/HANDOVER.md 4b）。本番の ID は `config/eos.local.cfg`（リポジトリに入れない）
 - [ ] 審査用のメモ: 「オンライン対戦の確認には、2台で同時にランクマッチに並ぶか、フレンド対戦の部屋コードを使ってください。1人用はサーバーなしでも遊べます」

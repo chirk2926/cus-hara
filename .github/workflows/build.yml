@@ -373,7 +373,7 @@ jobs:
       MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME || 'CusHara.Dev' }}
       MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER || 'CN=CusHaraDev' }}
       MSIX_PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY || 'medal' }}
-      MSIX_VERSION: ${{ vars.MSIX_VERSION || '0.2.0.0' }}
+      MSIX_VERSION: ${{ vars.MSIX_VERSION || '1.0.0.0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
