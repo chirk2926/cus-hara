@@ -5,6 +5,6 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="AppDisplayName" xml:space="preserve"><value>顾客骚扰防线</value></data>
+  <data name="AppDisplayName" xml:space="preserve"><value>顾客骚扰防线 – 安抚愤怒的顾客</value></data>
   <data name="AppDescription" xml:space="preserve"><value>用语言应对无理的投诉。由AI扮演顾客的接待游戏。</value></data>
 </root>

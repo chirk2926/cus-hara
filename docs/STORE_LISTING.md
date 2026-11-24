@@ -130,7 +130,7 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 
 ## 5. 審査に出す前の確認
 - [x] パッケージの Identity を、パートナーセンターの「Product Identity」の値にした（CI の既定値: `spsrv.CustomerHarassmentDefenseLine`・`CN=E033ABEC-3672-4785-A144-DEFEB8A8F16F`・`spsrv`。GitHub の Variables に入れればそちらが優先）
-- [ ] パートナーセンターの「Manage app names」で、MSIX のアプリ名を4つとも予約した: `Kasuhara Defense Line`・`カスハラ防衛線`・`顾客骚扰防线`・`카스하라 방어선`（`packaging/msix/Strings/*/Resources.resw` の AppDisplayName。予約していない名前があると「予約されていない表示名」で止まる）
+- [x] MSIX のアプリ名（`packaging/msix/Strings/*/Resources.resw` の AppDisplayName）を、パートナーセンターの「Manage app names」で予約した名前にそろえた: 英語 `Kasuhara Defense Line – Calm the Angry Customer`・日本語 `カスハラ防衛線`・中国語 `顾客骚扰防线 – 安抚愤怒的顾客`・韓国語 `카스하라 방어선 – 화난 손님 달래기`（予約していない名前にすると「予約されていない表示名」で止まる。ダッシュは – ）
 - [x] プライバシーポリシーの連絡先を support@mgc-sv.com に（運営者名は medal）。ゲームサーバーで公開する（`server/public/privacy.*.html`。サーバーを更新すれば出る）
 - [x] ゲームの既定のサーバーの URL を https://game.mgc-sv.com にした
 - [ ] EOS の開発者ポータルに、実績 t001〜t155 を登録した（docs/HANDOVER.md 4b）。本番の ID は `config/eos.local.cfg`（リポジトリに入れない）

@@ -133,6 +133,7 @@
 | 126 | 公式サイトの /ja/ などに来ても、初めてならブラウザの言語へ。2回目からは URL のとおり。cus.mgc-sv.com にそのまま来たら毎回ブラウザの言語へ。できたらプッシュしてよい | 言語のページの <head> で、初めてのブラウザだけ hreflang の別ページへ移す（first-lang.js。クローラーは移さない、その言語のページが無ければ移らない）。ルートは前に選んだ言語を使わず、毎回ブラウザの言語へ | 実装済み（ブラウザの言語を変えて9通り確かめた） |
 | 127 | ストアの提出で「PublisherDisplayName が medal で、発行元の表示名 spsrv と一致しない」。要素は spsrv でよい | MSIX の発行者の表示名の既定を spsrv に（GitHub の Variables の MSIX_PUBLISHER_DISPLAY が入っていればそちら）。runFullTrust の警告は、提出の「制限付き機能」の欄に理由を書けば通る（文を docs/STORE_LISTING.md 5節に用意） | 実装済み（新しい MSIX は CI で作られる） |
 | 128 | ストアの検証エラー: パッケージ ID・ファミリー名・発行者がちがう、予約されていない表示名「Kasuhara Defense Line」 | CI の既定値を Product Identity の値に（spsrv.CustomerHarassmentDefenseLine・CN=E033ABEC-3672-4785-A144-DEFEB8A8F16F）。表示名は質問で決めた内容: 言語ごとの名前（Kasuhara Defense Line・カスハラ防衛線・顾客骚扰防线・카스하라 방어선）を依頼者がパートナーセンターで予約する（MSIX はそのまま） | 実装済み（予約は依頼者） |
+| 129 | #128 の表示名を変更: 今予約している名前に合わせる | MSIX のアプリ名（スタートメニュー・アプリ一覧）を、予約済みの名前にした: 英語 Kasuhara Defense Line – Calm the Angry Customer、日本語 カスハラ防衛線、中国語 顾客骚扰防线 – 安抚愤怒的顾客、韓国語 카스하라 방어선 – 화난 손님 달래기。ゲームのウィンドウの名前（短い名前。#113）はそのまま | 実装済み |
 
 ## 記録のルール
 
