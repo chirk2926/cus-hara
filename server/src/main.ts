@@ -7,6 +7,7 @@ import { Lobby } from "./lobby.ts";
 import { createHttpServer, info } from "./http.ts";
 import { attachWebSocket } from "./ws.ts";
 import { log } from "./log.ts";
+import { llmName } from "./llm.ts";
 
 openDb();
 // 管理画面で変えた設定を読み込む（環境変数より優先。要件#100）
@@ -17,7 +18,7 @@ const wss = attachWebSocket(server, lobby);
 server.listen(config.port, config.host, () => {
   const i = info(lobby);
   log(`cushara-server ${i.version} listening on ${config.host}:${config.port}`);
-  log(`AI判定: ${i.ai ? `ON (${config.model})` : "OFF（キーワード判定）"} / 音声対戦: ${i.voice ? `ON (${config.sttProvider})` : "OFF"}`);
+  log(`AI判定: ${i.ai ? `ON (${llmName()})` : "OFF（キーワード判定）"} / 音声対戦: ${i.voice ? `ON (${config.sttProvider})` : "OFF"}`);
 });
 
 // 管理画面（要件#100）。このマシンの中（127.0.0.1）だけで待ち受ける。ADMIN_PORT=0 で使わない

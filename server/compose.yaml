@@ -11,6 +11,10 @@ services:
       - "127.0.0.1:8787:8787"
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # ほかの AI（要件#115）。ふつうは管理画面の「AIのAPI」で登録する
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       # 既定は安いモデル（要件#108: 高いモデルが既定だと料金がふくらむ）
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-haiku-5-5}
       TRUST_PROXY: ${TRUST_PROXY:-0}

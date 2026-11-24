@@ -216,12 +216,12 @@ export class Match {
   }
 
   private async pickCard(): Promise<Customer> {
-    if (llmEnabled()) {
+    if (llmEnabled("versus")) {
       try {
         let timer: NodeJS.Timeout | undefined;
         const timeout = new Promise<null>((r) => { timer = setTimeout(() => r(null), 12000); });
         try {
-          const c = await Promise.race([generateCustomer(this.stage, this.usedTitles, this.lang), timeout]);
+          const c = await Promise.race([generateCustomer(this.stage, this.usedTitles, this.lang, false, false, "versus"), timeout]);
           if (c) return applyProblem(c);
         } finally {
           clearTimeout(timer);   // 要件#109: 待ちのタイマーを残さない
@@ -483,9 +483,9 @@ export class Match {
   }
 
   private async judgeStaff(card: Customer, reply: string, used: string[], history: HistoryEntry[], voice: boolean, seat: number) {
-    if (llmEnabled() && allow(`llm:${this.seats[seat].player.id}`, config.llmPerMinute * 2, 60_000)) {
+    if (llmEnabled("versus") && allow(`llm:${this.seats[seat].player.id}`, config.llmPerMinute * 2, 60_000)) {
       try {
-        return await judgeStaffTurn(this.stage, card, history, this.anger, this.resolveVal, voice, this.lang);
+        return await judgeStaffTurn(this.stage, card, history, this.anger, this.resolveVal, voice, this.lang, "versus");
       } catch (e) {
         log("llm judge failed", String(e));
       }
@@ -494,7 +494,7 @@ export class Match {
   }
 
   private async judgeCustomer(card: Customer, line: string, used: string[], history: HistoryEntry[], voice: boolean, seat: number) {
-    if (line !== "" && llmEnabled() && allow(`llm:${this.seats[seat].player.id}`, config.llmPerMinute * 2, 60_000)) {
+    if (line !== "" && llmEnabled("versus") && allow(`llm:${this.seats[seat].player.id}`, config.llmPerMinute * 2, 60_000)) {
       try {
         return await judgeCustomerTurn(this.stage, card, history, voice, this.lang);
       } catch (e) {

@@ -7,6 +7,7 @@ import path from "node:path";
 import { config } from "./config.ts";
 import { storedSettings, storeSetting } from "./db.ts";
 import { resetLlmClient } from "./llm.ts";
+import { type AiSlot, type Mode, type Provider, type StoredSlots, PROVIDERS, PROVIDER_INFO, MAX_SLOTS, aiSlots, allSlots, versusSame, isStored, setStoredSlots, setSlotKey, slotKey, slotHealth, usedToday, resetSlotHealth, newSlotId, clearSlotKeys } from "./ai_slots.ts";
 
 export type SettingType = "string" | "number" | "bool" | "enum" | "secret" | "text";
 
@@ -54,14 +55,7 @@ export const runtime = {
 
 export const SETTINGS: SettingDef[] = [
   // AI
-  { key: "llmMode", group: "AI", label: "AIを使うか", help: "auto = APIキーがあれば使う / claude = 必ず使う / offline = 使わない（キーワード判定）", type: "enum", options: ["auto", "claude", "offline"], path: "llmMode" },
-  { key: "llmProvider", group: "AI", label: "AIの種類", help: "anthropic = Claude / openai_compatible = OpenAI 互換の API（OpenAI・Gemini・DeepSeek・Ollama など）", type: "enum", options: ["anthropic", "openai_compatible"], path: "llmProvider" },
-  { key: "model", group: "AI", label: "Claude のモデル", help: "判定・お客さんづくりに使うモデル。Haiku が速くて安い", type: "string", suggestions: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"], path: "model" },
-  { key: "ANTHROPIC_API_KEY", group: "AI", label: "Claude の APIキー", help: "Anthropic の Console で作るキー", type: "secret", env: "ANTHROPIC_API_KEY" },
-  { key: "llmBaseUrl", group: "AI", label: "OpenAI 互換: API の場所", help: "例 https://api.openai.com/v1 、http://127.0.0.1:11434/v1", type: "string", path: "llmBaseUrl" },
-  { key: "llmModel", group: "AI", label: "OpenAI 互換: モデル名", help: "例 gpt-5-mini、llama3", type: "string", path: "llmModel" },
-  { key: "LLM_API_KEY", group: "AI", label: "OpenAI 互換: APIキー", help: "Ollama など、キーが要らないものは空のまま", type: "secret", env: "LLM_API_KEY" },
-  { key: "llmJsonMode", group: "AI", label: "OpenAI 互換: JSON の出させ方", help: "json_schema に対応していないAIは json_object", type: "enum", options: ["json_schema", "json_object"], path: "llmJsonMode" },
+  { key: "llmMode", group: "AI", label: "AIを使うか", help: "auto = 登録した API があれば使う / claude = 必ず使う / offline = 使わない（キーワード判定）。API は「AIのAPI」の画面で登録する", type: "enum", options: ["auto", "claude", "offline"], path: "llmMode" },
   { key: "llmTimeoutMs", group: "AI", label: "AIの応答を待つ時間（ミリ秒）", help: "これを過ぎたらキーワード判定に切り替える。ゲームは35秒で待つのをやめるので、25秒まで", type: "number", min: 3000, max: 25000, path: "llmTimeoutMs" },
   // 音声
   { key: "sttProvider", group: "音声の文字起こし", label: "文字起こしの種類", help: "none = 声の対戦なし / whisper_cpp / openai_compatible / mock（テスト用）", type: "enum", options: ["none", "whisper_cpp", "openai_compatible", "mock"], path: "sttProvider" },
@@ -210,12 +204,7 @@ function parse(d: SettingDef, raw: unknown): unknown {
         }
         return o;
       }
-      if ((d.key === "llmBaseUrl" || d.key === "sttUrl") && v !== "") {
-        if (!/^https?:\/\/[^\s]+$/.test(v)) throw new SettingError("http:// か https:// で始まる URL にしてください");
-        // クラウドのメタデータの住所などには送らない（要件#108）
-        const host = (() => { try { return new URL(v).hostname.toLowerCase(); } catch { return ""; } })();
-        if (host === "" || /^169\.254\./.test(host) || host === "metadata.google.internal" || host === "[fd00:ec2::254]" || host === "100.100.100.200") throw new SettingError("その住所には送れません");
-      }
+      if (d.key === "sttUrl" && v !== "") checkApiUrl(v);
       return v;
     }
   }
@@ -249,17 +238,203 @@ export function setSetting(key: string, raw: unknown, persist = true): { before:
 }
 
 /** 起動時: 管理画面で変えた値を読み込む（環境変数より優先） */
+/** 外の API の場所として使ってよい URL か（要件#108: クラウドのメタデータの住所などには送らない） */
+export function checkApiUrl(v: string): void {
+  if (!/^https?:\/\/[^\s]+$/.test(v)) throw new SettingError("http:// か https:// で始まる URL にしてください");
+  const host = (() => { try { return new URL(v).hostname.toLowerCase(); } catch { return ""; } })();
+  if (host === "" || /^169\.254\./.test(host) || host === "metadata.google.internal" || host === "[fd00:ec2::254]" || host === "100.100.100.200") throw new SettingError("その住所には送れません");
+}
+
+/** 前の版で管理画面から変えた AI の設定（1つだけの API）。登録の画面でまだ保存していないときは、これを使う */
+const LEGACY_AI: Record<string, (v: unknown) => void> = {
+  llmProvider: (v) => { if (v === "anthropic" || v === "openai_compatible") config.llmProvider = v; },
+  model: (v) => { if (typeof v === "string" && v !== "") config.model = v; },
+  llmBaseUrl: (v) => { if (typeof v === "string") config.llmBaseUrl = v; },
+  llmModel: (v) => { if (typeof v === "string") config.llmModel = v; },
+  llmJsonMode: (v) => { if (v === "json_schema" || v === "json_object") config.llmJsonMode = v; },
+};
+
 export function loadStoredSettings(): void {
-  for (const [k, raw] of Object.entries(storedSettings())) {
+  const st = storedSettings();
+  for (const [k, raw] of Object.entries(st)) {
+    if (k === AI_SLOTS_KEY) continue;
+    if (k in LEGACY_AI) {
+      try { LEGACY_AI[k](JSON.parse(raw)); } catch { /* 壊れた値は無視 */ }
+      continue;
+    }
     try {
       setSetting(k, JSON.parse(raw), false);
     } catch {
       // 古い・壊れた値は無視する（環境変数の値のまま）
     }
   }
-  for (const [env, v] of Object.entries(readSecrets())) {
+  const secrets = readSecrets();
+  for (const [env, v] of Object.entries(secrets)) {
     if (SETTINGS.some((d) => d.type === "secret" && (d.env ?? d.key) === env)) applySecret(env, v);
+    // 前の版の Claude・OpenAI 互換のキー（登録の画面でまだ保存していないとき、環境変数から作る登録が使う）
+    if (env === "ANTHROPIC_API_KEY" || env === "LLM_API_KEY") applySecret(env, v);
   }
+  // AI の API の登録（要件#115）
+  clearSlotKeys();
+  setStoredSlots(null);
+  if (st[AI_SLOTS_KEY] !== undefined) {
+    try {
+      setStoredSlots(sanitizeStored(JSON.parse(st[AI_SLOTS_KEY])));
+      for (const [env, v] of Object.entries(secrets)) if (env.startsWith(SLOT_KEY_PREFIX)) setSlotKey(env.slice(SLOT_KEY_PREFIX.length), v);
+    } catch {
+      setStoredSlots(null);
+    }
+  }
+  resetLlmClient();
+}
+
+// ---------------------------------------------------------------- AI の API の登録（要件#115, #116）
+
+const AI_SLOTS_KEY = "aiSlots";
+const SLOT_KEY_PREFIX = "AI_KEY_";
+const MODEL_RE = /^[A-Za-z0-9._:/@+-]{1,100}$/;
+const MODES: Mode[] = ["solo", "versus"];
+const MODE_LABEL: Record<Mode, string> = { solo: "1人用", versus: "対戦" };
+
+function sanitizeList(v: unknown): AiSlot[] {
+  if (!Array.isArray(v)) return [];
+  const out: AiSlot[] = [];
+  for (const x of v.slice(0, MAX_SLOTS)) {
+    const o = (x ?? {}) as Record<string, unknown>;
+    if (typeof o.id !== "string" || !/^[0-9a-f]{8}$/.test(o.id) || !PROVIDERS.includes(o.provider as Provider)) continue;
+    out.push({
+      id: o.id, enabled: o.enabled !== false, provider: o.provider as Provider,
+      model: typeof o.model === "string" && MODEL_RE.test(o.model) ? o.model : "",
+      genModel: typeof o.genModel === "string" && MODEL_RE.test(o.genModel) ? o.genModel : "",
+      dailyLimit: Number.isInteger(o.dailyLimit) && (o.dailyLimit as number) > 0 ? Math.min(1_000_000, o.dailyLimit as number) : 0,
+      label: typeof o.label === "string" ? o.label.replace(/[\u0000-\u001f\u007f<>]/g, "").slice(0, 40) : "",
+      baseUrl: typeof o.baseUrl === "string" ? o.baseUrl : "",
+      jsonMode: o.jsonMode === "json_object" ? "json_object" : "json_schema",
+    });
+  }
+  return out;
+}
+
+/** 保存した登録を読む。前の版（1人用の並びだけの配列）も読める */
+function sanitizeStored(v: unknown): StoredSlots {
+  if (Array.isArray(v)) return { solo: sanitizeList(v), versus: [], versusSame: true };
+  const o = (v ?? {}) as Record<string, unknown>;
+  return { solo: sanitizeList(o.solo), versus: sanitizeList(o.versus), versusSame: o.versusSame !== false };
+}
+
+function currentStored(): StoredSlots {
+  if (isStored()) {
+    const same = versusSame();
+    return { solo: aiSlots("solo"), versus: same ? [] : aiSlots("versus"), versusSame: same };
+  }
+  // まだ保存していない: 環境変数から作った登録を1人用に（新しい id にする）。対戦は1人用と同じ
+  return { solo: aiSlots("solo"), versus: [], versusSame: true };
+}
+
+/** 管理画面に返す登録の一覧。キーは最初と最後の数文字だけ */
+export function aiSlotsForAdmin() {
+  const view = (s: AiSlot) => {
+    const k = slotKey(s);
+    return {
+      id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label,
+      base_url: s.baseUrl, json_mode: s.jsonMode, key_set: k !== "", key_mask: mask(k), used_today: usedToday(s.id), ...slotHealth(s.id),
+    };
+  };
+  const same = versusSame();
+  return {
+    saved: isStored(),
+    max: MAX_SLOTS,
+    versus_same: same,
+    providers: PROVIDERS.map((p) => ({ id: p, label: PROVIDER_INFO[p].label, models: PROVIDER_INFO[p].models, needs_url: p === "custom" })),
+    solo: aiSlots("solo").map(view),
+    versus: same ? [] : aiSlots("versus").map(view),
+  };
+}
+
+function validateList(input: unknown, mode: Mode, before: Map<string, AiSlot>, keys: Map<string, string>): AiSlot[] {
+  if (!Array.isArray(input)) throw new SettingError("登録の形が正しくありません");
+  if (input.length > MAX_SLOTS) throw new SettingError(`${MODE_LABEL[mode]}: 登録できるのは ${MAX_SLOTS} 個までです`);
+  const out: AiSlot[] = [];
+  for (const [i, x] of input.entries()) {
+    const o = (x ?? {}) as Record<string, unknown>;
+    const at = `${MODE_LABEL[mode]} ${i + 1}位`;
+    if (!PROVIDERS.includes(o.provider as Provider)) throw new SettingError(`${at}: AIの種類を選んでください`);
+    const provider = o.provider as Provider;
+    const model = typeof o.model === "string" ? o.model.trim() : "";
+    if (!MODEL_RE.test(model)) throw new SettingError(`${at}: モデル名を入れてください（英数字と . _ : / - だけ）`);
+    const genModel = typeof o.gen_model === "string" ? o.gen_model.trim() : "";
+    if (genModel !== "" && !MODEL_RE.test(genModel)) throw new SettingError(`${at}: お客さんづくりのモデル名は英数字と . _ : / - だけにしてください`);
+    const dl = Number(o.daily_limit ?? 0);
+    if (!Number.isFinite(dl) || dl < 0 || dl > 1_000_000 || Math.floor(dl) !== dl) throw new SettingError(`${at}: 1日の上限は 0（上限なし）か、1〜1000000 の整数にしてください`);
+    const label = typeof o.label === "string" ? o.label.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 40) : "";
+    let baseUrl = "";
+    if (provider === "custom") {
+      baseUrl = typeof o.base_url === "string" ? o.base_url.trim() : "";
+      if (baseUrl === "") throw new SettingError(`${at}: API の場所（URL）を入れてください`);
+      if (baseUrl.length > 300) throw new SettingError(`${at}: URL が長すぎます`);
+      checkApiUrl(baseUrl);
+    }
+    // 前からある登録はその id のまま（環境変数から作った登録は、保存したときに新しい id にする）
+    const oldId = typeof o.id === "string" ? o.id : "";
+    const old = before.get(oldId);
+    const id = old && /^[0-9a-f]{8}$/.test(oldId) && !out.some((y) => y.id === oldId) ? oldId : newSlotId();
+    const key = typeof o.key === "string" ? o.key.replace(/[\u0000-\u001f\u007f\s]/g, "") : "";
+    if (key.length > 500) throw new SettingError(`${at}: キーが長すぎます`);
+    // キー: 入れたらそれ、「消す」なら無し、どちらでもなければ前のまま。copy_key_from は写したときの元の登録
+    const from = typeof o.copy_key_from === "string" ? before.get(o.copy_key_from) : undefined;
+    if (key !== "") keys.set(id, key);
+    else if (o.clear_key !== true && (old || from)) {
+      const k = slotKey((old ?? from)!);
+      if (k !== "") keys.set(id, k);
+    }
+    // 種類・モデル・場所・キーを変えたら、失敗の回数を消してすぐに使ってみる
+    if (!old || old.provider !== provider || old.model !== model || old.genModel !== genModel || old.baseUrl !== baseUrl || key !== "") resetSlotHealth(id);
+    out.push({ id, enabled: o.enabled !== false, provider, model, genModel, dailyLimit: dl, label, baseUrl, jsonMode: o.json_mode === "json_object" ? "json_object" : "json_schema" });
+  }
+  return out;
+}
+
+/**
+ * 登録を保存する（並び順がそのまま優先順位）。body: {solo: [...], versus: [...], versus_same: bool}。
+ * 送らなかったモードは前のまま。各行: {id?, enabled, provider, model, gen_model, daily_limit, label, base_url, json_mode, key?（入れたときだけ変える）, clear_key?, copy_key_from?}
+ * 戻り値は記録用の短い説明（キーは入れない）
+ */
+export function saveAiSlots(body: Record<string, unknown>): string {
+  const cur = currentStored();
+  const before = new Map(allSlots().map((s) => [s.id, s]));
+  const keys = new Map<string, string>();
+  const next: StoredSlots = { ...cur };
+  for (const m of MODES) {
+    if (body[m] !== undefined) next[m] = validateList(body[m], m, before, keys);
+    else for (const s of cur[m]) { const k = slotKey(s); if (k !== "") keys.set(s.id, k); }
+  }
+  if (typeof body.versus_same === "boolean") next.versusSame = body.versus_same;
+  if (next.versusSame) next.versus = [];
+  // 1人用と対戦で同じ id を使わない（飛ばす回数・1日の回数を分けて数える）
+  const soloIds = new Set(next.solo.map((s) => s.id));
+  if (next.versus.some((s) => soloIds.has(s.id))) throw new SettingError("1人用と対戦で同じ登録は使えません（写すボタンを使ってください）");
+  // 保存: 並びは DB、キーは secrets.json（使わなくなった登録のキーは消す）
+  const live = new Set([...next.solo, ...next.versus].map((s) => s.id));
+  const secrets = readSecrets();
+  for (const k of Object.keys(secrets)) if (k.startsWith(SLOT_KEY_PREFIX)) delete secrets[k];
+  for (const [id, k] of keys) if (live.has(id)) secrets[SLOT_KEY_PREFIX + id] = k;
+  writeSecrets(secrets);
+  storeSetting(AI_SLOTS_KEY, JSON.stringify(next));
+  clearSlotKeys();
+  for (const [id, k] of keys) if (live.has(id)) setSlotKey(id, k);
+  setStoredSlots(next);
+  resetLlmClient();
+  const desc = (list: AiSlot[]) => list.map((s, i) => `${i + 1}位 ${PROVIDER_INFO[s.provider].label} ${s.model}${s.enabled ? "" : "（休止）"}${keys.has(s.id) || s.provider === "custom" ? "" : "（キーなし）"}`).join(" / ") || "登録なし";
+  return `1人用: ${desc(next.solo)}｜対戦: ${next.versusSame ? "1人用と同じ" : desc(next.versus)}`;
+}
+
+/** 1人用の並びを対戦に写す（キーも。新しい id にする） */
+export function copySoloToVersus(): string {
+  const solo = aiSlots("solo");
+  return saveAiSlots({
+    versus_same: false,
+    versus: solo.map((s) => ({ provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label, base_url: s.baseUrl, json_mode: s.jsonMode, enabled: s.enabled, copy_key_from: s.id })),
+  });
 }
 
 /** 戻す（記録の「変える前」の値に）。秘密の値は戻せない（記録に残していないため） */

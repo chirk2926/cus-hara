@@ -60,7 +60,7 @@ const REASONS = { abuse: "暴言・嫌がらせ", sexual: "性的な内容", per
 
 const TABS = [
   ["status", "状態"], ["reports", "通報"], ["players", "プレイヤー"], ["matches", "対戦"], ["usage", "AIの料金"],
-  ["notice", "お知らせ・メンテナンス"], ["settings", "設定"], ["audit", "操作の記録"], ["account", "パスワード"],
+  ["notice", "お知らせ・メンテナンス"], ["ai", "AIのAPI"], ["settings", "設定"], ["audit", "操作の記録"], ["account", "パスワード"],
 ];
 let current = "status";
 
@@ -99,7 +99,7 @@ async function loadStatus(el) {
         kv("つながっている人", fmtNum(s.online.connected)), kv("対戦中", fmtNum(s.online.playing)), kv("マッチング待ち", fmtNum(s.online.queued)), kv("フレンドの部屋", fmtNum(s.online.rooms)),
         kv("プレイヤー（全部）", fmtNum(s.players.total)), kv("今日の新しい人", fmtNum(s.players.new_today)), kv("今日遊んだ人", fmtNum(s.players.active_today)), kv("今日の対戦", fmtNum(s.matches_today)),
         kv("未対応の通報", fmtNum(s.reports_open), s.reports_open > 0 ? "warn" : ""), kv("利用停止中", fmtNum(s.bans)),
-        kv("AI", s.ai.enabled ? s.ai.name : "使わない（キーワード判定）", s.ai.enabled ? "okc" : "warn"), kv("声の文字起こし", s.voice),
+        kv("AI（1人用）", s.ai.enabled ? s.ai.name : "使わない（キーワード判定）", s.ai.enabled ? "okc" : "warn"), kv("AI（対戦）", s.ai.versus !== "none" ? s.ai.versus : "使わない（キーワード判定）", s.ai.versus !== "none" ? "okc" : "warn"), kv("声の文字起こし", s.voice),
         kv("AIの呼び出し（起動から）", fmtNum(s.ai.calls)), kv("入力 / 出力トークン", `${fmtNum(s.ai.input)} / ${fmtNum(s.ai.output)}`),
         kv("動いている時間", up), kv("メモリ", `${s.memory_mb} MB`), kv("データベース", `${s.db_size_mb} MB`), kv("負荷（1・5・15分）", s.load.map((x) => x.toFixed(2)).join(" / ")),
       ),
@@ -248,7 +248,7 @@ async function loadUsage(el) {
   for (const x of r.rows) (byDay[x.day] = byDay[x.day] || []).push(x);
   const maxCost = Math.max(0.0001, ...Object.values(byDay).map((xs) => xs.reduce((a, x) => a + x.cost_usd, 0)));
   clear(el).append(h("div", { class: "sheet" }, h("h2", {}, "AIの料金の目安"),
-    h("p", { class: "muted" }, "トークン数 × 料金表（設定の「AIの料金表」）から計算した目安です。本当の請求は Anthropic の Console で確かめてください。"),
+    h("p", { class: "muted" }, "トークン数 × 料金表（設定の「AIの料金表」）から計算した目安です。本当の請求は、それぞれの会社（Anthropic・OpenAI・Google・DeepSeek）の管理ページで確かめてください。料金表に無いモデルは 0 円で数えます。"),
     h("div", { class: "grid" },
       h("div", { class: "kv" }, h("span", {}, `今月（${r.month}）`), h("b", {}, `$${r.month_cost_usd.toFixed(2)}`)),
       h("div", { class: "kv" }, h("span", {}, "このままだと月末に"), h("b", { class: r.over_budget ? "warn" : "" }, `$${r.projected_usd.toFixed(2)}`)),
@@ -418,6 +418,115 @@ async function setSetting(key, value) {
 let settingsQuery = "";
 
 /** 設定（要件#100: 見た目より使いやすさ）。探す・Enter で保存・変えた項目に印・まとめて保存 */
+// ---------------------------------------------------------------- AI の API の登録（要件#115）
+
+let aiMode = "solo";
+
+async function loadAi(el) {
+  const r = await api("GET", "/api/ai-slots");
+  renderAi(el, r);
+}
+
+function renderAi(el, r) {
+  const provs = Object.fromEntries(r.providers.map((p) => [p.id, p]));
+  const MODE = { solo: "1人用", versus: "対戦" };
+  // 画面の上での並び（まだ保存していない変更を含む）。対戦が「1人用と同じ」なら対戦の並びは空
+  const lists = { solo: r.solo.map((s) => ({ ...s, key: "", clear_key: false })), versus: r.versus.map((s) => ({ ...s, key: "", clear_key: false })) };
+  let same = r.versus_same;
+  const savedIds = new Set([...r.solo, ...r.versus].map((x) => x.id));
+  const draw = () => {
+    clear(el);
+    const rows = lists[aiMode];
+    const tabs = h("div", { class: "row ltabs" }, ...Object.entries(MODE).map(([k, l]) => h("button", { class: k === aiMode ? "on" : "", onclick: () => { aiMode = k; draw(); } }, l)));
+    el.append(h("div", { class: "sheet" }, h("h2", {}, "AIのAPI（優先順位）"), tabs,
+      h("p", { class: "muted" }, `1人用と対戦で、別々に最大 ${r.max} 個まで。上から順に使い、失敗したら次の順位へ切り替えます（全体で25秒まで。だめならキーワード判定・台本のお客さん）。` +
+        "失敗した API は、連続10回目までは5分、そこからは1回ごとに5分ずつ延ばして最大60分のあいだ飛ばします。成功すると回数は0に戻ります。" +
+        "キーはこのマシンの server/var/secrets.json にだけ保存し、ここには最初と最後の数文字しか出しません。"),
+      r.saved ? null : h("p", { class: "warn" }, "まだこの画面で保存していません。いまは環境変数（ANTHROPIC_API_KEY など）から作った登録で動いています。保存すると、この画面の内容に切り替わります。")));
+    if (aiMode === "versus") {
+      const cb = h("input", { type: "checkbox" });
+      cb.checked = same;
+      cb.addEventListener("change", () => { same = cb.checked; draw(); });
+      el.append(h("div", { class: "sheet" }, h("div", { class: "row" }, h("label", {}, cb, " 対戦も1人用と同じ並びを使う"),
+        h("button", { class: "act", onclick: async () => {
+          if (!confirm("1人用の並び（キーも）を対戦に写します。今の対戦の並びは置きかわります。よいですか？")) return;
+          try { const out = await api("POST", "/api/ai-slots/copy", {}); toast("写しました"); renderAi(el, out); } catch (e) { toast(e.message, true); }
+        } }, "1人用の並びを対戦に写す")),
+        h("p", { class: "muted" }, "対戦は判定の回数が多いので、安くて速いモデルを上にしておくと料金と待ち時間が減ります。対戦の不適切な発言のチェックも、この並びを使います。")));
+      if (same) { el.append(saveBar(rows)); return; }
+    }
+    rows.forEach((s, i) => {
+      const prov = h("select", {}, ...r.providers.map((p) => h("option", { value: p.id }, p.label)));
+      prov.value = s.provider;
+      const dl = `dl-ai-${aiMode}-${i}`;
+      const model = h("input", { value: s.model, list: dl, style: "width:100%", placeholder: "モデル名" });
+      const gen = h("input", { value: s.gen_model || "", list: dl, style: "width:100%", placeholder: "空なら上と同じ" });
+      const limit = h("input", { type: "number", min: "0", step: "1", value: String(s.daily_limit || 0), style: "width:100%" });
+      const memo = h("input", { value: s.label || "", maxlength: "40", style: "width:100%", placeholder: "例 予備のキー" });
+      const url = h("input", { value: s.base_url, style: "width:100%", placeholder: "例 http://127.0.0.1:11434/v1" });
+      const jm = h("select", {}, h("option", { value: "json_schema" }, "json_schema"), h("option", { value: "json_object" }, "json_object"));
+      jm.value = s.json_mode;
+      const key = h("input", { type: "password", autocomplete: "off", style: "width:100%", value: s.key,
+        placeholder: s.key_set && !s.clear_key ? `設定済み（${s.key_mask}）。変えるときだけ入れる` : "APIキー" });
+      const en = h("input", { type: "checkbox" });
+      en.checked = s.enabled;
+      prov.addEventListener("change", () => { s.provider = prov.value; if (!provs[s.provider].models.includes(s.model)) s.model = provs[s.provider].models[0] || ""; s.gen_model = ""; draw(); });
+      model.addEventListener("input", () => (s.model = model.value));
+      gen.addEventListener("input", () => (s.gen_model = gen.value));
+      limit.addEventListener("input", () => (s.daily_limit = Number(limit.value || 0)));
+      memo.addEventListener("input", () => (s.label = memo.value));
+      url.addEventListener("input", () => (s.base_url = url.value));
+      jm.addEventListener("change", () => (s.json_mode = jm.value));
+      key.addEventListener("input", () => (s.key = key.value));
+      en.addEventListener("change", () => (s.enabled = en.checked));
+      const move = (d) => { const j = i + d; if (j < 0 || j >= rows.length) return; [rows[i], rows[j]] = [rows[j], rows[i]]; draw(); };
+      const state = !s.enabled ? h("span", { class: "muted" }, "休止中")
+        : s.skip_until ? h("span", { class: "warn" }, `失敗が続いているので ${fmtTime(s.skip_until)} まで飛ばす（連続 ${s.fails} 回）`)
+        : s.daily_limit && s.used_today >= s.daily_limit ? h("span", { class: "warn" }, `今日の上限（${fmtNum(s.daily_limit)} 回）に達したので、明日まで飛ばす`)
+        : s.fails ? h("span", { class: "warn" }, `連続 ${s.fails} 回失敗`) : h("span", { class: "okc" }, "使えます");
+      const test = s.id && savedIds.has(s.id) ? h("button", { class: "act", onclick: async () => {
+        try { const t = await api("POST", "/api/ai-slots/test", { id: s.id }); toast(t.message, !t.ok); renderAi(el, t); } catch (e) { toast(e.message, true); }
+      } }, "この API を試す") : h("span", { class: "muted" }, "保存すると試せます");
+      const field = (label, help, input, extra) => h("div", { class: "setting" }, h("div", {}, label, help ? h("div", { class: "help" }, help) : null), input, h("div", {}, extra || null));
+      el.append(h("div", { class: "sheet" },
+        h("div", { class: "row" }, h("h2", { style: "margin:0" }, `${MODE[aiMode]} ${i + 1}位`), s.label ? h("span", { class: "muted" }, s.label) : null,
+          h("label", {}, en, " 使う"),
+          h("button", { class: "link", onclick: () => move(-1), disabled: i === 0 }, "↑ 上げる"),
+          h("button", { class: "link", onclick: () => move(1), disabled: i === rows.length - 1 }, "↓ 下げる"),
+          h("button", { class: "link", onclick: () => { if (confirm(`${i + 1}位の登録を外しますか？（保存するまでは消えません）`)) { rows.splice(i, 1); draw(); } } }, "外す"),
+          state),
+        field("AIの種類", "", prov),
+        field("モデル", "採点・お客さんの返事に使う。候補から選ぶか、手で入れる", h("div", {}, model, h("datalist", { id: dl }, ...provs[s.provider].models.map((m) => h("option", { value: m }))))),
+        field("お客さんづくりのモデル", "1人につき1回だけ呼ぶので、ここだけ賢いモデルにしてもよい", gen),
+        s.provider === "custom" ? field("API の場所", "OpenAI 互換の API（…/v1 まで）", url) : null,
+        s.provider === "custom" ? field("JSON の出させ方", "json_schema に対応していないAIは json_object", jm) : null,
+        field("APIキー", s.provider === "custom" ? "キーが要らないもの（Ollama など）は空のまま" : "", key,
+          s.key_set && !s.clear_key ? h("button", { class: "link", onclick: () => { s.clear_key = true; s.key = ""; draw(); } }, "キーを消す") : null),
+        field("1日の上限", `0 = 上限なし。超えたらその日は次の順位へ（料金の使いすぎを防ぐ）。今日 ${fmtNum(s.used_today || 0)} 回`, limit),
+        field("メモ", "管理画面にだけ出す", memo),
+        h("div", { class: "row" }, test)));
+    });
+    el.append(saveBar(rows));
+  };
+  const saveBar = (rows) => {
+    const add = h("button", { class: "act", disabled: rows.length >= r.max || (aiMode === "versus" && same), onclick: () => {
+      rows.push({ id: "", enabled: true, provider: "anthropic", model: provs.anthropic.models[0], gen_model: "", daily_limit: 0, label: "", base_url: "", json_mode: "json_schema", key: "", key_set: false, clear_key: false, fails: 0, skip_until: 0, used_today: 0 });
+      draw();
+    } }, `API を足す（${rows.length} / ${r.max}）`);
+    const save = h("button", { class: "main", onclick: async () => {
+      const pack = (list) => list.map((s) => ({ id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.gen_model || "", daily_limit: s.daily_limit || 0, label: s.label || "", base_url: s.base_url, json_mode: s.json_mode, key: s.key, clear_key: s.clear_key }));
+      try {
+        const out = await api("POST", "/api/ai-slots", { solo: pack(lists.solo), versus: same ? [] : pack(lists.versus), versus_same: same });
+        toast("保存しました");
+        renderAi(el, out);
+      } catch (e) { toast(e.message, true); }
+    } }, "1人用・対戦をまとめて保存");
+    return h("div", { class: "sheet" }, h("div", { class: "row" }, add, save),
+      h("p", { class: "muted" }, "並べかえ・追加・外す・キーの変更は、保存するまで効きません（1人用と対戦の両方を保存します）。保存すると、変えた API の失敗の回数は消えます。1日の回数はサーバーを再起動すると0に戻ります。"));
+  };
+  draw();
+}
+
 async function loadSettings(el) {
   const r = await api("GET", "/api/settings");
   const pending = new Map(); // key -> 入力の部品（まだ保存していない）
@@ -520,7 +629,7 @@ async function loadAccount(el) {
     h("button", { class: "main", onclick: async () => { await api("POST", "/api/password", { current: cur.value, new_password: nw.value }); toast("変えました"); cur.value = ""; nw.value = ""; } }, "変える")));
 }
 
-const LOAD = { status: loadStatus, reports: loadReports, players: loadPlayers, matches: loadMatches, usage: loadUsage, notice: loadNotice, settings: loadSettings, audit: loadAudit, account: loadAccount };
+const LOAD = { status: loadStatus, reports: loadReports, players: loadPlayers, matches: loadMatches, usage: loadUsage, notice: loadNotice, ai: loadAi, settings: loadSettings, audit: loadAudit, account: loadAccount };
 
 // ---------------------------------------------------------------- ログイン
 

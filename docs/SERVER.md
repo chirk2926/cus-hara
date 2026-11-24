@@ -45,7 +45,8 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 
 | 名前 | 既定 | 意味 |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | なし | Claude API のキー。**サーバーにだけ置く**（クライアントには渡らない） |
+| `ANTHROPIC_API_KEY` | なし | Claude API のキー。**サーバーにだけ置く**（クライアントには渡らない）。管理画面の「AIのAPI」で登録したら、そちらが使われる（9.2） |
+| `OPENAI_API_KEY`・`GEMINI_API_KEY`・`DEEPSEEK_API_KEY` | なし | OpenAI・Gemini・DeepSeek のキー（要件#115）。管理画面でまだ登録していないとき、Claude の次の順位として使う。モデルは `OPENAI_MODEL`・`GEMINI_MODEL`・`DEEPSEEK_MODEL`（既定 gpt-5-mini・gemini-2.5-flash・deepseek-chat） |
 | `CLAUDE_MODEL` | `claude-haiku-5-5` | 使うモデル（要件#33。サーバーは Haiku だけを提供） |
 | `LLM_MODE` | `auto` | `auto`=キーがあればAI / `claude`=必ずAI / `offline`=使わない |
 | `LLM_PROVIDER` | `anthropic` | 使うAI（要件#78）。`anthropic`=Claude（`ANTHROPIC_API_KEY`・`CLAUDE_MODEL`）/ `openai_compatible`=OpenAI 互換の API |
@@ -223,13 +224,19 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 - **対戦の不適切な発言の確認を、採点と同じ1回の呼び出しにまとめた（要件#93）**: 前は「AIで不適切か確かめる」→「AIで採点する」の2回呼んでいた。今は採点の出力に `flag`（sexual / hate / threat / personal_info / none）を足し、1回で両方を返す。キーワードの確認はその前にそのまま行う。客役の最初のクレームは採点がないので、今までどおり別に確かめる。セリフを相手に見せるのは確かめた後なので、伏せ字の扱いも前と同じ。AI が使えない・上限に達したときはキーワードだけ（前と同じ）。
 - 効き具合は管理画面の「状態」の AI の欄（キャッシュから読めた量）で見られる（だれでも読める `/api/v1/info` からは外した。要件#114）。0 のままなら、指示文が毎回変わってしまっている（日時などを指示文に入れないこと）。
 
-### 9.2 Claude 以外のAI
-- `LLM_PROVIDER=openai_compatible` にして、`LLM_BASE_URL`・`LLM_MODEL`・`LLM_API_KEY` を入れる。OpenAI 互換の Chat Completions API（`/chat/completions`）を持つものなら使える。
-- 出力は JSON にさせ、サーバーで形を確かめる（形が違う・失敗したときは、今までどおりキーワード判定・台本に切り替わるので、ゲームは止まらない）。
-- スキーマ指定（`response_format: json_schema`）に対応していないAIは `LLM_JSON_MODE=json_object` にする。
-- OpenAI などは、同じ前半の指示文を自動でキャッシュする（設定不要）。読めた量は同じく `ai_cache` に出る。
+### 9.2 AI の API の登録・優先順位（要件#115）・Claude 以外のAI
+- 管理画面の「AIのAPI」で、**1人用と対戦それぞれに**最大5個を優先順位つきで登録する（要件#116。対戦は「1人用と同じ並びを使う」も選べ、「1人用の並びを対戦に写す」でキーごと写せる。対戦の判定・客役の判定・不適切な発言のチェック・対戦のお客さんづくりは対戦の並び、それ以外は1人用の並び）。種類は Claude（Anthropic）・OpenAI・Gemini（Google）・DeepSeek・そのほか（OpenAI 互換。Ollama など）。同じ会社を2つ以上入れてもよい。モデルは候補から選ぶか手で入れる。キーは `var/secrets.json`（0600）にだけ保存し、画面にも記録にも全部は出さない。
+- 使い方: 1位から順に呼び、**どんな失敗でも**（キーが無効・残高不足・利用制限・混雑・サーバーのエラー・時間切れ・答えの形が違う）次の順位へ。全体で 25 秒まで（ゲームは 35 秒で待つのをやめる）、残りが 3 秒を切ったら試さない。全部だめなら、今までどおりキーワード判定・台本に切り替わる。
+- 登録ごとに: **お客さんづくりのモデル**（空なら同じモデル。お客さんづくりは1人につき1回なので、ここだけ賢いモデルにできる）、**1日の上限**（0 = なし。超えたらその日は次の順位へ。失敗には数えない。数はサーバーの日付〔UTC〕で数え、再起動で0に戻る）、**メモ**（管理画面にだけ出す）。
+- 失敗した API はしばらく飛ばす: 連続10回目の失敗までは5分、そこからは1回ごとに5分ずつ延ばして最大60分。成功したら回数は0に戻る。登録を保存し直した（種類・モデル・場所・キーを変えた）ときと、「この API を試す」でつながったときも0に戻る。AI が発言の内容のせいで答えを控えたときは、API の調子が悪いのではないので数えない（次の順位では試す）。
+- 状態を調べるために AI を呼ぶことはない（遊んだときの呼び出しの成功・失敗だけを数える。紹介サイトの「サーバーの状況」も同じ）。
+- 呼び方: Claude は公式 SDK（指示文・会話のキャッシュつき）。OpenAI・Gemini・DeepSeek・そのほかは Chat Completions（`/chat/completions`）。OpenAI `https://api.openai.com/v1`（`max_completion_tokens`）、Gemini `https://generativelanguage.googleapis.com/v1beta/openai`、DeepSeek `https://api.deepseek.com`（スキーマ指定に対応していないので `json_object` で、形は指示文で伝える）。そのほかは場所と JSON の出させ方を登録ごとに選ぶ。
+- 管理画面でまだ保存していないときは、環境変数から登録を作る（`LLM_PROVIDER=openai_compatible` の API → `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` の順）。前の版で管理画面から入れた Claude・互換 API の設定とキーも、ここで使われる。一度保存すると、管理画面の登録だけを使う。
+- 出力は JSON にさせ、サーバーで形を確かめる。
+- OpenAI・Gemini・DeepSeek は、同じ前半の指示文を自動でキャッシュする（設定不要）。読めた量は管理画面の「状態」に出る。
+- 料金の目安: 管理画面の「AIの料金」は、設定の「AIの料金表」にあるモデルだけを数える。OpenAI・Gemini・DeepSeek のモデルを使うなら、各社の料金ページの値を料金表に足すこと（無いモデルは 0 で数える）。
 - 品質の注意: 判定の指示文は Claude に合わせて作っている。ほかのAIでは、判定が甘い・厳しい、言語の指定を守らない、などが起きうる。切り替えたら、数人分遊んで確かめること。
-- テスト: `server/test/openai_compatible.test.ts`（偽の API サーバーで確かめる）。
+- テスト: `server/test/openai_compatible.test.ts`・`server/test/ai_fallback.test.ts`（偽の API サーバーで、切り替えと飛ばし方を確かめる）。
 
 ### 9.3 EOS に任せられること・任せないこと
 | 項目 | 今 | EOS に移すと | 判断 |

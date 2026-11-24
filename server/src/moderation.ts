@@ -69,7 +69,7 @@ export async function moderate(text: string, seatKey: string): Promise<Moderatio
   if (text.trim() === "") return { flagged: false, category: "none", by: "none" };
   const k = keywordModeration(text);
   if (k.flagged) return k;
-  if (!llmEnabled() || !allow(`mod:${seatKey}`, 30, 60_000)) return k;
+  if (!llmEnabled("versus") || !allow(`mod:${seatKey}`, 30, 60_000)) return k;
   try {
     const r = await moderateWithLlm(text);
     if (r.inappropriate && r.category !== "none") return { flagged: true, category: r.category, by: "ai" };

@@ -22,8 +22,9 @@ import {
   openDb, playerById, sanctionOf, consentOf, setSanction, isActiveBan, renamePlayer, setPlayerTitle, cleanName, matchLog, aiUsage,
   announcements, addAnnouncement, updateAnnouncement, setAnnouncementActive, deleteAnnouncement, adminLog, adminLogs, adminLogById, NOTICE_FONTS,
 } from "./db.ts";
-import { listSettings, setSetting, SettingError, settingDef, currentValue, costUsd, runtime } from "./settings.ts";
-import { llmEnabled, llmName, cacheStats, pingLlm } from "./llm.ts";
+import { listSettings, setSetting, SettingError, settingDef, currentValue, costUsd, runtime, aiSlotsForAdmin, saveAiSlots, copySoloToVersus } from "./settings.ts";
+import { llmEnabled, llmName, cacheStats, pingLlm, pingSlot } from "./llm.ts";
+import { allSlots, slotUsable } from "./ai_slots.ts";
 import { sttEnabled } from "./stt.ts";
 import { kickPlayer, onlinePlayers } from "./ws.ts";
 import { VERSION } from "./http.ts";
@@ -326,7 +327,7 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
       db_size_mb: Math.round((dbSize / 1048576) * 10) / 10,
       maintenance: runtime.maintenance,
       online: { connected: onlinePlayers(), ...lobby.stats() },
-      ai: { enabled: llmEnabled(), name: llmEnabled() ? llmName() : "none", calls: cacheStats.calls, input: cacheStats.input, output: cacheStats.output, cache_read: cacheStats.cacheRead },
+      ai: { enabled: llmEnabled(), name: llmEnabled() ? llmName() : "none", versus: llmEnabled("versus") ? llmName("versus") : "none", calls: cacheStats.calls, input: cacheStats.input, output: cacheStats.output, cache_read: cacheStats.cacheRead },
       voice: sttEnabled() ? config.sttProvider : "none",
       players: { total: count("SELECT COUNT(*) AS n FROM players"), new_today: count("SELECT COUNT(*) AS n FROM players WHERE created_at >= ?", dayStart.getTime()), active_today: count("SELECT COUNT(*) AS n FROM players WHERE last_seen >= ?", dayStart.getTime()) },
       matches_today: count("SELECT COUNT(*) AS n FROM matches WHERE created_at >= ?", dayStart.getTime()),
@@ -355,6 +356,30 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     const r = setSetting(e.target, JSON.parse(e.before_value));
     adminLog("setting_revert", e.target, `${d.label}: ${r.before} → ${r.after}（記録 #${e.id} を戻した）`, "", "");
     return { ok: true, settings: listSettings() };
+  }
+  // ---- AI の API の登録（要件#115）: 最大5個、並び順が優先順位
+  if (method === "GET" && p === "/api/ai-slots") return aiSlotsForAdmin();
+  if (method === "POST" && p === "/api/ai-slots") {
+    const summary = saveAiSlots(body);
+    adminLog("ai_slots", "", `AIのAPIの登録を変えた: ${summary}`);
+    return aiSlotsForAdmin();
+  }
+  if (method === "POST" && p === "/api/ai-slots/copy") {
+    const summary = copySoloToVersus();
+    adminLog("ai_slots", "", `1人用のAIのAPIを対戦に写した: ${summary}`);
+    return aiSlotsForAdmin();
+  }
+  if (method === "POST" && p === "/api/ai-slots/test") {
+    const id = str(body.id, 40);
+    const slot = allSlots().find((x) => x.id === id);
+    if (!slot) throw new AdminError(404, "その登録はありません（先に保存してください）");
+    if (!slotUsable(slot)) return { ok: false, message: "休止中か、キー・モデル・場所が入っていません", ...aiSlotsForAdmin() };
+    try {
+      await pingSlot(slot);
+      return { ok: true, message: `つながりました（${slot.provider}:${slot.model}）`, ...aiSlotsForAdmin() };
+    } catch (e) {
+      return { ok: false, message: String(e instanceof Error ? e.message : e).slice(0, 300), ...aiSlotsForAdmin() };
+    }
   }
   if (method === "POST" && p === "/api/test-ai") {
     if (!llmEnabled()) return { ok: false, message: "AIを使わない設定、または APIキーがありません" };

@@ -90,16 +90,39 @@ test("管理画面: 設定を変えるとすぐ効き、範囲外は断り、記
   assert.ok(entry);
   assert.equal((await req("POST", "/api/revert", { cookie, csrf, body: { log_id: entry.id } })).status, 200);
   assert.equal(config.versus.openingSec, before, "前の値に戻った");
-  // APIキー
+  // APIキー（AI の API の登録。要件#115）
   const key = "sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  assert.equal((await req("POST", "/api/settings", { cookie, csrf, body: { key: "ANTHROPIC_API_KEY", value: key } })).status, 200);
-  assert.equal(process.env.ANTHROPIC_API_KEY, key);
-  const list = await req("GET", "/api/settings", { cookie });
-  const shown = list.body.settings.find((x: any) => x.key === "ANTHROPIC_API_KEY");
-  assert.ok(!JSON.stringify(list.body).includes(key), "キーは全部は見せない");
-  assert.equal(shown.is_set, true);
-  assert.equal((await req("POST", "/api/settings", { cookie, csrf, body: { key: "ANTHROPIC_API_KEY", value: "" } })).status, 200);
-  assert.equal(process.env.ANTHROPIC_API_KEY, undefined);
+  const saved = await req("POST", "/api/ai-slots", { cookie, csrf, body: { solo: [{ provider: "anthropic", model: "claude-haiku-5-5", key, enabled: true }] } });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.solo.length, 1);
+  assert.equal(saved.body.solo[0].key_set, true);
+  assert.ok(!JSON.stringify(saved.body).includes(key), "キーは全部は見せない");
+  const list = await req("GET", "/api/ai-slots", { cookie });
+  assert.ok(!JSON.stringify(list.body).includes(key));
+  // キーを入れずに保存しても、前のキーはそのまま
+  const id = saved.body.solo[0].id;
+  const again = await req("POST", "/api/ai-slots", { cookie, csrf, body: { solo: [{ id, provider: "anthropic", model: "claude-sonnet-5-5", enabled: true }] } });
+  assert.equal(again.body.solo[0].key_set, true);
+  assert.equal(again.body.solo[0].model, "claude-sonnet-5-5");
+  // 対戦に写す（キーも写る・別の id）→ 対戦だけ変える（要件#116）
+  const copied = await req("POST", "/api/ai-slots/copy", { cookie, csrf, body: {} });
+  assert.equal(copied.body.versus_same, false);
+  assert.equal(copied.body.versus[0].key_set, true);
+  assert.notEqual(copied.body.versus[0].id, id);
+  const vs = await req("POST", "/api/ai-slots", { cookie, csrf, body: { versus: [{ id: copied.body.versus[0].id, provider: "anthropic", model: "claude-haiku-5-5", gen_model: "claude-sonnet-5-5", daily_limit: 500, label: "対戦用" }] } });
+  assert.equal(vs.status, 200);
+  assert.equal(vs.body.versus[0].gen_model, "claude-sonnet-5-5");
+  assert.equal(vs.body.versus[0].daily_limit, 500);
+  assert.equal(vs.body.solo[0].model, "claude-sonnet-5-5", "送らなかった1人用はそのまま");
+  assert.equal(vs.body.solo[0].key_set, true);
+  assert.ok(!JSON.stringify(vs.body).includes(key));
+  // 6個目は断る・場所のいらない会社以外で、メタデータの住所は断る
+  const six = Array.from({ length: 6 }, () => ({ provider: "openai", model: "gpt-5-mini" }));
+  assert.equal((await req("POST", "/api/ai-slots", { cookie, csrf, body: { solo: six } })).status, 400);
+  assert.equal((await req("POST", "/api/ai-slots", { cookie, csrf, body: { solo: [{ provider: "custom", model: "m", base_url: "http://169.254.169.254/v1" }] } })).status, 400);
+  // 消す
+  const cleared = await req("POST", "/api/ai-slots", { cookie, csrf, body: { solo: [], versus: [], versus_same: true } });
+  assert.equal(cleared.body.solo.length, 0);
   const a2 = await req("GET", "/api/audit", { cookie });
   assert.ok(!JSON.stringify(a2.body).includes(key), "記録にもキーは残らない");
 });

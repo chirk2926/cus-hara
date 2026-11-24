@@ -17,7 +17,7 @@
 cd server && npm ci && npm start
 ```
 
-`ANTHROPIC_API_KEY` を設定するとAIが動きます（無くてもキーワード判定で遊べます）。
+`ANTHROPIC_API_KEY` を設定するとAIが動きます（無くてもキーワード判定で遊べます）。本番では管理画面の「AIのAPI」で、Claude・OpenAI・Gemini・DeepSeek を最大5個、優先順位つきで登録できます（docs/SERVER.md 9.2）。
 
 2. ゲーム: [Godot 4.5](https://godotengine.org)（標準版）で `project.godot` をインポートして F5。
 
