@@ -132,6 +132,7 @@
 | 125 | サイトの「medal が運営する Windows 向けのゲームです」を消す。サイトの著作権を ©2026 medal game corner に。利用規約に運営者を書かない。サイトにガイド/ブログを足し、管理画面から Markdown で書いて配信（質問で: 検索に強い形） | フッターの一文を消し、著作権表示を ©2026 medal game corner（ゲーム・exe もそろえた）。利用規約の運営者名を外した。ガイド・ブログ: 管理画面で書き（言語ごと・画像も）、「サイトに反映」でサイト全体と記事のページを作って Cloudflare Pages に直接アップロード（wrangler。トークンは管理画面の設定に保存、ログには出さない） | 実装済み（docs/SITE.md 5b節）。本物の Cloudflare への反映は未確認（トークンが無いため。偽のコマンドで確かめた） |
 | 126 | 公式サイトの /ja/ などに来ても、初めてならブラウザの言語へ。2回目からは URL のとおり。cus.mgc-sv.com にそのまま来たら毎回ブラウザの言語へ。できたらプッシュしてよい | 言語のページの <head> で、初めてのブラウザだけ hreflang の別ページへ移す（first-lang.js。クローラーは移さない、その言語のページが無ければ移らない）。ルートは前に選んだ言語を使わず、毎回ブラウザの言語へ | 実装済み（ブラウザの言語を変えて9通り確かめた） |
 | 127 | ストアの提出で「PublisherDisplayName が medal で、発行元の表示名 spsrv と一致しない」。要素は spsrv でよい | MSIX の発行者の表示名の既定を spsrv に（GitHub の Variables の MSIX_PUBLISHER_DISPLAY が入っていればそちら）。runFullTrust の警告は、提出の「制限付き機能」の欄に理由を書けば通る（文を docs/STORE_LISTING.md 5節に用意） | 実装済み（新しい MSIX は CI で作られる） |
+| 128 | ストアの検証エラー: パッケージ ID・ファミリー名・発行者がちがう、予約されていない表示名「Kasuhara Defense Line」 | CI の既定値を Product Identity の値に（spsrv.CustomerHarassmentDefenseLine・CN=E033ABEC-3672-4785-A144-DEFEB8A8F16F）。表示名は質問で決めた内容: 言語ごとの名前（Kasuhara Defense Line・カスハラ防衛線・顾客骚扰防线・카스하라 방어선）を依頼者がパートナーセンターで予約する（MSIX はそのまま） | 実装済み（予約は依頼者） |
 
 ## 記録のルール
 

@@ -129,7 +129,8 @@ Note: remarks in versus matches are checked for inappropriate content and scored
 ※ IARC の質問の言い回しは変わることがあります。迷ったら、より厳しい方（「あり」）に答えると、却下されにくくなります。
 
 ## 5. 審査に出す前の確認
-- [ ] パッケージの Identity（`MSIX_IDENTITY_NAME`・`MSIX_PUBLISHER`）を、パートナーセンターの「製品 ID」の値にした（GitHub の Variables。docs/MAINTENANCE.md 7節）
+- [x] パッケージの Identity を、パートナーセンターの「Product Identity」の値にした（CI の既定値: `spsrv.CustomerHarassmentDefenseLine`・`CN=E033ABEC-3672-4785-A144-DEFEB8A8F16F`・`spsrv`。GitHub の Variables に入れればそちらが優先）
+- [ ] パートナーセンターの「Manage app names」で、MSIX のアプリ名を4つとも予約した: `Kasuhara Defense Line`・`カスハラ防衛線`・`顾客骚扰防线`・`카스하라 방어선`（`packaging/msix/Strings/*/Resources.resw` の AppDisplayName。予約していない名前があると「予約されていない表示名」で止まる）
 - [x] プライバシーポリシーの連絡先を support@mgc-sv.com に（運営者名は medal）。ゲームサーバーで公開する（`server/public/privacy.*.html`。サーバーを更新すれば出る）
 - [x] ゲームの既定のサーバーの URL を https://game.mgc-sv.com にした
 - [ ] EOS の開発者ポータルに、実績 t001〜t155 を登録した（docs/HANDOVER.md 4b）。本番の ID は `config/eos.local.cfg`（リポジトリに入れない）

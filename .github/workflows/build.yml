@@ -370,8 +370,8 @@ jobs:
     runs-on: windows-latest
     env:
       # 本番の値は、リポジトリの Settings → Variables に登録する（パートナーセンターの「製品 ID」に表示される値）
-      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME || 'CusHara.Dev' }}
-      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER || 'CN=CusHaraDev' }}
+      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME || 'spsrv.CustomerHarassmentDefenseLine' }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER || 'CN=E033ABEC-3672-4785-A144-DEFEB8A8F16F' }}
       MSIX_PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY || 'spsrv' }}
       MSIX_VERSION: ${{ vars.MSIX_VERSION || '1.0.0.0' }}
     steps:
