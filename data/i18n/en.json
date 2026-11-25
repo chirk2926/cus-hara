@@ -841,5 +841,8 @@
 	"（休止中）": "(closed)",
 	"翻訳モード（相手の言葉を自分の言語で表示）": "Translation mode (show the opponent's words in your language)",
 	"そのサーバーは今お休み中です。別のサーバーを選んでください": "That server is closed right now. Please choose another server.",
-	"（訳）": " (translated)"
+	"（訳）": " (translated)",
+	"→ 話の金額より、記録がかなり少ない。記録をもとに落ち着いて伝えよう。景品を近づけたら屈服になる。": "→ The record is much lower than they claim. Calmly explain using the record. Moving the prize closer would mean giving in.",
+	"→ 記録どおり。ただ、まだ目安の半分にも届いていない。今景品を近づけたら屈服になる。": "→ Matches the record, but it's not even half the guide amount yet. Moving the prize closer now would mean giving in.",
+	"お金をあまり使っていない・無理を言うお客さんに景品を近づけるのは、要求に屈したのと同じ。": "Moving the prize closer for a customer who barely spent or is making unreasonable demands is the same as giving in."
 }

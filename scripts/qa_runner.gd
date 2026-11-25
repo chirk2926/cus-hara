@@ -98,6 +98,12 @@ func _economy() -> void:
 	check("hat/mask buttons have labels", ShopActions.label("hat_off") != "hat_off" and ShopActions.label("mask_off") != "mask_off")
 	check("bubble skins are sold in the shop", Shop.items("bubble").size() >= 6 and Shop.bubble_skin("b_neon").has("fill") and Shop.bubble_skin("b_plain").is_empty() and Shop.tag_dict().has("bubble"))
 	check("moving the prize is its own result", ShopActions.effect_kind({}, "crane_moved") == "crane_moved")
+	# 要件#137: 目安の半分未満・金額がうそのお客さんに景品を近づけたら屈服。金額の記録が無い（引っかかった景品）は対象外
+	var SoloGame: Script = load("res://scripts/solo_game.gd")
+	check("moving the prize for a low spender is giving in", SoloGame.move_is_yield({"spend": {"actual": 900, "expected": 2000}}))
+	check("moving the prize for a lying customer is giving in", SoloGame.move_is_yield({"spend": {"actual": 1800, "expected": 2000}, "_lie": true}))
+	check("moving the prize after enough spending is fine", not SoloGame.move_is_yield({"spend": {"actual": 1800, "expected": 2000}}))
+	check("a stuck prize customer is not judged by spending", not SoloGame.move_is_yield({"stuck": true}))
 	check("spend customer is never 'stuck'", not ShopActions.is_stuck({"spend": {"claimed": 1}, "actions": {"crane_stuck": "good"}}) and ShopActions.is_stuck({"actions": {"crane_stuck": "good"}}))
 	GameSettings.kas_points = 2000
 	var res: Array = Shop.gacha_pull("kas", true)

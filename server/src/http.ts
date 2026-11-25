@@ -429,7 +429,7 @@ async function soloTurn(s: SoloSession, body: Record<string, unknown>, player: P
   if (typeof body.action === "string" && body.action !== "") {
     const id = body.action;
     if (!isAllowed(s.stage, s.customer, id)) throw new HttpError(400, "bad_action", "この場面では使えない行動です");
-    const fixed = judgeAction(s.customer, id, anger, resolve, s.lang);
+    const fixed = judgeAction(s.customer, id, anger, resolve, s.lang, body.moved === true);
     s.history.push({ role: "staff", text: actionAsStaffLine(id, s.lang) });
     let line = fixed.customer_reply;
     let judgedBy: "ai" | "keyword" = "keyword";

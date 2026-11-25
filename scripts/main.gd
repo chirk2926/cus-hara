@@ -653,9 +653,12 @@ func _build_service_screen(d: Dictionary) -> void:
 	nb.add_child(UI.text(GameSettings.money(claimed), UI.S_HEAD, UI.INK, UI.F_HAND))
 	var verdict: String = ""
 	if actual < int(float(claimed) * 0.6):
-		verdict = tr("→ 話の金額より、記録がかなり少ない。記録をもとに落ち着いて伝えよう。")
+		verdict = tr("→ 話の金額より、記録がかなり少ない。記録をもとに落ち着いて伝えよう。景品を近づけたら屈服になる。")
 	elif actual >= int(float(expected) * 0.8):
 		verdict = tr("→ 記録どおり。目安に近いので、景品を取りやすい位置に直してもいい頃。")
+	elif actual < int(float(expected) * 0.5):
+		# 要件#137: 目安の半分未満で景品を近づけたら屈服
+		verdict = tr("→ 記録どおり。ただ、まだ目安の半分にも届いていない。今景品を近づけたら屈服になる。")
 	else:
 		verdict = tr("→ 記録どおり。ただ、まだ目安には届いていない。")
 	var vl: Label = UI.para(verdict, UI.S_SMALL, UI.INK, UI.F_HAND)

@@ -264,3 +264,21 @@ test("台の問題（要件#99）: 表から台と効果が入り、ボタンが
   const bad = applyProblem({ ...base(), problem: "nonsense" });
   assert.equal(bad.problem, undefined);
 });
+
+test("景品を近づけたら屈服（要件#137）: 目安の半分未満・金額がうそのお客さんだけ。引っかかった景品のお客さんは対象外", async () => {
+  const { judgeAction, moveIsYield } = await import("../src/actions.ts");
+  const crane = allCustomers("arcade")[0];
+  const withSpend = (actual: number, lie: boolean) => ({ ...crane, spend_data: { claimed: 3000, actual, expected: 2000, payout: 30, lie } });
+  const low = withSpend(900, false);
+  const lie = withSpend(1800, true);
+  const enough = withSpend(1800, false);
+  assert.equal(moveIsYield(low), true, "目安の半分未満");
+  assert.equal(moveIsYield(lie), true, "金額がうそ（無理を言っている）");
+  assert.equal(moveIsYield(enough), false);
+  assert.equal(moveIsYield({ ...crane, spend_data: undefined }), false, "金額の記録が無い（引っかかった景品など）は対象外");
+  assert.equal(judgeAction(low, "crane_moved", 40, 0, "ja").yielded, true);
+  assert.equal(judgeAction(enough, "crane_moved", 40, 0, "ja").yielded, false);
+  // 近づけたあとに取れた・取れなかった（moved）も同じ。ただの難易度の調整は屈服にしない
+  assert.equal(judgeAction(lie, "crane_won", 40, 0, "ja", true).yielded, true);
+  assert.equal(judgeAction(lie, "crane_won", 40, 0, "ja", false).yielded, false);
+});

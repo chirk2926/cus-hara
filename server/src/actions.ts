@@ -66,9 +66,21 @@ export function effectKind(c: Customer, id: string): string {
   return c.actions?.[id] ?? actions().default[id] ?? "neutral";
 }
 
-/** 表どおりの判定（お客さんの返事は台本） */
-export function judgeAction(c: Customer, id: string, anger: number, resolve: number, lang: Lang): Judgement {
-  const kind = effectKind(c, id);
+/**
+ * 「景品を取りやすい位置へ」が屈服になるか（要件#137）: 「〇〇円使っても取れない」のお客さんで、
+ * 本当に使った金額が台の目安の半分未満、または金額がうそ（無理を言っている）とき。
+ * 景品が本当に引っかかっているお客さん（spend_data が無い）は対象外。
+ */
+export function moveIsYield(c: Customer): boolean {
+  const d = c.spend_data;
+  if (!d) return false;
+  return d.lie === true || d.actual < 0.5 * d.expected;
+}
+
+/** 表どおりの判定（お客さんの返事は台本）。moved: 台の調整が「景品を取りやすい位置へ」だった（結果が won / lost のとき） */
+export function judgeAction(c: Customer, id: string, anger: number, resolve: number, lang: Lang, moved = false): Judgement {
+  const isMove = id === "crane_moved" || (moved && (CRANE_RESULTS as readonly string[]).includes(id));
+  const kind = isMove && moveIsYield(c) ? "yield" : effectKind(c, id);
   const e = actions().effects[kind] ?? actions().effects.neutral;
   const yielded = e.yielded === true;
   let reply = e.reply;

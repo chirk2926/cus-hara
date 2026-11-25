@@ -1469,14 +1469,14 @@ func _play_customer(my_run: int) -> void:
 			_sales_cost += int(SALES_COST.get(id, 0))
 			_t_last_action = id
 			_act_counts[id] = int(_act_counts.get(id, 0)) + 1
-			# 「景品を取りやすい位置へ」は、お客さんが本当に使った金額が目標金額の半分以上のときだけ（要件#91）
-			if id in ["crane_won", "crane_lost", "crane_moved"] and _t_move_mode:
-				var spd: Variant = _cust.get("spend", null)
-				if typeof(spd) == TYPE_DICTIONARY and float((spd as Dictionary).get("actual", 0)) < 0.5 * float((spd as Dictionary).get("expected", 1)):
-					_cost += 200
-					_review -= 0.1
-					GameSettings.stat_add("early_move")
-					res["comment"] = tr("まだ目標金額の半分にも届いていない台を動かすのは規定外（-200 点）。")
+			# 「景品を取りやすい位置へ」は、お客さんが本当に使った金額が目標金額の半分以上のときだけ（要件#91）。
+			# 半分未満、または金額がうそ（無理を言っている）のお客さんに動かしたら屈服（要件#137。#91 の減点を変更）。
+			# 景品が本当に引っかかっているお客さんは金額の記録が無いので対象外
+			if id in ["crane_won", "crane_lost", "crane_moved"] and _t_move_mode and move_is_yield(_cust):
+				GameSettings.stat_add("early_move")
+				res["yielded"] = true
+				res["resolve_delta"] = 0
+				res["comment"] = tr("お金をあまり使っていない・無理を言うお客さんに景品を近づけるのは、要求に屈したのと同じ。")
 			# 引っかかった景品を取ってあげた後の補填は要らない（そこまでに使ったお金は返さない。要件#90）
 			if id == "credit" and int(_act_counts.get("crane_stuck", 0)) > 0:
 				res["anger_delta"] = maxi(int(res.get("anger_delta", 0)), 8)
@@ -1716,9 +1716,19 @@ func _customer_line(speaker: String, text: String, kind: String) -> void:
 
 
 ## 行動ボタンの判定。点数は表どおり（サーバーでも同じ表）。サーバーのお客さんはサーバーに送る
+## 「景品を取りやすい位置へ」が屈服になるお客さんか（要件#137）: 使った金額が目安の半分未満、または金額がうそ
+static func move_is_yield(c: Dictionary) -> bool:
+	var sp: Variant = c.get("spend", null)
+	if typeof(sp) != TYPE_DICTIONARY:
+		return false
+	var d: Dictionary = sp
+	return bool(c.get("_lie", false)) or float(d.get("actual", 0)) < 0.5 * float(d.get("expected", 1))
+
+
 func _judge_action(id: String) -> Dictionary:
 	if _source == "server":
-		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/turn", {"session_id": _session_id, "action": id, "anger": _anger, "resolve": _resolve, "manager": _manager_used})
+		var res: Dictionary = await main.api.request("POST", "/api/v1/solo/turn", {"session_id": _session_id, "action": id, "anger": _anger, "resolve": _resolve, "manager": _manager_used,
+			"moved": _t_move_mode and id in ["crane_won", "crane_lost", "crane_moved"]})
 		if bool(res.get("ok", false)):
 			_learn_from_server(res["body"])
 			return res["body"]
