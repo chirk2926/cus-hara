@@ -233,7 +233,8 @@ func _send_pending() -> void:
 				m["eos_lobby"] = str(p["eos_lobby"])
 			api.send(m)
 		"room_join":
-			api.send({"t": "room_join", "code": p["code"], "translate": vs_translate()})
+			# 部屋のサーバーは作った人が決める。グローバルの部屋のときだけサーバーが翻訳モードを使う
+			api.send({"t": "room_join", "code": p["code"], "translate": GameSettings.vs_translate})
 
 
 # ---------------------------------------------------------------- サーバーからのメッセージ
@@ -537,7 +538,7 @@ func _on_line(msg: Dictionary) -> void:
 	var mark: String = tr("（声）") if str(msg.get("via", "")) == "voice" else ""
 	if bool(msg.get("translated", false)):
 		mark += tr("（訳）")
-	elif by != "you" and vs_translate() and msg.has("seq"):
+	elif by != "you" and bool(_match.get("translate", false)) and msg.has("seq"):
 		_lines_by_seq[int(msg["seq"])] = msg
 		if _lines_by_seq.size() > 40:
 			_lines_by_seq.erase(_lines_by_seq.keys()[0])

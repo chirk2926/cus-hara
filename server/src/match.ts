@@ -547,8 +547,15 @@ export class Match {
 
   private sendTranslated(viewer: number, t: string, seq: number, texts: string[], keys?: string[]): void {
     const to = this.langOf(viewer);
-    translateTexts(texts, to).then((out) => {
+    translateTexts(texts, to).then((raw) => {
       if (this.finished) return;
+      // 訳は AI の出力なので、元の文より極端に長いもの・不適切な語が入ったものは送らない（発言の中の指示で
+      // 訳を書きかえさせ、チェックを通っていない文を相手に見せる手口を防ぐ）。送らないときは原文のまま
+      const out = raw.map((o, i) => o.slice(0, Math.max(60, texts[i].length * 4)));
+      if (out.some((o, i) => keywordModeration(o).flagged && !keywordModeration(texts[i]).flagged)) {
+        log("translate dropped", this.id);
+        return;
+      }
       const msg: Record<string, unknown> = { t, seq };
       if (keys) keys.forEach((k, i) => (msg[k] = out[i]));
       else msg.text = out[0];

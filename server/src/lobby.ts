@@ -131,6 +131,15 @@ export class Lobby {
         this.rooms.delete(code);
       }
     }
+    // 管理画面でサーバーを休みにしたら、そのサーバーで待っている人・部屋を外す（要件#132）
+    const closedMsg = { t: "error", code: "server_closed", message: "このサーバーは休止中になりました。ほかのサーバーを選んでください" };
+    for (const [code, r] of this.rooms) {
+      if (!serverOpen(r.server)) {
+        r.host.send(closedMsg);
+        this.rooms.delete(code);
+      }
+    }
+    this.queue = this.queue.filter((q) => (serverOpen(q.server) ? true : (q.conn.send(closedMsg), false)));
     // 早く並んだ人から、許容範囲に入るいちばん近い相手を探す
     const sorted = [...this.queue].sort((a, b) => a.since - b.since);
     const paired = new Set<QueueEntry>();

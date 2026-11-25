@@ -1,5 +1,5 @@
 // 自動バックアップ（要件#131）。var/backups/<日時>/ に、DB（VACUUM INTO で、動いたまま一貫した写し）・
-// APIキー（secrets.json）・管理画面のパスワード（admin_auth.json）・お知らせ／記事の画像を置く。
+// APIキー（secrets.json）・お知らせ／記事の画像を置く（管理画面のパスワードは入れない・戻さない）。
 // 管理画面から: 設定（する・しない、間隔、残す数）、今すぐ取る、一覧、全部を戻す（再起動して入れかえる）、
 // 指定したプレイヤーだけ戻す（バックアップの players の行を、今の DB に書き戻す）、消す。
 // バックアップはこのマシンの中（サーバーのデータと同じ所）にだけ置く。外のディスクに写すのは運用で（docs/HOME_SERVER.md）。
@@ -73,9 +73,12 @@ export function createBackup(note = ""): string {
   const dbFile = path.join(tmp, path.basename(config.dbPath));
   openDb().exec(`VACUUM INTO '${dbFile.replace(/'/g, "''")}'`);
   fs.chmodSync(dbFile, 0o600);
-  for (const f of ["secrets.json", "admin_auth.json"]) {
+  for (const f of ["secrets.json"]) {
     const src = path.join(v, f);
-    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(tmp, f));
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(tmp, f));
+      fs.chmodSync(path.join(tmp, f), 0o600);
+    }
   }
   const img = path.join(v, "notice_images");
   if (fs.existsSync(img)) fs.cpSync(img, path.join(tmp, "notice_images"), { recursive: true });
@@ -168,7 +171,8 @@ export function applyPendingRestore(): void {
   const dbName = path.basename(config.dbPath);
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(config.dbPath + suffix, { force: true });
   fs.copyFileSync(path.join(dir, dbName), config.dbPath);
-  for (const f of ["secrets.json", "admin_auth.json"]) {
+  // 管理画面のパスワード（admin_auth.json）は戻さない（漏れて変えたパスワードが古いものに戻らないように）
+  for (const f of ["secrets.json"]) {
     const src = path.join(dir, f);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(v, f));

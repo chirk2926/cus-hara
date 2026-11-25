@@ -509,7 +509,7 @@ async function loadBackups(el) {
   const mb = (n) => (n / 1024 / 1024).toFixed(1) + " MB";
   const KIND = { manual: "手動", "before-restore": "戻す前の写し", "": "自動" };
   el.append(h("div", { class: "sheet" }, h("h2", {}, "バックアップ"),
-    h("p", { class: "muted" }, `自動: ${r.enabled ? `${r.interval_hours} 時間ごと` : "取らない"}・残す数 ${r.keep}（変えるのは 設定 →「バックアップ」）。中身は DB（プレイヤー・対戦の記録・通報・お知らせ・記事・設定）、APIキー、管理画面のパスワード、画像。置き場所はこのマシンの server/var/backups だけなので、ときどき別のディスクにも写してください。`),
+    h("p", { class: "muted" }, `自動: ${r.enabled ? `${r.interval_hours} 時間ごと` : "取らない"}・残す数 ${r.keep}（変えるのは 設定 →「バックアップ」）。中身は DB（プレイヤー・対戦の記録・通報・お知らせ・記事・設定）、APIキー、画像（管理画面のパスワードは入れません）。置き場所はこのマシンの server/var/backups だけなので、ときどき別のディスクにも写してください。`),
     h("div", { class: "row" }, h("button", { class: "main", onclick: async () => { try { await api("POST", "/api/backups"); toast("バックアップを取りました"); show("backup"); } catch (e) { toast(e.message, true); } } }, "今すぐ取る"))));
   const detail = h("div", {});
   const tbl = h("table", {}, h("tr", {}, h("th", {}, "日時"), h("th", {}, "種類"), h("th", {}, "プレイヤー"), h("th", {}, "大きさ"), h("th", {}, "")));

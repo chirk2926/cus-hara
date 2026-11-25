@@ -19,7 +19,7 @@ Chrome（Claude in Chrome など）が使える環境で行う。
 | 暗号鍵（64文字の16進数） | **まだ**（依頼者が作って Secrets に入れる） |
 | EOSG プラグイン | **まだ**（版を決め、zip の URL と SHA-256 を Variables に） |
 | 実績（t001〜t155） | **まだ**（ポータルで登録） |
-| CI | できている（`.github/workflows/build.yml` の「EOS settings and plugin」、`tools/eos_ci.py`） |
+| CI | できている（`.github/workflows/build.yml` の「EOS plugin」「EOS settings」、`tools/eos_ci.py`） |
 
 ## 手順
 

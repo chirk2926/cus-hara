@@ -615,3 +615,22 @@ test("対戦サーバー（要件#132）: 閉じたサーバーは断り、グ�
     a.c.close(); b.c.close();
   }
 });
+
+test("対戦サーバー（要件#132）: 待っている間にサーバーを休みにしたら、待ちを外して知らせる", async () => {
+  const { runtime } = await import("../src/settings.ts");
+  const a = await guest(srv.base, srv.wsUrl, "休止テスト");
+  a.c.send({ t: "lang", lang: "ko" });
+  a.c.send({ t: "queue", format: "text", server: "ko" });
+  await a.c.wait((m) => m.t === "queued");
+  runtime.vsServerKo = false;
+  try {
+    assert.equal((await a.c.wait((m) => m.t === "error", 5000)).code, "server_closed");
+    // もう待っていないので、別のサーバーで並び直せる
+    a.c.send({ t: "queue", format: "text", server: "ja" });
+    await a.c.wait((m) => m.t === "queued");
+    a.c.send({ t: "cancel" });
+  } finally {
+    runtime.vsServerKo = true;
+    a.c.close();
+  }
+});
