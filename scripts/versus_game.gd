@@ -143,10 +143,11 @@ func request_eos(kind: String, format: String) -> void:
 	var p: Dictionary = GameSettings.last_profile
 	var rating: int = int(p.get("rating", 1000))
 	var pname: String = str(p.get("name", GameSettings.player_name))
+	# EOS のロビーも接続サーバー（要件#132）ごとに分ける。ゲームサーバーの部屋と同じ分け方
 	if kind == "ranked":
-		eos.find_match(GameSettings.language, format, rating, pname)
+		eos.find_match(vs_server(), format, rating, pname)
 	else:
-		eos.invite_friend(GameSettings.language, format, rating, pname)
+		eos.invite_friend(vs_server(), format, rating, pname)
 
 
 func _on_eos_need_room(ranked: bool) -> void:
