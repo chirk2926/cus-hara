@@ -121,9 +121,9 @@ export function attachWebSocket(server: http.Server, lobby: Lobby): WebSocketSer
             c.send({ t: "error", code: blk[0], message: blk[1] });
             break;
           }
-          if (t === "queue") lobby.enqueue(c, msg.format);
-          else if (t === "room_create") lobby.createRoom(c, msg.format, msg.answer_time, { ranked: msg.ranked, eos_lobby: msg.eos_lobby });
-          else lobby.joinRoom(c, msg.code);
+          if (t === "queue") lobby.enqueue(c, msg.format, msg.server, msg.translate);
+          else if (t === "room_create") lobby.createRoom(c, msg.format, msg.answer_time, { ranked: msg.ranked, eos_lobby: msg.eos_lobby, server: msg.server, translate: msg.translate });
+          else lobby.joinRoom(c, msg.code, msg.translate);
           break;
         }
         case "cancel":

@@ -168,3 +168,34 @@ test("AI のお客さん: 景品が本当に引っかかっているときだけ
     srv.close();
   }
 });
+
+test("グローバルの翻訳（要件#132）: 翻訳のモデルで呼び、同じ文は覚えておく", async () => {
+  const slots = await import("../src/ai_slots.ts");
+  const llm = await import("../src/llm.ts");
+  let n = 0;
+  let model = "";
+  const srv = http.createServer((req, res) => {
+    let b = "";
+    req.on("data", (c) => (b += c));
+    req.on("end", () => {
+      n++;
+      model = String(JSON.parse(b).model);
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ choices: [{ message: { content: '{"texts":["Give me a refund!"]}' }, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 5 } }));
+    });
+  });
+  await new Promise<void>((r) => srv.listen(0, () => r()));
+  const url = `http://127.0.0.1:${(srv.address() as { port: number }).port}/v1`;
+  slots.setStoredSlots({ versusSame: true, versus: [], solo: [
+    { id: "ccccccc1", enabled: true, provider: "custom", model: "judge-m", genModel: "", transModel: "trans-m", dailyLimit: 0, label: "", tokenLimit: 90000, longModel: "", baseUrl: url, jsonMode: "json_schema" },
+  ] });
+  slots.resetSlotHealth();
+  try {
+    assert.deepEqual(await llm.translateTexts(["返金しろ！"], "en"), ["Give me a refund!"]);
+    assert.equal(model, "trans-m", "翻訳のモデルで呼ぶ");
+    await llm.translateTexts(["返金しろ！"], "en");
+    assert.equal(n, 1, "同じ文はもう一度呼ばない");
+  } finally {
+    srv.close();
+  }
+});

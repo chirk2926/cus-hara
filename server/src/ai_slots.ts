@@ -37,7 +37,7 @@ export const PROVIDER_INFO: Record<Provider, ProviderInfo> = {
 /** どのモードで使うか（要件#116: 1人用と対戦で別の並びにできる） */
 export type Mode = "solo" | "versus";
 /** 何に使うか（generate = お客さんづくり。登録ごとに別のモデルを指定できる） */
-export type Purpose = "generate" | "judge";
+export type Purpose = "generate" | "judge" | "translate";
 
 export interface AiSlot {
   id: string;
@@ -46,6 +46,8 @@ export interface AiSlot {
   model: string;
   /** お客さんづくりだけに使うモデル（空なら model。要件#116） */
   genModel: string;
+  /** グローバルサーバーの翻訳だけに使うモデル（空なら model。要件#132） */
+  transModel?: string;
   /** 1日に呼んでよい回数（0 = 上限なし。サーバーの日付で数え、再起動で0に戻る。要件#116） */
   dailyLimit: number;
   /** 管理画面に出すメモ（例: 「予備のキー」） */

@@ -830,5 +830,16 @@
 	"④ レールを戻して、ネジを4本締める": "④ Put the rail back and tighten the 4 screws",
 	"見せてもらった身分証で、もう年齢は確かめられる。": "The ID you were shown is already enough to confirm their age.",
 	"サーバー接続正常・不正検出正常": "Server connection OK · Cheat detection OK",
-	"相手を探しています… %d 秒（待っている人 %d）": "Looking for an opponent... %d s (%d waiting)"
+	"相手を探しています… %d 秒（待っている人 %d）": "Looking for an opponent... %d s (%d waiting)",
+	"勝敗でレートが動きます。選んだサーバーの人どうしで組みます。": "Your rating changes with wins and losses. You're matched with players on the server you chose.",
+	"日本語サーバー": "Japanese server",
+	"英語サーバー": "English server",
+	"中国語サーバー": "Chinese server",
+	"韓国語サーバー": "Korean server",
+	"グローバルサーバー（言語をまたいで対戦）": "Global server (play across languages)",
+	"接続サーバー:": "Server:",
+	"（休止中）": "(closed)",
+	"翻訳モード（相手の言葉を自分の言語で表示）": "Translation mode (show the opponent's words in your language)",
+	"そのサーバーは今お休み中です。別のサーバーを選んでください": "That server is closed right now. Please choose another server.",
+	"（訳）": " (translated)"
 }

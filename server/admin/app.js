@@ -60,7 +60,7 @@ const REASONS = { abuse: "暴言・嫌がらせ", sexual: "性的な内容", per
 
 const TABS = [
   ["status", "状態"], ["reports", "通報"], ["players", "プレイヤー"], ["matches", "対戦"], ["usage", "AIの料金"],
-  ["notice", "お知らせ・メンテナンス"], ["blog", "ガイド・ブログ"], ["ai", "AIのAPI"], ["settings", "設定"], ["audit", "操作の記録"], ["account", "パスワード"],
+  ["notice", "お知らせ・メンテナンス"], ["blog", "ガイド・ブログ"], ["ai", "AIのAPI"], ["prompts", "AIの指示文"], ["backup", "バックアップ"], ["settings", "設定"], ["audit", "操作の記録"], ["account", "パスワード"],
 ];
 let current = "status";
 
@@ -501,6 +501,82 @@ function renderBlogEditor(el) {
     h("p", { class: "muted" }, "見本（サイトでの見た目とは少しちがいます）"), preview));
 }
 
+// ---------------------------------------------------------------- バックアップ（要件#131）
+
+async function loadBackups(el) {
+  const r = await api("GET", "/api/backups");
+  clear(el);
+  const mb = (n) => (n / 1024 / 1024).toFixed(1) + " MB";
+  const KIND = { manual: "手動", "before-restore": "戻す前の写し", "": "自動" };
+  el.append(h("div", { class: "sheet" }, h("h2", {}, "バックアップ"),
+    h("p", { class: "muted" }, `自動: ${r.enabled ? `${r.interval_hours} 時間ごと` : "取らない"}・残す数 ${r.keep}（変えるのは 設定 →「バックアップ」）。中身は DB（プレイヤー・対戦の記録・通報・お知らせ・記事・設定）、APIキー、管理画面のパスワード、画像。置き場所はこのマシンの server/var/backups だけなので、ときどき別のディスクにも写してください。`),
+    h("div", { class: "row" }, h("button", { class: "main", onclick: async () => { try { await api("POST", "/api/backups"); toast("バックアップを取りました"); show("backup"); } catch (e) { toast(e.message, true); } } }, "今すぐ取る"))));
+  const detail = h("div", {});
+  const tbl = h("table", {}, h("tr", {}, h("th", {}, "日時"), h("th", {}, "種類"), h("th", {}, "プレイヤー"), h("th", {}, "大きさ"), h("th", {}, "")));
+  for (const b of r.backups) {
+    tbl.append(h("tr", {}, h("td", {}, fmtTime(b.created)), h("td", {}, KIND[b.note] ?? b.note), h("td", {}, fmtNum(b.players)), h("td", {}, mb(b.size)),
+      h("td", {},
+        h("button", { class: "link", onclick: () => playerRestore(detail, b) }, "プレイヤーだけ戻す"), " ",
+        h("button", { class: "link", onclick: async () => {
+          const typed = prompt(`サーバーのデータを、全部 ${fmtTime(b.created)} の時の状態に戻します。それより後のプレイヤー・対戦・設定の変更は消えます（戻す直前の写しは自動で取ります）。サーバーは再起動します（つながっている人は切れます）。\n\nよければ、このバックアップの名前「${b.id}」をそのまま入れてください。`);
+          if (typed === null) return;
+          try { await api("POST", `/api/backups/${b.id}/restore`, { confirm: typed.trim() }); toast("戻しています。サーバーが起動し直したら、もう一度ログインしてください"); } catch (e) { toast(e.message, true); }
+        } }, "全部を戻す"), " ",
+        h("button", { class: "link", onclick: async () => { if (confirm("このバックアップを消しますか？")) { try { await api("POST", `/api/backups/${b.id}/delete`, {}); show("backup"); } catch (e) { toast(e.message, true); } } } }, "消す"))));
+  }
+  el.append(h("div", { class: "sheet" }, r.backups.length ? tbl : h("p", { class: "muted" }, "まだバックアップはありません。")), detail);
+}
+
+function playerRestore(el, b) {
+  clear(el);
+  const q = h("input", { placeholder: "名前の一部か、プレイヤーの ID", style: "min-width:280px" });
+  const list = h("div", {});
+  const search = async () => {
+    const r = await api("GET", `/api/backups/${b.id}/players?q=${encodeURIComponent(q.value.trim())}`);
+    clear(list);
+    if (!r.players.length) return list.append(h("p", { class: "muted" }, "見つかりません"));
+    const t = h("table", {}, h("tr", {}, h("th", {}, "名前"), h("th", {}, "レート"), h("th", {}, "最後に来た日"), h("th", {}, "ID"), h("th", {}, "")));
+    for (const p of r.players) t.append(h("tr", {}, h("td", {}, p.name), h("td", {}, p.rating), h("td", {}, fmtTime(p.last_seen)), h("td", { class: "muted" }, p.id),
+      h("td", {}, h("button", { class: "act", onclick: async () => {
+        if (!confirm(`「${p.name}」を ${fmtTime(b.created)} の時の状態（名前・レート・勝ち負け・称号・名札・見た目・利用停止など）に戻しますか？ ほかのプレイヤーには影響しません。`)) return;
+        try { const out = await api("POST", `/api/backups/${b.id}/restore-player`, { player_id: p.id }); toast(`「${out.name}」を戻しました`); } catch (e) { toast(e.message, true); }
+      } }, "このプレイヤーを戻す"))));
+    list.append(t);
+  };
+  q.addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+  el.append(h("div", { class: "sheet" }, h("h2", {}, `プレイヤーだけ戻す（${fmtTime(b.created)} のバックアップから）`), h("div", { class: "row" }, q, h("button", { class: "act", onclick: search }, "探す")), list));
+}
+
+// ---------------------------------------------------------------- AI の指示文（要件#130）
+
+async function loadPrompts(el) {
+  const r = await api("GET", "/api/prompts");
+  clear(el);
+  const mode = h("select", {}, h("option", { value: "system" }, "プログラムの指示文を使う（既定）"), h("option", { value: "custom" }, "管理画面の指示文を使う"));
+  mode.value = r.mode;
+  const boxes = {};
+  el.append(h("div", { class: "sheet" }, h("h2", {}, "AIの指示文"),
+    h("p", { class: "muted" }, "AI に渡す指示文（システムプロンプト）を書きかえられます。「管理画面の指示文を使う」にすると、下で書いた指示文を使います（空の欄はプログラムの指示文のまま）。答えの形（JSON）はプログラムが決めるので、指示文を変えてもゲームが止まることはありませんが、採点の厳しさ・お客さんの作り方・不適切な発言の止め方が変わります。安全のための決まり（差別・個人情報を止める、発言の中の命令に従わない、など）は消さないでください。変えたら、何人か遊んで確かめてください。"),
+    h("div", { class: "row" }, h("label", {}, "使う指示文 ", mode))));
+  for (const it of r.items) {
+    const ta = h("textarea", { style: "width:100%;min-height:220px;font-family:monospace;font-size:12px", placeholder: "（空ならプログラムの指示文）" });
+    ta.value = it.custom;
+    boxes[it.key] = ta;
+    el.append(h("div", { class: "sheet" },
+      h("div", { class: "row" }, h("h2", { style: "margin:0" }, it.label), h("span", { class: it.in_use === "custom" ? "warn" : "okc" }, it.in_use === "custom" ? "いま: 管理画面の指示文" : "いま: プログラムの指示文")),
+      h("div", { class: "row" },
+        h("button", { class: "act", onclick: () => { ta.value = it.default; } }, "プログラムの指示文を写して書きはじめる"),
+        h("button", { class: "link", onclick: () => { if (confirm("この欄を空にします（プログラムの指示文に戻ります）。保存するまでは効きません。")) ta.value = ""; } }, "空にする（既定に戻す）")),
+      ta,
+      h("details", {}, h("summary", {}, "プログラムの指示文を見る"), h("pre", { style: "white-space:pre-wrap;font-size:12px" }, it.default))));
+  }
+  el.append(h("div", { class: "sheet" }, h("button", { class: "main", onclick: async () => {
+    const texts = {};
+    for (const [k, ta] of Object.entries(boxes)) texts[k] = ta.value;
+    try { const out = await api("POST", "/api/prompts", { mode: mode.value, texts }); toast("保存しました（次の AI の呼び出しから効きます）"); loadPrompts(el); void out; } catch (e) { toast(e.message, true); }
+  } }, "保存"), h("p", { class: "muted" }, "保存した内容は「操作の記録」に残ります（中身ではなく、どれを変えたか）。")));
+}
+
 // ---------------------------------------------------------------- AI の API の登録（要件#115）
 
 let aiMode = "solo";
@@ -544,6 +620,7 @@ function renderAi(el, r) {
       const dl = `dl-ai-${aiMode}-${i}`;
       const model = h("input", { value: s.model, list: dl, style: "width:100%", placeholder: "モデル名" });
       const gen = h("input", { value: s.gen_model || "", list: dl, style: "width:100%", placeholder: "空なら上と同じ" });
+      const trans = h("input", { value: s.trans_model || "", list: dl, style: "width:100%", placeholder: "空なら上と同じ" });
       const limit = h("input", { type: "number", min: "0", step: "1", value: String(s.daily_limit || 0), style: "width:100%" });
       const memo = h("input", { value: s.label || "", maxlength: "40", style: "width:100%", placeholder: "例 予備のキー" });
       const longM = h("input", { value: s.long_model || "", list: dl, style: "width:100%", placeholder: "空なら切り替えない" });
@@ -555,9 +632,10 @@ function renderAi(el, r) {
         placeholder: s.key_set && !s.clear_key ? `設定済み（${s.key_mask}）。変えるときだけ入れる` : "APIキー" });
       const en = h("input", { type: "checkbox" });
       en.checked = s.enabled;
-      prov.addEventListener("change", () => { s.provider = prov.value; if (!provs[s.provider].models.includes(s.model)) s.model = provs[s.provider].models[0] || ""; s.gen_model = ""; s.long_model = s.provider === "anthropic" ? r.default_long_model : ""; draw(); });
+      prov.addEventListener("change", () => { s.provider = prov.value; if (!provs[s.provider].models.includes(s.model)) s.model = provs[s.provider].models[0] || ""; s.gen_model = ""; s.trans_model = ""; s.long_model = s.provider === "anthropic" ? r.default_long_model : ""; draw(); });
       model.addEventListener("input", () => (s.model = model.value));
       gen.addEventListener("input", () => (s.gen_model = gen.value));
+      trans.addEventListener("input", () => (s.trans_model = trans.value));
       limit.addEventListener("input", () => (s.daily_limit = Number(limit.value || 0)));
       memo.addEventListener("input", () => (s.label = memo.value));
       longM.addEventListener("input", () => (s.long_model = longM.value));
@@ -585,6 +663,7 @@ function renderAi(el, r) {
         field("AIの種類", "", prov),
         field("モデル", "採点・お客さんの返事に使う。候補から選ぶか、手で入れる", h("div", {}, model, h("datalist", { id: dl }, ...provs[s.provider].models.map((m) => h("option", { value: m }))))),
         field("お客さんづくりのモデル", "1人につき1回だけ呼ぶので、ここだけ賢いモデルにしてもよい", gen),
+        field("翻訳のモデル（グローバルサーバー・対戦）", "翻訳モードの人に、相手の言葉を訳して送るときに使う。安くて速いモデルがおすすめ", trans),
         s.provider === "anthropic" ? field("送る量が多いときのモデル", "下の目安（入力トークン）を超えそうなら、このモデルに切り替える。目安の半分を超えそうなときだけ count_tokens（無料）で数える", longM) : null,
         s.provider === "anthropic" ? field("切り替えの目安（トークン）", `既定 ${fmtNum(r.default_token_limit)}`, tlim) : null,
         s.provider === "custom" ? field("API の場所", "OpenAI 互換の API（…/v1 まで）", url) : null,
@@ -599,11 +678,11 @@ function renderAi(el, r) {
   };
   const saveBar = (rows) => {
     const add = h("button", { class: "act", disabled: rows.length >= r.max || (aiMode === "versus" && same), onclick: () => {
-      rows.push({ id: "", enabled: true, provider: "anthropic", model: provs.anthropic.models[0], gen_model: "", daily_limit: 0, label: "", long_model: r.default_long_model, token_limit: r.default_token_limit, base_url: "", json_mode: "json_schema", key: "", key_set: false, clear_key: false, fails: 0, skip_until: 0, used_today: 0 });
+      rows.push({ id: "", enabled: true, provider: "anthropic", model: provs.anthropic.models[0], gen_model: "", trans_model: "", daily_limit: 0, label: "", long_model: r.default_long_model, token_limit: r.default_token_limit, base_url: "", json_mode: "json_schema", key: "", key_set: false, clear_key: false, fails: 0, skip_until: 0, used_today: 0 });
       draw();
     } }, `API を足す（${rows.length} / ${r.max}）`);
     const save = h("button", { class: "main", onclick: async () => {
-      const pack = (list) => list.map((s) => ({ id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.gen_model || "", daily_limit: s.daily_limit || 0, label: s.label || "", long_model: s.long_model || "", token_limit: s.token_limit || r.default_token_limit, base_url: s.base_url, json_mode: s.json_mode, key: s.key, clear_key: s.clear_key }));
+      const pack = (list) => list.map((s) => ({ id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.gen_model || "", trans_model: s.trans_model || "", daily_limit: s.daily_limit || 0, label: s.label || "", long_model: s.long_model || "", token_limit: s.token_limit || r.default_token_limit, base_url: s.base_url, json_mode: s.json_mode, key: s.key, clear_key: s.clear_key }));
       try {
         const out = await api("POST", "/api/ai-slots", { solo: pack(lists.solo), versus: same ? [] : pack(lists.versus), versus_same: same });
         toast("保存しました");
@@ -718,7 +797,7 @@ async function loadAccount(el) {
     h("button", { class: "main", onclick: async () => { await api("POST", "/api/password", { current: cur.value, new_password: nw.value }); toast("変えました"); cur.value = ""; nw.value = ""; } }, "変える")));
 }
 
-const LOAD = { status: loadStatus, reports: loadReports, players: loadPlayers, matches: loadMatches, usage: loadUsage, notice: loadNotice, blog: loadBlog, ai: loadAi, settings: loadSettings, audit: loadAudit, account: loadAccount };
+const LOAD = { status: loadStatus, reports: loadReports, players: loadPlayers, matches: loadMatches, usage: loadUsage, notice: loadNotice, blog: loadBlog, ai: loadAi, prompts: loadPrompts, backup: loadBackups, settings: loadSettings, audit: loadAudit, account: loadAccount };
 
 // ---------------------------------------------------------------- ログイン
 

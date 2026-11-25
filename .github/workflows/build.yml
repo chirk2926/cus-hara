@@ -206,6 +206,43 @@ jobs:
         with:
           path: ~/enc-tpl
           key: ${{ needs.enc_template.outputs.cache_key }}
+      # EOS（要件#133）: テストのあと、書き出しの前に組み込む。値が全部そろったときだけ（足りなければ EOS なしで作る）。
+      # ID（秘密ではない）は Variables、Client ID・Secret・暗号鍵は Secrets。プラグインは Variables の URL と SHA-256 が合うときだけ入れる
+      - name: EOS settings and plugin
+        env:
+          EOS_PRODUCT_ID: ${{ vars.EOS_PRODUCT_ID }}
+          EOS_SANDBOX_ID: ${{ vars.EOS_SANDBOX_ID }}
+          EOS_DEPLOYMENT_ID: ${{ vars.EOS_DEPLOYMENT_ID }}
+          EOS_PRODUCT_VERSION: ${{ vars.MSIX_VERSION || '1.0.0' }}
+          EOS_CLIENT_ID: ${{ secrets.EOS_CLIENT_ID }}
+          EOS_CLIENT_SECRET: ${{ secrets.EOS_CLIENT_SECRET }}
+          EOS_ENCRYPTION_KEY: ${{ secrets.EOS_ENCRYPTION_KEY }}
+          EOSG_ZIP_URL: ${{ vars.EOSG_ZIP_URL }}
+          EOSG_ZIP_SHA256: ${{ vars.EOSG_ZIP_SHA256 }}
+        run: |
+          if [ -n "$EOSG_ZIP_URL" ]; then
+            if [ -z "$EOSG_ZIP_SHA256" ]; then
+              echo "::error::EOSG_ZIP_SHA256 も Variables に入れてください（中身が変わっていないかを確かめるため）"
+              exit 1
+            fi
+            curl -fsSL "$EOSG_ZIP_URL" -o "$RUNNER_TEMP/eosg.zip"
+            echo "$EOSG_ZIP_SHA256  $RUNNER_TEMP/eosg.zip" | sha256sum -c -
+            mkdir -p "$RUNNER_TEMP/eosg"
+            unzip -q "$RUNNER_TEMP/eosg.zip" -d "$RUNNER_TEMP/eosg"
+            SRC=$(find "$RUNNER_TEMP/eosg" -type f -name plugin.cfg -path "*epic-online-services-godot*" | head -n 1)
+            if [ -z "$SRC" ]; then
+              echo "::error::zip の中に addons/epic-online-services-godot がありません"
+              exit 1
+            fi
+            mkdir -p addons
+            cp -r "$(dirname "$SRC")" addons/
+            python3 tools/eos_ci.py plugin
+          fi
+          python3 tools/eos_ci.py cfg
+          if [ -d addons/epic-online-services-godot ]; then
+            godot --headless --import > eos_import.log 2>&1 || true
+          fi
+
       # 暗号化の設定を書き出しの設定に足す（要件#94）。鍵はログに出さない
       - name: Turn on script encryption
         env:

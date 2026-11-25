@@ -233,3 +233,18 @@ test("管理画面（要件#108）: ほかのサイトからの書きかえ（�
   const { setSetting } = await import("../src/settings.ts");
   assert.throws(() => setSetting("llmBaseUrl", "http://169.254.169.254/latest", false));
 });
+
+test("管理画面: AI の指示文を書きかえ、モードで使い分ける（要件#130）", async () => {
+  const { cookie, csrf } = await login();
+  const before = await req("GET", "/api/prompts", { cookie });
+  assert.equal(before.body.mode, "system");
+  assert.ok(before.body.items.some((x: any) => x.key === "judge" && x.default.includes("ゲームマスター")));
+  const saved = await req("POST", "/api/prompts", { cookie, csrf, body: { mode: "custom", texts: { judge: "テスト用の採点の指示文" } } });
+  assert.equal(saved.status, 200);
+  const { prompt } = await import("../src/prompts.ts");
+  assert.equal(prompt("judge"), "テスト用の採点の指示文");
+  assert.ok(prompt("generate").includes("シナリオ作家"), "空の欄は既定のまま");
+  await req("POST", "/api/prompts", { cookie, csrf, body: { mode: "system", texts: { judge: "テスト用の採点の指示文" } } });
+  assert.ok(prompt("judge").includes("ゲームマスター"), "プログラムの指示文のモードでは、書いた指示文を使わない");
+  await req("POST", "/api/prompts", { cookie, csrf, body: { mode: "system", texts: { judge: "" } } });
+});

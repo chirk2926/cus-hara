@@ -30,6 +30,7 @@ const ERROR_TEXT: Dictionary = {
 	"same_network": "同じ回線のプレイヤーどうしでは、ランクマッチはできません",
 	"rating_gap": "レーティングの差が大きすぎるため、このランクマッチには入れません",
 	"unauthorized": "ログイン情報が無効です",
+	"server_closed": "そのサーバーは今お休み中です。別のサーバーを選んでください",
 }
 
 signal lobby_event(kind: String, data: Dictionary)   # ロビー画面向け: queued / queue_status / room_created / error / cancelled
@@ -170,6 +171,17 @@ func _on_eos_failed(message: String) -> void:
 	elif flow == "invite":
 		request("room_create", _eos_format)
 
+## 対戦の接続サーバー（要件#132）。空なら自分の言語のサーバー
+static func vs_server() -> String:
+	var s: String = GameSettings.vs_server
+	return s if s in ["ja", "en", "zh", "ko", "global"] else GameSettings.language
+
+
+## 翻訳モード（グローバルサーバーのときだけ）
+static func vs_translate() -> bool:
+	return vs_server() == "global" and GameSettings.vs_translate
+
+
 ## kind: "queue" | "room_create" | "room_join"
 func request(kind: String, format: String, code: String = "") -> void:
 	_pending = {"t": kind, "format": format, "code": code}
@@ -211,16 +223,17 @@ func _send_pending() -> void:
 	_pending = {}
 	match str(p["t"]):
 		"queue":
-			api.send({"t": "queue", "format": p["format"]})
+			api.send({"t": "queue", "format": p["format"], "server": vs_server(), "translate": vs_translate()})
 		"room_create":
-			var m: Dictionary = {"t": "room_create", "format": p["format"], "answer_time": GameSettings.answer_time}
+			var m: Dictionary = {"t": "room_create", "format": p["format"], "answer_time": GameSettings.answer_time,
+				"server": vs_server(), "translate": vs_translate()}
 			if bool(p.get("ranked", false)):
 				m["ranked"] = true
 			if str(p.get("eos_lobby", "")) != "":
 				m["eos_lobby"] = str(p["eos_lobby"])
 			api.send(m)
 		"room_join":
-			api.send({"t": "room_join", "code": p["code"]})
+			api.send({"t": "room_join", "code": p["code"], "translate": vs_translate()})
 
 
 # ---------------------------------------------------------------- サーバーからのメッセージ
@@ -284,6 +297,8 @@ func _on_message(msg: Dictionary) -> void:
 			_on_phase(msg)
 		"line":
 			_on_line(msg)
+		"line_tr", "judged_tr", "card_tr":
+			_on_translated(t, msg)
 		"eos_voice":
 			_join_eos_voice(str(msg.get("lobby_id", "")))
 		"voice_mode":
@@ -482,11 +497,50 @@ func _refresh() -> void:
 	main.display_anger = _anger
 
 
+## 訳を待っているセリフ（seq → line のメッセージ。グローバルの翻訳モード。要件#132）
+var _lines_by_seq: Dictionary = {}
+
+
+func _on_translated(t: String, msg: Dictionary) -> void:
+	var seq: int = int(msg.get("seq", -1))
+	match t:
+		"line_tr":
+			if not _lines_by_seq.has(seq):
+				return
+			var orig: Dictionary = _lines_by_seq[seq]
+			_lines_by_seq.erase(seq)
+			var m: Dictionary = orig.duplicate()
+			m["text"] = str(msg.get("text", ""))
+			m["translated"] = true
+			_on_line(m)
+		"judged_tr":
+			var c: String = str(msg.get("comment", msg.get("text", "")))
+			if c != "":
+				hud.set_comment(c)
+		"card_tr":
+			if seq != _round:
+				return
+			for k in ["title", "memo", "demand", "opening"]:
+				var v: String = str(msg.get(k, ""))
+				if v != "":
+					_card[k] = v
+			if _role == "staff":
+				hud.set_memo(str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
+			else:
+				hud.set_memo(tr("あなたの役: ") + str(_card.get("title", "")), str(_card.get("memo", "")), str(_card.get("demand", "")))
+
+
 func _on_line(msg: Dictionary) -> void:
 	var role: String = str(msg.get("role", ""))
 	var text: String = str(msg.get("text", ""))
 	var by: String = str(msg.get("by", ""))
 	var mark: String = tr("（声）") if str(msg.get("via", "")) == "voice" else ""
+	if bool(msg.get("translated", false)):
+		mark += tr("（訳）")
+	elif by != "you" and vs_translate() and msg.has("seq"):
+		_lines_by_seq[int(msg["seq"])] = msg
+		if _lines_by_seq.size() > 40:
+			_lines_by_seq.erase(_lines_by_seq.keys()[0])
 	if role == "customer":
 		var speaker: String = "%s（%s）%s" % [str(_card.get("title", tr("お客さん"))), _who(by), mark]
 		# お客さん役のプレイヤーの吹き出し（ショップで買ったもの。要件#107）

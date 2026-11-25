@@ -7,6 +7,7 @@ import path from "node:path";
 import { config } from "./config.ts";
 import { storedSettings, storeSetting } from "./db.ts";
 import { resetLlmClient } from "./llm.ts";
+import { reloadPrompts } from "./prompts.ts";
 import { type AiSlot, type Mode, type Provider, type StoredSlots, DEFAULT_TOKEN_LIMIT, DEFAULT_LONG_MODEL, PROVIDERS, PROVIDER_INFO, MAX_SLOTS, aiSlots, allSlots, versusSame, isStored, setStoredSlots, setSlotKey, slotKey, slotHealth, usedToday, resetSlotHealth, newSlotId, clearSlotKeys } from "./ai_slots.ts";
 
 export type SettingType = "string" | "number" | "bool" | "enum" | "secret" | "text";
@@ -35,6 +36,17 @@ export const runtime = {
   maintenance: false,
   maintenanceMessage: "",
   statusNote: "",
+  /** 対戦のサーバー（要件#132）。1台のゲームサーバーの中で、言語ごとの部屋とグローバル（言語をまたぐ）に分ける */
+  vsServerJa: true,
+  vsServerEn: true,
+  vsServerZh: true,
+  vsServerKo: true,
+  /** グローバルは作ってあるが、まだ使わない（管理画面で開ける） */
+  vsServerGlobal: process.env.VS_GLOBAL === "1",
+  /** 自動バックアップ（要件#131） */
+  backupEnabled: process.env.BACKUP_ENABLED !== "0",
+  backupIntervalHours: 24,
+  backupKeep: 14,
   /** 紹介サイトを上げる Cloudflare Pages（要件#125） */
   siteProject: process.env.SITE_PROJECT ?? "",
   cfAccountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? "",
@@ -93,6 +105,14 @@ export const SETTINGS: SettingDef[] = [
   { key: "snapNormal", group: "1人用", label: "キレるまでの秒数（うさぎ・ノーマル）", help: "同上", type: "number", min: 30, max: 900, path: "runtime.snapNormal" },
   { key: "snapFast", group: "1人用", label: "キレるまでの秒数（チーター・ハード）", help: "同上", type: "number", min: 30, max: 900, path: "runtime.snapFast" },
   { key: "konbiniOpen", group: "運営", label: "コンビニを開ける", help: "オフの間は、ゲームのコンビニが「準備中」になり、対戦の舞台もゲームセンターだけになる", type: "bool", path: "runtime.konbiniOpen" },
+  { key: "vsServerJa", group: "対戦サーバー", label: "日本語サーバーを開ける", help: "閉じると、そのサーバーでは相手探し・部屋づくりができない（ゲームの選ぶ画面に「休止中」と出る）", type: "bool", path: "runtime.vsServerJa" },
+  { key: "vsServerEn", group: "対戦サーバー", label: "英語サーバーを開ける", help: "", type: "bool", path: "runtime.vsServerEn" },
+  { key: "vsServerZh", group: "対戦サーバー", label: "中国語サーバーを開ける", help: "", type: "bool", path: "runtime.vsServerZh" },
+  { key: "vsServerKo", group: "対戦サーバー", label: "韓国語サーバーを開ける", help: "", type: "bool", path: "runtime.vsServerKo" },
+  { key: "vsServerGlobal", group: "対戦サーバー", label: "グローバルサーバーを開ける", help: "言語をまたいで対戦できる。プレイヤーが「翻訳モード」をオンにすると、相手のセリフ・判定・お客さんのメモを AI で訳して出す（AI の料金がかかる。翻訳のモデルは「AIのAPI」の対戦の並びで登録ごとに決める）", type: "bool", path: "runtime.vsServerGlobal" },
+  { key: "backupEnabled", group: "バックアップ", label: "自動でバックアップを取る", help: "DB・APIキー・管理画面のパスワード・画像を server/var/backups に写す。戻すのは「バックアップ」の画面から", type: "bool", path: "runtime.backupEnabled" },
+  { key: "backupIntervalHours", group: "バックアップ", label: "バックアップの間隔（時間）", help: "最後に取ってからこの時間がたったら取る", type: "number", min: 1, max: 168, path: "runtime.backupIntervalHours" },
+  { key: "backupKeep", group: "バックアップ", label: "残すバックアップの数", help: "これより古いものは消す（全部を戻す直前に取った写しも数に入る）", type: "number", min: 1, max: 365, path: "runtime.backupKeep" },
   { key: "siteProject", group: "サイト", label: "Cloudflare Pages のプロジェクト名", help: "ガイド・ブログの「サイトに反映」で上げる先。直接アップロード（Direct Upload）で作ったプロジェクトの名前（docs/SITE.md）", type: "string", path: "runtime.siteProject" },
   { key: "cfAccountId", group: "サイト", label: "Cloudflare のアカウント ID", help: "Cloudflare のダッシュボードの右側に出る32文字", type: "string", path: "runtime.cfAccountId" },
   { key: "CLOUDFLARE_API_TOKEN", group: "サイト", label: "Cloudflare の API トークン", help: "権限は「Cloudflare Pages: 編集」だけにしたトークン", type: "secret", env: "CLOUDFLARE_API_TOKEN" },
@@ -262,8 +282,9 @@ const LEGACY_AI: Record<string, (v: unknown) => void> = {
 
 export function loadStoredSettings(): void {
   const st = storedSettings();
+  reloadPrompts();
   for (const [k, raw] of Object.entries(st)) {
-    if (k === AI_SLOTS_KEY) continue;
+    if (k === AI_SLOTS_KEY || k === "aiPrompts") continue;
     if (k in LEGACY_AI) {
       try { LEGACY_AI[k](JSON.parse(raw)); } catch { /* 壊れた値は無視 */ }
       continue;
@@ -312,6 +333,7 @@ function sanitizeList(v: unknown): AiSlot[] {
       id: o.id, enabled: o.enabled !== false, provider: o.provider as Provider,
       model: typeof o.model === "string" && MODEL_RE.test(o.model) ? o.model : "",
       genModel: typeof o.genModel === "string" && MODEL_RE.test(o.genModel) ? o.genModel : "",
+      transModel: typeof o.transModel === "string" && MODEL_RE.test(o.transModel) ? o.transModel : "",
       dailyLimit: Number.isInteger(o.dailyLimit) && (o.dailyLimit as number) > 0 ? Math.min(1_000_000, o.dailyLimit as number) : 0,
       tokenLimit: Number.isInteger(o.tokenLimit) && (o.tokenLimit as number) >= 0 ? Math.min(1_000_000, o.tokenLimit as number) : DEFAULT_TOKEN_LIMIT,
       longModel: o.provider === "anthropic" && typeof o.longModel === "string" && MODEL_RE.test(o.longModel) ? o.longModel : "",
@@ -344,7 +366,7 @@ export function aiSlotsForAdmin() {
   const view = (s: AiSlot) => {
     const k = slotKey(s);
     return {
-      id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label, token_limit: s.tokenLimit, long_model: s.longModel,
+      id: s.id, enabled: s.enabled, provider: s.provider, model: s.model, gen_model: s.genModel, trans_model: s.transModel ?? "", daily_limit: s.dailyLimit, label: s.label, token_limit: s.tokenLimit, long_model: s.longModel,
       base_url: s.baseUrl, json_mode: s.jsonMode, key_set: k !== "", key_mask: mask(k), used_today: usedToday(s.id), ...slotHealth(s.id),
     };
   };
@@ -373,6 +395,8 @@ function validateList(input: unknown, mode: Mode, before: Map<string, AiSlot>, k
     const model = typeof o.model === "string" ? o.model.trim() : "";
     if (!MODEL_RE.test(model)) throw new SettingError(`${at}: モデル名を入れてください（英数字と . _ : / - だけ）`);
     const genModel = typeof o.gen_model === "string" ? o.gen_model.trim() : "";
+    const transModel = typeof o.trans_model === "string" ? o.trans_model.trim() : "";
+    if (transModel !== "" && !MODEL_RE.test(transModel)) throw new SettingError(`${at}: 翻訳のモデル名は英数字と . _ : / - だけにしてください`);
     if (genModel !== "" && !MODEL_RE.test(genModel)) throw new SettingError(`${at}: お客さんづくりのモデル名は英数字と . _ : / - だけにしてください`);
     const dl = Number(o.daily_limit ?? 0);
     if (!Number.isFinite(dl) || dl < 0 || dl > 1_000_000 || Math.floor(dl) !== dl) throw new SettingError(`${at}: 1日の上限は 0（上限なし）か、1〜1000000 の整数にしてください`);
@@ -404,7 +428,7 @@ function validateList(input: unknown, mode: Mode, before: Map<string, AiSlot>, k
     }
     // 種類・モデル・場所・キーを変えたら、失敗の回数を消してすぐに使ってみる
     if (!old || old.provider !== provider || old.model !== model || old.genModel !== genModel || old.baseUrl !== baseUrl || key !== "") resetSlotHealth(id);
-    out.push({ id, enabled: o.enabled !== false, provider, model, genModel, dailyLimit: dl, label, tokenLimit: tl, longModel, baseUrl, jsonMode: o.json_mode === "json_object" ? "json_object" : "json_schema" });
+    out.push({ id, enabled: o.enabled !== false, provider, model, genModel, transModel, dailyLimit: dl, label, tokenLimit: tl, longModel, baseUrl, jsonMode: o.json_mode === "json_object" ? "json_object" : "json_schema" });
   }
   return out;
 }
@@ -448,7 +472,7 @@ export function copySoloToVersus(): string {
   const solo = aiSlots("solo");
   return saveAiSlots({
     versus_same: false,
-    versus: solo.map((s) => ({ provider: s.provider, model: s.model, gen_model: s.genModel, daily_limit: s.dailyLimit, label: s.label, token_limit: s.tokenLimit, long_model: s.longModel, base_url: s.baseUrl, json_mode: s.jsonMode, enabled: s.enabled, copy_key_from: s.id })),
+    versus: solo.map((s) => ({ provider: s.provider, model: s.model, gen_model: s.genModel, trans_model: s.transModel ?? "", daily_limit: s.dailyLimit, label: s.label, token_limit: s.tokenLimit, long_model: s.longModel, base_url: s.baseUrl, json_mode: s.jsonMode, enabled: s.enabled, copy_key_from: s.id })),
   });
 }
 

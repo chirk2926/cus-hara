@@ -3722,6 +3722,54 @@ func _ask_versus_format() -> void:
 	col.add_child(back)
 
 
+const VS_SERVER_NAMES: Dictionary = {"ja": "日本語サーバー", "en": "英語サーバー", "zh": "中国語サーバー", "ko": "韓国語サーバー", "global": "グローバルサーバー（言語をまたいで対戦）"}
+
+
+## 接続サーバーの選択（言語ごと＋グローバル。要件#132）。休止中のサーバーは選べない
+func _add_server_picker(row: HBoxContainer) -> void:
+	row.add_child(UI.text(tr("接続サーバー:"), UI.S_BODY, UI.PAPER))
+	var open: Dictionary = {}
+	var list: Variant = _server_info.get("versus_servers", null)
+	if typeof(list) == TYPE_ARRAY:
+		for e in list:
+			if typeof(e) == TYPE_DICTIONARY:
+				open[str(e.get("id", ""))] = bool(e.get("open", false))
+	else:
+		# 古いサーバー: 言語のサーバーだけ
+		for id in ["ja", "en", "zh", "ko"]:
+			open[id] = true
+		open["global"] = false
+	var cur: String = VersusScript.vs_server()
+	if not bool(open.get(cur, false)):
+		cur = GameSettings.language if bool(open.get(GameSettings.language, false)) else ""
+		GameSettings.vs_server = cur
+	var opt: OptionButton = UI.option()
+	var ids: Array = ["ja", "en", "zh", "ko", "global"]
+	for i in ids.size():
+		var id: String = ids[i]
+		var label: String = tr(str(VS_SERVER_NAMES[id]))
+		if not bool(open.get(id, false)):
+			label += " " + tr("（休止中）")
+		opt.add_item(label, i)
+		opt.set_item_disabled(i, not bool(open.get(id, false)))
+		if id == VersusScript.vs_server():
+			opt.select(i)
+	row.add_child(opt)
+	var trans: CheckBox = UI.check(tr("翻訳モード（相手の言葉を自分の言語で表示）"), GameSettings.vs_translate)
+	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		trans.add_theme_color_override(k, UI.PAPER)
+	trans.visible = VersusScript.vs_server() == "global"
+	trans.toggled.connect(func(on: bool) -> void:
+		GameSettings.vs_translate = on
+		GameSettings.save_settings())
+	row.add_child(trans)
+	opt.item_selected.connect(func(idx: int) -> void:
+		_versus.cancel()
+		GameSettings.vs_server = str(ids[idx])
+		GameSettings.save_settings()
+		trans.visible = str(ids[idx]) == "global")
+
+
 func _show_versus_lobby() -> void:
 	# 初めての対戦の前に、キャラクターを作る（要件#84）
 	if not Shop.avatar_created() and not smoke:
@@ -3772,6 +3820,8 @@ func _show_versus_lobby() -> void:
 		_versus.cancel()
 		_ask_versus_format())
 	fmt_row.add_child(change)
+	fmt_row.add_child(UI.gap(0))
+	_add_server_picker(fmt_row)
 
 	var notes: HBoxContainer = UI.hbox(32)
 	notes.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -3786,7 +3836,7 @@ func _show_versus_lobby() -> void:
 	var rc: VBoxContainer = UI.vbox(10)
 	ranked.add_child(rc)
 	rc.add_child(UI.text(tr("ランクマッチ"), UI.S_LEAD, UI.INK, UI.F_SIGN))
-	rc.add_child(UI.para(tr("レートの近い相手を探します。待つほど範囲が広がります。勝敗でレートが動きます。同じ言語の人どうしで組みます。"), UI.S_SMALL, UI.INK_SOFT))
+	rc.add_child(UI.para(tr("勝敗でレートが動きます。選んだサーバーの人どうしで組みます。"), UI.S_SMALL, UI.INK_SOFT))
 	var find: Button = UI.primary(tr("相手を探す"), UI.S_LEAD)
 	find.pressed.connect(func() -> void:
 		sfx.play("click")

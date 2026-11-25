@@ -49,6 +49,10 @@ var bgm_volume: float = 0.5
 const ANSWER_TIMES: Array = [["slow", "かめ（イージー）"], ["normal", "うさぎ（ノーマル）"], ["fast", "チーター（ハード）"]]
 const ANSWER_RATE: Dictionary = {"slow": 0.6, "normal": 1.0, "fast": 1.4}
 var answer_time: String = "normal"
+## 対戦の接続サーバー（"" = 自分の言語のサーバー。"ja"/"en"/"zh"/"ko"/"global"。要件#132）
+var vs_server: String = ""
+## グローバルサーバーで、相手の言葉を自分の言語に訳して出す
+var vs_translate: bool = false
 var fullscreen: bool = true   # 既定はフルスクリーン（要件#69）
 ## 解像度（ウィンドウの大きさ）。"auto" = 画面に収まる一番大きいもの。どれを選んでも、画面（タスクバーを除く）より大きくはしない
 const RESOLUTIONS: Array = [
@@ -269,6 +273,8 @@ func load_settings() -> void:
 	volume = float(cfg.get_value("audio", "volume", 0.8))
 	bgm_volume = float(cfg.get_value("audio", "bgm_volume", 0.5))
 	answer_time = str(cfg.get_value("play", "answer_time", "normal"))
+	vs_server = str(cfg.get_value("play", "vs_server", ""))
+	vs_translate = bool(cfg.get_value("play", "vs_translate", false))
 	if not ANSWER_RATE.has(answer_time):
 		answer_time = "normal"
 	push_to_talk_key = int(cfg.get_value("audio", "push_to_talk_key", KEY_SPACE))
@@ -319,6 +325,8 @@ func save_settings() -> void:
 	cfg.set_value("audio", "volume", volume)
 	cfg.set_value("audio", "bgm_volume", bgm_volume)
 	cfg.set_value("play", "answer_time", answer_time)
+	cfg.set_value("play", "vs_server", vs_server)
+	cfg.set_value("play", "vs_translate", vs_translate)
 	cfg.set_value("audio", "push_to_talk_key", push_to_talk_key)
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("video", "render_scale", render_scale)

@@ -25,6 +25,8 @@ import {
 import { listSettings, setSetting, SettingError, settingDef, currentValue, costUsd, runtime, aiSlotsForAdmin, saveAiSlots, copySoloToVersus } from "./settings.ts";
 import { llmEnabled, llmName, cacheStats, pingLlm, pingSlot } from "./llm.ts";
 import { allSlots, slotUsable } from "./ai_slots.ts";
+import { promptsForAdmin, savePrompts } from "./prompts.ts";
+import { listBackups, createBackup, deleteBackup, backupPlayers, restorePlayer, scheduleFullRestore, BackupError } from "./backup.ts";
 import { sttEnabled } from "./stt.ts";
 import { kickPlayer, onlinePlayers } from "./ws.ts";
 import { VERSION } from "./http.ts";
@@ -358,6 +360,51 @@ async function route(method: string, url: URL, body: Record<string, unknown>, lo
     adminLog("setting_revert", e.target, `${d.label}: ${r.before} → ${r.after}（記録 #${e.id} を戻した）`, "", "");
     return { ok: true, settings: listSettings() };
   }
+  // ---- バックアップ（要件#131）
+  try {
+    if (method === "GET" && p === "/api/backups") return { backups: listBackups(), enabled: runtime.backupEnabled, interval_hours: runtime.backupIntervalHours, keep: runtime.backupKeep };
+    if (method === "POST" && p === "/api/backups") {
+      const id = createBackup("manual");
+      adminLog("backup", id, "バックアップを取った（手動）");
+      return { ok: true, id, backups: listBackups() };
+    }
+    const bm = /^\/api\/backups\/(\d{8}-\d{6}(?:-[a-z]+)?)\/(players|restore-player|restore|delete)$/.exec(p);
+    if (bm) {
+      const [, id, act] = bm;
+      if (method === "GET" && act === "players") return { players: backupPlayers(id, str(url.searchParams.get("q"), 40)) };
+      if (method === "POST" && act === "restore-player") {
+        const pid = str(body.player_id, 40);
+        const r = restorePlayer(id, pid);
+        kickPlayer(pid, "アカウントの情報を戻しました。つなぎ直してください");
+        adminLog("backup_restore_player", pid, `プレイヤー「${r.name}」をバックアップ ${id} の時の状態に戻した`);
+        return { ok: true, name: r.name };
+      }
+      if (method === "POST" && act === "restore") {
+        if (body.confirm !== id) throw new AdminError(400, "確認のため、バックアップの名前をそのまま入れてください");
+        scheduleFullRestore(id);
+        adminLog("backup_restore", id, `バックアップ ${id} に全部を戻す（サーバーを再起動して入れかえる）`);
+        setTimeout(() => process.exit(0), 500).unref();
+        return { ok: true };
+      }
+      if (method === "POST" && act === "delete") {
+        deleteBackup(id);
+        adminLog("backup_delete", id, "バックアップを消した");
+        return { ok: true, backups: listBackups() };
+      }
+    }
+  } catch (e) {
+    if (e instanceof BackupError) throw new AdminError(400, e.message);
+    throw e;
+  }
+
+  // ---- AI の指示文（要件#130）
+  if (method === "GET" && p === "/api/prompts") return promptsForAdmin();
+  if (method === "POST" && p === "/api/prompts") {
+    const summary = savePrompts(body);
+    adminLog("prompts", "", `AIの指示文を変えた: ${summary}`);
+    return promptsForAdmin();
+  }
+
   // ---- AI の API の登録（要件#115）: 最大5個、並び順が優先順位
   if (method === "GET" && p === "/api/ai-slots") return aiSlotsForAdmin();
   if (method === "POST" && p === "/api/ai-slots") {

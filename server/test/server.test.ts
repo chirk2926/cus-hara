@@ -582,3 +582,36 @@ test("サーバーの状況（紹介サイト用）: 状態の名前だけで、
   assert.equal(info.body.ai_provider, undefined);
   assert.equal(info.body.ai_cache, undefined);
 });
+
+test("対戦サーバー（要件#132）: 閉じたサーバーは断り、グローバルは言語をまたいで組む。レート差は送らない", async () => {
+  const { runtime } = await import("../src/settings.ts");
+  const info = await api(srv.base, "GET", "/api/v1/info");
+  assert.deepEqual(info.body.versus_servers.map((s: any) => s.id), ["ja", "en", "zh", "ko", "global"]);
+  assert.equal(info.body.versus_servers.find((s: any) => s.id === "global").open, false, "グローバルは最初は閉じている");
+  const a = await guest(srv.base, srv.wsUrl, "グローバルA");
+  const b = await guest(srv.base, srv.wsUrl, "GlobalB");
+  a.c.send({ t: "lang", lang: "ja" });
+  b.c.send({ t: "lang", lang: "en" });
+  a.c.send({ t: "queue", format: "text", server: "global" });
+  assert.equal((await a.c.wait((m) => m.t === "error")).code, "server_closed");
+  runtime.vsServerGlobal = true;
+  try {
+    a.c.send({ t: "queue", format: "text", server: "global", translate: true });
+    const q = await a.c.wait((m) => m.t === "queued");
+    assert.equal(q.server, "global");
+    const st = await a.c.wait((m) => m.t === "queue_status", 5000);
+    assert.equal(st.range, undefined, "レート差は送らない");
+    b.c.send({ t: "queue", format: "text", server: "global" });
+    const fa = await a.c.wait((m) => m.t === "match_found");
+    const fb = await b.c.wait((m) => m.t === "match_found");
+    assert.equal(fa.server, "global");
+    assert.equal(fa.translate, true);
+    assert.equal(fb.translate, false, "翻訳モードは席ごと");
+    assert.equal(fa.lang, "en", "グローバルの判定の文は英語");
+    a.c.send({ t: "leave" });
+    await b.c.wait((m) => m.t === "match_end");
+  } finally {
+    runtime.vsServerGlobal = false;
+    a.c.close(); b.c.close();
+  }
+});

@@ -20,7 +20,7 @@ import { sttEnabled } from "./stt.ts";
 import { allow } from "./ratelimit.ts";
 import { isAllowed, judgeAction, actionAsStaffLine, effectKind } from "./actions.ts";
 import { type Lang, toLang, LANGS } from "./lang.ts";
-import type { Lobby } from "./lobby.ts";
+import { type Lobby, versusServers } from "./lobby.ts";
 import { log } from "./log.ts";
 
 export const VERSION = "1.0.0";
@@ -197,6 +197,8 @@ export function info(lobby: Lobby) {
     // お知らせとメンテナンス（要件#100。管理画面から）
     maintenance: runtime.maintenance,
     open_stages: openStages(),
+    // 対戦のサーバー（要件#132）: 言語ごと＋グローバル。閉じているものは選べない
+    versus_servers: versusServers(),
     snap_seconds: { slow: runtime.snapSlow, normal: runtime.snapNormal, fast: runtime.snapFast },
     maintenance_message: runtime.maintenance ? runtime.maintenanceMessage : "",
     // 言語ごとの見出しと本文（Markdown）。その言語が空なら英語 → 日本語の順で使う

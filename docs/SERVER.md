@@ -118,11 +118,11 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | t | 中身 | 意味 |
 |---|---|---|
 | `auth` | `token`, `lang` | ログイン。試合中に切れていたら、その試合に戻る |
-| `lang` | `lang` | 言語を変える（`ja` / `en`） |
-| `queue` | `format` | ランクマッチに並ぶ（`text` / `voice`） |
+| `lang` | `lang` | 言語を変える（`ja` / `en` / `zh` / `ko`） |
+| `queue` | `format`, `server`, `translate` | ランクマッチに並ぶ（`text` / `voice`）。`server` は接続サーバー（`ja`/`en`/`zh`/`ko`/`global`。省くと自分の言語）。同じサーバーの人どうしで組む。`translate` は翻訳モード（グローバルだけ。要件#132） |
 | `cancel` | | 並ぶのをやめる・部屋を閉じる |
-| `room_create` | `format` | フレンド部屋を作る |
-| `room_join` | `code` | 部屋に入る（大文字小文字は区別しない） |
+| `room_create` | `format`, `server`, `translate` | フレンド部屋を作る（部屋は作った人のサーバー） |
+| `room_join` | `code`, `translate` | 部屋に入る（大文字小文字は区別しない） |
 | `say` | `text` | 自分の番の文字のセリフ（200文字まで） |
 | `voice` | `audio`（base64 μ-law）, `debug_text`（mock のときだけ使う） | 自分の番の声（0.1〜20秒） |
 | `leave` | | 試合をやめる（相手の勝ち） |
@@ -131,14 +131,15 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | t | 主な中身 |
 |---|---|
 | `hello` | `player`, `resumed` |
-| `queued` / `queue_status` | `seconds`, `range`（許容レーティング差。null は誰とでも）, `waiting_players` |
+| `queued` / `queue_status` | `seconds`, `waiting_players`, `server`（レーティングの差は送らない。要件#124） |
 | `room_created` / `room_expired` | `code` |
-| `match_found` | `match_id`, `kind`（ranked/friend）, `format`, `lang`, `stage`, `rounds`, `you`, `opponent` |
+| `match_found` | `match_id`, `kind`（ranked/friend）, `format`, `lang`, `server`, `translate`, `stage`, `rounds`, `you`, `opponent` |
 | `round_start` | `round`, `role`（staff/customer）, `card`（お客さんの設定）, `anger`, `resolve`, `rate`, `totals` |
 | `phase` | `phase`（customer_turn / staff_turn / judging / intro / round_end）, `turn`（you/opponent/none）, `seconds`, `elapsed`, `anger`, `resolve`, `rate` |
-| `line` | `role`, `by`, `text`, `via`（text/voice） |
+| `line` | `role`, `by`, `text`, `via`（text/voice）, `seq` |
+| `line_tr` / `judged_tr` / `card_tr` | 翻訳モードの人だけに、あとから送る訳（`seq` で元の `line`・`judged` に合わせる。`card_tr` は `seq` がラウンドの番号で `title`, `memo`, `demand`, `opening`）。訳せなければ送らない（原文のまま） |
 | `voice` | `role`, `by`, `audio`（相手の声） |
-| `judged` | `anger`, `resolve`, `anger_delta`, `resolve_delta`, `comment`, `about` |
+| `judged` | `anger`, `resolve`, `anger_delta`, `resolve_delta`, `comment`, `about`, `seq` |
 | `round_end` | `outcome`, `winner`, `points`, `totals` |
 | `match_end` | `result`（win/lose/draw）, `reason`, `kind`, `you_points`, `opponent_points`, `rating_before`, `rating_after`, `rating_delta`, `rank` |
 | `opponent_status` | `connected`, `grace_seconds` |
@@ -286,6 +287,9 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 | お知らせ・メンテナンス | タイトル画面に出すお知らせ（日・英・中）。メンテナンス中は対戦（マッチング・部屋）を止める（1人用は遊べる） |
 | 設定 | `server/src/settings.ts` の一覧。DB（settings 表）に保存して、環境変数より優先。APIキーは `server/var/secrets.json`（持ち主だけ読める）に保存し、画面には最初と最後の数文字だけ |
 | 操作の記録 | すべての操作。設定の変更は「前に戻す」（APIキーは戻せない。入れ直す） |
+| AIの指示文（要件#130） | AI に渡す指示文（お客さんづくり・採点・客役の採点・不適切な発言のチェック・翻訳）を見て書きかえる。モード「プログラムの指示文」（既定）／「管理画面の指示文」（書いた欄だけ使い、空の欄はプログラムのまま）。答えの形（JSON）はプログラムが決めるので、指示文を変えても形はくずれない |
+| バックアップ（要件#131） | 自動で取る・取らない、間隔（時間）、残す数（設定 → バックアップ）。今すぐ取る、一覧、消す。「全部を戻す」は ID を入力して確かめ、サーバーを再起動して入れかえる（入れかえる前の今のデータも写しておく）。「プレイヤーを戻す」は、そのバックアップの中から探して、その人だけ（名前・レート・勝敗・称号・名札・見た目・利用停止など）を戻す（つながっていれば切る）。置き場所は `server/var/backups/`（DB・secrets.json・管理画面のパスワード・お知らせの画像） |
+| 対戦サーバー（要件#132） | 設定 → 対戦サーバー で、日本語・英語・中国語・韓国語・グローバルのサーバーごとに使う／休む。休んでいるサーバーはゲームで「休止中」と出て選べない（並んでいた人には `server_closed`）。グローバルは既定で休み（`VS_GLOBAL=1` で最初から開く）。翻訳のモデルは「AIのAPI」の登録ごとの「翻訳のモデル」（空なら採点のモデル） |
 
 ### 利用停止・警告のゲームでの見え方
 - 全部の利用停止: ログイン（`/api/v1/me` など）が 403 `banned`、WebSocket も断る。止めた瞬間につながっていた接続も切る。ゲームは「このアカウントは利用停止中です」と理由を出し、1人用（台本）だけ遊べる。
@@ -295,3 +299,12 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose -f server/compose.yaml up -d --build
 
 ### 会話の保存（プライバシーポリシーと同じ）
 試合の会話（文字。声の文字起こしを含む。声そのものは保存しない）は、ふだんはメモリにだけ置き、試合の終わりから1時間で捨てる。通報（プレイヤーの通報・自動の不適切発言の検出）があった試合だけを DB（match_logs 表）に保存し、30日で消す（6時間ごとに確かめる）。管理画面で会話を見ると、その操作も記録に残る。
+
+## 12. 対戦サーバーとグローバルの翻訳（要件#132）
+
+- 1台のゲームサーバーの中で、言語ごと（ja/en/zh/ko）とグローバルの「サーバー」に分ける。マッチングは同じサーバーの人どうしだけ。
+- 言語のサーバー: 判定・お客さんの設定はそのサーバーの言語。
+- グローバル: 言語をまたいで組む。判定・お客さんの設定は英語。翻訳モードの人には、相手のセリフ・採点のコメント・お客さんの設定を自分の言語に訳して、あとから送る（`line_tr` など）。試合は訳を待たない。
+- 訳は対戦の AI の並びで呼ぶ（用途 translate。登録ごとの「翻訳のモデル」、空ならそのモデル）。同じ文は 2000 件まで覚えておき、もう一度呼ばない。
+- 判定は原文で行う（訳したものでは採点しない）。
+- 公開の `/api/v1/info` の `versus_servers` に、サーバーごとの開いている・休みだけを出す。

@@ -8,10 +8,14 @@ import { createHttpServer, info } from "./http.ts";
 import { attachWebSocket } from "./ws.ts";
 import { log } from "./log.ts";
 import { llmName } from "./llm.ts";
+import { applyPendingRestore, startBackupTimer } from "./backup.ts";
 
+// 管理画面で「全部を戻す」を選んでいたら、DB を開く前に入れかえる（要件#131）
+applyPendingRestore();
 openDb();
 // 管理画面で変えた設定を読み込む（環境変数より優先。要件#100）
 loadStoredSettings();
+startBackupTimer();
 const lobby = new Lobby();
 const server = createHttpServer(lobby);
 const wss = attachWebSocket(server, lobby);

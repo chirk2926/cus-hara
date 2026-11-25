@@ -6,11 +6,27 @@ import type { Conn, Format } from "./protocol.ts";
 import type { Lang } from "./lang.ts";
 import { sttEnabled } from "./stt.ts";
 import { log } from "./log.ts";
+import { runtime } from "./settings.ts";
+
+/** 対戦のサーバー（要件#132）。1台の中で分ける。global は言語をまたいで組み、翻訳モードを選べる */
+export type ServerId = Lang | "global";
+export const SERVER_IDS: ServerId[] = ["ja", "en", "zh", "ko", "global"];
+const SERVER_FLAG: Record<ServerId, keyof typeof runtime> = { ja: "vsServerJa", en: "vsServerEn", zh: "vsServerZh", ko: "vsServerKo", global: "vsServerGlobal" };
+export function serverOpen(id: ServerId): boolean {
+  return runtime[SERVER_FLAG[id]] === true;
+}
+/** ゲームに出すサーバーの一覧（開いているか） */
+export function versusServers(): Array<{ id: ServerId; open: boolean }> {
+  return SERVER_IDS.map((id) => ({ id, open: serverOpen(id) }));
+}
+/** グローバルの試合で、判定の文・お客さんの設定に使う言語 */
+const GLOBAL_LANG: Lang = "en";
 
 interface QueueEntry {
   conn: Conn;
   format: Format;
-  lang: Lang;
+  server: ServerId;
+  translate: boolean;
   since: number;
   lastStatus: number;
 }
@@ -19,7 +35,8 @@ interface Room {
   code: string;
   host: Conn;
   format: Format;
-  lang: Lang;
+  server: ServerId;
+  translate: boolean;
   rateScale: number;
   kind: "ranked" | "friend";
   /** EOS のロビーID（EOS で組んだ部屋のとき） */
@@ -69,13 +86,25 @@ export class Lobby {
 
   // ---------------------------------------------------------------- ランクマッチ
 
-  enqueue(conn: Conn, format: unknown): void {
+  /** 選んだサーバー（無ければ自分の言語のサーバー）。閉じていたら断る */
+  private checkServer(conn: Conn, server: unknown): ServerId | null {
+    const id = (SERVER_IDS as string[]).includes(String(server)) ? (server as ServerId) : conn.lang;
+    if (!serverOpen(id)) {
+      conn.send({ t: "error", code: "server_closed", message: "そのサーバーは休止中です。ほかのサーバーを選んでください" });
+      return null;
+    }
+    return id;
+  }
+
+  enqueue(conn: Conn, format: unknown, server?: unknown, translate?: unknown): void {
     const f = this.checkFormat(conn, format);
     if (!f) return;
+    const sv = this.checkServer(conn, server);
+    if (!sv) return;
     const b = this.busy(conn.player.id);
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
-    this.queue.push({ conn, format: f, lang: conn.lang, since: Date.now(), lastStatus: 0 });
-    conn.send({ t: "queued", format: f, lang: conn.lang });
+    this.queue.push({ conn, format: f, server: sv, translate: sv === "global" && translate === true, since: Date.now(), lastStatus: 0 });
+    conn.send({ t: "queued", format: f, lang: conn.lang, server: sv });
     this.tick();
   }
 
@@ -110,8 +139,8 @@ export class Lobby {
       let best: QueueEntry | null = null;
       let bestDiff = Infinity;
       for (const b of sorted) {
-        // 同じ形式・同じ言語どうしだけを組む
-        if (b === a || paired.has(b) || b.format !== a.format || b.lang !== a.lang || b.conn.player.id === a.conn.player.id) continue;
+        // 同じ形式・同じサーバーどうしだけを組む（グローバルは言語をまたぐ）
+        if (b === a || paired.has(b) || b.format !== a.format || b.server !== a.server || b.conn.player.id === a.conn.player.id) continue;
         // チート対策: 同じ回線（IP）どうしは組まない（1人で2つのアカウントを使ったレーティング稼ぎを防ぐ）
         if (!config.allowSameIpRanked && b.conn.ip === a.conn.ip) continue;
         const diff = Math.abs(a.conn.player.rating - b.conn.player.rating);
@@ -123,19 +152,18 @@ export class Lobby {
       if (best) {
         paired.add(a);
         paired.add(best);
-        this.startMatch("ranked", a.format, a.lang, a.conn, best.conn);
+        this.startMatch("ranked", a.format, a.server, a.conn, best.conn, 1, [a.translate, best.translate]);
       }
     }
     this.queue = this.queue.filter((q) => !paired.has(q));
     for (const q of this.queue) {
       if (now - q.lastStatus >= 2000) {
         q.lastStatus = now;
-        const w = this.window(q, now);
+        // レートの差（探している範囲）は出さない（要件#124）
         q.conn.send({
           t: "queue_status",
           seconds: Math.floor(((now - q.since) / 1000) * config.timeScale),
-          range: Number.isFinite(w) ? Math.round(w) : null,
-          waiting_players: this.queue.filter((x) => x.format === q.format && x.lang === q.lang).length,
+          waiting_players: this.queue.filter((x) => x.format === q.format && x.server === q.server).length,
         });
       }
     }
@@ -144,13 +172,15 @@ export class Lobby {
   // ---------------------------------------------------------------- フレンド対戦（部屋コード）
 
   /** opts.via_eos: EOS のロビーで組んだ相手と遊ぶ部屋（ranked: true ならランクマッチ。ALLOW_RANKED_ROOMS=1 のときだけ） */
-  createRoom(conn: Conn, format: unknown, answerTime?: unknown, opts: { ranked?: unknown; eos_lobby?: unknown } = {}): void {
+  createRoom(conn: Conn, format: unknown, answerTime?: unknown, opts: { ranked?: unknown; eos_lobby?: unknown; server?: unknown; translate?: unknown } = {}): void {
     const wantRanked = opts.ranked === true;
     if (wantRanked && !config.allowRankedRooms) {
       return void conn.send({ t: "error", code: "ranked_rooms_disabled", message: "このサーバーでは、部屋でのランクマッチは使えません" });
     }
     const f = this.checkFormat(conn, format);
     if (!f) return;
+    const sv = this.checkServer(conn, opts.server);
+    if (!sv) return;
     const b = this.busy(conn.player.id);
     if (b) return void conn.send({ t: "error", code: "busy", message: b });
     let code = "";
@@ -159,15 +189,15 @@ export class Lobby {
     } while (this.rooms.has(code));
     const eosLobby = typeof opts.eos_lobby === "string" ? opts.eos_lobby.slice(0, 64) : null;
     this.rooms.set(code, {
-      code, host: conn, format: f, lang: conn.lang,
+      code, host: conn, format: f, server: sv, translate: sv === "global" && opts.translate === true,
       // ランクマッチは公平のため返事の時間を固定
       rateScale: wantRanked ? 1 : (Object.hasOwn(ANSWER_RATE, String(answerTime)) ? ANSWER_RATE[String(answerTime)] : 1),
       kind: wantRanked ? "ranked" : "friend", eosLobby, created: Date.now(),
     });
-    conn.send({ t: "room_created", code, format: f, lang: conn.lang });
+    conn.send({ t: "room_created", code, format: f, lang: conn.lang, server: sv });
   }
 
-  joinRoom(conn: Conn, rawCode: unknown): void {
+  joinRoom(conn: Conn, rawCode: unknown, translate?: unknown): void {
     const code = typeof rawCode === "string" ? rawCode.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
     const room = this.rooms.get(code);
     if (!room) return void conn.send({ t: "error", code: "room_not_found", message: "その部屋コードは見つかりません。コードを確かめるか、相手に作り直してもらってください" });
@@ -183,15 +213,16 @@ export class Lobby {
         return void conn.send({ t: "error", code: "rating_gap", message: "レーティングの差が大きすぎるため、このランクマッチには入れません" });
       }
     }
+    if (!serverOpen(room.server)) return void conn.send({ t: "error", code: "server_closed", message: "その部屋のサーバーは休止中です" });
     this.rooms.delete(code);
-    // フレンド対戦は部屋を作った人の言語で進める
-    this.startMatch(room.kind, room.format, room.lang, room.host, conn, room.rateScale);
+    // 部屋のサーバーで進める（言語のサーバーなら、その言語。グローバルなら言語をまたぐ）
+    this.startMatch(room.kind, room.format, room.server, room.host, conn, room.rateScale, [room.translate, room.server === "global" && translate === true]);
   }
 
   // ---------------------------------------------------------------- 試合
 
-  private startMatch(kind: "ranked" | "friend", format: Format, lang: Lang, a: Conn, b: Conn, rateScale = 1): void {
-    const m = new Match(kind, format, lang, a, b);
+  private startMatch(kind: "ranked" | "friend", format: Format, server: ServerId, a: Conn, b: Conn, rateScale = 1, translate: [boolean, boolean] = [false, false]): void {
+    const m = new Match(kind, format, server === "global" ? GLOBAL_LANG : server, a, b, { server, translate });
     m.rateScale = rateScale;
     this.matches.set(a.player.id, m);
     this.matches.set(b.player.id, m);

@@ -7,7 +7,7 @@ import { config, scaled } from "./config.ts";
 import { type Customer, type StageId, STAGES, randomCustomer, publicCustomer } from "./scenarios.ts";
 import { openStages } from "./stages.ts";
 import { judgeStaff, judgeCustomerLine } from "./keyword_judge.ts";
-import { llmEnabled, generateCustomer, judgeStaffTurn, judgeCustomerTurn, type HistoryEntry } from "./llm.ts";
+import { llmEnabled, generateCustomer, judgeStaffTurn, judgeCustomerTurn, translateTexts, type HistoryEntry } from "./llm.ts";
 import { sttEnabled, transcribe } from "./stt.ts";
 import { MAX_BYTES, mulawToPcm16, isNearlySilent } from "./audio.ts";
 import { eloDelta, rankName } from "./rating.ts";
@@ -84,10 +84,17 @@ export class Match {
   /** レーティングが動かなかった理由（結果画面に出す） */
   private ratingNote = "";
 
-  constructor(kind: Kind, format: Format, lang: Lang, a: Conn, b: Conn) {
+  /** 対戦のサーバー（要件#132）と、席ごとの翻訳モード（グローバルだけ） */
+  readonly server: string;
+  private translate: [boolean, boolean];
+  private lineSeq = 0;
+
+  constructor(kind: Kind, format: Format, lang: Lang, a: Conn, b: Conn, opts: { server?: string; translate?: [boolean, boolean] } = {}) {
     this.kind = kind;
     this.format = format;
     this.lang = lang;
+    this.server = opts.server ?? lang;
+    this.translate = this.server === "global" && opts.translate ? opts.translate : [false, false];
     this.seats = [
       { player: a.player, conn: a, ratingBefore: (playerById(a.player.id) ?? a.player).rating, graceTimer: null },
       { player: b.player, conn: b, ratingBefore: (playerById(b.player.id) ?? b.player).rating, graceTimer: null },
@@ -146,6 +153,8 @@ export class Match {
       kind: this.kind,
       format: this.format,
       lang: this.lang,
+      server: this.server,
+      translate: this.translate[viewer],
       stage: this.stage,
       rounds: config.versus.rounds,
       you: publicPlayer(me.player, me.ratingBefore),
@@ -247,7 +256,14 @@ export class Match {
     this.anger = card.start_anger;
     this.resolveVal = 0;
     this.rate = config.versus.baseAngerRate * card.patience * this.rateScale;
-    for (const v of [0, 1]) this.send(v, this.roundStart(v));
+    for (const v of [0, 1]) {
+      this.send(v, this.roundStart(v));
+      // グローバル: お客さんの設定（呼び名・メモ・要求・最初のクレームの例）も訳して送る
+      if (this.card && this.translate[v] && this.langOf(v) !== this.lang) {
+        const c = this.card;
+        this.sendTranslated(v, "card_tr", this.round, [c.title, c.memo, c.demand, c.opening], ["title", "memo", "demand", "opening"]);
+      }
+    }
     await sleep(config.versus.roundIntroMs);
     if (this.finished) return null;
 
@@ -509,13 +525,35 @@ export class Match {
     this.transcript.push(entry);
     this.fullLog.push({ round: this.round, role, by: this.seats[seat].player.id, name: this.seats[seat].player.name, text, via, at: Date.now() });
     trackMatch(this.id, this.logBody());
-    for (const v of [0, 1]) this.send(v, { t: "line", ...entry, by: this.who(seat, v) });
+    const seq = ++this.lineSeq;
+    for (const v of [0, 1]) this.send(v, { t: "line", ...entry, by: this.who(seat, v), seq });
+    // グローバル（要件#132）: 翻訳モードの相手には、相手の言語に訳したものをあとから送る（試合は待たない）
+    const other = 1 - seat;
+    if (this.translate[other] && this.langOf(other) !== this.langOf(seat)) this.sendTranslated(other, "line_tr", seq, [text]);
   }
 
   private broadcastJudged(angerDelta: number, resolveDelta: number, comment: string, about: Role): void {
+    const seq = ++this.lineSeq;
     for (const v of [0, 1]) {
-      this.send(v, { t: "judged", anger: this.anger, resolve: this.resolveVal, anger_delta: angerDelta, resolve_delta: resolveDelta, comment, about });
+      this.send(v, { t: "judged", anger: this.anger, resolve: this.resolveVal, anger_delta: angerDelta, resolve_delta: resolveDelta, comment, about, seq });
+      if (comment !== "" && this.translate[v] && this.langOf(v) !== this.lang) this.sendTranslated(v, "judged_tr", seq, [comment]);
     }
+  }
+
+  /** 訳して送る。失敗したら何も送らない（原文のまま） */
+  private langOf(seat: number): Lang {
+    return this.seats[seat].conn?.lang ?? this.lang;
+  }
+
+  private sendTranslated(viewer: number, t: string, seq: number, texts: string[], keys?: string[]): void {
+    const to = this.langOf(viewer);
+    translateTexts(texts, to).then((out) => {
+      if (this.finished) return;
+      const msg: Record<string, unknown> = { t, seq };
+      if (keys) keys.forEach((k, i) => (msg[k] = out[i]));
+      else msg.text = out[0];
+      this.send(viewer, msg);
+    }).catch((e) => log("translate failed", this.id, String(e)));
   }
 
   // ---------------------------------------------------------------- 入力の受け口
