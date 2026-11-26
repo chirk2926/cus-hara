@@ -120,7 +120,7 @@ func _cmp_equal() -> int:
 
 # ---------------------------------------------------------------- ランダムマッチ
 
-func find_match(lang: String, format: String, rating: int, display_name: String) -> void:
+func find_match(server: String, format: String, rating: int, display_name: String) -> void:
 	_cancelled = false
 	if not await ensure_ready(display_name):
 		return
@@ -128,7 +128,7 @@ func find_match(lang: String, format: String, rating: int, display_name: String)
 	status.emit(tr("Epic のロビーで相手を探しています…"))
 	var found = await hl.search_by_attribute_async([
 		{"key": "game", "value": GAME_TAG, "comparison": _cmp_equal()},
-		{"key": "lang", "value": lang, "comparison": _cmp_equal()},
+		{"key": "server", "value": server, "comparison": _cmp_equal()},
 		{"key": "format", "value": format, "comparison": _cmp_equal()},
 		{"key": "state", "value": "waiting", "comparison": _cmp_equal()},
 	])
@@ -156,13 +156,13 @@ func find_match(lang: String, format: String, rating: int, display_name: String)
 			await _wait_room_code()
 			return
 	# 見つからなければ自分でロビーを作って待つ
-	await _host_lobby(lang, format, rating, true)
+	await _host_lobby(server, format, rating, true)
 
 
-func _host_lobby(lang: String, format: String, rating: int, public: bool) -> void:
+func _host_lobby(server: String, format: String, rating: int, public: bool) -> void:
 	var hl: Node = _node("HLobbies")
 	var opts = _eos.Lobby.CreateLobbyOptions.new()
-	opts.bucket_id = "%s:%s:%s" % [GAME_TAG, lang, format]
+	opts.bucket_id = "%s:%s:%s" % [GAME_TAG, server, format]
 	opts.max_lobby_members = 2
 	opts.presence_enabled = true
 	opts.allow_invites = true
@@ -180,7 +180,7 @@ func _host_lobby(lang: String, format: String, rating: int, public: bool) -> voi
 	_lobby = lobby
 	_is_host = true
 	lobby.add_attribute("game", GAME_TAG)
-	lobby.add_attribute("lang", lang)
+	lobby.add_attribute("server", server)
 	lobby.add_attribute("format", format)
 	lobby.add_attribute("rating", str(rating))
 	lobby.add_attribute("state", "waiting")
@@ -217,7 +217,7 @@ func _wait_room_code() -> void:
 # ---------------------------------------------------------------- フレンド招待
 
 ## 招待専用のロビーを作り、Epic のフレンド画面を開く（Epic アカウントでのログインが必要）
-func invite_friend(lang: String, format: String, rating: int, display_name: String) -> void:
+func invite_friend(server: String, format: String, rating: int, display_name: String) -> void:
 	_cancelled = false
 	if not await ensure_ready(display_name):
 		return
@@ -226,7 +226,7 @@ func invite_friend(lang: String, format: String, rating: int, display_name: Stri
 		if not ok:
 			failed.emit(tr("フレンド招待には Epic アカウントでのログインが必要です。部屋コードを友達に伝えてください"))
 			return
-	await _host_lobby(lang, format, rating, false)
+	await _host_lobby(server, format, rating, false)
 	if _lobby == null:
 		return
 	var opts = _eos.UI.ShowFriendsOptions.new()
@@ -261,14 +261,33 @@ func lobby_id() -> String:
 	return str(_lobby.get("lobby_id"))
 
 
-## 称号を EOS の実績にも記録する（要件#78, #79）。EOS につながっているときだけ。実績のIDは称号の id（開発者ポータルに同じIDで登録が要る）
+## 称号を EOS の実績にも記録する（要件#78, #79）。EOS につながっているときだけ。実績のIDは称号の id。
+## 実績を直接アンロックできるのは GameServer のクライアントだけなので（GameClient では断られる）、
+## 称号ごとの統計 titleT001 など（集計 MAX）に 1 を送り、「統計が 1 以上で解除」の実績にする（2026-11-25）。
+## 定義は tools/eos/make_achievements_zip.ps1 で作り、開発者ポータルの一括インポートで入れる。
 func unlock_achievements(ids: Array) -> void:
 	if ids.is_empty() or not _ready_eos:
 		return
-	var ha: Node = _node("HAchievements")
-	if ha == null:
+	var auth: Node = _node("HAuth")
+	if auth == null or str(auth.get("product_user_id")) == "":
 		return
-	ha.unlock_achievements_async(ids)
+	var stats: Array = []
+	for id in ids:
+		var s: String = str(id)
+		if s.length() == 4 and s.begins_with("t"):
+			stats.append({"stat_name": stat_name_for_title(s), "ingest_amount": 1})
+	if stats.is_empty():
+		return
+	var opts = _eos.Stats.IngestStatOptions.new()
+	opts.local_user_id = auth.get("product_user_id")
+	opts.target_user_id = auth.get("product_user_id")
+	opts.stats = stats
+	_eos.Stats.StatsInterface.ingest_stat(opts)
+
+
+## 称号の id（t001）→ EOS の統計の名前（titleT001。キャメルケースが必要）
+static func stat_name_for_title(id: String) -> String:
+	return "title" + id.substr(0, 1).to_upper() + id.substr(1)
 
 
 # ---------------------------------------------------------------- 声の対戦のボイス（要件#100）

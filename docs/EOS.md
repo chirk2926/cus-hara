@@ -26,11 +26,11 @@ ensure_ready(): config/eos.cfg を読む → HPlatform.setup_eos_async(HCredenti
                → だめなら HAuth.login_anonymous_async(名前)（端末 ID）
                → IEOS の「招待を承認した」シグナルにつなぐ
 
-ランクマッチ find_match(lang, format, rating):
-  HLobbies.search_by_attribute_async(game=cushara, lang, format, state=waiting)
+ランクマッチ find_match(server, format, rating):（server は接続サーバー ja/en/zh/ko/global。要件#132）
+  HLobbies.search_by_attribute_async(game=cushara, server, format, state=waiting)
   → 空きがあり、レート差 300 以内で一番近いロビーに join_async
        → ロビーの属性 room（ゲームサーバーの部屋コード）が書かれるまで最大 20 秒待つ → room_found(code)
-  → 無ければ create_lobby_async（公開・2人）し、属性 game/lang/format/rating/state を書く
+  → 無ければ create_lobby_async（公開・2人）し、属性 game/server/format/rating/state を書く
        → need_room(ranked=true) → versus_game.gd がサーバーへ room_create {ranked, eos_lobby}
        → 部屋コードが来たら set_room_code() でロビーの属性 room に書く → 相手が入ると match_found
 
